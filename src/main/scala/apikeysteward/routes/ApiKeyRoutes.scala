@@ -13,10 +13,12 @@ class ApiKeyRoutes {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         Endpoints.createApiKeyEndpoint.serverLogic[IO] { request =>
-          (
-            StatusCode.Created,
-            CreateApiKeyResponse(request.userId, request.apiKeyName, "at-some-point-this-will-be-a- valid-api-key")
-          ).asRight[Unit].pure[IO]
+          IO(
+            (
+              StatusCode.Created,
+              CreateApiKeyResponse(request.userId, request.apiKeyName, "at-some-point-this-will-be-a-valid-api-key")
+            ).asRight[Unit]
+          )
         }
       )
 
