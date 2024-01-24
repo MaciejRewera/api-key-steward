@@ -11,8 +11,7 @@ object Endpoints {
   private val baseEndpoint: PublicEndpoint[Unit, Unit, Unit, Any] =
     endpoint.in("api-key" / "create")
 
-  val createApiKeyEndpoint
-      : PublicEndpoint[CreateApiKeyRequest, Unit, (StatusCode, CreateApiKeyResponse), Any] =
+  val createApiKeyEndpoint: PublicEndpoint[CreateApiKeyRequest, Unit, (StatusCode, CreateApiKeyResponse), Any] =
     baseEndpoint.post
       .in(
         jsonBody[CreateApiKeyRequest]
