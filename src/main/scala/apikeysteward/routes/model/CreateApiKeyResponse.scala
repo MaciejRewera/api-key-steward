@@ -4,9 +4,8 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 case class CreateApiKeyResponse(
-    userId: String,
-    apiKeyName: String,
-    apiKey: String
+    apiKey: String,
+    apiKeyData: ApiKeyData
 )
 
 object CreateApiKeyResponse {

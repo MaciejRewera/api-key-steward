@@ -1,27 +1,42 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.model.CreateApiKeyResponse
-import apikeysteward.services.ApiKeyCreationService
+import cats.implicits._
+import apikeysteward.routes.model.{ApiKeyData, CreateApiKeyResponse, ValidateApiKeyResponse}
+import apikeysteward.services.ApiKeyService
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ApiKeyRoutes(apiKeyCreationService: ApiKeyCreationService[String]) {
+class ApiKeyRoutes(apiKeyCreationService: ApiKeyService[String]) {
 
   private val createApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         Endpoints.createApiKeyEndpoint.serverLogic[IO] { request =>
-          apiKeyCreationService.createApiKey(request).map { newApiKey =>
+          apiKeyCreationService.createApiKey(ApiKeyData.from(request)).map { newApiKey =>
             (
               StatusCode.Created,
-              CreateApiKeyResponse(request.userId, request.apiKeyName, newApiKey)
+              CreateApiKeyResponse(newApiKey, ApiKeyData(request.userId, request.apiKeyName))
             ).asRight[Unit]
           }
         }
       )
 
-  val allRoutes: HttpRoutes[IO] = createApiKeyRoutes
+  private val validateApiKeyRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter(ServerConfiguration.options)
+      .toRoutes(
+        Endpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
+          apiKeyCreationService.validateApiKey(request.apiKey).map { validationResult =>
+            validationResult
+              .fold(
+                error => Left(ErrorInfo.forbiddenErrorDetail(Some(error))),
+                apiKeyData => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
+              )
+          }
+        }
+      )
+
+  val allRoutes: HttpRoutes[IO] = createApiKeyRoutes <+> validateApiKeyRoutes
 }
