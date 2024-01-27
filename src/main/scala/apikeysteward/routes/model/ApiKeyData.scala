@@ -5,13 +5,10 @@ import io.circe.generic.semiauto.deriveCodec
 
 case class ApiKeyData(
     userId: String,
-    apiKeyName: String
+    apiKeyName: String,
+    scope: List[String]
 )
 
 object ApiKeyData {
   implicit val codec: Codec[ApiKeyData] = deriveCodec[ApiKeyData]
-
-  def from(request: CreateApiKeyRequest): ApiKeyData = ApiKeyData(
-    userId = request.userId, apiKeyName = request.apiKeyName
-  )
 }

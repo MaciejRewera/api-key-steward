@@ -15,10 +15,10 @@ class ApiKeyRoutes(apiKeyCreationService: ApiKeyService[String]) {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         Endpoints.createApiKeyEndpoint.serverLogic[IO] { request =>
-          apiKeyCreationService.createApiKey(ApiKeyData.from(request)).map { newApiKey =>
+          apiKeyCreationService.createApiKey(request.apiKeyData).map { case (newApiKey, apiKeyData) =>
             (
               StatusCode.Created,
-              CreateApiKeyResponse(newApiKey, ApiKeyData(request.userId, request.apiKeyName))
+              CreateApiKeyResponse(newApiKey, apiKeyData)
             ).asRight[Unit]
           }
         }
