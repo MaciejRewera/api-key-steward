@@ -1,7 +1,12 @@
 package apikeysteward.routes
 
 import apikeysteward.routes.ErrorInfo.CommonErrorInfo
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, ValidateApiKeyRequest, ValidateApiKeyResponse}
+import apikeysteward.routes.model.{
+  CreateApiKeyRequest,
+  CreateApiKeyResponse,
+  ValidateApiKeyRequest,
+  ValidateApiKeyResponse
+}
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._

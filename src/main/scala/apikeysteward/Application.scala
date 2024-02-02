@@ -2,7 +2,7 @@ package apikeysteward
 
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
-import apikeysteward.repositories.{DataSourceBuilder, DatabaseMigrator}
+import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, InMemoryApiKeyRepository}
 import apikeysteward.routes.ApiKeyRoutes
 import apikeysteward.services.ApiKeyService
 import cats.effect.{IO, IOApp, Resource}
@@ -52,7 +52,8 @@ object Application extends IOApp.Simple {
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
         apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
-        apiKeyCreationService = new ApiKeyService(apiKeyGenerator)
+        apiKeyRepository: ApiKeyRepository[String] = new InMemoryApiKeyRepository[String]()
+        apiKeyCreationService = new ApiKeyService(apiKeyGenerator, apiKeyRepository)
 
         routes = new ApiKeyRoutes(apiKeyCreationService).allRoutes.orNotFound
 
