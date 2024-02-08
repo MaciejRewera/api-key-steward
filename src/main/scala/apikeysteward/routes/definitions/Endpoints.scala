@@ -2,6 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo.CommonErrorInfo
+import apikeysteward.routes.definitions.EndpointUtils.AccessToken
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -10,11 +11,11 @@ import sttp.tapir.json.circe.jsonBody
 
 object Endpoints {
 
-  private val baseEndpoint: PublicEndpoint[Unit, Unit, Unit, Any] =
+  private val baseEndpoint: Endpoint[AccessToken, Unit, Unit, Unit, Any] =
     endpoint.in("api-key")
 
   val validateApiKeyEndpoint
-      : PublicEndpoint[ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
+      : Endpoint[AccessToken, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     baseEndpoint.post
       .in("validate")
       .in(
