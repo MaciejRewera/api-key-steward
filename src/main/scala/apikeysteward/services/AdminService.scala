@@ -26,4 +26,6 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
       apiKeyDataEntities <- apiKeyRepository.getAll(userId)
       result = apiKeyDataEntities.map(ApiKeyData.from)
     } yield result
+
+  def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
 }

@@ -10,4 +10,6 @@ trait ApiKeyRepository[K] {
   def get(apiKey: K): IO[Option[ApiKeyDataEntity.Read]]
 
   def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]]
+
+  def getAllUserIds: IO[List[String]]
 }

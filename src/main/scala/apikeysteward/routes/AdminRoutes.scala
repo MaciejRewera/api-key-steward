@@ -25,6 +25,14 @@ class AdminRoutes(adminService: AdminService[String]) {
         }
       )
 
+  private val getAllUserIdsRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter(ServerConfiguration.options)
+      .toRoutes(
+        AdminEndpoints.getAllUserIdsEndpoint.serverLogic[IO] { _ =>
+          adminService.getAllUserIds.map(allUserIds => (StatusCode.Ok -> allUserIds).asRight[Unit])
+        }
+      )
+
   private val createApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
@@ -38,5 +46,5 @@ class AdminRoutes(adminService: AdminService[String]) {
         }
       )
 
-  val allRoutes: HttpRoutes[IO] = createApiKeyRoutes <+> getAllApiKeysForUserRoutes
+  val allRoutes: HttpRoutes[IO] = getAllApiKeysForUserRoutes <+> getAllUserIdsRoutes <+> createApiKeyRoutes
 }
