@@ -1,8 +1,10 @@
 package apikeysteward
 
 import apikeysteward.config.AppConfig
-import apikeysteward.repositories.{DataSourceBuilder, DatabaseMigrator}
+import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
+import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, InMemoryApiKeyRepository}
 import apikeysteward.routes.ApiKeyRoutes
+import apikeysteward.services.ApiKeyService
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
@@ -49,7 +51,11 @@ object Application extends IOApp.Simple {
         migrationResult <- DatabaseMigrator.migrateDatabase(transactor.kernel, config.database)
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
-        routes = new ApiKeyRoutes().allRoutes.orNotFound
+        apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
+        apiKeyRepository: ApiKeyRepository[String] = new InMemoryApiKeyRepository[String]()
+        apiKeyCreationService = new ApiKeyService(apiKeyGenerator, apiKeyRepository)
+
+        routes = new ApiKeyRoutes(apiKeyCreationService).allRoutes.orNotFound
 
         _ <- EmberServerBuilder
           .default[IO]
