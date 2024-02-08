@@ -1,5 +1,6 @@
 package apikeysteward.routes.model
 
+import apikeysteward.model.ApiKeyData
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
