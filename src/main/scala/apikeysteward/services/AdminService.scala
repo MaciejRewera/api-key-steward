@@ -21,6 +21,12 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield (newApiKey, apiKeyData)
 
+  def deleteApiKey(userId: String, keyId: UUID): IO[Option[ApiKeyData]] =
+    for {
+      deletedApiKeyDataEntity <- apiKeyRepository.delete(userId, keyId)
+      deletedApiKeyData = deletedApiKeyDataEntity.map(ApiKeyData.from)
+    } yield deletedApiKeyData
+
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
     for {
       apiKeyDataEntities <- apiKeyRepository.getAll(userId)

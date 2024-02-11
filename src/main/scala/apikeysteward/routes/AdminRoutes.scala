@@ -1,7 +1,8 @@
 package apikeysteward.routes
 
 import apikeysteward.routes.definitions.AdminEndpoints
-import apikeysteward.routes.model.admin.CreateApiKeyAdminResponse
+import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
+import apikeysteward.routes.model.admin.{CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
@@ -17,7 +18,7 @@ class AdminRoutes(adminService: AdminService[String]) {
         AdminEndpoints.getAllApiKeysForUserEndpoint.serverLogic[IO] { userId =>
           adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
             if (allApiKeyData.isEmpty) {
-              val errorMsg = "No API Key found for provided userId."
+              val errorMsg = ErrorMessages.GetAllApiKeysForUserNotFound
               Left(ErrorInfo.notFoundErrorDetail(Some(errorMsg)))
             } else
               Right(StatusCode.Ok -> allApiKeyData)
@@ -46,5 +47,17 @@ class AdminRoutes(adminService: AdminService[String]) {
         }
       )
 
-  val allRoutes: HttpRoutes[IO] = getAllApiKeysForUserRoutes <+> getAllUserIdsRoutes <+> createApiKeyRoutes
+  private def deleteApiKeyRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter(ServerConfiguration.options)
+      .toRoutes(
+        AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { request =>
+          adminService.deleteApiKey(request.userId, request.keyId).map {
+            case Some(deletedApiKeyData) => (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
+            case None                    => ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
+          }
+        }
+      )
+
+  val allRoutes: HttpRoutes[IO] =
+    getAllApiKeysForUserRoutes <+> getAllUserIdsRoutes <+> createApiKeyRoutes <+> deleteApiKeyRoutes
 }

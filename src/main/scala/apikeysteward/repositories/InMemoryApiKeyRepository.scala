@@ -30,6 +30,11 @@ class InMemoryApiKeyRepository[K] extends ApiKeyRepository[K] {
     entityRead
   }
 
+  override def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = IO {
+    apiKeyDataTable.find { case (keyId, entity) => keyId == keyIdToDelete && entity.userId == userId }
+      .flatMap(_ => apiKeyDataTable.remove(keyIdToDelete))
+  }
+
   override def get(apiKey: K): IO[Option[ApiKeyDataEntity.Read]] = IO {
     for {
       apiKeyId <- apiKeysTable.get(apiKey)

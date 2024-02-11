@@ -12,6 +12,11 @@ import sttp.tapir.json.circe.jsonBody
 
 object AdminEndpoints {
 
+  object ErrorMessages {
+    val DeleteApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
+    val GetAllApiKeysForUserNotFound = "No API Key found for provided userId."
+  }
+
   private val baseAdminEndpoint: Endpoint[AccessToken, Unit, Unit, Unit, Any] =
     endpoint.in("admin")
 
@@ -27,7 +32,7 @@ object AdminEndpoints {
         oneOf[ErrorInfo](
           oneOfVariant(
             StatusCode.NotFound,
-            jsonBody[CommonErrorInfo].description("No API Key found for provided userId.")
+            jsonBody[CommonErrorInfo].description(ErrorMessages.GetAllApiKeysForUserNotFound)
           )
         )
       )
@@ -41,12 +46,31 @@ object AdminEndpoints {
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyAdminRequest, Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
     baseAdminEndpoint.post
-      .in("api-key" / "create")
+      .in("api-key")
       .in(
         jsonBody[CreateApiKeyAdminRequest]
           .description("Details of the API Key to create.")
       )
       .out(statusCode.description(StatusCode.Created, "API Key created"))
       .out(jsonBody[CreateApiKeyAdminResponse])
+
+  val deleteApiKeyEndpoint
+      : Endpoint[AccessToken, DeleteApiKeyAdminRequest, ErrorInfo, (StatusCode, DeleteApiKeyAdminResponse), Any] =
+    baseAdminEndpoint.delete
+      .in("api-key")
+      .in(
+        jsonBody[DeleteApiKeyAdminRequest]
+          .description("Details of the API Key to delete.")
+      )
+      .out(statusCode.description(StatusCode.Ok, "API Key deleted"))
+      .out(jsonBody[DeleteApiKeyAdminResponse])
+      .errorOut(
+        oneOf[ErrorInfo](
+          oneOfVariant(
+            StatusCode.NotFound,
+            jsonBody[CommonErrorInfo].description(ErrorMessages.DeleteApiKeyNotFound)
+          )
+        )
+      )
 
 }
