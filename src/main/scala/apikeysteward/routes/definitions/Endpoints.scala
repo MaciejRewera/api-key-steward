@@ -17,7 +17,7 @@ object Endpoints {
   val validateApiKeyEndpoint
       : Endpoint[AccessToken, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     baseEndpoint.post
-      .in("validate")
+      .in("validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
           .description("API Key to validate.")

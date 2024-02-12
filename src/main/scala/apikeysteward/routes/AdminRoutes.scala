@@ -37,8 +37,8 @@ class AdminRoutes(adminService: AdminService[String]) {
   private val createApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        AdminEndpoints.createApiKeyEndpoint.serverLogic[IO] { request =>
-          adminService.createApiKey(request).map { case (newApiKey, apiKeyData) =>
+        AdminEndpoints.createApiKeyEndpoint.serverLogic[IO] { case (userId, request) =>
+          adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
             (
               StatusCode.Created,
               CreateApiKeyAdminResponse(newApiKey, apiKeyData)
@@ -47,11 +47,11 @@ class AdminRoutes(adminService: AdminService[String]) {
         }
       )
 
-  private def deleteApiKeyRoutes: HttpRoutes[IO] =
+  private val deleteApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { request =>
-          adminService.deleteApiKey(request.userId, request.keyId).map {
+        AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { case (userId, keyId) =>
+          adminService.deleteApiKey(userId, keyId).map {
             case Some(deletedApiKeyData) => (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
             case None                    => ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
           }

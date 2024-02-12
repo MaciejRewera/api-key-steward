@@ -11,11 +11,11 @@ import java.util.UUID
 
 class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: ApiKeyRepository[K]) {
 
-  def createApiKey(createApiKeyRequest: CreateApiKeyAdminRequest): IO[(K, ApiKeyData)] =
+  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyAdminRequest): IO[(K, ApiKeyData)] =
     for {
       newApiKey <- apiKeyGenerator.generateApiKey
       keyId <- IO(UUID.randomUUID())
-      apiKeyDataEntityWrite = ApiKeyDataEntity.Write.from(createApiKeyRequest, keyId)
+      apiKeyDataEntityWrite = ApiKeyDataEntity.Write.from(userId, createApiKeyRequest, keyId)
 
       apiKeyDataEntityRead <- apiKeyRepository.insert(newApiKey, apiKeyDataEntityWrite)
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)

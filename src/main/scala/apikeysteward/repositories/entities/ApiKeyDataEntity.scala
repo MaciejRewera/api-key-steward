@@ -27,9 +27,9 @@ object ApiKeyDataEntity {
   )
 
   object Write {
-    def from(createApiKeyAdminRequest: CreateApiKeyAdminRequest, keyId: UUID): ApiKeyDataEntity.Write =
+    def from(userId: String, createApiKeyAdminRequest: CreateApiKeyAdminRequest, keyId: UUID): ApiKeyDataEntity.Write =
       ApiKeyDataEntity.Write(
-        userId = createApiKeyAdminRequest.userId,
+        userId = userId,
         keyId = keyId,
         name = createApiKeyAdminRequest.name,
         description = createApiKeyAdminRequest.description,

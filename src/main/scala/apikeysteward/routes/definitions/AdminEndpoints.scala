@@ -10,6 +10,8 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
+import java.util.UUID
+
 object AdminEndpoints {
 
   object ErrorMessages {
@@ -20,12 +22,13 @@ object AdminEndpoints {
   private val baseAdminEndpoint: Endpoint[AccessToken, Unit, Unit, Unit, Any] =
     endpoint.in("admin")
 
-  private val userIdPathParameter =
-    path[String]("userId").description("ID of the user for which to retrieve all API Keys information.")
+  private val userIdPathParameter = path[String]("userId").description("ID of the user.")
+
+  private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     baseAdminEndpoint.get
-      .in("users" / userIdPathParameter / "api-keys")
+      .in("users" / userIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "API Keys found for provided userId."))
       .out(jsonBody[List[ApiKeyData]])
       .errorOut(
@@ -44,9 +47,9 @@ object AdminEndpoints {
       .out(jsonBody[List[String]])
 
   val createApiKeyEndpoint
-      : Endpoint[AccessToken, CreateApiKeyAdminRequest, Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
+      : Endpoint[AccessToken, (String, CreateApiKeyAdminRequest), Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
     baseAdminEndpoint.post
-      .in("api-key")
+      .in("users" / userIdPathParameter / "api-key")
       .in(
         jsonBody[CreateApiKeyAdminRequest]
           .description("Details of the API Key to create.")
@@ -55,13 +58,9 @@ object AdminEndpoints {
       .out(jsonBody[CreateApiKeyAdminResponse])
 
   val deleteApiKeyEndpoint
-      : Endpoint[AccessToken, DeleteApiKeyAdminRequest, ErrorInfo, (StatusCode, DeleteApiKeyAdminResponse), Any] =
+      : Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyAdminResponse), Any] =
     baseAdminEndpoint.delete
-      .in("api-key")
-      .in(
-        jsonBody[DeleteApiKeyAdminRequest]
-          .description("Details of the API Key to delete.")
-      )
+      .in("users" / userIdPathParameter / "api-key" / keyIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "API Key deleted"))
       .out(jsonBody[DeleteApiKeyAdminResponse])
       .errorOut(
