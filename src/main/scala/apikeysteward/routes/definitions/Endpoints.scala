@@ -1,12 +1,9 @@
-package apikeysteward.routes
+package apikeysteward.routes.definitions
 
+import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo.CommonErrorInfo
-import apikeysteward.routes.model.{
-  CreateApiKeyRequest,
-  CreateApiKeyResponse,
-  ValidateApiKeyRequest,
-  ValidateApiKeyResponse
-}
+import apikeysteward.routes.definitions.EndpointUtils.AccessToken
+import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
@@ -14,23 +11,13 @@ import sttp.tapir.json.circe.jsonBody
 
 object Endpoints {
 
-  private val baseEndpoint: PublicEndpoint[Unit, Unit, Unit, Any] =
+  private val baseEndpoint: Endpoint[AccessToken, Unit, Unit, Unit, Any] =
     endpoint.in("api-key")
 
-  val createApiKeyEndpoint: PublicEndpoint[CreateApiKeyRequest, Unit, (StatusCode, CreateApiKeyResponse), Any] =
-    baseEndpoint.post
-      .in("create")
-      .in(
-        jsonBody[CreateApiKeyRequest]
-          .description("Details of the API Key to create.")
-      )
-      .out(statusCode.description(StatusCode.Created, "API Key created"))
-      .out(jsonBody[CreateApiKeyResponse])
-
   val validateApiKeyEndpoint
-      : PublicEndpoint[ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
+      : Endpoint[AccessToken, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     baseEndpoint.post
-      .in("validate")
+      .in("validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
           .description("API Key to validate.")
@@ -46,5 +33,4 @@ object Endpoints {
           )
         )
       )
-
 }

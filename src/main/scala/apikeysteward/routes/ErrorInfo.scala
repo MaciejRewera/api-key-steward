@@ -19,4 +19,9 @@ object ErrorInfo {
     error = "Access denied",
     errorDetail = detail
   )
+
+  def notFoundErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+    error = "Not Found",
+    errorDetail = detail
+  )
 }

@@ -3,8 +3,8 @@ package apikeysteward
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, InMemoryApiKeyRepository}
-import apikeysteward.routes.ApiKeyRoutes
-import apikeysteward.services.ApiKeyService
+import apikeysteward.routes.{AdminRoutes, ValidateApiKeyRoutes}
+import apikeysteward.services.{AdminService, ApiKeyService}
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
@@ -53,15 +53,19 @@ object Application extends IOApp.Simple {
 
         apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
         apiKeyRepository: ApiKeyRepository[String] = new InMemoryApiKeyRepository[String]()
-        apiKeyCreationService = new ApiKeyService(apiKeyGenerator, apiKeyRepository)
+        apiKeyService = new ApiKeyService(apiKeyRepository)
+        adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)
 
-        routes = new ApiKeyRoutes(apiKeyCreationService).allRoutes.orNotFound
+        validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
+        adminRoutes = new AdminRoutes(adminService).allRoutes
+
+        httpApp = (validateRoutes <+> adminRoutes).orNotFound
 
         _ <- EmberServerBuilder
           .default[IO]
           .withHost(config.http.host)
           .withPort(config.http.port)
-          .withHttpApp(routes)
+          .withHttpApp(httpApp)
           .build
           .useForever
       } yield ()
