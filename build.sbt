@@ -62,5 +62,8 @@ lazy val root = (project in file("."))
 lazy val it = (project in file("integration-tests"))
   .dependsOn(root)
   .settings(
-    libraryDependencies ++= Seq()
+    libraryDependencies ++= Seq(
+      "org.tpolecat" %% "doobie-scalatest" % DoobieVersion % Test,
+      "com.github.tomakehurst" % "wiremock" % "2.27.2" % Test
+    )
   )
