@@ -6,7 +6,7 @@
         </encoder>
     </appender>
 
-    <logger name="knowledgeminer" level="DEBUG"/>
+    <logger name="apikeysteward" level="DEBUG"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

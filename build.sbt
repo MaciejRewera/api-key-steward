@@ -64,6 +64,7 @@ lazy val it = (project in file("integration-tests"))
   .settings(
     libraryDependencies ++= Seq(
       "org.tpolecat" %% "doobie-scalatest" % DoobieVersion % Test,
-      "com.github.tomakehurst" % "wiremock" % "2.27.2" % Test
+      "org.typelevel" %% "cats-effect-testing-scalatest" % "1.4.0" % Test,
+      "com.github.tomakehurst" % "wiremock" % "3.0.1" % Test
     )
   )
