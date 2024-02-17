@@ -1,6 +1,6 @@
 package apikeysteward.model
 
-import apikeysteward.repositories.entities.ApiKeyDataEntity
+import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -8,12 +8,10 @@ import java.time.Instant
 import java.util.UUID
 
 case class ApiKeyData(
-    userId: String,
-    keyId: UUID,
+    publicKeyId: UUID,
     name: String,
     description: Option[String] = None,
-    scope: List[String] = List.empty,
-    createdAt: Instant,
+    userId: String,
     expiresAt: Instant
 )
 
@@ -22,12 +20,10 @@ object ApiKeyData {
 
   def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read): ApiKeyData =
     ApiKeyData(
-      userId = apiKeyDataEntityRead.userId,
-      keyId = apiKeyDataEntityRead.keyId,
+      publicKeyId = UUID.fromString(apiKeyDataEntityRead.publicKeyId),
       name = apiKeyDataEntityRead.name,
       description = apiKeyDataEntityRead.description,
-      scope = apiKeyDataEntityRead.scope,
-      createdAt = apiKeyDataEntityRead.createdAt,
+      userId = apiKeyDataEntityRead.userId,
       expiresAt = apiKeyDataEntityRead.expiresAt
     )
 }

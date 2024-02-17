@@ -6,7 +6,7 @@ import io.circe.generic.semiauto.deriveCodec
 case class CreateApiKeyAdminRequest(
     name: String,
     description: Option[String] = None,
-    scope: List[String] = List.empty,
+    userId: String,
     ttl: Int
 )
 

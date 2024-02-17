@@ -1,13 +1,15 @@
 package apikeysteward.repositories
 
-import apikeysteward.repositories.entities.ApiKeyDataEntity
+import apikeysteward.model.ApiKeyData
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
+import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.IO
 
 import java.util.UUID
 
 trait ApiKeyRepository[K] {
 
-  def insert(apiKey: K, apiKeyData: ApiKeyDataEntity.Write): IO[ApiKeyDataEntity.Read]
+  def insert(apiKey: K, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]]
 
   def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]]
 
