@@ -11,7 +11,7 @@ import doobie.implicits._
 
 import java.util.UUID
 
-class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb)(implicit transactor: Transactor[IO])
+class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transactor: Transactor[IO])
     extends ApiKeyRepository[String] {
 
   override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =

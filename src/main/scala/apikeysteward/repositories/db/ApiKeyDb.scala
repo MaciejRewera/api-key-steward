@@ -24,10 +24,13 @@ class ApiKeyDb()(implicit clock: Clock) {
       }
   }
 
+  def getByApiKey(apiKey: String): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
+    Queries.getByApiKey(apiKey).option
+
   private object Queries {
 
-//    def exists(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
-//      sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
+    def getByApiKey(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
+      sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
 
     def insert(apiKeyEntityWrite: ApiKeyEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key(

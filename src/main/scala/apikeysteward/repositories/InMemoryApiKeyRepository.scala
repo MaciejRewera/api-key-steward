@@ -5,7 +5,6 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.IO
 
-import java.time.Instant
 import java.util.UUID
 import scala.collection.mutable.{Map => MMap}
 

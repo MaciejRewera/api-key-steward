@@ -3,7 +3,11 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{ApiKeyAlreadyExistsError, ApiKeyIdAlreadyExistsError, PublicKeyIdAlreadyExistsError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
+  ApiKeyAlreadyExistsError,
+  ApiKeyIdAlreadyExistsError,
+  PublicKeyIdAlreadyExistsError
+}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
 import cats.effect.IO
@@ -31,7 +35,7 @@ class DbApiKeyRepositorySpec
   private val apiKeyDb = mock[ApiKeyDb]
   private val apiKeyDataDb = mock[ApiKeyDataDb]
 
-  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb)(noopTransactor)
+  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, noopTransactor)
 
   override def beforeEach(): Unit =
     reset(apiKeyDb, apiKeyDataDb)

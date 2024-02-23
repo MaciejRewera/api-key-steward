@@ -1,10 +1,8 @@
 package apikeysteward.repositories.db.entity
 
 import apikeysteward.model.ApiKeyData
-import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
 
-import java.time.{Clock, Instant}
-import java.util.UUID
+import java.time.Instant
 
 object ApiKeyDataEntity {
 

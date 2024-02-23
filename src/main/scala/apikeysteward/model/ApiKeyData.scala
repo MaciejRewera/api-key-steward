@@ -1,10 +1,11 @@
 package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-import java.time.Instant
+import java.time.{Clock, Instant}
 import java.util.UUID
 
 case class ApiKeyData(
@@ -25,5 +26,16 @@ object ApiKeyData {
       description = apiKeyDataEntityRead.description,
       userId = apiKeyDataEntityRead.userId,
       expiresAt = apiKeyDataEntityRead.expiresAt
+    )
+
+  def from(publicKeyId: UUID, userId: String, createApiKeyRequest: CreateApiKeyAdminRequest)(
+      implicit clock: Clock
+  ): ApiKeyData =
+    ApiKeyData(
+      publicKeyId = publicKeyId,
+      name = createApiKeyRequest.name,
+      description = createApiKeyRequest.description,
+      userId = userId,
+      expiresAt = Instant.now(clock).plusMillis(createApiKeyRequest.ttl)
     )
 }

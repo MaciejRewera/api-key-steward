@@ -3,6 +3,7 @@ package apikeysteward.repositories.db
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
@@ -133,6 +134,41 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
         }
       }
     }
+  }
 
+  "ApiKeyDb on get" when {
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = apiKeyDb.getByApiKey(testApiKey_1).transact(transactor)
+
+        result.asserting(_ shouldBe None)
+      }
+    }
+
+    "there is a different API Key in the DB" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
+          res <- apiKeyDb.getByApiKey(testApiKey_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe None)
+      }
+    }
+
+    "there is the same API Key in the DB" should {
+      "return Option containing ApiKeyEntity" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          res <- apiKeyDb.getByApiKey(testApiKey_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe defined
+          res.get shouldBe testApiKeyEntityRead_1.copy(id = res.get.id)
+        }
+      }
+    }
   }
 }
