@@ -255,4 +255,46 @@ class ApiKeyDataDbSpec
       }
     }
   }
+
+  "ApiKeyDataDb on insert" when {
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = apiKeyDataDb.getByApiKeyId(123L).transact(transactor)
+
+        result.asserting(_ shouldBe None)
+      }
+    }
+
+    "there is a row in the DB with different apiKeyId" should {
+      "return empty Option" in {
+        val result = (for {
+          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId = apiKeyEntityRead.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByApiKeyId(apiKeyId + 1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe None)
+      }
+    }
+
+    "there is a row in the DB with the same apiKeyId" should {
+      "return Option containing ApiKeyDataEntity" in {
+        val result = (for {
+          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId = apiKeyEntityRead.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByApiKeyId(apiKeyId)
+        } yield (res, apiKeyId)).transact(transactor)
+
+        result.asserting { case (res, apiKeyId) =>
+          res shouldBe defined
+          res.get shouldBe apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = apiKeyId)
+        }
+      }
+    }
+  }
 }

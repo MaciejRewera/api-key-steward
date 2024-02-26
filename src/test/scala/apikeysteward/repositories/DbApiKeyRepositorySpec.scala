@@ -199,4 +199,68 @@ class DbApiKeyRepositorySpec
       }
     }
   }
+
+  "DbApiKeyRepository on get(:apiKey)" when {
+
+    "should always call ApiKeyDb" in {
+      apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+
+      for {
+        _ <- apiKeyRepository.get(apiKey)
+        _ <- IO(verify(apiKeyDb).getByApiKey(eqTo(apiKey)))
+      } yield ()
+    }
+
+    "ApiKeyDb returns empty Option" should {
+
+      "NOT call ApiKeyDataDb" in {
+        apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.get(apiKey)
+          _ <- IO(verifyZeroInteractions(apiKeyDataDb))
+        } yield ()
+      }
+
+      "return empty Option" in {
+        apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository.get(apiKey).asserting(_ shouldBe None)
+      }
+    }
+
+    "ApiKeyDb returns ApiKeyEntity" when {
+
+      "should always call ApiKeyDataDb" in {
+        apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+        apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.get(apiKey)
+          _ <- IO(verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead.id)))
+        } yield ()
+      }
+
+      "ApiKeyDataDb returns empty Option" should {
+        "return empty Option" in {
+          apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+          apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+          apiKeyRepository.get(apiKey).asserting(_ shouldBe None)
+        }
+      }
+
+      "ApiKeyDataDb returns ApiKeyDataEntity" should {
+        "return this ApiKeyDataEntity" in {
+          apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+          apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead).pure[doobie.ConnectionIO]
+
+          apiKeyRepository.get(apiKey).asserting { result =>
+            result shouldBe defined
+            result.get shouldBe apiKeyDataEntityRead
+          }
+        }
+      }
+    }
+  }
 }

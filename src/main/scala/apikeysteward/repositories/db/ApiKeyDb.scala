@@ -29,9 +29,6 @@ class ApiKeyDb()(implicit clock: Clock) {
 
   private object Queries {
 
-    def getByApiKey(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
-      sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
-
     def insert(apiKeyEntityWrite: ApiKeyEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key(
            api_key,
@@ -42,6 +39,9 @@ class ApiKeyDb()(implicit clock: Clock) {
             $now,
             $now
          )""".stripMargin.update
+
+    def getByApiKey(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
+      sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
 
   }
 }

@@ -1,11 +1,9 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
-  ApiKeyIdAlreadyExistsError,
-  PublicKeyIdAlreadyExistsError
-}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{ApiKeyIdAlreadyExistsError, PublicKeyIdAlreadyExistsError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import cats.implicits.{catsSyntaxApplicativeId, none}
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 
@@ -48,6 +46,9 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
     }
 
+  def getByApiKeyId(apiKeyId: Long): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    Queries.getByApiKeyId(apiKeyId).option
+
   private object Queries {
 
     def insertData(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
@@ -71,5 +72,19 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             $now
          )""".stripMargin.update
 
+    def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =
+      sql"""SELECT
+              id,
+              api_key_id,
+              public_key_id,
+              name,
+              description,
+              user_id,
+              expires_at,
+              created_at,
+              updated_at
+            FROM api_key_data
+            WHERE api_key_id = $apiKeyId
+           """.stripMargin.query[ApiKeyDataEntity.Read]
   }
 }

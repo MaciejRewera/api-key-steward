@@ -4,7 +4,7 @@ import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
-import cats.data.EitherT
+import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.Transactor
 import doobie.implicits._
@@ -24,7 +24,11 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transac
 
   override def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = ???
 
-  override def get(apiKey: String): IO[Option[ApiKeyDataEntity.Read]] = ???
+  override def get(apiKey: String): IO[Option[ApiKeyDataEntity.Read]] =
+    (for {
+      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKey))
+      apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
+    } yield apiKeyDataEntityRead).value.transact(transactor)
 
   override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] = ???
 
