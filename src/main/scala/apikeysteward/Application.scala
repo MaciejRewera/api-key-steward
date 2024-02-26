@@ -38,14 +38,9 @@ object Application extends IOApp.Simple {
       dataSource: HikariDataSource = DataSourceBuilder.buildDataSource(config.database)
       transactor = HikariTransactor[IO](dataSource, jdbcConnectionEC)
 
-      httpClient <- BlazeClientBuilder[IO]
-        .withRequestTimeout(1.minute)
-        .withIdleTimeout(5.minutes)
-        .resource
+    } yield (config, transactor)
 
-    } yield (config, transactor, httpClient)
-
-    resources.use { case (config, transactor, httpClient) =>
+    resources.use { case (config, transactor) =>
       for {
         _ <- logger.info(s"Starting api-key-steward service with the following configuration: ${config.show}")
 
@@ -53,8 +48,6 @@ object Application extends IOApp.Simple {
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
         apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
-
-//        apiKeyRepository: ApiKeyRepository[String] = new InMemoryApiKeyRepository[String]()
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()
