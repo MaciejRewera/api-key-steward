@@ -45,18 +45,23 @@ class ApiKeyDataDbSpec
   private val ttlSeconds = 60
   private val publicKeyId_1 = UUID.randomUUID().toString
   private val publicKeyId_2 = UUID.randomUUID().toString
+  private val publicKeyId_3 = UUID.randomUUID().toString
   private val testUserId_1 = "test-user-001"
+  private val testUserId_2 = "test-user-002"
+  private val testUserId_3 = "test-user-003"
 
   private val testApiKey_1 = "test-api-key-1"
   private val testApiKey_2 = "test-api-key-2"
+  private val testApiKey_3 = "test-api-key-3"
   private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
   private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
+  private val testApiKeyEntityWrite_3 = ApiKeyEntity.Write(testApiKey_3)
 
   private val apiKeyDataEntityWrite_1 = ApiKeyDataEntity.Write(
     apiKeyId = 1L,
     publicKeyId = publicKeyId_1,
-    name = "Test API Key name",
-    description = Some("Test key description"),
+    name = "Test API Key name no. 1",
+    description = Some("Test key description no. 1"),
     userId = testUserId_1,
     expiresAt = now.plusSeconds(ttlSeconds)
   )
@@ -64,9 +69,49 @@ class ApiKeyDataDbSpec
     id = 1L,
     apiKeyId = 1L,
     publicKeyId = publicKeyId_1,
-    name = "Test API Key name",
-    description = Some("Test key description"),
+    name = "Test API Key name no. 1",
+    description = Some("Test key description no. 1"),
     userId = testUserId_1,
+    expiresAt = now.plusSeconds(ttlSeconds),
+    createdAt = now,
+    updatedAt = now
+  )
+
+  private val apiKeyDataEntityWrite_2 = ApiKeyDataEntity.Write(
+    apiKeyId = 2L,
+    publicKeyId = publicKeyId_2,
+    name = "Test API Key name no. 2",
+    description = Some("Test key description no. 2"),
+    userId = testUserId_2,
+    expiresAt = now.plusSeconds(ttlSeconds)
+  )
+  private val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
+    id = 2L,
+    apiKeyId = 2L,
+    publicKeyId = publicKeyId_2,
+    name = "Test API Key name no. 2",
+    description = Some("Test key description no. 2"),
+    userId = testUserId_2,
+    expiresAt = now.plusSeconds(ttlSeconds),
+    createdAt = now,
+    updatedAt = now
+  )
+
+  private val apiKeyDataEntityWrite_3 = ApiKeyDataEntity.Write(
+    apiKeyId = 3L,
+    publicKeyId = publicKeyId_3,
+    name = "Test API Key name no. 3",
+    description = Some("Test key description no. 3"),
+    userId = testUserId_3,
+    expiresAt = now.plusSeconds(ttlSeconds)
+  )
+  private val apiKeyDataEntityRead_3 = ApiKeyDataEntity.Read(
+    id = 3L,
+    apiKeyId = 3L,
+    publicKeyId = publicKeyId_3,
+    name = "Test API Key name no. 3",
+    description = Some("Test key description no. 3"),
+    userId = testUserId_3,
     expiresAt = now.plusSeconds(ttlSeconds),
     createdAt = now,
     updatedAt = now
@@ -256,7 +301,7 @@ class ApiKeyDataDbSpec
     }
   }
 
-  "ApiKeyDataDb on insert" when {
+  "ApiKeyDataDb on getByApiKeyId" when {
 
     "there are no rows in the DB" should {
       "return empty Option" in {
@@ -293,6 +338,74 @@ class ApiKeyDataDbSpec
         result.asserting { case (res, apiKeyId) =>
           res shouldBe defined
           res.get shouldBe apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = apiKeyId)
+        }
+      }
+    }
+  }
+
+  "ApiKeyDataDb on getByUserId" when {
+
+    "there are no rows in the DB" should {
+      "return empty List" in {
+        val result = apiKeyDataDb.getByUserId(testUserId_1).compile.toList.transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different userId" should {
+      "return empty List" in {
+        val result = (for {
+          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId = apiKeyEntityRead.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByUserId(testUserId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same userId" should {
+      "return List containing ApiKeyDataEntity" in {
+        val result = (for {
+          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId = apiKeyEntityRead.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
+        } yield (res, apiKeyId)).transact(transactor)
+
+        result.asserting { case (res, apiKeyId) =>
+          res.size shouldBe 1
+          res.head shouldBe apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = apiKeyId)
+        }
+      }
+    }
+
+    "there is are several rows in the DB with the same userId together with rows with different userIds" should {
+      "return List containing all matching ApiKeyDataEntities" in {
+        val result = (for {
+          apiKeyEntityRead_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId_1 = apiKeyEntityRead_1.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
+
+          apiKeyEntityRead_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2)
+          apiKeyId_2 = apiKeyEntityRead_2.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
+
+          apiKeyEntityRead_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3)
+          apiKeyId_3 = apiKeyEntityRead_3.value.id
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
+
+          res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
+        } yield (res, apiKeyId_1, apiKeyId_2)).transact(transactor)
+
+        result.asserting { case (res, apiKeyId_1, apiKeyId_2) =>
+          res.size shouldBe 2
+          res.head shouldBe apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = apiKeyId_1)
+          res(1) shouldBe apiKeyDataEntityRead_2.copy(id = res(1).id, apiKeyId = apiKeyId_2, userId = testUserId_1)
         }
       }
     }

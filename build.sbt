@@ -45,7 +45,8 @@ libraryDependencies ++= Seq(
 
 lazy val root = (project in file("."))
   .settings(
-    name := "api-key-steward"
+    name := "api-key-steward",
+    scalafmtOnCompile := true
   )
 
 lazy val it = (project in file("integration-tests"))

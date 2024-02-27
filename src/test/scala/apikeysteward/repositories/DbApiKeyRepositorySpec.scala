@@ -1,5 +1,6 @@
 package apikeysteward.repositories
 
+import fs2.Stream
 import apikeysteward.base.FixedClock
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
@@ -41,14 +42,15 @@ class DbApiKeyRepositorySpec
     reset(apiKeyDb, apiKeyDataDb)
 
   private val apiKey = "test-api-key-1"
-  private val publicKeyId = UUID.randomUUID()
+  private val publicKeyId_1 = UUID.randomUUID()
+  private val publicKeyId_2 = UUID.randomUUID()
   private val name = "Test API Key Name"
   private val description = Some("Test key description")
   private val userId = "test-user-001"
   private val ttlSeconds = 60
 
   private val apiKeyData = ApiKeyData(
-    publicKeyId = publicKeyId,
+    publicKeyId = publicKeyId_1,
     name = name,
     description = description,
     userId = userId,
@@ -61,10 +63,21 @@ class DbApiKeyRepositorySpec
     updatedAt = now
   )
 
-  private val apiKeyDataEntityRead = ApiKeyDataEntity.Read(
+  private val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
     id = 1L,
     apiKeyId = 2L,
-    publicKeyId = publicKeyId.toString,
+    publicKeyId = publicKeyId_1.toString,
+    name = name,
+    description = description,
+    userId = userId,
+    expiresAt = now.plusSeconds(ttlSeconds),
+    createdAt = now,
+    updatedAt = now
+  )
+  private val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
+    id = 2L,
+    apiKeyId = 3L,
+    publicKeyId = publicKeyId_2.toString,
     name = name,
     description = description,
     userId = userId,
@@ -89,7 +102,8 @@ class DbApiKeyRepositorySpec
       .pure[doobie.ConnectionIO]
 
   private val apiKeyEntityReadWrapped = apiKeyEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
-  private val apiKeyDataEntityReadWrapped = apiKeyDataEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
+  private val apiKeyDataEntityReadWrapped =
+    apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
 
   "DbApiKeyRepository on insert" when {
 
@@ -102,7 +116,7 @@ class DbApiKeyRepositorySpec
         val expectedEntityWrite = ApiKeyEntity.Write(apiKey)
         val expectedDataEntityWrite = ApiKeyDataEntity.Write(
           apiKeyId = 2L,
-          publicKeyId = publicKeyId.toString,
+          publicKeyId = publicKeyId_1.toString,
           name = name,
           description = description,
           userId = userId,
@@ -253,12 +267,52 @@ class DbApiKeyRepositorySpec
       "ApiKeyDataDb returns ApiKeyDataEntity" should {
         "return this ApiKeyDataEntity" in {
           apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead).pure[doobie.ConnectionIO]
+          apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
 
           apiKeyRepository.get(apiKey).asserting { result =>
             result shouldBe defined
-            result.get shouldBe apiKeyDataEntityRead
+            result.get shouldBe apiKeyDataEntityRead_1
           }
+        }
+      }
+    }
+  }
+
+  "DbApiKeyRepository on getAll(:userId)" should {
+
+    "call ApiKeyDataDb" in {
+      apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
+
+      for {
+        _ <- apiKeyRepository.getAll(userId)
+        _ <- IO(verify(apiKeyDataDb).getByUserId(eqTo(userId)))
+      } yield ()
+    }
+
+    "NOT call ApiKeyDb" in {
+      apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
+
+      for {
+        _ <- apiKeyRepository.getAll(userId)
+        _ <- IO(verifyZeroInteractions(apiKeyDb))
+      } yield ()
+    }
+
+    "return values from ApiKeyDataDb" when {
+
+      "ApiKeyDataDb returns empty Stream" in {
+        apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
+
+        apiKeyRepository.getAll(userId).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+      }
+
+      "ApiKeyDataDb returns elements in Stream" in {
+        apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
+
+        apiKeyRepository.getAll(userId).asserting { result =>
+          result.size shouldBe 2
+          result.head shouldBe apiKeyDataEntityRead_1
+          result(1) shouldBe apiKeyDataEntityRead_2
         }
       }
     }

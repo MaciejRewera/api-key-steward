@@ -1,7 +1,11 @@
 package apikeysteward.repositories.db
 
+import fs2.Stream
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{ApiKeyIdAlreadyExistsError, PublicKeyIdAlreadyExistsError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
+  ApiKeyIdAlreadyExistsError,
+  PublicKeyIdAlreadyExistsError
+}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, none}
 import doobie.implicits._
@@ -49,19 +53,20 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getByApiKeyId(apiKeyId: Long): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getByApiKeyId(apiKeyId).option
 
+  def getByUserId(userId: String): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
+    Queries.getByUserId(userId).stream
+
   private object Queries {
 
+    private val columnNamesInsertFragment =
+      fr"INSERT INTO api_key_data(api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
+
+    private val columnNamesSelectFragment =
+      fr"SELECT id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at"
+
     def insertData(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key_data(
-           api_key_id,
-           public_key_id,
-           name,
-           description,
-           user_id,
-           expires_at,
-           created_at,
-           updated_at
-         ) VALUES (
+      (columnNamesInsertFragment ++
+      sql"""VALUES (
             ${apiKeyDataEntityWrite.apiKeyId},
             ${apiKeyDataEntityWrite.publicKeyId},
             ${apiKeyDataEntityWrite.name},
@@ -70,21 +75,15 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             ${apiKeyDataEntityWrite.expiresAt},
             $now,
             $now
-         )""".stripMargin.update
+         )""".stripMargin).update
 
     def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =
-      sql"""SELECT
-              id,
-              api_key_id,
-              public_key_id,
-              name,
-              description,
-              user_id,
-              expires_at,
-              created_at,
-              updated_at
-            FROM api_key_data
-            WHERE api_key_id = $apiKeyId
-           """.stripMargin.query[ApiKeyDataEntity.Read]
+      (columnNamesSelectFragment ++
+        sql"FROM api_key_data WHERE api_key_id = $apiKeyId").query[ApiKeyDataEntity.Read]
+
+    def getByUserId(userId: String): doobie.Query0[ApiKeyDataEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"FROM api_key_data WHERE user_id = $userId").query[ApiKeyDataEntity.Read]
+
   }
 }

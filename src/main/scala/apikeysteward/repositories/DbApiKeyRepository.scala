@@ -30,7 +30,8 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transac
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
     } yield apiKeyDataEntityRead).value.transact(transactor)
 
-  override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] = ???
+  override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] =
+    apiKeyDataDb.getByUserId(userId).transact(transactor).compile.toList
 
   override def getAllUserIds: IO[List[String]] = ???
 }
