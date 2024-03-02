@@ -29,6 +29,7 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
     import doobie.postgres.implicits._
 
     type ApiKeyEntityRaw = (Long, String, Instant, Instant)
+
     val getAllApiKeys =
       sql"SELECT * FROM api_key".query[ApiKeyEntityRaw].stream.compile.toList
   }
@@ -167,6 +168,117 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
         result.asserting { res =>
           res shouldBe defined
           res.get shouldBe testApiKeyEntityRead_1.copy(id = res.get.id)
+        }
+      }
+    }
+  }
+
+  "ApiKeyDb on delete" when {
+
+    "there are no API Keys in the DB" should {
+
+      "return false" in {
+        val result = apiKeyDb.delete(1L).transact(transactor)
+
+        result.asserting(_ shouldBe false)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- apiKeyDb.delete(1L)
+          res <- Queries.getAllApiKeys
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[Queries.ApiKeyEntityRaw])
+      }
+    }
+
+    "there is an API Key in the DB with different ID" should {
+
+      "return false" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          res <- apiKeyDb.delete(existingId + 1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe false)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          _ <- apiKeyDb.delete(existingId + 1)
+          res <- Queries.getAllApiKeys
+        } yield res).transact(transactor)
+
+        result.asserting { resApiKeys =>
+          resApiKeys.size shouldBe 1
+
+          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_1, now, now)
+          resApiKeys.head shouldBe expectedApiKeyRow
+        }
+      }
+    }
+
+    "there is an API Key in the DB with the given ID" should {
+
+      "return true" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          res <- apiKeyDb.delete(existingId)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe true)
+      }
+
+      "delete this API Key from the DB" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          _ <- apiKeyDb.delete(existingId)
+          res <- Queries.getAllApiKeys
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[Queries.ApiKeyEntityRaw])
+      }
+    }
+
+    "there are several API Keys in the DB but only one with the given publicKeyId" should {
+
+      "return true" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          res <- apiKeyDb.delete(existingId)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe true)
+      }
+
+      "delete this API Key from the DB and leave others intact" in {
+        val result = (for {
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
+          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+
+          _ <- apiKeyDb.delete(existingId)
+          res <- Queries.getAllApiKeys
+        } yield res).transact(transactor)
+
+        result.asserting { resApiKeys =>
+          resApiKeys.size shouldBe 1
+
+          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_2, now, now)
+          resApiKeys.head shouldBe expectedApiKeyRow
         }
       }
     }

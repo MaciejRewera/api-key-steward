@@ -11,7 +11,7 @@ trait ApiKeyRepository[K] {
 
   def insert(apiKey: K, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]]
 
-  def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]]
+  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]]
 
   def get(apiKey: K): IO[Option[ApiKeyDataEntity.Read]]
 

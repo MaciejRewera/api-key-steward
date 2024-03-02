@@ -24,8 +24,9 @@ class ApiKeyDb()(implicit clock: Clock) {
       }
   }
 
-  def getByApiKey(apiKey: String): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
-    Queries.getByApiKey(apiKey).option
+  def getByApiKey(apiKey: String): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] = Queries.getByApiKey(apiKey).option
+
+  def delete(id: Long): doobie.ConnectionIO[Boolean] = Queries.delete(id).run.map(_ >= 1)
 
   private object Queries {
 
@@ -43,5 +44,7 @@ class ApiKeyDb()(implicit clock: Clock) {
     def getByApiKey(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
       sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
 
+    def delete(id: Long): doobie.Update0 =
+      sql"""DELETE FROM api_key WHERE api_key.id = $id """.stripMargin.update
   }
 }

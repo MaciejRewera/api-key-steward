@@ -6,6 +6,7 @@ import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
+import cats.implicits._
 import doobie.Transactor
 import doobie.implicits._
 
@@ -22,8 +23,6 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transac
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  override def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = ???
-
   override def get(apiKey: String): IO[Option[ApiKeyDataEntity.Read]] =
     (for {
       apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKey))
@@ -32,6 +31,25 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transac
 
   override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] =
     apiKeyDataDb.getByUserId(userId).transact(transactor).compile.toList
+
+  override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = {
+    for {
+      apiKeyDataToDeleteOpt <- apiKeyDataDb.getBy(userId, publicKeyIdToDelete)
+
+      deletionResult <- apiKeyDataToDeleteOpt.traverse { apiKeyData =>
+        (for {
+          _ <- OptionT(apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete).map(booleanToOption))
+          _ <- OptionT(apiKeyDataDb.delete(userId, publicKeyIdToDelete).map(booleanToOption))
+          _ <- OptionT(apiKeyDb.delete(apiKeyData.apiKeyId).map(booleanToOption))
+        } yield ()).value
+      }.map(_.flatten)
+
+    } yield deletionResult.flatMap(_ => apiKeyDataToDeleteOpt)
+  }.transact(transactor)
+
+  private def booleanToOption(boolean: Boolean): Option[Boolean] =
+    if (boolean) Some(boolean)
+    else None
 
   override def getAllUserIds: IO[List[String]] = ???
 }
