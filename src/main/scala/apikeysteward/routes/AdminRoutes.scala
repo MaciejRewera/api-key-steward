@@ -30,7 +30,9 @@ class AdminRoutes(adminService: AdminService[String]) {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         AdminEndpoints.getAllUserIdsEndpoint.serverLogic[IO] { _ =>
-          adminService.getAllUserIds.map(allUserIds => (StatusCode.Ok -> allUserIds).asRight[Unit])
+          adminService
+            .getAllUserIds("test-client-id-001")
+            .map(allUserIds => (StatusCode.Ok -> allUserIds).asRight[Unit])
         }
       )
 

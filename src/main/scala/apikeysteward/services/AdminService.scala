@@ -49,5 +49,5 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
       result = apiKeyDataEntities.map(ApiKeyData.from)
     } yield result
 
-  def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
+  def getAllUserIds(clientId: String): IO[List[String]] = apiKeyRepository.getAllUserIds(clientId)
 }

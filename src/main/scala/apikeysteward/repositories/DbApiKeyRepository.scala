@@ -3,7 +3,7 @@ package apikeysteward.repositories
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, ClientUsersDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits._
@@ -12,8 +12,9 @@ import doobie.implicits._
 
 import java.util.UUID
 
-class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transactor: Transactor[IO])
-    extends ApiKeyRepository[String] {
+class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, clientUsersDb: ClientUsersDb)(
+    transactor: Transactor[IO]
+) extends ApiKeyRepository[String] {
 
   override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
@@ -51,5 +52,6 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, transac
     if (boolean) Some(boolean)
     else None
 
-  override def getAllUserIds: IO[List[String]] = ???
+  override def getAllUserIds(clientId: String): IO[List[String]] =
+    clientUsersDb.getAllByClientId(clientId).transact(transactor).map(_.userId).compile.toList
 }

@@ -5,7 +5,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyIdAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.repositories.db.entity.{ApiKeyDataDeletedEntity, ApiKeyDataEntity}
+import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream

@@ -17,5 +17,5 @@ trait ApiKeyRepository[K] {
 
   def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]]
 
-  def getAllUserIds: IO[List[String]]
+  def getAllUserIds(clientId: String): IO[List[String]]
 }

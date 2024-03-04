@@ -364,7 +364,7 @@ class ApiKeyDataDbSpec
     }
 
     "there is a row in the DB with the same userId" should {
-      "return List containing ApiKeyDataEntity" in {
+      "return Stream containing ApiKeyDataEntity" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -379,8 +379,8 @@ class ApiKeyDataDbSpec
       }
     }
 
-    "there is are several rows in the DB with the same userId together with rows with different userIds" should {
-      "return List containing all matching ApiKeyDataEntities" in {
+    "there are several rows in the DB with the same userId together with rows with different userIds" should {
+      "return Stream containing all matching ApiKeyDataEntities" in {
         val result = (for {
           apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))

@@ -1,15 +1,15 @@
 package apikeysteward.repositories
 
-import fs2.Stream
 import apikeysteward.base.FixedClock
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ClientUsersEntity}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, ClientUsersDb}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
+import fs2.Stream
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.Mockito.verify
@@ -31,25 +31,29 @@ class DbApiKeyRepositorySpec
 
   private val apiKeyDb = mock[ApiKeyDb]
   private val apiKeyDataDb = mock[ApiKeyDataDb]
+  private val clientUsersDb = mock[ClientUsersDb]
 
-  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, noopTransactor)
+  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, clientUsersDb)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(apiKeyDb, apiKeyDataDb)
+    reset(apiKeyDb, apiKeyDataDb, clientUsersDb)
 
   private val apiKey = "test-api-key-1"
   private val publicKeyId_1 = UUID.randomUUID()
   private val publicKeyId_2 = UUID.randomUUID()
   private val name = "Test API Key Name"
   private val description = Some("Test key description")
-  private val userId = "test-user-001"
+  private val userId_1 = "test-user-id-001"
+  private val userId_2 = "test-user-id-002"
   private val ttlSeconds = 60
+
+  private val clientId = "test-client-id-001"
 
   private val apiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,
     name = name,
     description = description,
-    userId = userId,
+    userId = userId_1,
     expiresAt = now.plusSeconds(ttlSeconds)
   )
 
@@ -65,7 +69,7 @@ class DbApiKeyRepositorySpec
     publicKeyId = publicKeyId_1.toString,
     name = name,
     description = description,
-    userId = userId,
+    userId = userId_1,
     expiresAt = now.plusSeconds(ttlSeconds),
     createdAt = now,
     updatedAt = now
@@ -76,7 +80,7 @@ class DbApiKeyRepositorySpec
     publicKeyId = publicKeyId_2.toString,
     name = name,
     description = description,
-    userId = userId,
+    userId = userId_1,
     expiresAt = now.plusSeconds(ttlSeconds),
     createdAt = now,
     updatedAt = now
@@ -115,7 +119,7 @@ class DbApiKeyRepositorySpec
           publicKeyId = publicKeyId_1.toString,
           name = name,
           description = description,
-          userId = userId,
+          userId = userId_1,
           expiresAt = now.plusSeconds(ttlSeconds)
         )
 
@@ -280,8 +284,8 @@ class DbApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId)
-        _ <- IO(verify(apiKeyDataDb).getByUserId(eqTo(userId)))
+        _ <- apiKeyRepository.getAll(userId_1)
+        _ <- IO(verify(apiKeyDataDb).getByUserId(eqTo(userId_1)))
       } yield ()
     }
 
@@ -289,7 +293,7 @@ class DbApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId)
+        _ <- apiKeyRepository.getAll(userId_1)
         _ <- IO(verifyZeroInteractions(apiKeyDb))
       } yield ()
     }
@@ -299,16 +303,15 @@ class DbApiKeyRepositorySpec
       "ApiKeyDataDb returns empty Stream" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
-        apiKeyRepository.getAll(userId).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+        apiKeyRepository.getAll(userId_1).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
       }
 
       "ApiKeyDataDb returns elements in Stream" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
 
-        apiKeyRepository.getAll(userId).asserting { result =>
+        apiKeyRepository.getAll(userId_1).asserting { result =>
           result.size shouldBe 2
-          result.head shouldBe apiKeyDataEntityRead_1
-          result(1) shouldBe apiKeyDataEntityRead_2
+          result shouldBe List(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
         }
       }
     }
@@ -320,8 +323,8 @@ class DbApiKeyRepositorySpec
       apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
       for {
-        _ <- apiKeyRepository.delete(userId, publicKeyId_1)
-        _ <- IO(verify(apiKeyDataDb).getBy(eqTo(userId), eqTo(publicKeyId_1)))
+        _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+        _ <- IO(verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1)))
       } yield ()
     }
 
@@ -331,7 +334,7 @@ class DbApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.delete(userId, publicKeyId_1)
+          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
 
           _ <- IO(verify(apiKeyDataDb, never).copyIntoDeletedTable(any[String], any[UUID]))
           _ <- IO(verify(apiKeyDataDb, never).delete(any[String], any[UUID]))
@@ -342,7 +345,7 @@ class DbApiKeyRepositorySpec
       "return empty Option" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
-        apiKeyRepository.delete(userId, publicKeyId_1).asserting(_ shouldBe None)
+        apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe None)
       }
     }
 
@@ -353,8 +356,8 @@ class DbApiKeyRepositorySpec
         apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.delete(userId, publicKeyId_1)
-          _ <- IO(verify(apiKeyDataDb).copyIntoDeletedTable(eqTo(userId), eqTo(publicKeyId_1)))
+          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+          _ <- IO(verify(apiKeyDataDb).copyIntoDeletedTable(eqTo(userId_1), eqTo(publicKeyId_1)))
         } yield ()
       }
 
@@ -365,7 +368,7 @@ class DbApiKeyRepositorySpec
           apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
           for {
-            _ <- apiKeyRepository.delete(userId, publicKeyId_1)
+            _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
 
             _ <- IO(verify(apiKeyDataDb, never).delete(any[String], any[UUID]))
             _ <- IO(verifyZeroInteractions(apiKeyDb))
@@ -376,7 +379,7 @@ class DbApiKeyRepositorySpec
           apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
           apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
-          apiKeyRepository.delete(userId, publicKeyId_1).asserting(_ shouldBe None)
+          apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe None)
         }
       }
 
@@ -388,8 +391,8 @@ class DbApiKeyRepositorySpec
           apiKeyDataDb.delete(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
           for {
-            _ <- apiKeyRepository.delete(userId, publicKeyId_1)
-            _ <- IO(verify(apiKeyDataDb).delete(eqTo(userId), eqTo(publicKeyId_1)))
+            _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+            _ <- IO(verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1)))
           } yield ()
         }
 
@@ -401,7 +404,7 @@ class DbApiKeyRepositorySpec
             apiKeyDataDb.delete(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
             for {
-              _ <- apiKeyRepository.delete(userId, publicKeyId_1)
+              _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
               _ <- IO(verifyZeroInteractions(apiKeyDb))
             } yield ()
           }
@@ -411,7 +414,7 @@ class DbApiKeyRepositorySpec
             apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns true.pure[doobie.ConnectionIO]
             apiKeyDataDb.delete(any[String], any[UUID]) returns false.pure[doobie.ConnectionIO]
 
-            apiKeyRepository.delete(userId, publicKeyId_1).asserting(_ shouldBe None)
+            apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe None)
           }
         }
 
@@ -424,32 +427,66 @@ class DbApiKeyRepositorySpec
             apiKeyDb.delete(any[Long]) returns false.pure[doobie.ConnectionIO]
 
             for {
-              _ <- apiKeyRepository.delete(userId, publicKeyId_1)
+              _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
               _ <- IO(verify(apiKeyDb).delete(eqTo(apiKeyDataEntityRead_1.apiKeyId)))
             } yield ()
           }
 
           "ApiKeyDb.delete returns failure" should {
             "return empty Option" in {
-              apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
               apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns true.pure[doobie.ConnectionIO]
               apiKeyDataDb.delete(any[String], any[UUID]) returns true.pure[doobie.ConnectionIO]
               apiKeyDb.delete(any[Long]) returns false.pure[doobie.ConnectionIO]
 
-              apiKeyRepository.delete(userId, publicKeyId_1).asserting(_ shouldBe None)
+              apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe None)
             }
           }
 
           "ApiKeyDb.delete returns success" should {
             "return Option containing deleted ApiKeyDataEntity" in {
-              apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
               apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns true.pure[doobie.ConnectionIO]
               apiKeyDataDb.delete(any[String], any[UUID]) returns true.pure[doobie.ConnectionIO]
               apiKeyDb.delete(any[Long]) returns true.pure[doobie.ConnectionIO]
 
-              apiKeyRepository.delete(userId, publicKeyId_1).asserting(_ shouldBe Some(apiKeyDataEntityRead_1))
+              apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyDataEntityRead_1))
             }
           }
+        }
+      }
+    }
+  }
+
+  "DbApiKeyRepository on getAllUserIds" should {
+
+    "call ClientUsersDb" in {
+      clientUsersDb.getAllByClientId(any[String]) returns Stream.empty
+
+      for {
+        _ <- apiKeyRepository.getAllUserIds(clientId)
+        _ <- IO(verify(clientUsersDb).getAllByClientId(eqTo(clientId)))
+      } yield ()
+    }
+
+    "return userIds obtained from ClientUsersDb" when {
+
+      "ClientUsersDb returns empty Stream" in {
+        clientUsersDb.getAllByClientId(any[String]) returns Stream.empty
+
+        apiKeyRepository.getAllUserIds(clientId).asserting(_ shouldBe List.empty[String])
+      }
+
+      "ClientUsersDb returns elements in Stream" in {
+        val clientUsersEntityRead_1 = ClientUsersEntity.Read(1L, clientId, userId_1, now, now)
+        val clientUsersEntityRead_2 = ClientUsersEntity.Read(2L, clientId, userId_2, now, now)
+        clientUsersDb.getAllByClientId(any[String]) returns Stream(clientUsersEntityRead_1, clientUsersEntityRead_2)
+
+        apiKeyRepository.getAllUserIds(clientId).asserting { result =>
+          result.size shouldBe 2
+          result shouldBe List(userId_1, userId_2)
         }
       }
     }
