@@ -7,7 +7,6 @@ object DbCommons {
 
     case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
 
-    // TODO: Should I really recover from this one?
     case object ApiKeyIdAlreadyExistsError
         extends ApiKeyInsertionError(message = "API Key Data with the same apiKeyId already exists.")
     case object PublicKeyIdAlreadyExistsError

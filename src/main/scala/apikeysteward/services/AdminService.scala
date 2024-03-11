@@ -3,11 +3,13 @@ package apikeysteward.services
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.ApiKeyRepository
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
+import apikeysteward.utils.Retry
 import cats.effect.IO
 
 import java.time.Clock
@@ -18,8 +20,12 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 ) {
 
   def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyAdminRequest): IO[(K, ApiKeyData)] = {
-    // TODO: Add maxRetries
-    def loop: IO[(K, ApiKeyData)] =
+    def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
+      case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => true
+      case _                                                        => false
+    }
+
+    Retry.retry(maxRetries = 3, isWorthRetrying) {
       for {
         newApiKey <- apiKeyGenerator.generateApiKey
         publicKeyId <- IO(UUID.randomUUID())
@@ -27,14 +33,9 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 
         insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData)
 
-        res <- insertionResult.fold(
-          { case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => loop },
-          apiKeyDataResult => IO(newApiKey -> apiKeyDataResult)
-        )
-
+        res = insertionResult.map(newApiKey -> _)
       } yield res
-
-    loop
+    }
   }
 
   def deleteApiKey(userId: String, keyId: UUID): IO[Option[ApiKeyData]] =
