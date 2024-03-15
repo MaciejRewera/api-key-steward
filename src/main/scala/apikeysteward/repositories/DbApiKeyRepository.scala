@@ -16,13 +16,12 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, clientU
     transactor: Transactor[IO]
 ) extends ApiKeyRepository[String] {
 
-  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
+  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]] =
     (for {
       apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
-      apiKey = apiKeyEntityRead.id
-      apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKey, apiKeyData)))
-      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
-    } yield apiKeyData).value.transact(transactor)
+      apiKeyId = apiKeyEntityRead.id
+      apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyId, apiKeyData)))
+    } yield apiKeyDataEntityRead).value.transact(transactor)
 
   override def get(apiKey: String): IO[Option[ApiKeyDataEntity.Read]] =
     (for {

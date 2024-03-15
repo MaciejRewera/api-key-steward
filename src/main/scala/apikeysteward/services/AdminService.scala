@@ -33,7 +33,7 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 
         insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData)
 
-        res = insertionResult.map(newApiKey -> _)
+        res = insertionResult.map(newApiKey -> ApiKeyData.from(_))
       } yield res
     }
   }

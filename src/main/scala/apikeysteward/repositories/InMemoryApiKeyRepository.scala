@@ -16,7 +16,7 @@ class InMemoryApiKeyRepository[K] extends ApiKeyRepository[K] {
   override def insert(
       apiKey: K,
       apiKeyData: ApiKeyData
-  ): IO[Either[ApiKeyInsertionError, ApiKeyData]] = IO {
+  ): IO[Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]] = IO {
 //    apiKeysTable.put(apiKey, apiKeyDataEntityWrite.keyId)
 //
 //    val now = Instant.now()

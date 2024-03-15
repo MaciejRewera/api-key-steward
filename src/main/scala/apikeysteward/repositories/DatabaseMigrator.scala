@@ -15,7 +15,7 @@ object DatabaseMigrator {
         config = Fly4sConfig(
           table = databaseConfig.migrationsTable,
           locations = Locations(databaseConfig.migrationsLocations),
-          cleanDisabled = false
+          cleanDisabled = true
         )
       )
       .use { fly4s =>

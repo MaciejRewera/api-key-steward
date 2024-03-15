@@ -136,7 +136,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository.insert(apiKey, apiKeyData).asserting { result =>
           result.isRight shouldBe true
-          result.value shouldBe apiKeyData
+          result.value shouldBe apiKeyDataEntityRead_1
         }
       }
     }

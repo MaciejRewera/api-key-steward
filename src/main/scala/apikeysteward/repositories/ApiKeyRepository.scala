@@ -9,7 +9,7 @@ import java.util.UUID
 
 trait ApiKeyRepository[K] {
 
-  def insert(apiKey: K, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]]
+  def insert(apiKey: K, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
   def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]]
 

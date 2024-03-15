@@ -1,12 +1,8 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
-  ApiKeyIdAlreadyExistsError,
-  PublicKeyIdAlreadyExistsError
-}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataDeletedEntity, ApiKeyDataEntity, ApiKeyEntity}
-import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
