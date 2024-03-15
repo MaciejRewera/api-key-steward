@@ -33,22 +33,16 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 
         insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData)
 
-        res = insertionResult.map(newApiKey -> ApiKeyData.from(_))
+        res = insertionResult.map(newApiKey -> _)
       } yield res
     }
   }
 
   def deleteApiKey(userId: String, keyId: UUID): IO[Option[ApiKeyData]] =
-    for {
-      deletedApiKeyDataEntity <- apiKeyRepository.delete(userId, keyId)
-      deletedApiKeyData = deletedApiKeyDataEntity.map(ApiKeyData.from)
-    } yield deletedApiKeyData
+    apiKeyRepository.delete(userId, keyId)
 
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
-    for {
-      apiKeyDataEntities <- apiKeyRepository.getAll(userId)
-      result = apiKeyDataEntities.map(ApiKeyData.from)
-    } yield result
+    apiKeyRepository.getAll(userId)
 
   def getAllUserIds(clientId: String): IO[List[String]] = apiKeyRepository.getAllUserIds(clientId)
 }

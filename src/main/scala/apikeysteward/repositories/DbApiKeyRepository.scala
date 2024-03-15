@@ -16,23 +16,25 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, clientU
     transactor: Transactor[IO]
 ) extends ApiKeyRepository[String] {
 
-  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]] =
+  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
       apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
       apiKeyId = apiKeyEntityRead.id
       apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyId, apiKeyData)))
-    } yield apiKeyDataEntityRead).value.transact(transactor)
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
+    } yield apiKeyData).value.transact(transactor)
 
-  override def get(apiKey: String): IO[Option[ApiKeyDataEntity.Read]] =
+  override def get(apiKey: String): IO[Option[ApiKeyData]] =
     (for {
       apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKey))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
-    } yield apiKeyDataEntityRead).value.transact(transactor)
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
+    } yield apiKeyData).value.transact(transactor)
 
-  override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] =
-    apiKeyDataDb.getByUserId(userId).transact(transactor).compile.toList
+  override def getAll(userId: String): IO[List[ApiKeyData]] =
+    apiKeyDataDb.getByUserId(userId).map(ApiKeyData.from).transact(transactor).compile.toList
 
-  override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = {
+  override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyData]] = {
     for {
       apiKeyDataToDeleteOpt <- apiKeyDataDb.getBy(userId, publicKeyIdToDelete)
 
@@ -44,7 +46,9 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb, clientU
         } yield ()).value
       }.map(_.flatten)
 
-    } yield deletionResult.flatMap(_ => apiKeyDataToDeleteOpt)
+      apiKeyData = apiKeyDataToDeleteOpt.map(ApiKeyData.from)
+
+    } yield deletionResult.flatMap(_ => apiKeyData)
   }.transact(transactor)
 
   private def booleanToOption(boolean: Boolean): Option[Boolean] =

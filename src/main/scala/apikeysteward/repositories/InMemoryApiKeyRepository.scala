@@ -16,7 +16,7 @@ class InMemoryApiKeyRepository[K] extends ApiKeyRepository[K] {
   override def insert(
       apiKey: K,
       apiKeyData: ApiKeyData
-  ): IO[Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]] = IO {
+  ): IO[Either[ApiKeyInsertionError, ApiKeyData]] = IO {
 //    apiKeysTable.put(apiKey, apiKeyDataEntityWrite.keyId)
 //
 //    val now = Instant.now()
@@ -35,23 +35,23 @@ class InMemoryApiKeyRepository[K] extends ApiKeyRepository[K] {
     ???
   }
 
-  override def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyDataEntity.Read]] = IO {
+  override def delete(userId: String, keyIdToDelete: UUID): IO[Option[ApiKeyData]] = IO {
     apiKeyDataTable.find { case (keyId, entity) => keyId == keyIdToDelete && entity.userId == userId }
-      .flatMap(_ => apiKeyDataTable.remove(keyIdToDelete))
+      .flatMap(_ => apiKeyDataTable.remove(keyIdToDelete).map(ApiKeyData.from))
   }
 
-  override def get(apiKey: K): IO[Option[ApiKeyDataEntity.Read]] = IO {
+  override def get(apiKey: K): IO[Option[ApiKeyData]] = IO {
     for {
       apiKeyId <- apiKeysTable.get(apiKey)
-      apiKeyData <- apiKeyDataTable.get(apiKeyId)
+      apiKeyData <- apiKeyDataTable.get(apiKeyId).map(ApiKeyData.from)
     } yield apiKeyData
   }
 
-  override def getAll(userId: String): IO[List[ApiKeyDataEntity.Read]] = IO {
-    apiKeyDataTable.values.filter(_.userId == userId).toList
+  override def getAll(userId: String): IO[List[ApiKeyData]] = IO {
+    apiKeyDataTable.values.filter(_.userId == userId).map(ApiKeyData.from).toList
   }
 
   override def getAllUserIds(clientId: String): IO[List[String]] = IO {
-    apiKeyDataTable.values.map(_.userId).toSet.toList
+    apiKeyDataTable.values.map(_.userId).toList.distinct
   }
 }
