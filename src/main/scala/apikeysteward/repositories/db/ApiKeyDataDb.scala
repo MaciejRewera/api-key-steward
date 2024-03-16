@@ -59,6 +59,9 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getBy(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getBy(userId, publicKeyId.toString).option
 
+  def getAllUserIds: Stream[doobie.ConnectionIO, String] =
+    Queries.getAllUserIds.stream
+
   def copyIntoDeletedTable(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Boolean] =
     Queries
       .copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock))
@@ -103,6 +106,9 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     def getBy(userId: String, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM api_key_data WHERE user_id = $userId AND public_key_id = $publicKeyId").query[ApiKeyDataEntity.Read]
+
+    val getAllUserIds: doobie.Query0[String] =
+      sql"SELECT DISTINCT user_id FROM api_key_data".query[String]
 
     def copyIntoDeletedTable(userId: String, publicKeyId: String, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key_data_deleted(

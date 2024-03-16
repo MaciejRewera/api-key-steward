@@ -4,8 +4,8 @@ import apikeysteward.base.FixedClock
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ClientUsersEntity}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, ClientUsersDb}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -31,12 +31,11 @@ class DbApiKeyRepositorySpec
 
   private val apiKeyDb = mock[ApiKeyDb]
   private val apiKeyDataDb = mock[ApiKeyDataDb]
-  private val clientUsersDb = mock[ClientUsersDb]
 
-  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, clientUsersDb)(noopTransactor)
+  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(apiKeyDb, apiKeyDataDb, clientUsersDb)
+    reset(apiKeyDb, apiKeyDataDb)
 
   private val apiKey = "test-api-key-1"
   private val publicKeyId_1 = UUID.randomUUID()
@@ -469,29 +468,27 @@ class DbApiKeyRepositorySpec
 
   "DbApiKeyRepository on getAllUserIds" should {
 
-    "call ClientUsersDb" in {
-      clientUsersDb.getAllByClientId(any[String]) returns Stream.empty
+    "call ApiKeyDataDb" in {
+      apiKeyDataDb.getAllUserIds returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAllUserIds(clientId)
-        _ <- IO(verify(clientUsersDb).getAllByClientId(eqTo(clientId)))
+        _ <- apiKeyRepository.getAllUserIds
+        _ <- IO(verify(apiKeyDataDb).getAllUserIds)
       } yield ()
     }
 
-    "return userIds obtained from ClientUsersDb" when {
+    "return userIds obtained from getAllUserIds" when {
 
-      "ClientUsersDb returns empty Stream" in {
-        clientUsersDb.getAllByClientId(any[String]) returns Stream.empty
+      "getAllUserIds returns empty Stream" in {
+        apiKeyDataDb.getAllUserIds returns Stream.empty
 
-        apiKeyRepository.getAllUserIds(clientId).asserting(_ shouldBe List.empty[String])
+        apiKeyRepository.getAllUserIds.asserting(_ shouldBe List.empty[String])
       }
 
-      "ClientUsersDb returns elements in Stream" in {
-        val clientUsersEntityRead_1 = ClientUsersEntity.Read(1L, clientId, userId_1, now, now)
-        val clientUsersEntityRead_2 = ClientUsersEntity.Read(2L, clientId, userId_2, now, now)
-        clientUsersDb.getAllByClientId(any[String]) returns Stream(clientUsersEntityRead_1, clientUsersEntityRead_2)
+      "getAllUserIds returns elements in Stream" in {
+        apiKeyDataDb.getAllUserIds returns Stream(userId_1, userId_2)
 
-        apiKeyRepository.getAllUserIds(clientId).asserting { result =>
+        apiKeyRepository.getAllUserIds.asserting { result =>
           result.size shouldBe 2
           result shouldBe List(userId_1, userId_2)
         }

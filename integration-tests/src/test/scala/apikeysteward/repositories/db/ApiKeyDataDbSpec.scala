@@ -465,6 +465,77 @@ class ApiKeyDataDbSpec
     }
   }
 
+  "ApiKeyDataDb on getAllUserIds" when {
+
+    "there are no rows in the DB" should {
+      "return empty List" in {
+        val result = apiKeyDataDb.getAllUserIds.compile.toList.transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[String])
+      }
+    }
+
+    "there is a single row in the DB" should {
+      "return userId of this single row" in {
+        val result = (for {
+          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getAllUserIds.compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting { result =>
+          result.size shouldBe 1
+          result.head shouldBe testUserId_1
+        }
+      }
+    }
+
+    "there are several rows in the DB with the same userId" should {
+      "return single userId" in {
+        val result = (for {
+          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
+
+          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
+
+          apiKeyId_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
+
+          res <- apiKeyDataDb.getAllUserIds.compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting { result =>
+          result.size shouldBe 1
+          result.head shouldBe testUserId_1
+        }
+      }
+    }
+
+    "there are several rows in the DB with different userIds" should {
+      "return all distinct userIds" in {
+        val result = (for {
+          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
+
+          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2))
+
+          apiKeyId_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
+
+          res <- apiKeyDataDb.getAllUserIds.compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting { result =>
+          result.size shouldBe 2
+          result should contain theSameElementsAs List(testUserId_1, testUserId_2)
+        }
+      }
+    }
+  }
+
   "ApiKeyDataDb on copyIntoDeletedTable" when {
 
     def buildApiKeyDataDeletedEntityRead(apiKeyDateEntityRead: ApiKeyDataEntity.Read): ApiKeyDataDeletedEntity.Read =

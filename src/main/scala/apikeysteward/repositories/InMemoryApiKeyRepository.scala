@@ -51,7 +51,7 @@ class InMemoryApiKeyRepository[K] extends ApiKeyRepository[K] {
     apiKeyDataTable.values.filter(_.userId == userId).map(ApiKeyData.from).toList
   }
 
-  override def getAllUserIds(clientId: String): IO[List[String]] = IO {
+  override def getAllUserIds: IO[List[String]] = IO {
     apiKeyDataTable.values.map(_.userId).toList.distinct
   }
 }

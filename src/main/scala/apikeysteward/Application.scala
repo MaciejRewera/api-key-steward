@@ -2,7 +2,7 @@ package apikeysteward
 
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, ClientUsersDb}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
 import apikeysteward.routes.{AdminRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService}
@@ -11,14 +11,12 @@ import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
 import doobie.ExecutionContexts
 import doobie.hikari.HikariTransactor
-import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import pureconfig.ConfigSource
 
 import java.time.Clock
-import scala.concurrent.duration.DurationInt
 
 object Application extends IOApp.Simple {
 
@@ -51,10 +49,7 @@ object Application extends IOApp.Simple {
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()
-        clientUsersDb = new ClientUsersDb()
-        apiKeyRepository: ApiKeyRepository[String] = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, clientUsersDb)(
-          transactor
-        )
+        apiKeyRepository: ApiKeyRepository[String] = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb)(transactor)
 
         apiKeyService = new ApiKeyService(apiKeyRepository)
         adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)

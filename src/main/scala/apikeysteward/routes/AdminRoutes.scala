@@ -31,7 +31,7 @@ class AdminRoutes(adminService: AdminService[String]) {
       .toRoutes(
         AdminEndpoints.getAllUserIdsEndpoint.serverLogic[IO] { _ =>
           adminService
-            .getAllUserIds("test-client-id-001")
+            .getAllUserIds
             .map(allUserIds => (StatusCode.Ok -> allUserIds).asRight[Unit])
         }
       )

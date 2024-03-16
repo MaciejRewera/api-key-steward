@@ -44,5 +44,5 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
     apiKeyRepository.getAll(userId)
 
-  def getAllUserIds(clientId: String): IO[List[String]] = apiKeyRepository.getAllUserIds(clientId)
+  def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
 }

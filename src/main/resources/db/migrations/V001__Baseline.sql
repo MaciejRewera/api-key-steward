@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS api_key_data (
     constraint fk_api_key_id foreign key (api_key_id) references api_key (id)
 );
 
+CREATE INDEX idx_api_key_data_user_id ON api_key_data (user_id);
+
 CREATE TABLE IF NOT EXISTS api_key_data_deleted (
     id INTEGER primary key generated always as identity,
     deleted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -36,14 +38,4 @@ CREATE TABLE IF NOT EXISTS api_key_data_deleted (
 
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS client_users(
-    id INTEGER primary key generated always as identity,
-    client_id VARCHAR(256) NOT NULL,
-    user_id VARCHAR(256) NOT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (client_id, user_id)
 );
