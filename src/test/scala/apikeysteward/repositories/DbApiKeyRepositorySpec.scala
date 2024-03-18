@@ -46,8 +46,6 @@ class DbApiKeyRepositorySpec
   private val userId_2 = "test-user-id-002"
   private val ttlSeconds = 60
 
-  private val clientId = "test-client-id-001"
-
   private val apiKeyData_1 = ApiKeyData(
     publicKeyId = publicKeyId_1,
     name = name,

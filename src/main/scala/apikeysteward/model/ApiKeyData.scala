@@ -36,6 +36,6 @@ object ApiKeyData {
       name = createApiKeyRequest.name,
       description = createApiKeyRequest.description,
       userId = userId,
-      expiresAt = Instant.now(clock).plusMillis(createApiKeyRequest.ttl)
+      expiresAt = Instant.now(clock).plusSeconds(createApiKeyRequest.ttl)
     )
 }
