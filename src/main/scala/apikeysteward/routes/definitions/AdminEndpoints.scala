@@ -26,9 +26,15 @@ object AdminEndpoints {
 
   private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
 
+  val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, Unit, (StatusCode, List[String]), Any] =
+    baseAdminEndpoint.get
+      .in("users")
+      .out(statusCode.description(StatusCode.Ok, "All user IDs found."))
+      .out(jsonBody[List[String]])
+
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     baseAdminEndpoint.get
-      .in("users" / userIdPathParameter)
+      .in("users" / userIdPathParameter / "api-key")
       .out(statusCode.description(StatusCode.Ok, "API Keys found for provided userId."))
       .out(jsonBody[List[ApiKeyData]])
       .errorOut(
@@ -39,12 +45,6 @@ object AdminEndpoints {
           )
         )
       )
-
-  val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, Unit, (StatusCode, List[String]), Any] =
-    baseAdminEndpoint.get
-      .in("users")
-      .out(statusCode.description(StatusCode.Ok, "All user IDs found."))
-      .out(jsonBody[List[String]])
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, (String, CreateApiKeyAdminRequest), Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
