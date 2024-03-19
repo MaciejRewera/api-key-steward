@@ -12,6 +12,19 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 class AdminRoutes(adminService: AdminService[String]) {
 
+  private val createApiKeyRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter(ServerConfiguration.options)
+      .toRoutes(
+        AdminEndpoints.createApiKeyEndpoint.serverLogic[IO] { case (userId, request) =>
+          adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
+            (
+              StatusCode.Created,
+              CreateApiKeyAdminResponse(newApiKey, apiKeyData)
+            ).asRight[Unit]
+          }
+        }
+      )
+
   private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
@@ -35,24 +48,11 @@ class AdminRoutes(adminService: AdminService[String]) {
         }
       )
 
-  private val createApiKeyRoutes: HttpRoutes[IO] =
-    Http4sServerInterpreter(ServerConfiguration.options)
-      .toRoutes(
-        AdminEndpoints.createApiKeyEndpoint.serverLogic[IO] { case (userId, request) =>
-          adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
-            (
-              StatusCode.Created,
-              CreateApiKeyAdminResponse(newApiKey, apiKeyData)
-            ).asRight[Unit]
-          }
-        }
-      )
-
   private val deleteApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { case (userId, keyId) =>
-          adminService.deleteApiKey(userId, keyId).map {
+        AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { case (userId, publicKeyId) =>
+          adminService.deleteApiKey(userId, publicKeyId).map {
             case Some(deletedApiKeyData) => (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
             case None                    => ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
           }
@@ -60,5 +60,5 @@ class AdminRoutes(adminService: AdminService[String]) {
       )
 
   val allRoutes: HttpRoutes[IO] =
-    getAllApiKeysForUserRoutes <+> getAllUserIdsRoutes <+> createApiKeyRoutes <+> deleteApiKeyRoutes
+    createApiKeyRoutes <+> getAllApiKeysForUserRoutes <+> getAllUserIdsRoutes <+> deleteApiKeyRoutes
 }

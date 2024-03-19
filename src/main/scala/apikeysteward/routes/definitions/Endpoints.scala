@@ -28,7 +28,7 @@ object Endpoints {
         oneOf[ErrorInfo](
           oneOfVariant(
             StatusCode.Forbidden,
-            jsonBody[CommonErrorInfo]
+            jsonBody[ErrorInfo]
               .description("Provided API Key is incorrect or does not exist.")
           )
         )
