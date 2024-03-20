@@ -46,32 +46,130 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       } yield ()
     }
 
-    "return the value returned by AdminService" in {
-      adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+    "return the value returned by AdminService" when {
 
-      for {
-        response <- adminRoutes.run(request)
-        _ = response.status shouldBe Status.Created
-        _ <- response
-          .as[CreateApiKeyAdminResponse]
-          .asserting(_ shouldBe CreateApiKeyAdminResponse(apiKey_1, apiKeyData_1))
-      } yield ()
+      "provided with description" in {
+        adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Created
+          _ <- response
+            .as[CreateApiKeyAdminResponse]
+            .asserting(_ shouldBe CreateApiKeyAdminResponse(apiKey_1, apiKeyData_1))
+        } yield ()
+      }
+
+      "provided with NO description" in {
+        adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+
+        val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
+
+        for {
+          response <- adminRoutes.run(requestWithoutDescription)
+          _ = response.status shouldBe Status.Created
+          _ <- response
+            .as[CreateApiKeyAdminResponse]
+            .asserting(_ shouldBe CreateApiKeyAdminResponse(apiKey_1, apiKeyData_1))
+        } yield ()
+      }
     }
 
-    "return Bad Request when provided with negative ttl value" in {
-      val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
+    "return Bad Request" when {
 
-      for {
-        response <- adminRoutes.run(requestWithNegativeTtl)
-        _ = response.status shouldBe Status.BadRequest
-        _ <- response
-          .as[ErrorInfo]
-          .asserting(
-            _ shouldBe ErrorInfo.badRequestErrorDetail(
-              Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
-            )
+      "provided with empty name" in {
+        val nameEmpty = ""
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = nameEmpty))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "provided with name containing only white characters" in {
+        val nameWithOnlyWhiteCharacters = "  \n   \n\n "
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = nameWithOnlyWhiteCharacters))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "provided with name longer than 250 characters" in {
+        val nameWhichIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(name = nameWhichIsTooLong))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some(
+            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameWhichIsTooLong")"""
           )
-      } yield ()
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithLongName)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "provided with description containing only white characters" in {
+        val descriptionWithOnlyWhiteCharacters = "  \n   \n\n "
+        val requestWithOnlyWhiteCharacters =
+          request.withEntity(requestBody.copy(description = Some(descriptionWithOnlyWhiteCharacters)))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "provided with description longer than 250 characters" in {
+        val descriptionWhichIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionWhichIsTooLong)))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionWhichIsTooLong))"
+          )
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithLongName)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "provided with negative ttl value" in {
+        val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+          Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
+        )
+
+        for {
+          response <- adminRoutes.run(requestWithNegativeTtl)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
     }
 
     "return Internal Server Error when AdminService returns an exception" in {
