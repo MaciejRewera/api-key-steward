@@ -22,7 +22,6 @@ import java.util.UUID
 class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
   private val adminService = mock[AdminService[String]]
-
   private val adminRoutes: HttpApp[IO] = new AdminRoutes(adminService).allRoutes.orNotFound
 
   private val testException = new RuntimeException("Test Exception")
