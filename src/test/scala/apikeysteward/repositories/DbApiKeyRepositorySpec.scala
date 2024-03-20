@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.model.ApiKeyData
+import apikeysteward.base.TestData._
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
@@ -36,30 +36,6 @@ class DbApiKeyRepositorySpec
 
   override def beforeEach(): Unit =
     reset(apiKeyDb, apiKeyDataDb)
-
-  private val apiKey = "test-api-key-1"
-  private val publicKeyId_1 = UUID.randomUUID()
-  private val publicKeyId_2 = UUID.randomUUID()
-  private val name = "Test API Key Name"
-  private val description = Some("Test key description")
-  private val userId_1 = "test-user-id-001"
-  private val userId_2 = "test-user-id-002"
-  private val ttlSeconds = 60
-
-  private val apiKeyData_1 = ApiKeyData(
-    publicKeyId = publicKeyId_1,
-    name = name,
-    description = description,
-    userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds)
-  )
-  private val apiKeyData_2 = ApiKeyData(
-    publicKeyId = publicKeyId_2,
-    name = name,
-    description = description,
-    userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds)
-  )
 
   private val apiKeyEntityRead = ApiKeyEntity.Read(
     id = 2L,
@@ -117,7 +93,7 @@ class DbApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
 
-        val expectedEntityWrite = ApiKeyEntity.Write(apiKey)
+        val expectedEntityWrite = ApiKeyEntity.Write(apiKey_1)
         val expectedDataEntityWrite = ApiKeyDataEntity.Write(
           apiKeyId = 2L,
           publicKeyId = publicKeyId_1.toString,
@@ -128,7 +104,7 @@ class DbApiKeyRepositorySpec
         )
 
         for {
-          _ <- apiKeyRepository.insert(apiKey, apiKeyData_1)
+          _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
           _ <- IO(verify(apiKeyDb).insert(eqTo(expectedEntityWrite)))
           _ <- IO(verify(apiKeyDataDb).insert(eqTo(expectedDataEntityWrite)))
         } yield ()
@@ -138,7 +114,7 @@ class DbApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
 
-        apiKeyRepository.insert(apiKey, apiKeyData_1).asserting { result =>
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
           result.isRight shouldBe true
           result.value shouldBe apiKeyData_1
         }
@@ -151,7 +127,7 @@ class DbApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         for {
-          _ <- apiKeyRepository.insert(apiKey, apiKeyData_1)
+          _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
           _ <- IO(verifyZeroInteractions(apiKeyDataDb))
         } yield ()
       }
@@ -159,7 +135,7 @@ class DbApiKeyRepositorySpec
       "return Left containing ApiKeyAlreadyExistsError" in {
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
-        apiKeyRepository.insert(apiKey, apiKeyData_1).asserting { result =>
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
           result.isLeft shouldBe true
           result.left.value shouldBe ApiKeyAlreadyExistsError
         }
@@ -175,7 +151,7 @@ class DbApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
           for {
-            _ <- apiKeyRepository.insert(apiKey, apiKeyData_1)
+            _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
             _ <- IO(verify(apiKeyDataDb).insert(any[ApiKeyDataEntity.Write]))
             _ <- IO(verifyNoMoreInteractions(apiKeyDataDb))
           } yield ()
@@ -185,7 +161,7 @@ class DbApiKeyRepositorySpec
           apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
-          apiKeyRepository.insert(apiKey, apiKeyData_1).asserting { result =>
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
             result.isLeft shouldBe true
             result.left.value shouldBe ApiKeyIdAlreadyExistsError
           }
@@ -199,7 +175,7 @@ class DbApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
           for {
-            _ <- apiKeyRepository.insert(apiKey, apiKeyData_1)
+            _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
             _ <- IO(verify(apiKeyDataDb).insert(any[ApiKeyDataEntity.Write]))
             _ <- IO(verifyNoMoreInteractions(apiKeyDataDb))
           } yield ()
@@ -209,7 +185,7 @@ class DbApiKeyRepositorySpec
           apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
-          apiKeyRepository.insert(apiKey, apiKeyData_1).asserting { result =>
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
             result.isLeft shouldBe true
             result.left.value shouldBe PublicKeyIdAlreadyExistsError
           }
@@ -224,8 +200,8 @@ class DbApiKeyRepositorySpec
       apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
       for {
-        _ <- apiKeyRepository.get(apiKey)
-        _ <- IO(verify(apiKeyDb).getByApiKey(eqTo(apiKey)))
+        _ <- apiKeyRepository.get(apiKey_1)
+        _ <- IO(verify(apiKeyDb).getByApiKey(eqTo(apiKey_1)))
       } yield ()
     }
 
@@ -235,7 +211,7 @@ class DbApiKeyRepositorySpec
         apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.get(apiKey)
+          _ <- apiKeyRepository.get(apiKey_1)
           _ <- IO(verifyZeroInteractions(apiKeyDataDb))
         } yield ()
       }
@@ -243,7 +219,7 @@ class DbApiKeyRepositorySpec
       "return empty Option" in {
         apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
-        apiKeyRepository.get(apiKey).asserting(_ shouldBe None)
+        apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
       }
     }
 
@@ -254,7 +230,7 @@ class DbApiKeyRepositorySpec
         apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.get(apiKey)
+          _ <- apiKeyRepository.get(apiKey_1)
           _ <- IO(verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead.id)))
         } yield ()
       }
@@ -264,7 +240,7 @@ class DbApiKeyRepositorySpec
           apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
           apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
-          apiKeyRepository.get(apiKey).asserting(_ shouldBe None)
+          apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
         }
       }
 
@@ -273,7 +249,7 @@ class DbApiKeyRepositorySpec
           apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
           apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
 
-          apiKeyRepository.get(apiKey).asserting { result =>
+          apiKeyRepository.get(apiKey_1).asserting { result =>
             result shouldBe defined
             result.get shouldBe apiKeyData_1
           }

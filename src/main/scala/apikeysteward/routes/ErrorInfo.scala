@@ -10,17 +10,26 @@ sealed trait ErrorInfo {
 
 object ErrorInfo {
 
-  case class CommonErrorInfo(error: String, errorDetail: Option[String]) extends ErrorInfo
-  object CommonErrorInfo {
-    implicit val codec: Codec[CommonErrorInfo] = deriveCodec[CommonErrorInfo]
-  }
+  implicit val errorInfoCodec: Codec[ErrorInfo] = deriveCodec[ErrorInfo]
 
-  def forbiddenErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
-    error = "Access denied",
+  case class SimpleErrorInfo(error: String, errorDetail: Option[String]) extends ErrorInfo
+
+  def internalServerErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
+    error = "Internal Server Error",
     errorDetail = detail
   )
 
-  def notFoundErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+  def badRequestErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
+    error = "Bad Request",
+    errorDetail = detail
+  )
+
+  def forbiddenErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
+    error = "Access Denied",
+    errorDetail = detail
+  )
+
+  def notFoundErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Not Found",
     errorDetail = detail
   )

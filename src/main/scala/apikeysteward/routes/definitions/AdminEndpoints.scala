@@ -2,7 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.ErrorInfo.CommonErrorInfo
+import apikeysteward.routes.ErrorInfo.SimpleErrorInfo
 import apikeysteward.routes.definitions.EndpointUtils.AccessToken
 import apikeysteward.routes.model.admin._
 import sttp.model.StatusCode
@@ -26,6 +26,17 @@ object AdminEndpoints {
 
   private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
 
+  val createApiKeyEndpoint
+      : Endpoint[AccessToken, (String, CreateApiKeyAdminRequest), Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
+    baseAdminEndpoint.post
+      .in("users" / userIdPathParameter / "api-key")
+      .in(
+        jsonBody[CreateApiKeyAdminRequest]
+          .description("Details of the API Key to create.")
+      )
+      .out(statusCode.description(StatusCode.Created, "API Key created"))
+      .out(jsonBody[CreateApiKeyAdminResponse])
+
   val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, Unit, (StatusCode, List[String]), Any] =
     baseAdminEndpoint.get
       .in("users")
@@ -41,21 +52,10 @@ object AdminEndpoints {
         oneOf[ErrorInfo](
           oneOfVariant(
             StatusCode.NotFound,
-            jsonBody[CommonErrorInfo].description(ErrorMessages.GetAllApiKeysForUserNotFound)
+            jsonBody[ErrorInfo].description(ErrorMessages.GetAllApiKeysForUserNotFound)
           )
         )
       )
-
-  val createApiKeyEndpoint
-      : Endpoint[AccessToken, (String, CreateApiKeyAdminRequest), Unit, (StatusCode, CreateApiKeyAdminResponse), Any] =
-    baseAdminEndpoint.post
-      .in("users" / userIdPathParameter / "api-key")
-      .in(
-        jsonBody[CreateApiKeyAdminRequest]
-          .description("Details of the API Key to create.")
-      )
-      .out(statusCode.description(StatusCode.Created, "API Key created"))
-      .out(jsonBody[CreateApiKeyAdminResponse])
 
   val deleteApiKeyEndpoint
       : Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyAdminResponse), Any] =
@@ -67,7 +67,7 @@ object AdminEndpoints {
         oneOf[ErrorInfo](
           oneOfVariant(
             StatusCode.NotFound,
-            jsonBody[CommonErrorInfo].description(ErrorMessages.DeleteApiKeyNotFound)
+            jsonBody[ErrorInfo].description(ErrorMessages.DeleteApiKeyNotFound)
           )
         )
       )
