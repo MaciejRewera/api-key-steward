@@ -19,7 +19,7 @@ object ServerConfiguration {
     DefaultDecodeFailureHandler
       .respond(
         ctx = context,
-        badRequestOnPathErrorIfPathShapeMatches = false,
+        badRequestOnPathErrorIfPathShapeMatches = true,
         badRequestOnPathInvalidIfPathShapeMatches = true
       )
       .map { case (status, _) =>

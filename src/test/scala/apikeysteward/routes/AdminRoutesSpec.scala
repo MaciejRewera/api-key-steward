@@ -1,11 +1,9 @@
 package apikeysteward.routes
 
-import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.DoobieUnitSpec
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
-import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse}
+import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -16,17 +14,12 @@ import org.http4s.{HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, verify}
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class AdminRoutesSpec
-    extends AsyncWordSpec
-    with AsyncIOSpec
-    with Matchers
-    with DoobieUnitSpec
-    with FixedClock
-    with BeforeAndAfterEach {
+import java.util.UUID
+
+class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
   private val adminService = mock[AdminService[String]]
 
@@ -65,7 +58,7 @@ class AdminRoutesSpec
       } yield ()
     }
 
-    "return error when provided with negative ttl value" in {
+    "return Bad Request when provided with negative ttl value" in {
       val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
 
       for {
@@ -178,6 +171,66 @@ class AdminRoutesSpec
 
     "return Internal Server Error when AdminService returns an exception" in {
       adminService.getAllUserIds returns IO.raiseError(testException)
+
+      for {
+        response <- adminRoutes.run(request)
+        _ = response.status shouldBe Status.InternalServerError
+        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+      } yield ()
+    }
+  }
+
+  "AdminRoutes on DELETE /admin/users/{userId}/api-key/{publicKeyId}" should {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/$publicKeyId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri)
+
+    "call AdminService" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(None)
+
+      for {
+        _ <- adminRoutes.run(request)
+        _ = verify(adminService).deleteApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return Ok and ApiKeyData returned by AdminService" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+      for {
+        response <- adminRoutes.run(request)
+        _ = response.status shouldBe Status.Ok
+        _ <- response.as[DeleteApiKeyAdminResponse].asserting(_ shouldBe DeleteApiKeyAdminResponse(apiKeyData_1))
+      } yield ()
+    }
+
+    "return Not Found when AdminService returns empty Option" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(None)
+
+      for {
+        response <- adminRoutes.run(request)
+        _ = response.status shouldBe Status.NotFound
+        _ <- response
+          .as[ErrorInfo]
+          .asserting(_ shouldBe ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)))
+      } yield ()
+    }
+
+    "return Bad Request when provided with publicKeyId which is not an UUID" in {
+      val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/this-is-not-a-valid-uuid")
+      val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
+
+      for {
+        response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+        _ = response.status shouldBe Status.BadRequest
+        _ <- response
+          .as[ErrorInfo]
+          .asserting(_ shouldBe ErrorInfo.badRequestErrorDetail(Some("Invalid value for: path parameter keyId")))
+      } yield ()
+    }
+
+    "return Internal Server Error when AdminService returns an exception" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
 
       for {
         response <- adminRoutes.run(request)
