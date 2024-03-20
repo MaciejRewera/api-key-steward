@@ -1,17 +1,17 @@
-package apikeysteward.routes
+package apikeysteward.routes.definitions
 
+import apikeysteward.routes.ErrorInfo
 import cats.effect.IO
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import sttp.model.StatusCode
-import sttp.tapir.DecodeResult.InvalidValue
 import sttp.tapir.json.circe.{jsonBody, _}
 import sttp.tapir.server.http4s.Http4sServerOptions
-import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.{FailureMessages, ValidationMessages}
+import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.FailureMessages
+import sttp.tapir.server.interceptor.decodefailure.{DecodeFailureHandler, DefaultDecodeFailureHandler}
 import sttp.tapir.server.interceptor.exception.{ExceptionContext, ExceptionHandler}
 import sttp.tapir.server.model.ValuedEndpointOutput
 import sttp.tapir.statusCode
-import sttp.tapir.server.interceptor.decodefailure.{DecodeFailureHandler, DefaultDecodeFailureHandler}
 
 object ServerConfiguration {
 

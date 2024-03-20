@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.AdminEndpoints
+import apikeysteward.routes.definitions.{AdminEndpoints, ServerConfiguration}
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.model.admin.{CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService

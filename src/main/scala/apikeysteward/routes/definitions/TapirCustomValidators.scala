@@ -1,4 +1,4 @@
-package apikeysteward.routes
+package apikeysteward.routes.definitions
 
 import sttp.tapir.{Schema, ValidationResult, Validator}
 

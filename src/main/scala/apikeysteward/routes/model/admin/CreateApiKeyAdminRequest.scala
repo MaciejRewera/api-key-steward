@@ -1,6 +1,6 @@
 package apikeysteward.routes.model.admin
 
-import apikeysteward.routes.TapirCustomValidators.ValidateOption
+import apikeysteward.routes.definitions.TapirCustomValidators.ValidateOption
 import sttp.tapir._
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec

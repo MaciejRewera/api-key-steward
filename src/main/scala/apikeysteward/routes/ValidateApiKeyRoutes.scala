@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.Endpoints
+import apikeysteward.routes.definitions.{Endpoints, ServerConfiguration}
 import apikeysteward.routes.model.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyService
 import cats.effect.IO
