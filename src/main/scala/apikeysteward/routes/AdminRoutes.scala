@@ -32,7 +32,7 @@ class AdminRoutes(adminService: AdminService[String]) {
           adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
             if (allApiKeyData.isEmpty) {
               val errorMsg = ErrorMessages.GetAllApiKeysForUserNotFound
-              Left(ErrorInfo.notFoundErrorDetail(Some(errorMsg)))
+              Left(ErrorInfo.notFoundErrorInfo(Some(errorMsg)))
             } else
               Right(StatusCode.Ok -> allApiKeyData)
           }
@@ -54,7 +54,7 @@ class AdminRoutes(adminService: AdminService[String]) {
         AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { case (userId, publicKeyId) =>
           adminService.deleteApiKey(userId, publicKeyId).map {
             case Some(deletedApiKeyData) => (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
-            case None                    => ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
+            case None                    => ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
           }
         }
       )

@@ -2,9 +2,9 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.ErrorInfo.CommonErrorInfo
+import apikeysteward.routes.ErrorInfo.SimpleErrorInfo
 import apikeysteward.routes.definitions.EndpointUtils.AccessToken
-import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, _}
+import apikeysteward.routes.model.admin._
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._

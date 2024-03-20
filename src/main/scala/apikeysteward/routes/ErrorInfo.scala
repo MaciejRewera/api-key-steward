@@ -12,27 +12,24 @@ object ErrorInfo {
 
   implicit val errorInfoCodec: Codec[ErrorInfo] = deriveCodec[ErrorInfo]
 
-  case class CommonErrorInfo(error: String, errorDetail: Option[String]) extends ErrorInfo
-//  object CommonErrorInfo {
-//    implicit val codec: Codec[CommonErrorInfo] = deriveCodec[CommonErrorInfo]
-//  }
+  case class SimpleErrorInfo(error: String, errorDetail: Option[String]) extends ErrorInfo
 
-  def internalServerErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+  def internalServerErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Internal Server Error",
     errorDetail = detail
   )
 
-  def badRequestErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+  def badRequestErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Bad Request",
     errorDetail = detail
   )
 
-  def forbiddenErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+  def forbiddenErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Access Denied",
     errorDetail = detail
   )
 
-  def notFoundErrorDetail(detail: Option[String] = None): ErrorInfo = CommonErrorInfo(
+  def notFoundErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Not Found",
     errorDetail = detail
   )

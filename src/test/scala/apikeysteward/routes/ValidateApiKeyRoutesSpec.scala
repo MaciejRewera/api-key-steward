@@ -58,7 +58,7 @@ class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Match
         _ = response.status shouldBe Status.Forbidden
         _ <- response
           .as[ErrorInfo]
-          .asserting(_ shouldBe ErrorInfo.forbiddenErrorDetail(Some(ErrorMessages.ValidateApiKeyIncorrect)))
+          .asserting(_ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ErrorMessages.ValidateApiKeyIncorrect)))
       } yield ()
     }
 
@@ -70,7 +70,7 @@ class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Match
         _ = response.status shouldBe Status.InternalServerError
         _ <- response
           .as[ErrorInfo]
-          .asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+          .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
       } yield ()
     }
   }

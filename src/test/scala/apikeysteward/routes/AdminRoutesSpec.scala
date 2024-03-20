@@ -80,7 +80,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         val nameEmpty = ""
         val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = nameEmpty))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
         )
 
@@ -95,7 +95,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         val nameWithOnlyWhiteCharacters = "  \n   \n\n "
         val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = nameWithOnlyWhiteCharacters))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
         )
 
@@ -110,7 +110,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         val nameWhichIsTooLong = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameWhichIsTooLong))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
             s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameWhichIsTooLong")"""
           )
@@ -128,7 +128,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         val requestWithOnlyWhiteCharacters =
           request.withEntity(requestBody.copy(description = Some(descriptionWithOnlyWhiteCharacters)))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
         )
 
@@ -143,7 +143,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         val descriptionWhichIsTooLong = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionWhichIsTooLong)))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
             s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionWhichIsTooLong))"
           )
@@ -159,7 +159,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       "provided with negative ttl value" in {
         val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
 
-        val expectedErrorInfo = ErrorInfo.badRequestErrorDetail(
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
         )
 
@@ -177,7 +177,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       for {
         response <- adminRoutes.run(request)
         _ = response.status shouldBe Status.InternalServerError
-        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
       } yield ()
     }
   }
@@ -204,7 +204,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         _ = response.status shouldBe Status.NotFound
         _ <- response
           .as[ErrorInfo]
-          .asserting(_ shouldBe ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.GetAllApiKeysForUserNotFound)))
+          .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.GetAllApiKeysForUserNotFound)))
       } yield ()
     }
 
@@ -224,7 +224,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       for {
         response <- adminRoutes.run(request)
         _ = response.status shouldBe Status.InternalServerError
-        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
       } yield ()
     }
   }
@@ -272,7 +272,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       for {
         response <- adminRoutes.run(request)
         _ = response.status shouldBe Status.InternalServerError
-        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
       } yield ()
     }
   }
@@ -309,7 +309,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         _ = response.status shouldBe Status.NotFound
         _ <- response
           .as[ErrorInfo]
-          .asserting(_ shouldBe ErrorInfo.notFoundErrorDetail(Some(ErrorMessages.DeleteApiKeyNotFound)))
+          .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)))
       } yield ()
     }
 
@@ -322,7 +322,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         _ = response.status shouldBe Status.BadRequest
         _ <- response
           .as[ErrorInfo]
-          .asserting(_ shouldBe ErrorInfo.badRequestErrorDetail(Some("Invalid value for: path parameter keyId")))
+          .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
       } yield ()
     }
 
@@ -332,7 +332,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       for {
         response <- adminRoutes.run(request)
         _ = response.status shouldBe Status.InternalServerError
-        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorDetail())
+        _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
       } yield ()
     }
   }

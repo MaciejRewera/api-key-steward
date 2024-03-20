@@ -25,13 +25,13 @@ object ServerConfiguration {
       .map { case (status, _) =>
         val responseBody = context.failure match {
           case _ if status == StatusCode.Forbidden =>
-            ErrorInfo.forbiddenErrorDetail(Some(FailureMessages.failureMessage(context)))
+            ErrorInfo.forbiddenErrorInfo(Some(FailureMessages.failureMessage(context)))
           case _ if status == StatusCode.NotFound =>
-            ErrorInfo.notFoundErrorDetail(Some(FailureMessages.failureMessage(context)))
+            ErrorInfo.notFoundErrorInfo(Some(FailureMessages.failureMessage(context)))
           case _ if status == StatusCode.UnsupportedMediaType =>
-            ErrorInfo.badRequestErrorDetail(Some("Unsupported content type"))
+            ErrorInfo.badRequestErrorInfo(Some("Unsupported content type"))
 
-          case _ => ErrorInfo.badRequestErrorDetail(Some(FailureMessages.failureMessage(context)))
+          case _ => ErrorInfo.badRequestErrorInfo(Some(FailureMessages.failureMessage(context)))
         }
 
         ValuedEndpointOutput(statusCode.and(jsonBody[Json]), status -> responseBody.asJson)
@@ -41,7 +41,7 @@ object ServerConfiguration {
     Some(
       ValuedEndpointOutput(
         output = statusCode.and(jsonBody[Json]),
-        value = StatusCode.InternalServerError -> ErrorInfo.internalServerErrorDetail().asJson
+        value = StatusCode.InternalServerError -> ErrorInfo.internalServerErrorInfo().asJson
       )
     )
   }
