@@ -10,7 +10,8 @@ import sttp.tapir.generic.auto._
 case class CreateApiKeyAdminRequest(
     name: String,
     description: Option[String] = None,
-    ttl: Int
+    ttl: Int,
+    scopes: List[String]
 )
 
 object CreateApiKeyAdminRequest {

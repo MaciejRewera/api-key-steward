@@ -32,7 +32,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
     val requestBody = CreateApiKeyAdminRequest(
       name = name,
       description = description,
-      ttl = ttlSeconds
+      ttl = ttlSeconds,
+      scopes = List(scopeRead_1, scopeWrite_1)
     )
     val request = Request[IO](method = Method.POST, uri = uri).withEntity(requestBody.asJson)
 

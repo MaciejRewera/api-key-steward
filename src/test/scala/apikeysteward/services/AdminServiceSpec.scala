@@ -42,7 +42,8 @@ class AdminServiceSpec
   private val createApiKeyAdminRequest = CreateApiKeyAdminRequest(
     name = name,
     description = description,
-    ttl = ttlSeconds
+    ttl = ttlSeconds,
+    scopes = List(scopeRead_1, scopeWrite_1)
   )
 
   private val testException = new RuntimeException("Test Exception")

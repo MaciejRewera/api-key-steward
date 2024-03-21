@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.base.FixedClock
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataDeletedEntity, ApiKeyDataEntity, ApiKeyEntity}
@@ -10,22 +11,19 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.time.{Clock, Instant, ZoneOffset}
 import java.util.UUID
 
 class ApiKeyDataDbSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
+    with FixedClock
     with DatabaseIntegrationSpec
     with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE api_key, api_key_data, api_key_data_deleted".update.run
+    _ <- sql"TRUNCATE api_key, api_key_data, api_key_data_deleted CASCADE".update.run
   } yield ()
-
-  private val now = Instant.parse("2024-02-15T12:34:56Z")
-  implicit private def fixedClock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private val apiKeyDb = new ApiKeyDb
   private val apiKeyDataDb = new ApiKeyDataDb
@@ -58,6 +56,7 @@ class ApiKeyDataDbSpec
   private val testApiKey_1 = "test-api-key-1"
   private val testApiKey_2 = "test-api-key-2"
   private val testApiKey_3 = "test-api-key-3"
+
   private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
   private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
   private val testApiKeyEntityWrite_3 = ApiKeyEntity.Write(testApiKey_3)
@@ -228,7 +227,7 @@ class ApiKeyDataDbSpec
         }
       }
 
-      "NOT insert the second entity into the DB" in {
+      "NOT insert the second entity into DB" in {
         val result = for {
           apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id).transact(transactor)
 
@@ -339,7 +338,7 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getByUserId" when {
 
     "there are no rows in the DB" should {
-      "return empty List" in {
+      "return empty Stream" in {
         val result = apiKeyDataDb.getByUserId(testUserId_1).compile.toList.transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
@@ -347,7 +346,7 @@ class ApiKeyDataDbSpec
     }
 
     "there is a row in the DB with different userId" should {
-      "return empty List" in {
+      "return empty Stream" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))

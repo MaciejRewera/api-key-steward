@@ -21,21 +21,28 @@ trait TestData extends FixedClock {
   val userId_3 = "test-user-id-003"
   val ttlSeconds = 60
 
-  val apiKeyData_1 = ApiKeyData(
+  val scopeRead_1 = "read:scope-1"
+  val scopeRead_2 = "read:scope-2"
+  val scopeRead_3 = "read:scope-3"
+  val scopeWrite_1 = "write:scope-1"
+  val scopeWrite_2 = "write:scope-2"
+  val scopeWrite_3 = "write:scope-3"
+
+  val apiKeyData_1: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,
     name = name,
     description = description,
     userId = userId_1,
     expiresAt = now.plusSeconds(ttlSeconds)
   )
-  val apiKeyData_2 = ApiKeyData(
+  val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name,
     description = description,
     userId = userId_1,
     expiresAt = now.plusSeconds(ttlSeconds)
   )
-  val apiKeyData_3 = ApiKeyData(
+  val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name,
     description = description,

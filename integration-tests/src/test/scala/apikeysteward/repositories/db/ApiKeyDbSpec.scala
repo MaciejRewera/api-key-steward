@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.base.FixedClock
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
@@ -10,16 +11,19 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.time.{Clock, Instant, ZoneOffset}
+import java.time.Instant
 
-class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with DatabaseIntegrationSpec with EitherValues {
+class ApiKeyDbSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with FixedClock
+    with Matchers
+    with DatabaseIntegrationSpec
+    with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE api_key, api_key_data".update.run
+    _ <- sql"TRUNCATE api_key CASCADE".update.run
   } yield ()
-
-  private val now = Instant.parse("2024-02-15T12:34:56Z")
-  implicit private def fixedClock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private val apiKeyDb = new ApiKeyDb
 
