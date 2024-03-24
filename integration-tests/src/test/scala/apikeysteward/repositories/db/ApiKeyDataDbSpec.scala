@@ -10,6 +10,7 @@ import doobie.implicits._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import apikeysteward.base.IntegrationTestData._
 
 import java.util.UUID
 
@@ -40,94 +41,13 @@ class ApiKeyDataDbSpec
       sql"SELECT * FROM api_key_data_deleted".query[ApiKeyDataDeletedEntity.Read].stream.compile.toList
   }
 
-  private val ttlSeconds = 60
-
-  private val publicKeyId_1 = UUID.randomUUID()
-  private val publicKeyId_2 = UUID.randomUUID()
-  private val publicKeyId_3 = UUID.randomUUID()
-  private val publicKeyIdStr_1 = publicKeyId_1.toString
-  private val publicKeyIdStr_2 = publicKeyId_2.toString
-  private val publicKeyIdStr_3 = publicKeyId_3.toString
-
-  private val testUserId_1 = "test-user-001"
-  private val testUserId_2 = "test-user-002"
-  private val testUserId_3 = "test-user-003"
-
-  private val testApiKey_1 = "test-api-key-1"
-  private val testApiKey_2 = "test-api-key-2"
-  private val testApiKey_3 = "test-api-key-3"
-
-  private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
-  private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
-  private val testApiKeyEntityWrite_3 = ApiKeyEntity.Write(testApiKey_3)
-
-  private val apiKeyDataEntityWrite_1 = ApiKeyDataEntity.Write(
-    apiKeyId = 1L,
-    publicKeyId = publicKeyIdStr_1,
-    name = "Test API Key name no. 1",
-    description = Some("Test key description no. 1"),
-    userId = testUserId_1,
-    expiresAt = now.plusSeconds(ttlSeconds)
-  )
-  private val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
-    id = 1L,
-    apiKeyId = 1L,
-    publicKeyId = publicKeyIdStr_1,
-    name = "Test API Key name no. 1",
-    description = Some("Test key description no. 1"),
-    userId = testUserId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
-  )
-
-  private val apiKeyDataEntityWrite_2 = ApiKeyDataEntity.Write(
-    apiKeyId = 2L,
-    publicKeyId = publicKeyIdStr_2,
-    name = "Test API Key name no. 2",
-    description = Some("Test key description no. 2"),
-    userId = testUserId_2,
-    expiresAt = now.plusSeconds(ttlSeconds)
-  )
-  private val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
-    id = 2L,
-    apiKeyId = 2L,
-    publicKeyId = publicKeyIdStr_2,
-    name = "Test API Key name no. 2",
-    description = Some("Test key description no. 2"),
-    userId = testUserId_2,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
-  )
-
-  private val apiKeyDataEntityWrite_3 = ApiKeyDataEntity.Write(
-    apiKeyId = 3L,
-    publicKeyId = publicKeyIdStr_3,
-    name = "Test API Key name no. 3",
-    description = Some("Test key description no. 3"),
-    userId = testUserId_3,
-    expiresAt = now.plusSeconds(ttlSeconds)
-  )
-  private val apiKeyDataEntityRead_3 = ApiKeyDataEntity.Read(
-    id = 3L,
-    apiKeyId = 3L,
-    publicKeyId = publicKeyIdStr_3,
-    name = "Test API Key name no. 3",
-    description = Some("Test key description no. 3"),
-    userId = testUserId_3,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
-  )
-
   "ApiKeyDataDb on insert" when {
 
     "there are no rows in the DB" should {
 
       "return inserted entity" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
 
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
         } yield res).transact(transactor)
@@ -140,7 +60,7 @@ class ApiKeyDataDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
           resApiKeysData <- Queries.getAllApiKeysData
@@ -162,8 +82,8 @@ class ApiKeyDataDbSpec
 
       "return inserted entity" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
           inserted <- apiKeyDataDb.insert(
@@ -183,8 +103,8 @@ class ApiKeyDataDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2, publicKeyId = publicKeyIdStr_2))
@@ -214,7 +134,7 @@ class ApiKeyDataDbSpec
 
       "return Left containing ApiKeyInsertionError" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId, publicKeyId = publicKeyIdStr_2))
@@ -229,7 +149,7 @@ class ApiKeyDataDbSpec
 
       "NOT insert the second entity into DB" in {
         val result = for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id).transact(transactor)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id).transact(transactor)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId)).transact(transactor)
           _ <- apiKeyDataDb
@@ -256,8 +176,8 @@ class ApiKeyDataDbSpec
 
       "return Left containing ApiKeyInsertionError" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2))
@@ -273,8 +193,8 @@ class ApiKeyDataDbSpec
 
       "NOT insert the second entity into the DB" in {
         val result = for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id).transact(transactor)
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id).transact(transactor)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id).transact(transactor)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id).transact(transactor)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1)).transact(transactor)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2)).transact(transactor).attempt
@@ -308,7 +228,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with different apiKeyId" should {
       "return empty Option" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getByApiKeyId(apiKeyId + 1)
@@ -321,7 +241,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with the same apiKeyId" should {
       "return Option containing ApiKeyDataEntity" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getByApiKeyId(apiKeyId)
@@ -348,7 +268,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with different userId" should {
       "return empty Stream" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getByUserId(testUserId_2).compile.toList
@@ -361,7 +281,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with the same userId" should {
       "return Stream containing ApiKeyDataEntity" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
@@ -377,13 +297,13 @@ class ApiKeyDataDbSpec
     "there are several rows in the DB with the same userId together with rows with different userIds" should {
       "return Stream containing all matching ApiKeyDataEntities" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
 
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
 
-          apiKeyId_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
 
           res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
@@ -411,7 +331,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with different both userId and publicKeyId" should {
       "return empty Option" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getBy(testUserId_2, publicKeyId_2)
@@ -424,7 +344,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with the same userId but different publicKeyId" should {
       "return empty Option" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getBy(testUserId_1, publicKeyId_2)
@@ -437,7 +357,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with the same publicKeyId but different userId" should {
       "return empty Option" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getBy(testUserId_2, publicKeyId_1)
@@ -450,7 +370,7 @@ class ApiKeyDataDbSpec
     "there is a row in the DB with the same both userId and publicKeyId" should {
       "return Option containing ApiKeyDataEntity" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getBy(testUserId_1, publicKeyId_1)
@@ -477,7 +397,7 @@ class ApiKeyDataDbSpec
     "there is a single row in the DB" should {
       "return userId of this single row" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.getAllUserIds.compile.toList
@@ -493,13 +413,13 @@ class ApiKeyDataDbSpec
     "there are several rows in the DB with the same userId" should {
       "return single userId" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
 
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
 
-          apiKeyId_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
 
           res <- apiKeyDataDb.getAllUserIds.compile.toList
@@ -515,13 +435,13 @@ class ApiKeyDataDbSpec
     "there are several rows in the DB with different userIds" should {
       "return all distinct userIds" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
 
-          apiKeyId_2 <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2))
 
-          apiKeyId_3 <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
 
           res <- apiKeyDataDb.getAllUserIds.compile.toList
@@ -574,7 +494,7 @@ class ApiKeyDataDbSpec
 
       "return zero" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_2, publicKeyId_1)
@@ -585,7 +505,7 @@ class ApiKeyDataDbSpec
 
       "NOT make any insertions into table with deleted rows" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_2, publicKeyId_1)
@@ -601,7 +521,7 @@ class ApiKeyDataDbSpec
 
       "return zero" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_2)
@@ -612,7 +532,7 @@ class ApiKeyDataDbSpec
 
       "NOT make any insertions into table with deleted rows" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_2)
@@ -628,7 +548,7 @@ class ApiKeyDataDbSpec
 
       "return one" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
@@ -639,7 +559,7 @@ class ApiKeyDataDbSpec
 
       "insert the same row into table with deleted rows" in {
         val result = (for {
-          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyEntityRead <- apiKeyDb.insert(apiKeyEntityWrite_1)
           apiKeyId = apiKeyEntityRead.value.id
           apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
           apiKeyDataId = apiKeyDataEntityRead.value.id
@@ -667,7 +587,7 @@ class ApiKeyDataDbSpec
 
       "return one" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
@@ -679,7 +599,7 @@ class ApiKeyDataDbSpec
 
       "insert this row into table with deleted rows" in {
         val result = (for {
-          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyEntityRead <- apiKeyDb.insert(apiKeyEntityWrite_1)
           apiKeyId = apiKeyEntityRead.value.id
           apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
           apiKeyDataId = apiKeyDataEntityRead.value.id
@@ -729,7 +649,7 @@ class ApiKeyDataDbSpec
 
       "return false" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.delete(testUserId_2, publicKeyId_1)
@@ -740,7 +660,7 @@ class ApiKeyDataDbSpec
 
       "make no changes to the DB" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.delete(testUserId_2, publicKeyId_1)
@@ -760,7 +680,7 @@ class ApiKeyDataDbSpec
 
       "return false" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_2)
@@ -771,7 +691,7 @@ class ApiKeyDataDbSpec
 
       "make no changes to the DB" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_2)
@@ -790,7 +710,7 @@ class ApiKeyDataDbSpec
 
       "return true" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
@@ -801,7 +721,7 @@ class ApiKeyDataDbSpec
 
       "delete this row from the API Key Data table" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
@@ -816,13 +736,13 @@ class ApiKeyDataDbSpec
 
       "return true" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId))
 
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId))
 
           res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
@@ -833,13 +753,13 @@ class ApiKeyDataDbSpec
 
       "delete this row from the API Key Data table and leave others intact" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_2).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId))
 
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_3).map(_.value.id)
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId))
 
           _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)

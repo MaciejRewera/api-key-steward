@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS scope
 
 CREATE TABLE IF NOT EXISTS api_key_data_scopes
 (
-    id              INTEGER PRIMARY key generated always as identity,
     api_key_data_id INTEGER     NOT NULL,
     scope_id        INTEGER     NOT NULL,
 

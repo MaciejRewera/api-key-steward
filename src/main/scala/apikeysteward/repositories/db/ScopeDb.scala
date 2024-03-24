@@ -8,14 +8,14 @@ import fs2.Stream
 
 class ScopeDb {
 
-  def insertMany(scopes: List[ScopeEntity.Write]): Stream[doobie.ConnectionIO, ScopeEntity.Read] = {
+  def insertMany(scopeEntities: List[ScopeEntity.Write]): Stream[doobie.ConnectionIO, ScopeEntity.Read] = {
     val result: doobie.ConnectionIO[List[ScopeEntity.Read]] = for {
-      existingScopes <- get(scopes.map(_.scope)).compile.toList
+      existingScopes <- get(scopeEntities.map(_.scope)).compile.toList
 
-      scopesToInsert = scopes.filterNot(s => existingScopes.exists(_.scope == s.scope))
+      scopesToInsert = scopeEntities.filterNot(s => existingScopes.exists(_.scope == s.scope))
       _ <- Queries.insertMany.updateMany(scopesToInsert)
 
-      res <- get(scopes.map(_.scope)).compile.toList
+      res <- get(scopeEntities.map(_.scope)).compile.toList
     } yield res
 
     Stream.evals(result)

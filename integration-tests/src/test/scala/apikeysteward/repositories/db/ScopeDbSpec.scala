@@ -9,6 +9,7 @@ import fs2.Stream
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import apikeysteward.base.IntegrationTestData._
 
 class ScopeDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with DatabaseIntegrationSpec with EitherValues {
 
@@ -26,13 +27,6 @@ class ScopeDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Data
     val getAllScopes: Stream[doobie.ConnectionIO, ScopeEntity.Read] =
       sql"SELECT * FROM scope".query[ScopeEntity.Read].stream
   }
-
-  private val scopeRead_1 = "read:scope-1"
-  private val scopeRead_2 = "read:scope-2"
-  private val scopeRead_3 = "read:scope-3"
-  private val scopeWrite_1 = "write:scope-1"
-  private val scopeWrite_2 = "write:scope-2"
-  private val scopeWrite_3 = "write:scope-3"
 
   "ScopeDb on insertMany" when {
 

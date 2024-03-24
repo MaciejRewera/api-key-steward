@@ -2,8 +2,8 @@ package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ScopeEntity}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, ScopeDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits._
@@ -21,6 +21,11 @@ class DbApiKeyRepository(apiKeyDb: ApiKeyDb, apiKeyDataDb: ApiKeyDataDb)(
       apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
       apiKeyId = apiKeyEntityRead.id
       apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyId, apiKeyData)))
+
+//      scopeEntitiesRead <- scopeDb.insertMany(apiKeyData.scopes.map(ScopeEntity.Write(_)))
+//      apiKeyDataId = apiKeyDataEntityRead.id
+//      _ <-
+
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
