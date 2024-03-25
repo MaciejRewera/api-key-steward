@@ -22,9 +22,15 @@ class ScopeDb {
   }
 
   def get(scopes: List[String]): Stream[doobie.ConnectionIO, ScopeEntity.Read] =
+    getBy(scopes)(Queries.get)
+
+  def getByIds(scopeIds: List[Long]): Stream[doobie.ConnectionIO, ScopeEntity.Read] =
+    getBy(scopeIds)(Queries.getByIds)
+
+  private def getBy[A, B](list: List[A])(query: NonEmptyList[A] => doobie.Query0[B]): Stream[doobie.ConnectionIO, B] =
     NonEmptyList
-      .fromList(scopes)
-      .fold[Stream[doobie.ConnectionIO, ScopeEntity.Read]](Stream.empty)(list => Queries.get(list).stream)
+      .fromList(list)
+      .fold[Stream[doobie.ConnectionIO, B]](Stream.empty)(l => query(l).stream)
 
   private object Queries {
 
@@ -35,6 +41,9 @@ class ScopeDb {
 
     def get(scopes: NonEmptyList[String]): doobie.Query0[ScopeEntity.Read] =
       (fr"SELECT id, scope FROM scope WHERE " ++ Fragments.in(fr"scope.scope", scopes)).query[ScopeEntity.Read]
+
+    def getByIds(scopeIds: NonEmptyList[Long]): doobie.Query0[ScopeEntity.Read] =
+      (fr"SELECT id, scope FROM scope WHERE " ++ Fragments.in(fr"scope.id", scopeIds)).query[ScopeEntity.Read]
   }
 
 }

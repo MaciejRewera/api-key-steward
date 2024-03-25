@@ -1,6 +1,6 @@
 package apikeysteward.model
 
-import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ScopeEntity}
 import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -13,19 +13,21 @@ case class ApiKeyData(
     name: String,
     description: Option[String] = None,
     userId: String,
-    expiresAt: Instant
+    expiresAt: Instant,
+    scopes: List[String]
 )
 
 object ApiKeyData {
   implicit val codec: Codec[ApiKeyData] = deriveCodec[ApiKeyData]
 
-  def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read): ApiKeyData =
+  def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read, scopeEntitiesRead: List[ScopeEntity.Read]): ApiKeyData =
     ApiKeyData(
       publicKeyId = UUID.fromString(apiKeyDataEntityRead.publicKeyId),
       name = apiKeyDataEntityRead.name,
       description = apiKeyDataEntityRead.description,
       userId = apiKeyDataEntityRead.userId,
-      expiresAt = apiKeyDataEntityRead.expiresAt
+      expiresAt = apiKeyDataEntityRead.expiresAt,
+      scopes = scopeEntitiesRead.map(_.scope)
     )
 
   def from(publicKeyId: UUID, userId: String, createApiKeyRequest: CreateApiKeyAdminRequest)(
@@ -36,6 +38,7 @@ object ApiKeyData {
       name = createApiKeyRequest.name,
       description = createApiKeyRequest.description,
       userId = userId,
-      expiresAt = Instant.now(clock).plusSeconds(createApiKeyRequest.ttl)
+      expiresAt = Instant.now(clock).plusSeconds(createApiKeyRequest.ttl),
+      scopes = createApiKeyRequest.scopes
     )
 }

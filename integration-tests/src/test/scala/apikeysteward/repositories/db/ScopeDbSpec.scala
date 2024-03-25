@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.base.IntegrationTestData._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ScopeEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -9,7 +10,6 @@ import fs2.Stream
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import apikeysteward.base.IntegrationTestData._
 
 class ScopeDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with DatabaseIntegrationSpec with EitherValues {
 
@@ -361,7 +361,7 @@ class ScopeDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Data
       }
 
       "there are multiple rows in the DB and some of them with matching scopes" should {
-        "return Stream containing ScopeEntity" in {
+        "return Stream containing multiple ScopeEntities" in {
           val oldEntities =
             List(scopeRead_1, scopeRead_2, scopeWrite_2, scopeRead_3, scopeWrite_3).map(ScopeEntity.Write)
           val result = for {
@@ -373,6 +373,147 @@ class ScopeDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Data
           result.asserting { res =>
             res.size shouldBe 3
             res.map(_.scope) should contain theSameElementsAs List(scopeRead_1, scopeRead_2, scopeWrite_2)
+          }
+        }
+      }
+    }
+  }
+
+  "ScopeDb on getByIds(:scopeIds)" when {
+
+    "provided with single scopeId" when {
+
+      val scopeReadEntityWrite = ScopeEntity.Write(scopeRead_1)
+
+      "there are no rows in the DB" should {
+        "return empty Stream" in {
+          scopeDb.getByIds(List(1L)).transact(transactor).compile.toList.asserting(_ shouldBe empty)
+        }
+      }
+
+      "there is a row in the DB with different Id" should {
+        "return empty Stream" in {
+          val result = for {
+            insertedScopes <- scopeDb.insertMany(List(scopeReadEntityWrite)).transact(transactor).compile.toList
+
+            inputScopeId = 1 + insertedScopes.head.id
+            res <- scopeDb.getByIds(List(inputScopeId)).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting(_ shouldBe empty)
+        }
+      }
+
+      "there is a row in the DB with the same Id" should {
+        "return Stream containing ScopeEntity" in {
+          val result = for {
+            insertedScopes <- scopeDb.insertMany(List(scopeReadEntityWrite)).transact(transactor).compile.toList
+
+            inputScopeId = insertedScopes.head.id
+            res <- scopeDb.getByIds(List(inputScopeId)).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting { res =>
+            res.size shouldBe 1
+            res.head.scope shouldBe scopeRead_1
+          }
+        }
+      }
+
+      "there are multiple rows in the DB and one is with the same Id" should {
+        "return Stream containing ScopeEntity" in {
+          val oldEntities = List(scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
+          val result = for {
+            _ <- scopeDb.insertMany(oldEntities).transact(transactor).compile.toList
+            insertedScopes <- scopeDb.insertMany(List(scopeReadEntityWrite)).transact(transactor).compile.toList
+
+            inputScopeId = insertedScopes.head.id
+            res <- scopeDb.getByIds(List(inputScopeId)).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting { res =>
+            res.size shouldBe 1
+            res.head.scope shouldBe scopeRead_1
+          }
+        }
+      }
+    }
+
+    "provided with multiple scopeIds" when {
+
+      "there are no rows in the DB" should {
+        "return empty Stream" in {
+          scopeDb.getByIds(List(1L, 2L, 3L)).transact(transactor).compile.toList.asserting(_ shouldBe empty)
+        }
+      }
+
+      "there are rows in the DB with different Ids" should {
+        "return empty Stream" in {
+          val existingEntities = List(scopeRead_3, scopeWrite_3).map(ScopeEntity.Write)
+          val result = for {
+            insertedScopes <- scopeDb.insertMany(existingEntities).transact(transactor).compile.toList
+
+            nonExistingScopeId = 1 + insertedScopes.last.id
+            inputScopeIds = List(nonExistingScopeId, nonExistingScopeId + 1, nonExistingScopeId + 2)
+            res <- scopeDb.getByIds(inputScopeIds).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting(_ shouldBe empty)
+        }
+      }
+
+      "there is a single row in the DB with matching Id" should {
+        "return Stream containing single ScopeEntity" in {
+          val existingEntities = List(scopeRead_1).map(ScopeEntity.Write)
+          val result = for {
+            insertedScopes <- scopeDb.insertMany(existingEntities).transact(transactor).compile.toList
+
+            existingScopeId = insertedScopes.last.id
+            inputScopeIds = List(existingScopeId, existingScopeId + 1)
+            res <- scopeDb.getByIds(inputScopeIds).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting { res =>
+            res.size shouldBe 1
+            res.head.scope shouldBe scopeRead_1
+          }
+        }
+      }
+
+      "there are multiple rows in the DB with matching Ids" should {
+        "return Stream containing multiple ScopeEntities" in {
+          val existingEntities = List(scopeRead_1, scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
+          val result = for {
+            insertedScopes <- scopeDb.insertMany(existingEntities).transact(transactor).compile.toList
+
+            inputScopeIds = insertedScopes.map(_.id)
+            res <- scopeDb.getByIds(inputScopeIds).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting { res =>
+            res.size shouldBe 4
+            res.map(_.scope) should contain theSameElementsAs existingEntities.map(_.scope)
+          }
+        }
+      }
+
+      "there are multiple rows in the DB and some of them with matching Ids" should {
+        "return Stream containing multiple ScopeEntities" in {
+          val nonMatchingEntities =
+            List(scopeRead_1, scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
+          val matchingEntities = List(scopeRead_3, scopeWrite_3).map(ScopeEntity.Write)
+
+          val result = for {
+            _ <- scopeDb.insertMany(nonMatchingEntities).transact(transactor).compile.toList
+            insertedScopes <- scopeDb.insertMany(matchingEntities).transact(transactor).compile.toList
+
+            inputScopeIds = insertedScopes.map(_.id)
+            res <- scopeDb.getByIds(inputScopeIds).transact(transactor).compile.toList
+          } yield res
+
+          result.asserting { res =>
+            res.size shouldBe 2
+            res.map(_.scope) should contain theSameElementsAs List(scopeRead_3, scopeWrite_3)
           }
         }
       }

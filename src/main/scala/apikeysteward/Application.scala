@@ -2,7 +2,7 @@ package apikeysteward
 
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
 import apikeysteward.routes.{AdminRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService}
@@ -49,7 +49,15 @@ object Application extends IOApp.Simple {
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()
-        apiKeyRepository: ApiKeyRepository[String] = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb)(transactor)
+        scopeDb = new ScopeDb()
+        apiKeyDataScopesDb = new ApiKeyDataScopesDb()
+
+        apiKeyRepository: ApiKeyRepository[String] = new DbApiKeyRepository(
+          apiKeyDb,
+          apiKeyDataDb,
+          scopeDb,
+          apiKeyDataScopesDb
+        )(transactor)
 
         apiKeyService = new ApiKeyService(apiKeyRepository)
         adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)
