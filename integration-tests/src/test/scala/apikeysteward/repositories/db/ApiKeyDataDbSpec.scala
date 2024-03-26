@@ -1,18 +1,16 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.IntegrationTestData._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.entity.{ApiKeyDataDeletedEntity, ApiKeyDataEntity, ApiKeyEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyDataDeletedEntity, ApiKeyDataEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import apikeysteward.base.IntegrationTestData._
-
-import java.util.UUID
 
 class ApiKeyDataDbSpec
     extends AsyncWordSpec
@@ -474,10 +472,8 @@ class ApiKeyDataDbSpec
 
     "there are no rows in the API Key Data table" should {
 
-      "return zero" in {
-        val result = apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1).transact(transactor)
-
-        result.asserting(_ shouldBe false)
+      "return false" in {
+        apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1).transact(transactor).asserting(_ shouldBe false)
       }
 
       "NOT make any insertions into table with deleted rows" in {
@@ -492,7 +488,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with different userId" should {
 
-      "return zero" in {
+      "return false" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -519,7 +515,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with different publicKeyId" should {
 
-      "return zero" in {
+      "return false" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -546,7 +542,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with the same userId and publicKeyId" should {
 
-      "return one" in {
+      "return true" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -585,7 +581,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with the same userId and publicKeyId, and it is copied for the second time into the API Key Deleted table" should {
 
-      "return one" in {
+      "return true" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -630,9 +626,7 @@ class ApiKeyDataDbSpec
     "there are no rows in the API Key Data table" should {
 
       "return false" in {
-        val result = apiKeyDataDb.delete(testUserId_1, publicKeyId_1).transact(transactor)
-
-        result.asserting(_ shouldBe false)
+        apiKeyDataDb.delete(testUserId_1, publicKeyId_1).transact(transactor).asserting(_ shouldBe false)
       }
 
       "make no changes to the DB" in {

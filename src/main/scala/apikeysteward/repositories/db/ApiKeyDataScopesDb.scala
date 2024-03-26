@@ -5,22 +5,33 @@ import doobie.Update
 import doobie.implicits.toSqlInterpolator
 import fs2.Stream
 
-class ApiKeyDataScopesDb {
+import java.time.{Clock, Instant}
+
+class ApiKeyDataScopesDb()(implicit clock: Clock) {
 
   import doobie.postgres._
   import doobie.postgres.implicits._
 
-  def insertMany(apiKeyDataScopesEntities: List[ApiKeyDataScopesEntity.Write]): doobie.ConnectionIO[Int] =
-    Queries.insertMany.updateMany(apiKeyDataScopesEntities)
+  def insertMany(entities: List[ApiKeyDataScopesEntity.Write]): doobie.ConnectionIO[Int] = {
+    val now = Instant.now(clock)
+    Queries.insertMany.updateMany(entities.map((_, now, now)))
+  }
 
   def getByApiKeyDataId(apiKeyDataId: Long): Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] =
     Queries.getByApiKeyDataId(apiKeyDataId).stream
 
+  def copyIntoDeletedTable(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Boolean] =
+    Queries.copyIntoDeletedTable(apiKeyDataId, scopeId, Instant.now(clock)).run.map(_ >= 1)
+
+  def delete(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Boolean] =
+    Queries.delete(apiKeyDataId, scopeId).run.map(_ >= 1)
+
   private object Queries {
 
-    val insertMany: doobie.Update[ApiKeyDataScopesEntity.Write] = {
-      val sql = "INSERT INTO api_key_data_scopes (api_key_data_id, scope_id) VALUES (?, ?)"
-      Update[ApiKeyDataScopesEntity.Write](sql)
+    val insertMany: doobie.Update[(ApiKeyDataScopesEntity.Write, Instant, Instant)] = {
+      val sql =
+        "INSERT INTO api_key_data_scopes (api_key_data_id, scope_id, created_at, updated_at) VALUES (?, ?, ?, ?)"
+      Update[(ApiKeyDataScopesEntity.Write, Instant, Instant)](sql)
     }
 
     def getByApiKeyDataId(apiKeyDataId: Long): doobie.Query0[ApiKeyDataScopesEntity.Read] =
@@ -32,5 +43,28 @@ class ApiKeyDataScopesDb {
            |FROM api_key_data_scopes
            |WHERE api_key_data_id = $apiKeyDataId
            |""".stripMargin.query[ApiKeyDataScopesEntity.Read]
+
+    def copyIntoDeletedTable(apiKeyDataId: Long, scopeId: Long, now: Instant): doobie.Update0 =
+      sql"""INSERT INTO api_key_data_scopes_deleted(
+           | deleted_at,
+           | api_key_data_id,
+           | scope_id,
+           | created_at,
+           | updated_at
+           |) (
+           | SELECT
+           |   $now,
+           |   api_key_data_id,
+           |   scope_id,
+           |   created_at,
+           |   updated_at
+           | FROM api_key_data_scopes
+           | WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId AND api_key_data_scopes.scope_id = $scopeId
+           |)""".stripMargin.update
+
+    def delete(apiKeyDataId: Long, scopeId: Long): doobie.Update0 =
+      sql"""DELETE FROM api_key_data_scopes
+           |WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId AND api_key_data_scopes.scope_id = $scopeId
+           """.stripMargin.update
   }
 }

@@ -63,16 +63,10 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     Queries.getAllUserIds.stream
 
   def copyIntoDeletedTable(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Boolean] =
-    Queries
-      .copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock))
-      .run
-      .map(_ >= 1)
+    Queries.copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock)).run.map(_ >= 1)
 
   def delete(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Boolean] =
-    Queries
-      .delete(userId, publicKeyId.toString)
-      .run
-      .map(_ >= 1)
+    Queries.delete(userId, publicKeyId.toString).run.map(_ >= 1)
 
   private object Queries {
 
