@@ -117,9 +117,10 @@ class ApiKeyDataScopesDbSpec
 
         "return duplication exception" in {
           val result = for {
-            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite).transact(
-              transactor
-            )
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+              .transact(
+                transactor
+              )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor)
 
             res <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor).attempt
@@ -133,9 +134,10 @@ class ApiKeyDataScopesDbSpec
 
         "NOT insert the entity into DB" in {
           val result = for {
-            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite).transact(
-              transactor
-            )
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+              .transact(
+                transactor
+              )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor).attempt
 
@@ -268,10 +270,18 @@ class ApiKeyDataScopesDbSpec
 
         "return the number of inserted entities" in {
           val result = (for {
-            inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite_1)
+            inputEntities_1 <- insertPrerequisiteData(
+              apiKeyEntityWrite_1,
+              apiKeyDataEntityWrite_1,
+              scopeEntitiesWrite_1
+            )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
 
-            inputEntities_2 <- insertPrerequisiteData(apiKeyEntityWrite_2, apiKeyDataEntityWrite_2, scopeEntitiesWrite_2)
+            inputEntities_2 <- insertPrerequisiteData(
+              apiKeyEntityWrite_2,
+              apiKeyDataEntityWrite_2,
+              scopeEntitiesWrite_2
+            )
 
             res <- apiKeyDataScopesDb.insertMany(inputEntities_2)
           } yield res).transact(transactor)
@@ -281,10 +291,18 @@ class ApiKeyDataScopesDbSpec
 
         "insert entities into DB" in {
           val result = (for {
-            inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite_1)
+            inputEntities_1 <- insertPrerequisiteData(
+              apiKeyEntityWrite_1,
+              apiKeyDataEntityWrite_1,
+              scopeEntitiesWrite_1
+            )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
 
-            inputEntities_2 <- insertPrerequisiteData(apiKeyEntityWrite_2, apiKeyDataEntityWrite_2, scopeEntitiesWrite_2)
+            inputEntities_2 <- insertPrerequisiteData(
+              apiKeyEntityWrite_2,
+              apiKeyDataEntityWrite_2,
+              scopeEntitiesWrite_2
+            )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities_2)
 
             res <- Queries.getAll.compile.toList
@@ -675,7 +693,11 @@ class ApiKeyDataScopesDbSpec
 
       "return true" in {
         val result = (for {
-          inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntitiesWrite)
+          inputEntities_1 <- insertPrerequisiteData(
+            apiKeyEntityWrite_1,
+            apiKeyDataEntityWrite_1,
+            scopeReadEntitiesWrite
+          )
           _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
 
           inputEntities_2 <- insertPrerequisiteData(apiKeyEntityWrite_2, apiKeyDataEntityWrite_2, scopeReadEntityWrite)
@@ -690,7 +712,11 @@ class ApiKeyDataScopesDbSpec
 
       "delete this entity from the junction table and leave others intact" in {
         val result = (for {
-          inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntitiesWrite)
+          inputEntities_1 <- insertPrerequisiteData(
+            apiKeyEntityWrite_1,
+            apiKeyDataEntityWrite_1,
+            scopeReadEntitiesWrite
+          )
           _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
 
           inputEntities_2 <- insertPrerequisiteData(apiKeyEntityWrite_2, apiKeyDataEntityWrite_2, scopeReadEntityWrite)

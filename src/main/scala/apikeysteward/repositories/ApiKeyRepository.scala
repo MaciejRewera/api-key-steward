@@ -2,7 +2,6 @@ package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.IO
 
 import java.util.UUID

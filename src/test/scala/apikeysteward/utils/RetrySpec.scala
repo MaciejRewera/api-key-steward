@@ -5,9 +5,9 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.Mockito
 import org.mockito.MockitoSugar.{mock, times, verify, verifyNoMoreInteractions}
-import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
 

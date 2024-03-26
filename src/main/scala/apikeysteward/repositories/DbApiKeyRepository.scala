@@ -1,6 +1,5 @@
 package apikeysteward.repositories
 
-import fs2.Stream
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -10,6 +9,7 @@ import cats.effect.IO
 import cats.implicits._
 import doobie.Transactor
 import doobie.implicits._
+import fs2.Stream
 
 import java.util.UUID
 

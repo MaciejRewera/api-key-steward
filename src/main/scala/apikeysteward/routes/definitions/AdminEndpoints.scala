@@ -2,7 +2,6 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.ErrorInfo.SimpleErrorInfo
 import apikeysteward.routes.definitions.EndpointUtils.AccessToken
 import apikeysteward.routes.model.admin._
 import sttp.model.StatusCode
