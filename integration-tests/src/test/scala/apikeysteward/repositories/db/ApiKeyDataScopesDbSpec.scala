@@ -7,7 +7,6 @@ import apikeysteward.repositories.db.entity._
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
-import fs2.Stream
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
@@ -36,8 +35,8 @@ class ApiKeyDataScopesDbSpec
     import doobie.postgres._
     import doobie.postgres.implicits._
 
-    val getAll: Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] =
-      sql"SELECT * FROM api_key_data_scopes".query[ApiKeyDataScopesEntity.Read].stream
+    val getAll: doobie.ConnectionIO[List[ApiKeyDataScopesEntity.Read]] =
+      sql"SELECT * FROM api_key_data_scopes".query[ApiKeyDataScopesEntity.Read].stream.compile.toList
 
     val getAllDeleted: doobie.ConnectionIO[List[ApiKeyDataScopesDeletedEntity.Read]] =
       sql"SELECT * FROM  api_key_data_scopes_deleted".query[ApiKeyDataScopesDeletedEntity.Read].stream.compile.toList
@@ -69,7 +68,7 @@ class ApiKeyDataScopesDbSpec
         val result = (for {
           _ <- apiKeyDataScopesDb.insertMany(inputEntity)
 
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe empty)
@@ -97,7 +96,7 @@ class ApiKeyDataScopesDbSpec
             inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities)
 
-            res <- Queries.getAll.compile.toList
+            res <- Queries.getAll
           } yield (inputEntities, res)).transact(transactor)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -141,7 +140,7 @@ class ApiKeyDataScopesDbSpec
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor).attempt
 
-            res <- Queries.getAll.transact(transactor).compile.toList
+            res <- Queries.getAll.transact(transactor)
           } yield (inputEntities, res)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -180,7 +179,7 @@ class ApiKeyDataScopesDbSpec
             inputEntities_2 <- insertPrerequisiteData(apiKeyEntityWrite_2, apiKeyDataEntityWrite_2, scopeEntitiesWrite)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities_2)
 
-            res <- Queries.getAll.compile.toList
+            res <- Queries.getAll
           } yield (inputEntities_1 ++ inputEntities_2, res)).transact(transactor)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -216,7 +215,7 @@ class ApiKeyDataScopesDbSpec
             inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite_1)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities)
 
-            res <- Queries.getAll.compile.toList
+            res <- Queries.getAll
           } yield (inputEntities, res)).transact(transactor)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -253,7 +252,7 @@ class ApiKeyDataScopesDbSpec
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor).attempt
 
-            res <- Queries.getAll.transact(transactor).compile.toList
+            res <- Queries.getAll.transact(transactor)
           } yield (inputEntities, res)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -305,7 +304,7 @@ class ApiKeyDataScopesDbSpec
             )
             _ <- apiKeyDataScopesDb.insertMany(inputEntities_2)
 
-            res <- Queries.getAll.compile.toList
+            res <- Queries.getAll
           } yield (inputEntities_1 ++ inputEntities_2, res)).transact(transactor)
 
           result.asserting { case (inputEntities, allEntitiesInDb) =>
@@ -575,7 +574,7 @@ class ApiKeyDataScopesDbSpec
       "make no changes to the DB" in {
         val result = (for {
           _ <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
@@ -604,7 +603,7 @@ class ApiKeyDataScopesDbSpec
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId + 1, inputEntities.head.scopeId)
           _ <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
 
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield (inputEntities, res)).transact(transactor)
 
         result.asserting { case (inputEntities, res) =>
@@ -642,7 +641,7 @@ class ApiKeyDataScopesDbSpec
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId + 1)
           _ <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
 
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield (inputEntities, res)).transact(transactor)
 
         result.asserting { case (inputEntities, res) =>
@@ -680,7 +679,7 @@ class ApiKeyDataScopesDbSpec
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
           _ <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
 
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
@@ -725,7 +724,7 @@ class ApiKeyDataScopesDbSpec
           (apiKeyDataId, scopeId) = (inputEntities_2.head.apiKeyDataId, inputEntities_2.head.scopeId)
           _ <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
 
-          res <- Queries.getAll.compile.toList
+          res <- Queries.getAll
         } yield (inputEntities_1, res)).transact(transactor)
 
         result.asserting { case (inputEntities, res) =>
