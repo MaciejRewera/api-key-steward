@@ -113,6 +113,8 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     def copyIntoDeletedTable(userId: String, publicKeyId: String, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key_data_deleted(
               deleted_at,
+              api_key_data_id,
+              api_key_id,
               public_key_id,
               name,
               description,
@@ -123,6 +125,8 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             ) (
               SELECT
                 $now,
+                id,
+                api_key_id,
                 public_key_id,
                 name,
                 description,

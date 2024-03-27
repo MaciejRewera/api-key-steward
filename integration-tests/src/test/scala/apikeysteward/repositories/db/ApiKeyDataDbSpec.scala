@@ -542,6 +542,8 @@ class ApiKeyDataDbSpec
       ApiKeyDataDeletedEntity.Read(
         id = apiKeyDateEntityRead.id,
         deletedAt = now,
+        apiKeyDataId = apiKeyDateEntityRead.id,
+        apiKeyId = apiKeyDateEntityRead.apiKeyId,
         publicKeyId = apiKeyDateEntityRead.publicKeyId,
         name = apiKeyDateEntityRead.name,
         description = apiKeyDateEntityRead.description,
@@ -640,18 +642,24 @@ class ApiKeyDataDbSpec
         val result = (for {
           apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           apiKeyId = apiKeyEntityRead.value.id
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+          apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+          apiKeyDataId = apiKeyDataEntityRead.value.id
 
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
 
           res <- Queries.getAllDeletedApiKeysData
-        } yield res).transact(transactor)
+        } yield (apiKeyId, apiKeyDataId, res)).transact(transactor)
 
-        result.asserting { res =>
+        result.asserting { case (apiKeyId, apiKeyDataId, res) =>
           res.size shouldBe 1
 
-          val expectedDeletedEntityRead = buildApiKeyDataDeletedEntityRead(apiKeyDataEntityRead_1)
-          res.head shouldBe expectedDeletedEntityRead.copy(id = res.head.id)
+          val expectedDeletedEntityRead = buildApiKeyDataDeletedEntityRead(apiKeyDataEntityRead_1).copy(
+            id = res.head.id,
+            apiKeyDataId = apiKeyDataId,
+            apiKeyId = apiKeyId
+          )
+
+          res.head shouldBe expectedDeletedEntityRead
         }
       }
     }
@@ -672,19 +680,25 @@ class ApiKeyDataDbSpec
 
       "insert this row into table with deleted rows" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(testApiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+          apiKeyEntityRead <- apiKeyDb.insert(testApiKeyEntityWrite_1)
+          apiKeyId = apiKeyEntityRead.value.id
+          apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+          apiKeyDataId = apiKeyDataEntityRead.value.id
 
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
           _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
 
           res <- Queries.getAllDeletedApiKeysData
-        } yield res).transact(transactor)
+        } yield (apiKeyId, apiKeyDataId, res)).transact(transactor)
 
-        result.asserting { res =>
+        result.asserting { case (apiKeyId, apiKeyDataId, res) =>
           res.size shouldBe 2
 
-          val expectedDeletedEntityRead = buildApiKeyDataDeletedEntityRead(apiKeyDataEntityRead_1)
+          val expectedDeletedEntityRead = buildApiKeyDataDeletedEntityRead(apiKeyDataEntityRead_1).copy(
+            apiKeyDataId = apiKeyDataId,
+            apiKeyId = apiKeyId
+          )
+
           res.head shouldBe expectedDeletedEntityRead.copy(id = res.head.id)
           res(1) shouldBe expectedDeletedEntityRead.copy(id = res(1).id)
         }
