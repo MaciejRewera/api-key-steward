@@ -54,41 +54,68 @@ class DbApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
     } yield apiKeyData).value.transact(transactor)
 
-  // TODO: Consider converting these two get methods into one that uses join. The two Db classes could also be merged.
-  private def getScopes(apiKeyDataId: Long): doobie.ConnectionIO[List[ScopeEntity.Read]] =
-    for {
-      apiKeyDataScopesEntitiesRead <- apiKeyDataScopesDb.getByApiKeyDataId(apiKeyDataId).compile.toList
-      scopes <- scopeDb.getByIds(apiKeyDataScopesEntitiesRead.map(_.scopeId)).compile.toList
-    } yield scopes
-
   override def getAll(userId: String): IO[List[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- apiKeyDataDb.getByUserId(userId)
       apiKeyData <- Stream.eval(getScopes(apiKeyDataEntityRead.id)).map(ApiKeyData.from(apiKeyDataEntityRead, _))
     } yield apiKeyData).transact(transactor).compile.toList
 
+  private def getScopes(apiKeyDataId: Long): doobie.ConnectionIO[List[ScopeEntity.Read]] =
+    for {
+      apiKeyDataScopesEntitiesRead <- apiKeyDataScopesDb.getByApiKeyDataId(apiKeyDataId).compile.toList
+      scopes <- scopeDb.getByIds(apiKeyDataScopesEntitiesRead.map(_.scopeId)).compile.toList
+    } yield scopes
+
+  override def getAllUserIds: IO[List[String]] =
+    apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
+
   override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyData]] = {
     for {
       apiKeyDataToDeleteOpt <- apiKeyDataDb.getBy(userId, publicKeyIdToDelete)
 
+      apiKeyDataScopesToDelete <- apiKeyDataToDeleteOpt
+        .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id))
+        .compile
+        .toList
+        .map(_.flatten)
+
       deletionResult <- apiKeyDataToDeleteOpt.traverse { apiKeyData =>
         (for {
           _ <- OptionT(apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete).map(booleanToOption))
+          _ <- OptionT(apiKeyDataScopesToDelete.traverse { entityToDelete =>
+            apiKeyDataScopesDb
+              .copyIntoDeletedTable(entityToDelete.apiKeyDataId, entityToDelete.scopeId)
+          }.map(areAllSuccessful))
+
+          _ <- OptionT(apiKeyDataScopesToDelete.traverse { entityToDelete =>
+            apiKeyDataScopesDb
+              .delete(entityToDelete.apiKeyDataId, entityToDelete.scopeId)
+          }.map(areAllSuccessful))
+
           _ <- OptionT(apiKeyDataDb.delete(userId, publicKeyIdToDelete).map(booleanToOption))
           _ <- OptionT(apiKeyDb.delete(apiKeyData.apiKeyId).map(booleanToOption))
         } yield ()).value
       }.map(_.flatten)
 
-      apiKeyData = apiKeyDataToDeleteOpt.map(ApiKeyData.from(_, List.empty))
-
-    } yield deletionResult.flatMap(_ => apiKeyData)
+      result <- deletionResult
+        .traverse(_ => buildResult(apiKeyDataToDeleteOpt, apiKeyDataScopesToDelete))
+        .map(_.flatten)
+    } yield result
   }.transact(transactor)
 
   private def booleanToOption(boolean: Boolean): Option[Boolean] =
     if (boolean) Some(boolean)
     else None
 
-  override def getAllUserIds: IO[List[String]] =
-    apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
+  private def areAllSuccessful(list: List[Boolean]): Option[Boolean] = booleanToOption(list.forall(_ == true))
+
+  private def buildResult(
+      apiKeyDataToDeleteOpt: Option[ApiKeyDataEntity.Read],
+      apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
+  ): doobie.ConnectionIO[Option[ApiKeyData]] =
+    for {
+      scopes <- scopeDb.getByIds(apiKeyDataScopesToDelete.map(_.scopeId)).compile.toList
+      apiKeyData = apiKeyDataToDeleteOpt.map(ApiKeyData.from(_, scopes))
+    } yield apiKeyData
 
 }
