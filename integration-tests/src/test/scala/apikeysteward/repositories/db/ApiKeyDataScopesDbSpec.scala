@@ -397,13 +397,27 @@ class ApiKeyDataScopesDbSpec
 
     val scopeReadEntityWrite = List(scopeRead_1).map(ScopeEntity.Write)
 
+    def buildApiKeyDataScopesDeletedEntityRead(
+        id: Long,
+        apiKeyDataId: Long,
+        scopeId: Long
+    ): ApiKeyDataScopesDeletedEntity.Read =
+      ApiKeyDataScopesDeletedEntity.Read(
+        id = id,
+        deletedAt = now,
+        apiKeyDataId = apiKeyDataId,
+        scopeId = scopeId,
+        createdAt = now,
+        updatedAt = now
+      )
+
     "there are no entities in the junction table" should {
 
       val apiKeyDataId = 101L
       val scopeId = 201L
 
-      "return false" in {
-        apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId).transact(transactor).asserting(_ shouldBe false)
+      "return empty Option" in {
+        apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId).transact(transactor).asserting(_ shouldBe None)
       }
 
       "NOT make any insertions into table with deleted rows" in {
@@ -418,7 +432,7 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with different apiKeyDataId" should {
 
-      "return false" in {
+      "return empty Option" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
@@ -427,7 +441,7 @@ class ApiKeyDataScopesDbSpec
           res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe false)
+        result.asserting(_ shouldBe None)
       }
 
       "NOT make any insertions into table with deleted rows" in {
@@ -447,7 +461,7 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with different scopeId" should {
 
-      "return false" in {
+      "return empty Option" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
@@ -456,7 +470,7 @@ class ApiKeyDataScopesDbSpec
           res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe false)
+        result.asserting(_ shouldBe None)
       }
 
       "NOT make any insertions into table with deleted rows" in {
@@ -476,16 +490,19 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with the same both apiKeyDataId and scopeId" should {
 
-      "return true" in {
+      "return copied entity" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
 
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
           res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
-        } yield res).transact(transactor)
+        } yield (apiKeyDataId, scopeId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (apiKeyDataId, scopeId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+        }
       }
 
       "insert the same entity into table with deleted entities" in {
@@ -501,21 +518,14 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res.size shouldBe 1
-          res.head shouldBe ApiKeyDataScopesDeletedEntity.Read(
-            id = res.head.id,
-            deletedAt = now,
-            apiKeyDataId = apiKeyDataId,
-            scopeId = scopeId,
-            createdAt = now,
-            updatedAt = now
-          )
+          res.head shouldBe buildApiKeyDataScopesDeletedEntityRead(res.head.id, apiKeyDataId, scopeId)
         }
       }
     }
 
     "there is an entity in both the junction table and the deleted table with the same both apiKeyDataId and scopeId" should {
 
-      "return true" in {
+      "return copied entity" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
@@ -523,9 +533,12 @@ class ApiKeyDataScopesDbSpec
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
           _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
           res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
-        } yield res).transact(transactor)
+        } yield (apiKeyDataId, scopeId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (apiKeyDataId, scopeId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+        }
       }
 
       "insert another, same entity into table with deleted entities" in {
@@ -543,16 +556,10 @@ class ApiKeyDataScopesDbSpec
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res.size shouldBe 2
 
-          val expectedEntity = ApiKeyDataScopesDeletedEntity.Read(
-            id = res.head.id,
-            deletedAt = now,
-            apiKeyDataId = apiKeyDataId,
-            scopeId = scopeId,
-            createdAt = now,
-            updatedAt = now
-          )
+          val expectedEntity_1 = buildApiKeyDataScopesDeletedEntityRead(res.head.id, apiKeyDataId, scopeId)
+          val expectedEntity_2 = buildApiKeyDataScopesDeletedEntityRead(res(1).id, apiKeyDataId, scopeId)
 
-          res should contain theSameElementsAs List(expectedEntity, expectedEntity.copy(id = res(1).id))
+          res should contain theSameElementsAs List(expectedEntity_1, expectedEntity_2)
         }
       }
     }
@@ -567,8 +574,8 @@ class ApiKeyDataScopesDbSpec
       val apiKeyDataId = 101L
       val scopeId = 201L
 
-      "return false" in {
-        apiKeyDataScopesDb.delete(apiKeyDataId, scopeId).transact(transactor).asserting(_ shouldBe false)
+      "return empty Option" in {
+        apiKeyDataScopesDb.delete(apiKeyDataId, scopeId).transact(transactor).asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -583,7 +590,7 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with different apiKeyDataId" should {
 
-      "return false" in {
+      "return empty Option" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
@@ -592,7 +599,7 @@ class ApiKeyDataScopesDbSpec
           res <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe false)
+        result.asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -621,7 +628,7 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with different scopeId" should {
 
-      "return false" in {
+      "return empty Option" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
@@ -630,7 +637,7 @@ class ApiKeyDataScopesDbSpec
           res <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe false)
+        result.asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -659,16 +666,19 @@ class ApiKeyDataScopesDbSpec
 
     "there is an entity in the junction table with the same both apiKeyDataId and scopeId" should {
 
-      "return true" in {
+      "return deleted entity" in {
         val result = (for {
           inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
           _ <- apiKeyDataScopesDb.insertMany(inputEntities)
 
           (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
           res <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
-        } yield res).transact(transactor)
+        } yield (apiKeyDataId, scopeId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (apiKeyDataId, scopeId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+        }
       }
 
       "delete this entity from the junction table" in {
@@ -690,7 +700,7 @@ class ApiKeyDataScopesDbSpec
 
       val scopeReadEntitiesWrite = List(scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
 
-      "return true" in {
+      "return deleted entity" in {
         val result = (for {
           inputEntities_1 <- insertPrerequisiteData(
             apiKeyEntityWrite_1,
@@ -704,9 +714,12 @@ class ApiKeyDataScopesDbSpec
 
           (apiKeyDataId, scopeId) = (inputEntities_2.head.apiKeyDataId, inputEntities_2.head.scopeId)
           res <- apiKeyDataScopesDb.delete(apiKeyDataId, scopeId)
-        } yield res).transact(transactor)
+        } yield (apiKeyDataId, scopeId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (apiKeyDataId, scopeId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+        }
       }
 
       "delete this entity from the junction table and leave others intact" in {

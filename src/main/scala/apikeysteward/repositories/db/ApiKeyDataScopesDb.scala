@@ -20,11 +20,20 @@ class ApiKeyDataScopesDb()(implicit clock: Clock) {
   def getByApiKeyDataId(apiKeyDataId: Long): Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] =
     Queries.getByApiKeyDataId(apiKeyDataId).stream
 
-  def copyIntoDeletedTable(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Boolean] =
-    Queries.copyIntoDeletedTable(apiKeyDataId, scopeId, Instant.now(clock)).run.map(_ >= 1)
+  def copyIntoDeletedTable(
+      apiKeyDataId: Long,
+      scopeId: Long
+  ): doobie.ConnectionIO[Option[ApiKeyDataScopesEntity.Read]] =
+    for {
+      result <- Queries.getBy(apiKeyDataId, scopeId).option
+      n <- Queries.copyIntoDeletedTable(apiKeyDataId, scopeId, Instant.now(clock)).run
+    } yield if (n > 0) result else None
 
-  def delete(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Boolean] =
-    Queries.delete(apiKeyDataId, scopeId).run.map(_ >= 1)
+  def delete(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Option[ApiKeyDataScopesEntity.Read]] =
+    for {
+      result <- Queries.getBy(apiKeyDataId, scopeId).option
+      n <- Queries.delete(apiKeyDataId, scopeId).run
+    } yield if (n > 0) result else None
 
   private object Queries {
 
@@ -42,6 +51,16 @@ class ApiKeyDataScopesDb()(implicit clock: Clock) {
            |  updated_at
            |FROM api_key_data_scopes
            |WHERE api_key_data_id = $apiKeyDataId
+           |""".stripMargin.query[ApiKeyDataScopesEntity.Read]
+
+    def getBy(apiKeyDataId: Long, scopeId: Long): doobie.Query0[ApiKeyDataScopesEntity.Read] =
+      sql"""SELECT
+           |  api_key_data_id,
+           |  scope_id,
+           |  created_at,
+           |  updated_at
+           |FROM api_key_data_scopes
+           |WHERE api_key_data_id = $apiKeyDataId AND scope_id = $scopeId
            |""".stripMargin.query[ApiKeyDataScopesEntity.Read]
 
     def copyIntoDeletedTable(apiKeyDataId: Long, scopeId: Long, now: Instant): doobie.Update0 =
