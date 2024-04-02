@@ -33,9 +33,6 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
 
   protected val transactor: Transactor[IO] = HikariTransactor[IO](dataSource, ec)
 
-  protected val resetDataQuery: ConnectionIO[?]
-  protected val resetDatabaseQuery: ConnectionIO[?] = ().pure[ConnectionIO]
-
   override def beforeAll(): Unit =
     (
       for {
@@ -44,8 +41,12 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
       } yield ()
     ).unsafeRunSync
 
+  protected val resetDataQuery: ConnectionIO[?]
+
   override def beforeEach(): Unit =
     resetDataQuery.transact(transactor).unsafeRunSync()
+
+  protected val resetDatabaseQuery: ConnectionIO[?] = ().pure[ConnectionIO]
 
   private def resetDatabase: IO[Unit] =
     resetDatabaseQuery.transact(transactor).void >> cleanAndMigrateDatabase.void

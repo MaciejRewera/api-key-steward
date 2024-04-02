@@ -1,7 +1,12 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{
+  ApiKeyDataNotFound,
+  CannotCopyApiKeyDataIntoDeletedTable,
+  CannotDeleteApiKeyDataError
+}
+import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.data.{EitherT, OptionT}
@@ -69,53 +74,78 @@ class DbApiKeyRepository(
   override def getAllUserIds: IO[List[String]] =
     apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
 
-  override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Option[ApiKeyData]] = {
+  override def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] = {
     for {
-      apiKeyDataToDeleteOpt <- apiKeyDataDb.getBy(userId, publicKeyIdToDelete)
+      apiKeyDataToDeleteE <- apiKeyDataDb
+        .getBy(userId, publicKeyIdToDelete)
+        .map(_.toRight(ApiKeyDataNotFound(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
 
-      apiKeyDataScopesToDelete <- apiKeyDataToDeleteOpt
-        .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id))
-        .compile
-        .toList
-        .map(_.flatten)
+      apiKeyDataScopesToDeleteE <- apiKeyDataToDeleteE
+        .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id).compile.toList)
 
-      deletionResult <- apiKeyDataToDeleteOpt.traverse { apiKeyData =>
-        (for {
-          _ <- OptionT(apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete).map(booleanToOption))
-          _ <- OptionT(apiKeyDataScopesToDelete.traverse { entityToDelete =>
-            apiKeyDataScopesDb
-              .copyIntoDeletedTable(entityToDelete.apiKeyDataId, entityToDelete.scopeId)
-          }.map(areAllSuccessful))
+      apiKeyDataToDeleteCombinedE = for {
+        apiKeyDataToDelete <- apiKeyDataToDeleteE
+        apiKeyDataScopesToDelete <- apiKeyDataScopesToDeleteE
+      } yield (apiKeyDataToDelete, apiKeyDataScopesToDelete)
 
-          _ <- OptionT(apiKeyDataScopesToDelete.traverse { entityToDelete =>
-            apiKeyDataScopesDb
-              .delete(entityToDelete.apiKeyDataId, entityToDelete.scopeId)
-          }.map(areAllSuccessful))
+      deletionResult <- apiKeyDataToDeleteCombinedE.flatTraverse {
+        case (apiKeyDataToDelete, apiKeyDataScopesToDelete) =>
+          delete(userId, publicKeyIdToDelete, apiKeyDataToDelete, apiKeyDataScopesToDelete)
+      }
 
-          _ <- OptionT(apiKeyDataDb.delete(userId, publicKeyIdToDelete).map(booleanToOption))
-          _ <- OptionT(apiKeyDb.delete(apiKeyData.apiKeyId).map(booleanToOption))
-        } yield ()).value
-      }.map(_.flatten)
-
-      result <- deletionResult
-        .traverse(_ => buildResult(apiKeyDataToDeleteOpt, apiKeyDataScopesToDelete))
-        .map(_.flatten)
+      result <- apiKeyDataToDeleteCombinedE.flatTraverse { case (apiKeyDataToDelete, apiKeyDataScopesToDelete) =>
+        deletionResult.traverse(_ => buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete))
+      }
     } yield result
   }.transact(transactor)
 
-  private def booleanToOption(boolean: Boolean): Option[Boolean] =
-    if (boolean) Some(boolean)
-    else None
+  private def delete(
+      userId: String,
+      publicKeyIdToDelete: UUID,
+      apiKeyDataToDelete: ApiKeyDataEntity.Read,
+      apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
+  ): doobie.ConnectionIO[Either[ApiKeyDeletionError, Unit]] =
+    (for {
+      _ <- EitherT(
+        apiKeyDataDb
+          .copyIntoDeletedTable(userId, publicKeyIdToDelete)
+          .map(_.toRight[ApiKeyDeletionError](CannotCopyApiKeyDataIntoDeletedTable(userId, publicKeyIdToDelete)))
+      )
 
-  private def areAllSuccessful(list: List[Boolean]): Option[Boolean] = booleanToOption(list.forall(_ == true))
+      _ <- EitherT(
+        apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
+          apiKeyDataScopesDb.copyIntoDeletedTable(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
+        }.map(_.sequence)
+          .map(_.toRight[ApiKeyDeletionError](CannotCopyApiKeyDataIntoDeletedTable(userId, publicKeyIdToDelete)))
+      )
+
+      _ <- EitherT(
+        apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
+          apiKeyDataScopesDb.delete(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
+        }.map(_.sequence)
+          .map(_.toRight[ApiKeyDeletionError](CannotDeleteApiKeyDataError(userId, publicKeyIdToDelete)))
+      )
+
+      _ <- EitherT(
+        apiKeyDataDb
+          .delete(userId, publicKeyIdToDelete)
+          .map(_.toRight[ApiKeyDeletionError](CannotDeleteApiKeyDataError(userId, publicKeyIdToDelete)))
+      )
+
+      _ <- EitherT(
+        apiKeyDb
+          .delete(apiKeyDataToDelete.apiKeyId)
+          .map(_.toRight[ApiKeyDeletionError](CannotDeleteApiKeyDataError(userId, publicKeyIdToDelete)))
+      )
+    } yield ()).value
 
   private def buildResult(
-      apiKeyDataToDeleteOpt: Option[ApiKeyDataEntity.Read],
+      apiKeyDataToDelete: ApiKeyDataEntity.Read,
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
-  ): doobie.ConnectionIO[Option[ApiKeyData]] =
+  ): doobie.ConnectionIO[ApiKeyData] =
     for {
       scopes <- scopeDb.getByIds(apiKeyDataScopesToDelete.map(_.scopeId)).compile.toList
-      apiKeyData = apiKeyDataToDeleteOpt.map(ApiKeyData.from(_, scopes))
+      apiKeyData = ApiKeyData.from(apiKeyDataToDelete, scopes)
     } yield apiKeyData
 
 }
