@@ -1,5 +1,6 @@
 package apikeysteward.routes
 
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.definitions.{AdminEndpoints, ServerConfiguration}
 import apikeysteward.routes.model.admin.{CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
@@ -53,8 +54,11 @@ class AdminRoutes(adminService: AdminService[String]) {
       .toRoutes(
         AdminEndpoints.deleteApiKeyEndpoint.serverLogic[IO] { case (userId, publicKeyId) =>
           adminService.deleteApiKey(userId, publicKeyId).map {
-            case Some(deletedApiKeyData) => (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
-            case None                    => ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
+            case Right(deletedApiKeyData) =>
+              (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
+
+            case Left(_: ApiKeyDataNotFound) =>
+              ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
           }
         }
       )

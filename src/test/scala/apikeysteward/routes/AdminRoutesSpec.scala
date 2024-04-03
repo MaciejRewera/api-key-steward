@@ -2,6 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotCopyApiKeyDataIntoDeletedTable, CannotDeleteApiKeyDataError, GenericDeletionError}
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService
@@ -284,7 +285,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
     val request = Request[IO](method = Method.DELETE, uri = uri)
 
     "call AdminService" in {
-      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(None)
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         _ <- adminRoutes.run(request)
@@ -293,7 +294,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
     }
 
     "return Ok and ApiKeyData returned by AdminService" in {
-      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         response <- adminRoutes.run(request)
@@ -302,8 +303,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       } yield ()
     }
 
-    "return Not Found when AdminService returns empty Option" in {
-      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(None)
+    "return Not Found when AdminService returns Left containing ApiKeyDataNotFound" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+        Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+      )
 
       for {
         response <- adminRoutes.run(request)
@@ -312,6 +315,24 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
           .as[ErrorInfo]
           .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)))
       } yield ()
+    }
+
+    Seq(
+      GenericDeletionError,
+      CannotCopyApiKeyDataIntoDeletedTable(userId_1, publicKeyId_1),
+      CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)
+    ).foreach { apiKeyDeletionError =>
+      s"return Internal Server Error when AdminService returns Left containing ${apiKeyDeletionError.getClass.getSimpleName}" in {
+        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(apiKeyDeletionError))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
     }
 
     "return Bad Request when provided with publicKeyId which is not an UUID" in {

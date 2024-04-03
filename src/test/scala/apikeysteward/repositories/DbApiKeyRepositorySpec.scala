@@ -2,7 +2,11 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotCopyApiKeyDataIntoDeletedTable, CannotDeleteApiKeyDataError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{
+  ApiKeyDataNotFound,
+  CannotCopyApiKeyDataIntoDeletedTable,
+  CannotDeleteApiKeyDataError
+}
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
