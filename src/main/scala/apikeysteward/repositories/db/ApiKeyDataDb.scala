@@ -1,14 +1,10 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{
-  CannotCopyApiKeyDataIntoDeletedTable,
-  CannotDeleteApiKeyDataError
-}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyIdAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
@@ -17,7 +13,6 @@ import fs2.Stream
 import java.sql.SQLException
 import java.time.{Clock, Instant}
 import java.util.UUID
-import scala.collection.mutable
 
 class ApiKeyDataDb()(implicit clock: Clock) {
 

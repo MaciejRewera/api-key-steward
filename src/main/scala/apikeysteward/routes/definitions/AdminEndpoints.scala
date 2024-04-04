@@ -67,6 +67,10 @@ object AdminEndpoints {
           oneOfVariant(
             StatusCode.NotFound,
             jsonBody[ErrorInfo].description(ErrorMessages.DeleteApiKeyNotFound)
+          ),
+          oneOfVariant(
+            StatusCode.InternalServerError,
+            jsonBody[ErrorInfo]
           )
         )
       )

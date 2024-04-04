@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotCopyApiKeyDataIntoDeletedTable, CannotDeleteApiKeyDataError, GenericDeletionError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotDeleteApiKeyDataError}
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService
@@ -317,22 +317,18 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       } yield ()
     }
 
-    Seq(
-      GenericDeletionError,
-      CannotCopyApiKeyDataIntoDeletedTable(userId_1, publicKeyId_1),
-      CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)
-    ).foreach { apiKeyDeletionError =>
-      s"return Internal Server Error when AdminService returns Left containing ${apiKeyDeletionError.getClass.getSimpleName}" in {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(apiKeyDeletionError))
+    "return Internal Server Error when AdminService returns Left containing CannotDeleteApiKeyDataError" in {
+      adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+        Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1))
+      )
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
+      for {
+        response <- adminRoutes.run(request)
+        _ = response.status shouldBe Status.InternalServerError
+        _ <- response
+          .as[ErrorInfo]
+          .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+      } yield ()
     }
 
     "return Bad Request when provided with publicKeyId which is not an UUID" in {
