@@ -11,6 +11,8 @@ import cats.implicits._
 import doobie.Transactor
 import doobie.implicits._
 import fs2.Stream
+import org.typelevel.log4cats.StructuredLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.util.UUID
 
@@ -21,6 +23,8 @@ class DbApiKeyRepository(
     apiKeyDataScopesDb: ApiKeyDataScopesDb
 )(transactor: Transactor[IO])
     extends ApiKeyRepository[String] {
+
+  private val logger: StructuredLogger[doobie.ConnectionIO] = Slf4jLogger.getLogger
 
   override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
@@ -99,21 +103,33 @@ class DbApiKeyRepository(
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
   ): doobie.ConnectionIO[Either[ApiKeyDeletionError, ApiKeyData]] =
     (for {
+      _ <- logInfo(s"Copying ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table...")
       _ <- OptionT(apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete))
+      _ <- logInfo(s"Copied ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table.")
 
+      _ <- logInfo(s"Copying ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table...")
       _ <- OptionT(apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
         apiKeyDataScopesDb.copyIntoDeletedTable(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
       }.map(_.sequence))
+      _ <- logInfo(s"Copied ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table.")
 
+      _ <- logInfo(s"Deleting ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
       _ <- OptionT(apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
         apiKeyDataScopesDb.delete(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
       }.map(_.sequence))
+      _ <- logInfo(s"Deleted ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
 
+      _ <- logInfo(s"Deleting ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
       _ <- OptionT(apiKeyDataDb.delete(userId, publicKeyIdToDelete))
+      _ <- logInfo(s"Deleted ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
 
+      _ <- logInfo(s"Deleting ApiKey for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
       _ <- OptionT(apiKeyDb.delete(apiKeyDataToDelete.apiKeyId))
+      _ <- logInfo(s"Deleted ApiKey for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
 
+      _ <- logInfo(s"Building deleted ApiKeyData to return for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
       res <- OptionT(buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete).map(Option(_)))
+      _ <- logInfo(s"Built deleted ApiKeyData to return for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
     } yield res).value
       .map(_.toRight(GenericApiKeyDeletionError(userId, publicKeyIdToDelete)))
 
@@ -126,4 +142,5 @@ class DbApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataToDelete, scopes)
     } yield apiKeyData
 
+  private def logInfo(message: String): OptionT[doobie.ConnectionIO, Unit] = OptionT(logger.info(message).map(Option(_)))
 }
