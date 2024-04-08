@@ -62,17 +62,17 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
 
-  def copyIntoDeletedTable(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Boolean] =
-    Queries
-      .copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock))
-      .run
-      .map(_ >= 1)
+  def copyIntoDeletedTable(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    for {
+      result <- getBy(userId, publicKeyId)
+      n <- Queries.copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock)).run
+    } yield if (n > 0) result else None
 
-  def delete(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Boolean] =
-    Queries
-      .delete(userId, publicKeyId.toString)
-      .run
-      .map(_ >= 1)
+  def delete(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    for {
+      result <- getBy(userId, publicKeyId)
+      n <- Queries.delete(userId, publicKeyId.toString).run
+    } yield if (n > 0) result else None
 
   private object Queries {
 

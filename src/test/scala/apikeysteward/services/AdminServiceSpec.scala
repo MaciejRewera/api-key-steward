@@ -4,6 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
@@ -42,7 +43,8 @@ class AdminServiceSpec
   private val createApiKeyAdminRequest = CreateApiKeyAdminRequest(
     name = name,
     description = description,
-    ttl = ttlSeconds
+    ttl = ttlSeconds,
+    scopes = List(scopeRead_1, scopeWrite_1)
   )
 
   private val testException = new RuntimeException("Test Exception")
@@ -157,7 +159,7 @@ class AdminServiceSpec
   "AdminService on deleteApiKey" should {
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+      apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         _ <- adminService.deleteApiKey(userId_1, publicKeyId_1)
@@ -165,10 +167,23 @@ class AdminServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+    "return the value returned by ApiKeyRepository" when {
 
-      adminService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      "ApiKeyRepository returns Right" in {
+        apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+
+        adminService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+      }
+
+      "ApiKeyRepository returns Left" in {
+        apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
+          Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+        )
+
+        adminService
+          .deleteApiKey(userId_1, publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.base.FixedClock
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
@@ -10,16 +11,19 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.time.{Clock, Instant, ZoneOffset}
+import java.time.Instant
 
-class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with DatabaseIntegrationSpec with EitherValues {
+class ApiKeyDbSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with FixedClock
+    with Matchers
+    with DatabaseIntegrationSpec
+    with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE api_key, api_key_data".update.run
+    _ <- sql"TRUNCATE api_key CASCADE".update.run
   } yield ()
-
-  private val now = Instant.parse("2024-02-15T12:34:56Z")
-  implicit private def fixedClock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private val apiKeyDb = new ApiKeyDb
 
@@ -176,10 +180,8 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
 
     "there are no API Keys in the DB" should {
 
-      "return false" in {
-        val result = apiKeyDb.delete(1L).transact(transactor)
-
-        result.asserting(_ shouldBe false)
+      "return empty Option" in {
+        apiKeyDb.delete(1L).transact(transactor).asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -194,7 +196,7 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
 
     "there is an API Key in the DB with different ID" should {
 
-      "return false" in {
+      "return empty Option" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
@@ -202,7 +204,7 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
           res <- apiKeyDb.delete(existingId + 1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe false)
+        result.asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -225,15 +227,18 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
 
     "there is an API Key in the DB with the given ID" should {
 
-      "return true" in {
+      "return deleted entity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
 
           res <- apiKeyDb.delete(existingId)
-        } yield res).transact(transactor)
+        } yield (existingId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (existingId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyEntity.Read(existingId, now, now)
+        }
       }
 
       "delete this API Key from the DB" in {
@@ -251,16 +256,19 @@ class ApiKeyDbSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Dat
 
     "there are several API Keys in the DB but only one with the given publicKeyId" should {
 
-      "return true" in {
+      "return deleted entity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
           existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
 
           res <- apiKeyDb.delete(existingId)
-        } yield res).transact(transactor)
+        } yield (existingId, res)).transact(transactor)
 
-        result.asserting(_ shouldBe true)
+        result.asserting { case (existingId, res) =>
+          res shouldBe defined
+          res.get shouldBe ApiKeyEntity.Read(existingId, now, now)
+        }
       }
 
       "delete this API Key from the DB and leave others intact" in {

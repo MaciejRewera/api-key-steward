@@ -3,8 +3,8 @@ package apikeysteward.services
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
+import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
 import apikeysteward.utils.Retry
 import cats.effect.IO
@@ -38,7 +38,7 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
     res = insertionResult.map(newApiKey -> _)
   } yield res
 
-  def deleteApiKey(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
+  def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
     apiKeyRepository.delete(userId, publicKeyId)
 
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
