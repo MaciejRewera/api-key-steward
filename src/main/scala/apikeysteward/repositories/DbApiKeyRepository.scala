@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotDeleteApiKeyDataError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
@@ -115,7 +115,7 @@ class DbApiKeyRepository(
 
       res <- OptionT(buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete).map(Option(_)))
     } yield res).value
-      .map(_.toRight(CannotDeleteApiKeyDataError(userId, publicKeyIdToDelete)))
+      .map(_.toRight(GenericApiKeyDeletionError(userId, publicKeyIdToDelete)))
 
   private def buildResult(
       apiKeyDataToDelete: ApiKeyDataEntity.Read,

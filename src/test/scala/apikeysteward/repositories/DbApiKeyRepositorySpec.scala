@@ -2,7 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotDeleteApiKeyDataError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -786,7 +786,7 @@ class DbApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing CannotDeleteApiKeyDataError" in {
+      "return Left containing GenericApiKeyDeletionError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -795,7 +795,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
       }
     }
 
@@ -822,7 +822,7 @@ class DbApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing CannotDeleteApiKeyDataError" in {
+      "return Left containing GenericApiKeyDeletionError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -835,7 +835,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
       }
     }
 
@@ -865,7 +865,7 @@ class DbApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing CannotDeleteApiKeyDataError" in {
+      "return Left containing GenericApiKeyDeletionError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -882,7 +882,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
       }
     }
 
@@ -912,7 +912,7 @@ class DbApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing CannotDeleteApiKeyDataError" in {
+      "return Left containing GenericApiKeyDeletionError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -930,7 +930,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
       }
     }
 
@@ -960,7 +960,7 @@ class DbApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing CannotDeleteApiKeyDataError" in {
+      "return Left containing GenericApiKeyDeletionError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -979,7 +979,7 @@ class DbApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
       }
     }
   }

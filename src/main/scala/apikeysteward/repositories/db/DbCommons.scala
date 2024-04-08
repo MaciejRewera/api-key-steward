@@ -23,9 +23,9 @@ object DbCommons {
           message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
         )
 
-    case class CannotDeleteApiKeyDataError(userId: String, publicKeyId: UUID)
+    case class GenericApiKeyDeletionError(userId: String, publicKeyId: UUID)
         extends ApiKeyDeletionError(
-          message = s"Could not delete ApiKeyData with userId = $userId and publicKeyId = $publicKeyId"
+          message = s"Could not delete API Key with userId = $userId and publicKeyId = $publicKeyId"
         )
   }
 

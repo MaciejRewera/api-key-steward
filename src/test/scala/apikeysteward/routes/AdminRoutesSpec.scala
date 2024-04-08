@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, CannotDeleteApiKeyDataError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
 import apikeysteward.services.AdminService
@@ -317,9 +317,9 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
       } yield ()
     }
 
-    "return Internal Server Error when AdminService returns Left containing CannotDeleteApiKeyDataError" in {
+    "return Internal Server Error when AdminService returns Left containing GenericApiKeyDeletionError" in {
       adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
-        Left(CannotDeleteApiKeyDataError(userId_1, publicKeyId_1))
+        Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1))
       )
 
       for {
