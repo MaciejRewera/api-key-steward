@@ -8,6 +8,8 @@ import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInser
 import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
 import apikeysteward.utils.Retry
 import cats.effect.IO
+import org.typelevel.log4cats.StructuredLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.Clock
 import java.util.UUID
@@ -15,6 +17,8 @@ import java.util.UUID
 class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: ApiKeyRepository[K])(
     implicit clock: Clock
 ) {
+
+  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyAdminRequest): IO[(K, ApiKeyData)] = {
     def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
@@ -29,11 +33,20 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
       userId: String,
       createApiKeyRequest: CreateApiKeyAdminRequest
   ): IO[Either[ApiKeyInsertionError, (K, ApiKeyData)]] = for {
-    newApiKey <- apiKeyGenerator.generateApiKey
-    publicKeyId <- IO(UUID.randomUUID())
+
+    _ <- logger.info("Generating API Key...")
+    newApiKey <- apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key."))
+
+    _ <- logger.info("Generating public key ID...")
+    publicKeyId <- IO(UUID.randomUUID()).flatTap(_ => logger.info("Generated public key ID."))
+
     apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
-    insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData)
+    _ <- logger.info("Inserting API Key into database...")
+    insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
+      case Right(_) => logger.info("Inserted API Key into database.")
+      case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
+    }
 
     res = insertionResult.map(newApiKey -> _)
   } yield res

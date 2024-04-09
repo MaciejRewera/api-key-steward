@@ -28,10 +28,20 @@ class DbApiKeyRepository(
 
   override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
+      _ <- logInfoE("Inserting API Key...")
       apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
+        .leftSemiflatTap(e => logger.warn(s"Could not insert API Key because: ${e.message}"))
+        .flatTap(_ => logInfoE("Inserted API Key."))
+
       apiKeyId = apiKeyEntityRead.id
+
+      _ <- logInfoE(s"Inserting API Key Data for publicKeyId: [${apiKeyData.publicKeyId}]...")
       apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyId, apiKeyData)))
+        .flatTap(_ => logInfoE(s"Inserted API Key Data for publicKeyId: [${apiKeyData.publicKeyId}]."))
+
+      _ <- logInfoE(s"Inserting scopes for API Key with publicKeyId: [${apiKeyData.publicKeyId}]...")
       insertedScopes <- EitherT(insertScopes(apiKeyData.scopes.map(ScopeEntity.Write), apiKeyDataEntityRead))
+        .flatTap(_ => logInfoE(s"Inserted scopes for API Key with publicKeyId: [${apiKeyData.publicKeyId}]."))
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, insertedScopes)
     } yield apiKeyData).value.transact(transactor)
@@ -103,33 +113,47 @@ class DbApiKeyRepository(
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
   ): doobie.ConnectionIO[Either[ApiKeyDeletionError, ApiKeyData]] =
     (for {
-      _ <- logInfo(s"Copying ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table...")
+      _ <- logInfo(
+        s"Copying ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table..."
+      )
       _ <- OptionT(apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete))
-      _ <- logInfo(s"Copied ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table.")
+        .flatTap(_ =>
+          logInfo(s"Copied ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table.")
+        )
 
-      _ <- logInfo(s"Copying ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table...")
+      _ <- logInfo(
+        s"Copying ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table..."
+      )
       _ <- OptionT(apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
         apiKeyDataScopesDb.copyIntoDeletedTable(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
       }.map(_.sequence))
-      _ <- logInfo(s"Copied ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete into deleted table.")
+        .flatTap(_ =>
+          logInfo(
+            s"Copied ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table."
+          )
+        )
 
-      _ <- logInfo(s"Deleting ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
+      _ <- logInfo(s"Deleting ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
       _ <- OptionT(apiKeyDataScopesToDelete.traverse { scopeLinkToDelete =>
         apiKeyDataScopesDb.delete(scopeLinkToDelete.apiKeyDataId, scopeLinkToDelete.scopeId)
       }.map(_.sequence))
-      _ <- logInfo(s"Deleted ApiKeyDataScopes for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
+        .flatTap(_ => logInfo(s"Deleted ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]."))
 
-      _ <- logInfo(s"Deleting ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
+      _ <- logInfo(s"Deleting ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
       _ <- OptionT(apiKeyDataDb.delete(userId, publicKeyIdToDelete))
-      _ <- logInfo(s"Deleted ApiKeyData for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
+        .flatTap(_ => logInfo(s"Deleted ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]."))
 
-      _ <- logInfo(s"Deleting ApiKey for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
+      _ <- logInfo(s"Deleting ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
       _ <- OptionT(apiKeyDb.delete(apiKeyDataToDelete.apiKeyId))
-      _ <- logInfo(s"Deleted ApiKey for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
+        .flatTap(_ => logInfo(s"Deleted ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]."))
 
-      _ <- logInfo(s"Building deleted ApiKeyData to return for userId: $userId, publicKeyId: $publicKeyIdToDelete...")
+      _ <- logInfo(
+        s"Building deleted ApiKeyData to return for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]..."
+      )
       res <- OptionT(buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete).map(Option(_)))
-      _ <- logInfo(s"Built deleted ApiKeyData to return for userId: $userId, publicKeyId: $publicKeyIdToDelete.")
+        .flatTap(_ =>
+          logInfo(s"Built deleted ApiKeyData to return for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
+        )
     } yield res).value
       .map(_.toRight(GenericApiKeyDeletionError(userId, publicKeyIdToDelete)))
 
@@ -142,5 +166,9 @@ class DbApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataToDelete, scopes)
     } yield apiKeyData
 
-  private def logInfo(message: String): OptionT[doobie.ConnectionIO, Unit] = OptionT(logger.info(message).map(Option(_)))
+  private def logInfo(message: String): OptionT[doobie.ConnectionIO, Unit] =
+    OptionT(logger.info(message).map(Option(_)))
+
+  private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] =
+    EitherT(logger.info(message).map(Right(_)))
 }
