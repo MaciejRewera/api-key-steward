@@ -64,13 +64,14 @@ object AdminEndpoints {
       .out(jsonBody[DeleteApiKeyAdminResponse])
       .errorOut(
         oneOf[ErrorInfo](
+          oneOfVariantExactMatcher(
+            StatusCode.InternalServerError,
+            jsonBody[ErrorInfo]
+              .description("An unexpected error has occurred.")
+          )(ErrorInfo.internalServerErrorInfo()),
           oneOfVariant(
             StatusCode.NotFound,
             jsonBody[ErrorInfo].description(ErrorMessages.DeleteApiKeyNotFound)
-          ),
-          oneOfVariant(
-            StatusCode.InternalServerError,
-            jsonBody[ErrorInfo]
           )
         )
       )

@@ -73,6 +73,6 @@ class AdminRoutes(adminService: AdminService[String]) {
 
 object AdminRoutes {
   object Messages {
-    val DeleteApiKeyNotFound = AdminEndpoints.ErrorMessages.DeleteApiKeyNotFound
+    val DeleteApiKeyNotFound: String = AdminEndpoints.ErrorMessages.DeleteApiKeyNotFound
   }
 }
