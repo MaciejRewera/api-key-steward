@@ -4,7 +4,7 @@ import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
-import apikeysteward.routes.{AdminRoutes, ValidateApiKeyRoutes}
+import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService}
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -12,6 +12,7 @@ import com.zaxxer.hikari.HikariDataSource
 import doobie.ExecutionContexts
 import doobie.hikari.HikariTransactor
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.middleware.CORS
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import pureconfig.ConfigSource
@@ -65,7 +66,13 @@ object Application extends IOApp.Simple {
         validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
         adminRoutes = new AdminRoutes(adminService).allRoutes
 
-        httpApp = (validateRoutes <+> adminRoutes).orNotFound
+        documentationRoutes = new DocumentationRoutes().allRoutes
+
+        httpApp = CORS.policy
+          .withAllowOriginAll(
+            validateRoutes <+> adminRoutes <+> documentationRoutes
+          )
+          .orNotFound
 
         _ <- EmberServerBuilder
           .default[IO]
