@@ -1,6 +1,8 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.12"
 
+name := "api-key-steward"
+
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val Http4sVersion = "0.23.15"
@@ -27,12 +29,12 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-literal" % circeVersion,
 
   // Tapir
-  "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server" % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe" % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-openapi-docs" % tapirVersion,
   "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml" % "0.3.2",
-  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui" % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-cats" % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-http4s" % "0.19.0-M4",
+  "com.softwaremill.sttp.tapir"   %% "tapir-cats" % tapirVersion,
 
   // Database
   "org.tpolecat" %% "doobie-core" % DoobieVersion,
