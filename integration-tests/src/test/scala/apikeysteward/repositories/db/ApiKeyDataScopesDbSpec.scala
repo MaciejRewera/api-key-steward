@@ -393,7 +393,7 @@ class ApiKeyDataScopesDbSpec
     }
   }
 
-  "ApiKeyDataScopesDb on copyIntoDeletedTable" when {
+  "ApiKeyDataScopesDb on copyIntoDeletedTable(:apiKeyDataId, :scopeId)" when {
 
     val scopeReadEntityWrite = List(scopeRead_1).map(ScopeEntity.Write)
 
@@ -488,7 +488,7 @@ class ApiKeyDataScopesDbSpec
       }
     }
 
-    "there is an entity in the junction table with the same both apiKeyDataId and scopeId" should {
+    "there is an entity in the junction table with provided both apiKeyDataId and scopeId" should {
 
       "return copied entity" in {
         val result = (for {
@@ -523,7 +523,7 @@ class ApiKeyDataScopesDbSpec
       }
     }
 
-    "there is an entity in both the junction table and the deleted table with the same both apiKeyDataId and scopeId" should {
+    "there is an entity in both the junction table and the deleted table with provided both apiKeyDataId and scopeId" should {
 
       "return copied entity" in {
         val result = (for {
@@ -565,7 +565,290 @@ class ApiKeyDataScopesDbSpec
     }
   }
 
-  "ApiKeyDataScopesDb on delete" when {
+  "ApiKeyDataScopesDb on copyIntoDeletedTable(:apiKeyDataId)" when {
+
+    val scopeReadEntityWrite = List(scopeRead_1).map(ScopeEntity.Write)
+
+    def buildApiKeyDataScopesDeletedEntityRead(
+        id: Long,
+        apiKeyDataId: Long,
+        scopeId: Long
+    ): ApiKeyDataScopesDeletedEntity.Read =
+      ApiKeyDataScopesDeletedEntity.Read(
+        id = id,
+        deletedAt = now,
+        apiKeyDataId = apiKeyDataId,
+        scopeId = scopeId,
+        createdAt = now,
+        updatedAt = now
+      )
+
+    "there are no entities in the junction table" should {
+
+      val apiKeyDataId = 101L
+
+      "return empty Stream" in {
+        apiKeyDataScopesDb
+          .copyIntoDeletedTable(apiKeyDataId)
+          .compile
+          .toList
+          .transact(transactor)
+          .asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+
+      "NOT make any insertions into table with deleted rows" in {
+        val result = (for {
+          _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+          res <- Queries.getAllDeleted
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesDeletedEntity.Read])
+      }
+    }
+
+    "there is an entity in the junction table with different apiKeyDataId" should {
+
+      "return empty Stream" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          apiKeyDataId = inputEntities.head.apiKeyDataId + 1
+          res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+
+      "NOT make any insertions into table with deleted rows" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          apiKeyDataId = inputEntities.head.apiKeyDataId + 1
+          _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+          res <- Queries.getAllDeleted
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesDeletedEntity.Read])
+      }
+    }
+
+    "there is a single entity in the junction table with provided apiKeyDataId" when {
+
+      "this entity is NOT present in the table with deleted entities" should {
+
+        "return copied entity" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
+            res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+          } yield (apiKeyDataId, scopeId, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeId, res) =>
+            res.size shouldBe 1
+            res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          }
+        }
+
+        "insert the same entity into table with deleted entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            res <- Queries.getAllDeleted
+          } yield (apiKeyDataId, scopeId, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeId, res) =>
+            res.size shouldBe 1
+            res.head shouldBe buildApiKeyDataScopesDeletedEntityRead(res.head.id, apiKeyDataId, scopeId)
+          }
+        }
+      }
+
+      "this entity is present in the table with deleted entities" should {
+
+        "return copied entity" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
+            res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
+          } yield (apiKeyDataId, scopeId, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeId, res) =>
+            res shouldBe defined
+            res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          }
+        }
+
+        "insert another, same entity into table with deleted entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, scopeId)
+
+            res <- Queries.getAllDeleted
+          } yield (apiKeyDataId, scopeId, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeId, res) =>
+            res.size shouldBe 2
+
+            val expectedEntity_1 = buildApiKeyDataScopesDeletedEntityRead(res.head.id, apiKeyDataId, scopeId)
+            val expectedEntity_2 = buildApiKeyDataScopesDeletedEntityRead(res(1).id, apiKeyDataId, scopeId)
+
+            res should contain theSameElementsAs List(expectedEntity_1, expectedEntity_2)
+          }
+        }
+      }
+    }
+
+    "there are multiple entities in the junction table with provided apiKeyDataId" when {
+
+      val scopeEntitiesWrite = List(scopeRead_1, scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
+
+      "NONE of these entities are present in the table with deleted entities" should {
+
+        "return all copied entities" in {
+          val result = (for {
+            inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
+
+            (apiKeyDataId, scopeIds) = (inputEntities_1.head.apiKeyDataId, inputEntities_1.map(_.scopeId))
+            res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+          } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, res) =>
+            res.size shouldBe 4
+
+            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+          }
+        }
+
+        "insert all these entities into table with deleted entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeIds) = (inputEntities.head.apiKeyDataId, inputEntities.map(_.scopeId))
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            res <- Queries.getAllDeleted
+          } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, res) =>
+            res.size shouldBe 4
+
+            res.map(_.copy(id = 1L)) should contain theSameElementsAs scopeIds.map(scopeId =>
+              buildApiKeyDataScopesDeletedEntityRead(1L, apiKeyDataId, scopeId)
+            )
+          }
+        }
+      }
+
+      "SOME of these entities are present in the table with deleted entities" should {
+
+        "return all copied entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeIds) = (inputEntities.head.apiKeyDataId, inputEntities.map(_.scopeId))
+            copiedScopeId = scopeIds.head
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, copiedScopeId)
+
+            res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+          } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, res) =>
+            res.size shouldBe 4
+
+            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+          }
+        }
+
+        "insert all these entities into table with deleted entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeIds) = (inputEntities.head.apiKeyDataId, inputEntities.map(_.scopeId))
+            copiedScopeId = scopeIds.head
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId, copiedScopeId)
+
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            res <- Queries.getAllDeleted
+          } yield (apiKeyDataId, scopeIds, copiedScopeId, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, copiedScopeId, res) =>
+            res.size shouldBe 5
+
+            res.map(_.copy(id = 1L)) should contain theSameElementsAs (scopeIds :+ copiedScopeId).map(scopeId =>
+              buildApiKeyDataScopesDeletedEntityRead(1L, apiKeyDataId, scopeId)
+            )
+          }
+        }
+      }
+
+      "ALL of these entities are present in the table with deleted entities" should {
+
+        "return all copied entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeIds) = (inputEntities.head.apiKeyDataId, inputEntities.map(_.scopeId))
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            res <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+          } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, res) =>
+            res.size shouldBe 4
+
+            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+          }
+        }
+
+        "insert all these entities into table with deleted entities" in {
+          val result = (for {
+            inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
+            _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+            (apiKeyDataId, scopeIds) = (inputEntities.head.apiKeyDataId, inputEntities.map(_.scopeId))
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            _ <- apiKeyDataScopesDb.copyIntoDeletedTable(apiKeyDataId).compile.toList
+
+            res <- Queries.getAllDeleted
+          } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+          result.asserting { case (apiKeyDataId, scopeIds, res) =>
+            res.size shouldBe 8
+
+            val expectedEntities =
+              scopeIds.map(scopeId => buildApiKeyDataScopesDeletedEntityRead(1L, apiKeyDataId, scopeId))
+
+            res.map(_.copy(id = 1L)) should contain theSameElementsAs (expectedEntities ++ expectedEntities)
+          }
+        }
+      }
+    }
+  }
+
+  "ApiKeyDataScopesDb on delete(:apiKeyDataId, :scopeId)" when {
 
     val scopeReadEntityWrite = List(scopeRead_1).map(ScopeEntity.Write)
 
@@ -664,7 +947,7 @@ class ApiKeyDataScopesDbSpec
       }
     }
 
-    "there is an entity in the junction table with the same both apiKeyDataId and scopeId" should {
+    "there is an entity in the junction table with provided both apiKeyDataId and scopeId" should {
 
       "return deleted entity" in {
         val result = (for {
@@ -696,7 +979,7 @@ class ApiKeyDataScopesDbSpec
       }
     }
 
-    "there are multiple entities in the junction table but only one with the same apiKeyDataId and scopeId" should {
+    "there are multiple entities in the junction table but only one with provided apiKeyDataId and scopeId" should {
 
       val scopeReadEntitiesWrite = List(scopeWrite_1, scopeRead_2, scopeWrite_2).map(ScopeEntity.Write)
 
@@ -742,6 +1025,168 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (inputEntities, res) =>
           res.size shouldBe 3
+
+          res should contain theSameElementsAs inputEntities.map(e =>
+            ApiKeyDataScopesEntity.Read(
+              apiKeyDataId = e.apiKeyDataId,
+              scopeId = e.scopeId,
+              createdAt = now,
+              updatedAt = now
+            )
+          )
+        }
+      }
+    }
+  }
+
+  "ApiKeyDataScopesDb on delete(:apiKeyDataId)" when {
+
+    val scopeReadEntityWrite = List(scopeRead_1).map(ScopeEntity.Write)
+
+    "there are no entities in the junction table" should {
+
+      val apiKeyDataId = 101L
+
+      "return empty Stream" in {
+        apiKeyDataScopesDb
+          .delete(apiKeyDataId)
+          .compile
+          .toList
+          .transact(transactor)
+          .asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+          res <- Queries.getAll
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+    }
+
+    "there is an entity in the junction table with different apiKeyDataId" should {
+
+      "return empty Stream" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          apiKeyDataId = inputEntities.head.apiKeyDataId + 1
+          res <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          apiKeyDataId = inputEntities.head.apiKeyDataId + 1
+          _ <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+
+          res <- Queries.getAll
+        } yield (inputEntities, res)).transact(transactor)
+
+        result.asserting { case (inputEntities, res) =>
+          res.size shouldBe 1
+
+          res.head shouldBe ApiKeyDataScopesEntity.Read(
+            apiKeyDataId = inputEntities.head.apiKeyDataId,
+            scopeId = inputEntities.head.scopeId,
+            createdAt = now,
+            updatedAt = now
+          )
+        }
+      }
+    }
+
+    "there is a single entity in the junction table with provided apiKeyDataId" should {
+
+      "return deleted entity" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          (apiKeyDataId, scopeId) = (inputEntities.head.apiKeyDataId, inputEntities.head.scopeId)
+          res <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+        } yield (apiKeyDataId, scopeId, res)).transact(transactor)
+
+        result.asserting { case (apiKeyDataId, scopeId, res) =>
+          res.size shouldBe 1
+          res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+        }
+      }
+
+      "delete this entity from the junction table" in {
+        val result = (for {
+          inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeReadEntityWrite)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities)
+
+          apiKeyDataId = inputEntities.head.apiKeyDataId
+          _ <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+
+          res <- Queries.getAll
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataScopesEntity.Read])
+      }
+    }
+
+    "there are multiple entities in the junction table and some of them with provided apiKeyDataId" should {
+
+      val scopeEntitiesWrite_1 = List(scopeRead_1, scopeWrite_1).map(ScopeEntity.Write)
+      val scopeEntitiesWrite_2 = List(scopeRead_2, scopeWrite_2, scopeRead_3, scopeWrite_3).map(ScopeEntity.Write)
+
+      "return deleted entities" in {
+        val result = (for {
+          inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite_1)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
+
+          inputEntities_2 <- insertPrerequisiteData(
+            apiKeyEntityWrite_2,
+            apiKeyDataEntityWrite_2,
+            scopeEntitiesWrite_2
+          )
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities_2)
+
+          (apiKeyDataId, scopeIds) = (inputEntities_1.head.apiKeyDataId, inputEntities_1.map(_.scopeId))
+
+          res <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+        } yield (apiKeyDataId, scopeIds, res)).transact(transactor)
+
+        result.asserting { case (apiKeyDataId, scopeIds, res) =>
+          res.size shouldBe 2
+
+          res should contain theSameElementsAs scopeIds.map(scopeId =>
+            ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          )
+        }
+      }
+
+      "delete these entities from the junction table and leave others intact" in {
+        val result = (for {
+          inputEntities_1 <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite_1)
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities_1)
+
+          inputEntities_2 <- insertPrerequisiteData(
+            apiKeyEntityWrite_2,
+            apiKeyDataEntityWrite_2,
+            scopeEntitiesWrite_2
+          )
+          _ <- apiKeyDataScopesDb.insertMany(inputEntities_2)
+
+          apiKeyDataId = inputEntities_1.head.apiKeyDataId
+          _ <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList
+
+          res <- Queries.getAll
+        } yield (inputEntities_2, res)).transact(transactor)
+
+        result.asserting { case (inputEntities, res) =>
+          res.size shouldBe 4
 
           res should contain theSameElementsAs inputEntities.map(e =>
             ApiKeyDataScopesEntity.Read(
