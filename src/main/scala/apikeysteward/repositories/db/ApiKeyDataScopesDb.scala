@@ -29,11 +29,29 @@ class ApiKeyDataScopesDb()(implicit clock: Clock) {
       n <- Queries.copyIntoDeletedTable(apiKeyDataId, scopeId, Instant.now(clock)).run
     } yield if (n > 0) result else None
 
+  def copyIntoDeletedTable(apiKeyDataId: Long): Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] = {
+    val result: doobie.ConnectionIO[List[ApiKeyDataScopesEntity.Read]] = for {
+      res <- getByApiKeyDataId(apiKeyDataId).compile.toList
+      _ <- Queries.copyIntoDeletedTable(apiKeyDataId, Instant.now(clock)).run
+    } yield res
+
+    Stream.evals(result)
+  }
+
   def delete(apiKeyDataId: Long, scopeId: Long): doobie.ConnectionIO[Option[ApiKeyDataScopesEntity.Read]] =
     for {
       result <- Queries.getBy(apiKeyDataId, scopeId).option
       n <- Queries.delete(apiKeyDataId, scopeId).run
     } yield if (n > 0) result else None
+
+  def delete(apiKeyDataId: Long): Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] = {
+    val result: doobie.ConnectionIO[List[ApiKeyDataScopesEntity.Read]] = for {
+      res <- getByApiKeyDataId(apiKeyDataId).compile.toList
+      _ <- Queries.delete(apiKeyDataId).run
+    } yield res
+
+    Stream.evals(result)
+  }
 
   private object Queries {
 
@@ -81,9 +99,32 @@ class ApiKeyDataScopesDb()(implicit clock: Clock) {
            | WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId AND api_key_data_scopes.scope_id = $scopeId
            |)""".stripMargin.update
 
+    def copyIntoDeletedTable(apiKeyDataId: Long, now: Instant): doobie.Update0 =
+      sql"""INSERT INTO api_key_data_scopes_deleted(
+           | deleted_at,
+           | api_key_data_id,
+           | scope_id,
+           | created_at,
+           | updated_at
+           |) (
+           | SELECT
+           |   $now,
+           |   api_key_data_id,
+           |   scope_id,
+           |   created_at,
+           |   updated_at
+           | FROM api_key_data_scopes
+           | WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId
+           |)""".stripMargin.update
+
     def delete(apiKeyDataId: Long, scopeId: Long): doobie.Update0 =
       sql"""DELETE FROM api_key_data_scopes
            |WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId AND api_key_data_scopes.scope_id = $scopeId
+           """.stripMargin.update
+
+    def delete(apiKeyDataId: Long): doobie.Update0 =
+      sql"""DELETE FROM api_key_data_scopes
+           |WHERE api_key_data_scopes.api_key_data_id = $apiKeyDataId
            """.stripMargin.update
   }
 }
