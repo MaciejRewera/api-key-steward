@@ -2,22 +2,26 @@ package apikeysteward
 
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
+import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
 import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ValidateApiKeyRoutes}
-import apikeysteward.services.{AdminService, ApiKeyService}
+import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
 import doobie.ExecutionContexts
 import doobie.hikari.HikariTransactor
+import org.http4s.HttpApp
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import pureconfig.ConfigSource
 
 import java.time.Clock
+import scala.concurrent.duration.DurationInt
 
 object Application extends IOApp.Simple {
 
@@ -74,15 +78,27 @@ object Application extends IOApp.Simple {
           )
           .orNotFound
 
-        _ <- EmberServerBuilder
-          .default[IO]
-          .withHost(config.http.host)
-          .withPort(config.http.port)
-          .withHttpApp(httpApp)
-          .build
-          .useForever
+        licenseServiceConfig = LicenseService.Configuration(
+          initialDelay = 15.minutes,
+          validationPeriod = 24.hours,
+          licenseConfig = config.license
+        )
+        licenseValidator = new AlwaysValidLicenseValidator
+        licenseService = new LicenseService(licenseServiceConfig, licenseValidator)
+
+        app = buildServerResource(httpApp, config)
+
+        _ <- IO.race(licenseService.periodicallyValidateLicense(), app.useForever)
       } yield ()
     }
   }
+
+  private def buildServerResource(httpApp: HttpApp[IO], config: AppConfig): Resource[IO, Server] =
+    EmberServerBuilder
+      .default[IO]
+      .withHost(config.http.host)
+      .withPort(config.http.port)
+      .withHttpApp(httpApp)
+      .build
 
 }

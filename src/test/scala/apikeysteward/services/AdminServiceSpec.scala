@@ -24,13 +24,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class AdminServiceSpec
-    extends AsyncWordSpec
-    with AsyncIOSpec
-    with Matchers
-    with DoobieUnitSpec
-    with FixedClock
-    with BeforeAndAfterEach {
+class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock with BeforeAndAfterEach {
 
   private val apiKeyGenerator = mock[ApiKeyGenerator[String]]
   private val apiKeyRepository = mock[ApiKeyRepository[String]]
