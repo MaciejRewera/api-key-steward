@@ -8,7 +8,8 @@ import pureconfig.ConfigReader
 
 case class AppConfig(
     http: HttpConfig,
-    database: DatabaseConfig
+    database: DatabaseConfig,
+    license: LicenseConfig
 )
 
 object AppConfig {
