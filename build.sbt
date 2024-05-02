@@ -54,7 +54,8 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.4.7",
 
   // JWT
-  "com.github.jwt-scala" %% "jwt-core" % "9.4.5",
+  "com.github.jwt-scala" %% "jwt-core" % "10.0.0",
+  "com.github.jwt-scala" %% "jwt-circe" % "10.0.0",
 
   //Test
   "org.scalatest" %% "scalatest" % "3.2.16" % Test,
