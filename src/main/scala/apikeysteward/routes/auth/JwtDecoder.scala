@@ -45,7 +45,7 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
       jwkOpt <- jwkProvider.getJsonWebKey(keyId)
       res <- jwkOpt match {
         case Some(jwk) => IO.pure(jwk)
-        case None => IO.raiseError(new NoSuchElementException(s"Cannot find JWK with kid: $keyId."))
+        case None      => IO.raiseError(new NoSuchElementException(s"Cannot find JWK with kid: $keyId."))
       }
     } yield res
 

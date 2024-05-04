@@ -70,7 +70,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val it = (project in file("integration-tests"))
-  .dependsOn(root)
+  .dependsOn(root % "compile->compile;test->test")
   .settings(
     Test / parallelExecution := false,
     libraryDependencies ++= Seq(
