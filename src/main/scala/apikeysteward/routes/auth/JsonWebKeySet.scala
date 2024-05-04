@@ -4,7 +4,9 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 case class JsonWebKeySet(keys: Seq[JsonWebKey]) {
-  def findBy(keyId: String): Option[JsonWebKey] = keys.find(_.kid == keyId)
+  private val keysMap: Map[String, JsonWebKey] = keys.map(key => key.kid -> key).toMap
+
+  def findBy(keyId: String): Option[JsonWebKey] = keysMap.get(keyId)
 }
 
 object JsonWebKeySet {

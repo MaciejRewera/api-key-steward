@@ -10,6 +10,7 @@ import pdi.jwt.JwtBase64
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.spec.RSAPublicKeySpec
+import scala.concurrent.duration.DurationInt
 
 class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
 
@@ -17,7 +18,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",
     supportedKeyUse = "sig",
-    jwks = JwksConfig("test/url/to/get/jwks")
+    jwks = JwksConfig("test/url/to/get/jwks", 10.minutes)
   )
 
   private val publicKeyGenerator = new PublicKeyGenerator(authConfig)

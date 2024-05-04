@@ -6,6 +6,8 @@ import io.circe.Encoder
 import org.http4s.Uri
 import pureconfig.ConfigReader
 
+import scala.concurrent.duration.FiniteDuration
+
 case class AppConfig(
     http: HttpConfig,
     database: DatabaseConfig,
@@ -34,6 +36,9 @@ object AppConfig {
 
   implicit val uriCirceEncoder: Encoder[Uri] =
     Encoder.encodeString.contramap(_.renderString)
+
+  implicit val finiteDurationCirceEncoder: Encoder[FiniteDuration] =
+    Encoder.encodeString.contramap(_.toString)
 
   implicit val showAppConfig: Show[AppConfig] =
     _.asJson.toString()

@@ -1,5 +1,8 @@
 package apikeysteward.config
 
+import scala.concurrent.duration.FiniteDuration
+
 case class JwksConfig(
-    url: String
+    url: String,
+    cacheRefreshPeriod: FiniteDuration
 )

@@ -12,6 +12,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import sttp.model.StatusCode
 
+import scala.concurrent.duration.DurationInt
+
 class UrlJwkProviderSpec
     extends AsyncWordSpec
     with AsyncIOSpec
@@ -20,7 +22,8 @@ class UrlJwkProviderSpec
     with WireMockIntegrationSpec {
 
   private val url = "/.well-known/jwks.json"
-  private val jwksConfig = JwksConfig(url = wireMockUri.addPath(url.replaceFirst("/", "")).renderString)
+  private val jwksConfig =
+    JwksConfig(url = wireMockUri.addPath(url.replaceFirst("/", "")).renderString, cacheRefreshPeriod = 10.minutes)
 
   private val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
     EmberClientBuilder.default[IO].build.map(new UrlJwkProvider(jwksConfig, _))
@@ -38,7 +41,7 @@ class UrlJwkProviderSpec
       )
 
       for {
-        _ <- urlJwkProviderRes.use(_.getJsonWebKey("key-id-1"))
+        _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
         _ = verify(getRequestedFor(urlEqualTo(url)))
       } yield ()
     }
@@ -172,6 +175,65 @@ class UrlJwkProviderSpec
         )
 
         urlJwkProviderRes.use(_.getJsonWebKey(kid_4)).asserting(res => res shouldBe empty)
+      }
+    }
+
+    "called several times" should {
+
+      "call provided url only once" in {
+        stubFor(
+          get(url)
+            .willReturn(
+              aResponse()
+                .withStatus(StatusCode.Ok.code)
+                .withBody("""{"keys": []}""")
+            )
+        )
+
+        for {
+          _ <- urlJwkProviderRes.use { urlJwkProvider =>
+            urlJwkProvider.getJsonWebKey(kid_1) >>
+              urlJwkProvider.getJsonWebKey(kid_2) >>
+              urlJwkProvider.getJsonWebKey(kid_3) >>
+              urlJwkProvider.getJsonWebKey(kid_4)
+          }
+
+          _ = verify(1, getRequestedFor(urlEqualTo(url)))
+        } yield ()
+      }
+
+      "call provided url again after cache expiry period" in {
+        stubFor(
+          get(url)
+            .willReturn(
+              aResponse()
+                .withStatus(StatusCode.Ok.code)
+                .withBody("""{"keys": []}""")
+            )
+        )
+
+        val cacheRefreshPeriod = 100.milliseconds
+        val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
+        val jwksConfig = JwksConfig(
+          url = wireMockUri.addPath(url.replaceFirst("/", "")).renderString,
+          cacheRefreshPeriod = cacheRefreshPeriod
+        )
+
+        val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
+          EmberClientBuilder.default[IO].build.map(new UrlJwkProvider(jwksConfig, _))
+
+        for {
+          _ <- urlJwkProviderRes.use { urlJwkProvider =>
+            urlJwkProvider.getJsonWebKey(kid_1) >>
+              urlJwkProvider.getJsonWebKey(kid_2) >>
+              IO.sleep(sleepDuration) >>
+              urlJwkProvider.getJsonWebKey(kid_3) >>
+              IO.sleep(sleepDuration) >>
+              urlJwkProvider.getJsonWebKey(kid_4)
+          }
+
+          _ = verify(3, getRequestedFor(urlEqualTo(url)))
+        } yield ()
       }
     }
   }

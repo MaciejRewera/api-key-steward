@@ -3,20 +3,30 @@ package apikeysteward.routes.auth
 import apikeysteward.config.JwksConfig
 import apikeysteward.routes.auth.UrlJwkProvider.JwksDownloadException
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.client.Client
 import org.http4s.{Response, Status}
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO]) extends JwkProvider {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit runtime: IORuntime) extends JwkProvider {
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  override def getJsonWebKey(keyId: String): IO[Option[JsonWebKey]] =
+  private val jwksCache: AsyncLoadingCache[Unit, JsonWebKeySet] = Scaffeine()
+    .recordStats()
+    .maximumSize(1)
+    .expireAfterWrite(jwksConfig.cacheRefreshPeriod)
+    .buildAsyncFuture(_ => fetchJwks().unsafeToFuture())
+
+  private def fetchJwks(): IO[JsonWebKeySet] =
     httpClient.get(jwksConfig.url) {
       case r @ Response(Status.Ok, _, _, _, _) =>
-        r.as[JsonWebKeySet].map(_.findBy(keyId))
+        r.as[JsonWebKeySet]
 
       case r: Response[IO] =>
         extractErrorResponse(r).flatMap { responseText =>
@@ -30,6 +40,9 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO]) extends Jwk
       .compile
       .toList
       .map(_.mkString)
+
+  override def getJsonWebKey(keyId: String): IO[Option[JsonWebKey]] =
+    IO.fromFuture(IO(jwksCache.get(()).map(_.findBy(keyId))))
 }
 
 object UrlJwkProvider {
