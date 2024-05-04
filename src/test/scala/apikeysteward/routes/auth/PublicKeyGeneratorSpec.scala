@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.config.AuthConfig
+import apikeysteward.config.{AuthConfig, JwksConfig}
 import apikeysteward.routes.auth.AuthTestData.jsonWebKey
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import org.scalatest.matchers.should.Matchers
@@ -16,7 +16,8 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
   private val authConfig = AuthConfig(
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",
-    supportedKeyUse = "sig"
+    supportedKeyUse = "sig",
+    jwks = JwksConfig("test/url/to/get/jwks")
   )
 
   private val publicKeyGenerator = new PublicKeyGenerator(authConfig)

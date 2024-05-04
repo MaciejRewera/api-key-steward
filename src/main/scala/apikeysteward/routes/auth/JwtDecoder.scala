@@ -16,7 +16,7 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
   def decode(accessToken: String): IO[JsonWebToken] =
     for {
       keyId <- extractKeyId(accessToken)
-      jwk <- jwkProvider.getJsonWebKey(keyId)
+      jwk <- fetchJwk(keyId)
       publicKey <- generatePublicKey(jwk)
 
       result <- decodeToken(accessToken, publicKey)
@@ -39,6 +39,15 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
             )
         }
     )
+
+  private def fetchJwk(keyId: String): IO[JsonWebKey] =
+    for {
+      jwkOpt <- jwkProvider.getJsonWebKey(keyId)
+      res <- jwkOpt match {
+        case Some(jwk) => IO.pure(jwk)
+        case None => IO.raiseError(new NoSuchElementException(s"Cannot find JWK with kid: $keyId."))
+      }
+    } yield res
 
   private def generatePublicKey(jwk: JsonWebKey): IO[PublicKey] =
     IO.fromEither(

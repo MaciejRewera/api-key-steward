@@ -1,13 +1,12 @@
 package apikeysteward.routes.auth
 
 import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
-import pdi.jwt.{JwtAlgorithm, JwtBase64, JwtCirce, JwtClaim, JwtHeader}
+import pdi.jwt._
 
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
-import java.time.Instant
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 private[auth] object AuthTestData {
 
@@ -22,10 +21,13 @@ private[auth] object AuthTestData {
     val keyPair = generateKeyPair
     (keyPair.getPrivate.asInstanceOf[RSAPrivateKey], keyPair.getPublic.asInstanceOf[RSAPublicKey])
   }
-  private val encodedExponent: String = JwtBase64.encodeString(publicKey.getPublicExponent.toByteArray)
-  private val encodedModulus: String = JwtBase64.encodeString(publicKey.getModulus.toByteArray)
+  val encodedExponent: String = JwtBase64.encodeString(publicKey.getPublicExponent.toByteArray)
+  val encodedModulus: String = JwtBase64.encodeString(publicKey.getModulus.toByteArray)
 
-  val kid_1 = "test-key-id-1"
+  val kid_1 = "test-key-id-001"
+  val kid_2 = "test-key-id-002"
+  val kid_3 = "test-key-id-003"
+  val kid_4 = "test-key-id-004"
 
   val jsonWebKey: JsonWebKey = JsonWebKey(
     alg = Some("RS256"),

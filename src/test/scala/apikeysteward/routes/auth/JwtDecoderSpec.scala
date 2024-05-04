@@ -9,9 +9,9 @@ import apikeysteward.routes.auth.PublicKeyGenerator.{
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.mockito.ArgumentMatchersSugar.any
+import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
-import org.mockito.MockitoSugar.{mock, reset, verifyZeroInteractions}
+import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
@@ -34,12 +34,30 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     "everything works correctly" should {
 
-      "call JwkProvider providing Key Id from the token" in IO {}
+      "call JwkProvider providing Key Id from the token" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
 
-      "call PublicKeyGenerator providing JWK from JwkProvider" in IO {}
+        for {
+          _ <- jwtDecoder.decode(jwtString)
+
+          _ = verify(jwkProvider).getJsonWebKey(eqTo(kid_1))
+        } yield ()
+      }
+
+      "call PublicKeyGenerator providing JWK from JwkProvider" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+
+        for {
+          _ <- jwtDecoder.decode(jwtString)
+
+          _ = verify(publicKeyGenerator).generateFrom(eqTo(jsonWebKey))
+        } yield ()
+      }
 
       "return correct JsonWebToken" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(jsonWebKey)
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
 
         jwtDecoder.decode(jwtString).asserting { result =>
@@ -72,6 +90,29 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
+    "JwkProvider returns empty Option" should {
+
+      "NOT call PublicKeyGenerator" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
+
+        for {
+          _ <- jwtDecoder.decode(jwtString).attempt
+
+          _ = verifyZeroInteractions(publicKeyGenerator)
+        } yield ()
+      }
+
+      "return failed IO containing error" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
+
+        jwtDecoder.decode(jwtString).attempt.asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[RuntimeException]
+          result.left.value.getMessage shouldBe s"Cannot find JWK with kid: $kid_1."
+        }
+      }
+    }
+
     "JwkProvider returns failed IO" should {
 
       "NOT call PublicKeyGenerator" in {
@@ -98,7 +139,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
     "PublicKeyGenerator returns Left containing errors" should {
 
       "return failed IO containing IllegalArgumentException" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(jsonWebKey)
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Left(
           NonEmptyChain(
             AlgorithmNotSupportedError("RS256", "HS256"),
