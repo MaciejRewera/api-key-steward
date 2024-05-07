@@ -1,11 +1,8 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.routes.auth.AuthTestData._
-import apikeysteward.routes.auth.PublicKeyGenerator.{
-  AlgorithmNotSupportedError,
-  KeyTypeNotSupportedError,
-  KeyUseNotSupportedError
-}
+import apikeysteward.routes.auth.PublicKeyGenerator.{AlgorithmNotSupportedError, KeyTypeNotSupportedError, KeyUseNotSupportedError}
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec

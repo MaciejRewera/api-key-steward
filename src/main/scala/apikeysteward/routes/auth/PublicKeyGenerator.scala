@@ -2,6 +2,7 @@ package apikeysteward.routes.auth
 
 import apikeysteward.config.AuthConfig
 import apikeysteward.routes.auth.PublicKeyGenerator._
+import apikeysteward.routes.auth.model.JsonWebKey
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import cats.implicits._
 import pdi.jwt.JwtBase64

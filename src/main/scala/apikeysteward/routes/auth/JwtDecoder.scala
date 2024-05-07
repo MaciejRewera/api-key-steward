@@ -1,5 +1,6 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken}
 import cats.effect.IO
 import pdi.jwt._
 

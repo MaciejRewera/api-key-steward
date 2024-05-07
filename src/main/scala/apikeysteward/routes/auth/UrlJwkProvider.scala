@@ -2,6 +2,7 @@ package apikeysteward.routes.auth
 
 import apikeysteward.config.JwksConfig
 import apikeysteward.routes.auth.UrlJwkProvider.JwksDownloadException
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebKeySet}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
@@ -17,11 +18,12 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  private val jwksCache: AsyncLoadingCache[Unit, JsonWebKeySet] = Scaffeine()
-    .recordStats()
-    .maximumSize(1)
-    .expireAfterWrite(jwksConfig.cacheRefreshPeriod)
-    .buildAsyncFuture(_ => fetchJwks().unsafeToFuture())
+  private val jwksCache: AsyncLoadingCache[Unit, JsonWebKeySet] =
+    Scaffeine()
+      .recordStats()
+      .maximumSize(1)
+      .expireAfterWrite(jwksConfig.cacheRefreshPeriod)
+      .buildAsyncFuture(_ => fetchJwks().unsafeToFuture())
 
   private def fetchJwks(): IO[JsonWebKeySet] =
     httpClient.get(jwksConfig.url) {

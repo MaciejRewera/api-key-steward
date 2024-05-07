@@ -1,5 +1,6 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.routes.auth.model.JsonWebKey
 import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
 import pdi.jwt._
 

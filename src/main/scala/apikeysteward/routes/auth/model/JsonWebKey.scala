@@ -1,7 +1,7 @@
-package apikeysteward.routes.auth
+package apikeysteward.routes.auth.model
 
 import io.circe.Codec
-import pdi.jwt.JwtHeader
+import io.circe.generic.semiauto.deriveCodec
 
 case class JsonWebKey(
     alg: Option[String],
@@ -15,7 +15,5 @@ case class JsonWebKey(
 )
 
 object JsonWebKey {
-  import io.circe.generic.semiauto.deriveCodec
-
   implicit val codec: Codec[JsonWebKey] = deriveCodec[JsonWebKey]
 }

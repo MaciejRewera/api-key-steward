@@ -1,4 +1,4 @@
-package apikeysteward.routes.auth
+package apikeysteward.routes.auth.model
 
 import pdi.jwt.{JwtClaim, JwtHeader}
 
