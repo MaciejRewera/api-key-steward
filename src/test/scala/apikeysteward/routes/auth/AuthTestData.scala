@@ -1,15 +1,15 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.routes.auth.model.JsonWebKey
-import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtClaimCustom, JwtCustom}
 import pdi.jwt._
+import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
 
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-private[auth] object AuthTestData {
+private[routes] object AuthTestData {
 
   private def generateKeyPair: KeyPair = {
     val keyGen: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
@@ -44,22 +44,39 @@ private[auth] object AuthTestData {
   val algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS256
   val jwtHeader: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(kid_1))
   val now: FiniteDuration = FiniteDuration.apply(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-  val jwtClaim: JwtClaim = JwtClaim(
+
+  val permissionRead_1 = "read:permission-1"
+  val permissionWrite_1 = "write:permission-1"
+  val permissionRead_2 = "read:permission-2"
+  val permissionWrite_2 = "write:permission-2"
+
+  val jwtClaim: JwtClaimCustom = JwtClaimCustom(
     issuer = Some("test-issuer"),
     subject = Some("test-subject"),
     audience = Some(Set("test-audience-1", "test-audience-2")),
     expiration = Some((now + 5.minutes).toSeconds),
-    issuedAt = Some(now.toSeconds)
+    issuedAt = Some(now.toSeconds),
+    permissions = Some(Set(permissionRead_1, permissionWrite_1))
   )
 
-  val jwtString: String = JwtCirce.encode(jwtHeader, jwtClaim, privateKey)
+  val jwtString: String = JwtCustom.encode(jwtHeader, jwtClaim, privateKey)
+  val jwtWithMockedSignature: JsonWebToken = JsonWebToken(
+    content = jwtString,
+    jwtHeader = jwtHeader,
+    jwtClaim = jwtClaim,
+    signature = "test-signature"
+  )
 
-  val expiredJwtClaim: JwtClaim = JwtClaim(
+  val jwtHeaderWithoutKid: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = None)
+  val jwtWithoutKidString: String = JwtCustom.encode(jwtHeaderWithoutKid, jwtClaim, privateKey)
+
+  val expiredJwtClaim: JwtClaimCustom = JwtClaimCustom(
     issuer = Some("test-issuer"),
     subject = Some("test-subject"),
     audience = Some(Set("test-audience-1", "test-audience-2")),
     expiration = Some((now - 1.minutes).toSeconds),
-    issuedAt = Some((now - 6.minutes).toSeconds)
+    issuedAt = Some((now - 6.minutes).toSeconds),
+    permissions = Some(Set(permissionRead_1, permissionWrite_1))
   )
-  val expiredJwtString: String = JwtCirce.encode(jwtHeader, expiredJwtClaim, privateKey)
+  val expiredJwtString: String = JwtCustom.encode(jwtHeader, expiredJwtClaim, privateKey)
 }

@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   // Http
   "org.http4s" %% "http4s-dsl" % Http4sVersion,
   "org.http4s" %% "http4s-ember-server" % Http4sVersion,
-  "org.http4s" %% "http4s-ember-client" % Http4sVersion,
+  "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
   "org.http4s" %% "http4s-circe" % Http4sVersion,
 
   // JSON
@@ -61,7 +61,7 @@ libraryDependencies ++= Seq(
   "com.github.blemale" %% "scaffeine" % "5.2.1",
 
 
-//Test
+  // Test
   "org.scalatest" %% "scalatest" % "3.2.16" % Test,
   "org.mockito" %% "mockito-scala-scalatest" % "1.17.29" % Test,
   "org.typelevel" %% "cats-effect-testing-scalatest" % "1.4.0" % Test

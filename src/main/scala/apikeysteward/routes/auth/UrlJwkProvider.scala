@@ -33,7 +33,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
       case r: Response[IO] =>
         extractErrorResponse(r).flatMap { responseText =>
           logger.warn(s"Call to obtain JWKS from URL: ${jwksConfig.url} failed. Reason: $responseText")
-        } >> IO.raiseError(JwksDownloadException(jwksConfig.url))
+        } >> IO.raiseError(JwksDownloadException(jwksConfig.url.renderString))
     }
 
   private def extractErrorResponse(response: Response[IO]): IO[String] =

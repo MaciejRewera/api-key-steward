@@ -1,10 +1,10 @@
 package apikeysteward.routes.auth.model
 
-import pdi.jwt.{JwtClaim, JwtHeader}
+import pdi.jwt.JwtHeader
 
 case class JsonWebToken(
     content: String,
     jwtHeader: JwtHeader,
-    jwtClaim: JwtClaim,
+    jwtClaim: JwtClaimCustom,
     signature: String
 )

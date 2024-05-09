@@ -6,7 +6,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Resource}
 import com.github.tomakehurst.wiremock.client.WireMock._
 import io.circe.parser
-import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.blaze.client.BlazeClientBuilder
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
@@ -23,10 +23,10 @@ class UrlJwkProviderSpec
 
   private val url = "/.well-known/jwks.json"
   private val jwksConfig =
-    JwksConfig(url = wireMockUri.addPath(url.replaceFirst("/", "")).renderString, cacheRefreshPeriod = 10.minutes)
+    JwksConfig(url = wireMockUri.addPath(url.replaceFirst("/", "")), cacheRefreshPeriod = 10.minutes)
 
   private val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
-    EmberClientBuilder.default[IO].build.map(new UrlJwkProvider(jwksConfig, _))
+    BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
 
   "UrlJwkProvider on getJsonWebKey" should {
 
@@ -215,12 +215,12 @@ class UrlJwkProviderSpec
         val cacheRefreshPeriod = 100.milliseconds
         val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
         val jwksConfig = JwksConfig(
-          url = wireMockUri.addPath(url.replaceFirst("/", "")).renderString,
+          url = wireMockUri.addPath(url.replaceFirst("/", "")),
           cacheRefreshPeriod = cacheRefreshPeriod
         )
 
         val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
-          EmberClientBuilder.default[IO].build.map(new UrlJwkProvider(jwksConfig, _))
+          BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
 
         for {
           _ <- urlJwkProviderRes.use { urlJwkProvider =>

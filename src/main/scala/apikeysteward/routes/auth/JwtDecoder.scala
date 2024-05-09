@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken}
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtCustom}
 import cats.effect.IO
 import pdi.jwt._
 
@@ -57,14 +57,14 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
         .left
         .map(errors =>
           new IllegalArgumentException(
-            s"Cannot generate Public Key because: ${errors.iterator.map(_.message).mkString("[", ", ", "]")}. Provided JWK: $jwk"
+            s"Cannot generate Public Key because: ${errors.iterator.map(_.message).mkString("[\"", "\", \"", "\"]")}. Provided JWK: $jwk"
           )
         )
     )
 
   private def decodeToken(accessToken: String, publicKey: PublicKey): IO[JsonWebToken] =
     IO.fromTry(
-      JwtCirce
+      JwtCustom
         .decodeAll(
           token = accessToken,
           key = publicKey,

@@ -29,6 +29,11 @@ object ErrorInfo {
     errorDetail = detail
   )
 
+  def unauthorizedErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
+    error = "Invalid Credentials",
+    errorDetail = detail
+  )
+
   def notFoundErrorInfo(detail: Option[String] = None): ErrorInfo = SimpleErrorInfo(
     error = "Not Found",
     errorDetail = detail

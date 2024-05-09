@@ -3,6 +3,7 @@ package apikeysteward.routes.auth
 import apikeysteward.config.{AuthConfig, JwksConfig}
 import apikeysteward.routes.auth.AuthTestData.jsonWebKey
 import apikeysteward.routes.auth.PublicKeyGenerator._
+import org.http4s.Uri
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import pdi.jwt.JwtBase64
@@ -18,7 +19,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",
     supportedKeyUse = "sig",
-    jwks = JwksConfig("test/url/to/get/jwks", 10.minutes)
+    jwks = JwksConfig(Uri.unsafeFromString("test/url/to/get/jwks"), 10.minutes)
   )
 
   private val publicKeyGenerator = new PublicKeyGenerator(authConfig)

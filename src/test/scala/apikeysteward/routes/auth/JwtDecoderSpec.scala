@@ -1,7 +1,11 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.routes.auth.AuthTestData._
-import apikeysteward.routes.auth.PublicKeyGenerator.{AlgorithmNotSupportedError, KeyTypeNotSupportedError, KeyUseNotSupportedError}
+import apikeysteward.routes.auth.PublicKeyGenerator.{
+  AlgorithmNotSupportedError,
+  KeyTypeNotSupportedError,
+  KeyUseNotSupportedError
+}
 import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken}
 import cats.data.NonEmptyChain
 import cats.effect.IO
@@ -58,12 +62,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
 
         jwtDecoder.decode(jwtString).asserting { result =>
-          result shouldBe JsonWebToken(
-            content = jwtString,
-            jwtHeader = jwtHeader,
-            jwtClaim = jwtClaim,
-            signature = result.signature
-          )
+          result shouldBe jwtWithMockedSignature.copy(signature = result.signature)
         }
       }
     }
@@ -87,6 +86,25 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
+    "provided with a token without kid (Key ID)" should {
+
+      "NOT call either JwkProvider, nor PublicKeyGenerator" in {
+        for {
+          _ <- jwtDecoder.decode(jwtWithoutKidString).attempt
+
+          _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+        } yield ()
+      }
+
+      "return failed IO" in {
+        jwtDecoder.decode(jwtWithoutKidString).attempt.asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[IllegalArgumentException]
+          result.left.value.getMessage should include("Key ID (kid) field is not provided in token: ")
+        }
+      }
+    }
+
     "JwkProvider returns empty Option" should {
 
       "NOT call PublicKeyGenerator" in {
@@ -104,7 +122,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
         jwtDecoder.decode(jwtString).attempt.asserting { result =>
           result.isLeft shouldBe true
-          result.left.value shouldBe an[RuntimeException]
+          result.left.value shouldBe an[NoSuchElementException]
           result.left.value.getMessage shouldBe s"Cannot find JWK with kid: $kid_1."
         }
       }
