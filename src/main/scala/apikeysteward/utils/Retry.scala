@@ -12,7 +12,7 @@ object Retry {
     def retryOnLeft(err: E): IO[A] =
       if (isWorthRetrying(err)) {
         if (maxRetries > 0) {
-          logger.warn(s"Retrying failed action. Attempts left: ${maxRetries - 1}") *>
+          logger.warn(s"Retrying failed action. Attempts left: ${maxRetries - 1}") >>
             retry(maxRetries - 1, isWorthRetrying)(action)
         } else IO.raiseError(new RuntimeException(s"Exceeded max number of retries on error: $err"))
       } else {

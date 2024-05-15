@@ -54,9 +54,14 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.4.7",
 
   // JWT
-  "com.github.jwt-scala" %% "jwt-core" % "9.4.5",
+  "com.github.jwt-scala" %% "jwt-core" % "10.0.0",
+  "com.github.jwt-scala" %% "jwt-circe" % "10.0.0",
 
-  //Test
+  // Caching
+  "com.github.blemale" %% "scaffeine" % "5.2.1",
+
+
+  // Test
   "org.scalatest" %% "scalatest" % "3.2.16" % Test,
   "org.mockito" %% "mockito-scala-scalatest" % "1.17.29" % Test,
   "org.typelevel" %% "cats-effect-testing-scalatest" % "1.4.0" % Test
@@ -69,7 +74,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val it = (project in file("integration-tests"))
-  .dependsOn(root)
+  .dependsOn(root % "compile->compile;test->test")
   .settings(
     Test / parallelExecution := false,
     libraryDependencies ++= Seq(

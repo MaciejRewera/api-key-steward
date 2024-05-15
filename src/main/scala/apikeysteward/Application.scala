@@ -5,6 +5,7 @@ import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
 import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
+import apikeysteward.routes.auth._
 import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
 import cats.effect.{IO, IOApp, Resource}
@@ -13,6 +14,7 @@ import com.zaxxer.hikari.HikariDataSource
 import doobie.ExecutionContexts
 import doobie.hikari.HikariTransactor
 import org.http4s.HttpApp
+import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
@@ -41,14 +43,21 @@ object Application extends IOApp.Simple {
       dataSource: HikariDataSource = DataSourceBuilder.buildDataSource(config.database)
       transactor = HikariTransactor[IO](dataSource, jdbcConnectionEC)
 
-    } yield (config, transactor)
+      httpClient <- BlazeClientBuilder[IO].withConnectTimeout(1.minute).withIdleTimeout(5.minutes).resource
 
-    resources.use { case (config, transactor) =>
+    } yield (config, transactor, httpClient)
+
+    resources.use { case (config, transactor, httpClient) =>
       for {
         _ <- logger.info(s"Starting api-key-steward service with the following configuration: ${config.show}")
 
         migrationResult <- DatabaseMigrator.migrateDatabase(transactor.kernel, config.database)
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
+
+        jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
+        publicKeyGenerator = new PublicKeyGenerator(config.auth)
+        jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator)
+        jwtValidator = new JwtValidator(jwtDecoder)
 
         apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
 
@@ -68,7 +77,7 @@ object Application extends IOApp.Simple {
         adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
-        adminRoutes = new AdminRoutes(adminService).allRoutes
+        adminRoutes = new AdminRoutes(adminService, jwtValidator).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
