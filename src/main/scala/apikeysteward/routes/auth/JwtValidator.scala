@@ -18,7 +18,7 @@ class JwtValidator(jwtDecoder: JwtDecoder) {
   ): IO[Either[ErrorInfo, JsonWebToken]] =
     authorised(accessToken).map {
       case Right(jwt)  => validatePermissions(permissions)(jwt)
-      case Left(value) => Left(value)
+      case Left(error) => Left(error)
     }
 
   private def validatePermissions(

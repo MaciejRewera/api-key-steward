@@ -107,7 +107,7 @@ class UrlJwkProviderSpec
             )
         )
 
-        urlJwkProviderRes.use(_.getJsonWebKey(kid_2)).asserting(res => res shouldBe empty)
+        urlJwkProviderRes.use(_.getJsonWebKey(kid_2)).asserting(_ shouldBe empty)
       }
     }
 
@@ -174,7 +174,7 @@ class UrlJwkProviderSpec
             )
         )
 
-        urlJwkProviderRes.use(_.getJsonWebKey(kid_4)).asserting(res => res shouldBe empty)
+        urlJwkProviderRes.use(_.getJsonWebKey(kid_4)).asserting(_ shouldBe empty)
       }
     }
 
