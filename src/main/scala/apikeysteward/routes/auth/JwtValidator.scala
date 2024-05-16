@@ -1,17 +1,16 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission, buildUnauthorizedErrorInfo}
+import apikeysteward.routes.auth.JwtValidator._
 import apikeysteward.routes.auth.model.JsonWebToken
 import cats.effect.IO
-import cats.implicits.catsSyntaxEitherId
 
 class JwtValidator(jwtDecoder: JwtDecoder) {
 
   def authorised(accessToken: AccessToken): IO[Either[ErrorInfo, JsonWebToken]] =
-    jwtDecoder.decode(accessToken).map(_.asRight).recover { case error =>
-      ErrorInfo.unauthorizedErrorInfo(Some(error.getMessage)).asLeft
-    }
+    jwtDecoder
+      .decode(accessToken)
+      .map(_.left.map(error => ErrorInfo.unauthorizedErrorInfo(Some(error.message))))
 
   def authorisedWithPermissions(permissions: Set[Permission] = Set.empty)(
       accessToken: AccessToken
