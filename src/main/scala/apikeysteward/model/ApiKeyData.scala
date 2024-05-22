@@ -1,7 +1,7 @@
 package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ScopeEntity}
-import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
+import apikeysteward.routes.model.CreateApiKeyRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -30,7 +30,7 @@ object ApiKeyData {
       scopes = scopeEntitiesRead.map(_.scope)
     )
 
-  def from(publicKeyId: UUID, userId: String, createApiKeyRequest: CreateApiKeyAdminRequest)(
+  def from(publicKeyId: UUID, userId: String, createApiKeyRequest: CreateApiKeyRequest)(
       implicit clock: Clock
   ): ApiKeyData =
     ApiKeyData(

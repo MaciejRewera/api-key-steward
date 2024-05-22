@@ -13,13 +13,10 @@ object ValidateApiKeyEndpoints {
     val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."
   }
 
-  private val baseEndpoint: Endpoint[Unit, Unit, Unit, Unit, Any] =
-    endpoint.in("api-key")
-
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
-    baseEndpoint.post
-      .in("validation")
+    endpoint.post
+      .in("api-key" / "validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
           .description("API Key to validate.")

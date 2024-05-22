@@ -3,6 +3,7 @@ package apikeysteward.routes.definitions
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtValidator.AccessToken
+import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.routes.model.admin._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -21,8 +22,8 @@ object AdminEndpoints {
 
   private val baseAdminEndpoint: Endpoint[AccessToken, Unit, Unit, Unit, Any] =
     endpoint
-      .in("admin")
       .securityIn(auth.bearer[AccessToken]())
+      .in("admin")
 
   private val userIdPathParameter = path[String]("userId").description("ID of the user.")
 
@@ -30,19 +31,19 @@ object AdminEndpoints {
 
   val createApiKeyEndpoint: Endpoint[
     AccessToken,
-    (String, CreateApiKeyAdminRequest),
+    (String, CreateApiKeyRequest),
     ErrorInfo,
-    (StatusCode, CreateApiKeyAdminResponse),
+    (StatusCode, CreateApiKeyResponse),
     Any
   ] =
     baseAdminEndpoint.post
       .in("users" / userIdPathParameter / "api-key")
       .in(
-        jsonBody[CreateApiKeyAdminRequest]
+        jsonBody[CreateApiKeyRequest]
           .description("Details of the API Key to create.")
       )
       .out(statusCode.description(StatusCode.Created, "API Key created"))
-      .out(jsonBody[CreateApiKeyAdminResponse])
+      .out(jsonBody[CreateApiKeyResponse])
       .errorOut(
         oneOf[ErrorInfo](
           oneOfVariant(
@@ -85,11 +86,11 @@ object AdminEndpoints {
       )
 
   val deleteApiKeyEndpoint
-      : Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyAdminResponse), Any] =
+      : Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     baseAdminEndpoint.delete
       .in("users" / userIdPathParameter / "api-key" / keyIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "API Key deleted"))
-      .out(jsonBody[DeleteApiKeyAdminResponse])
+      .out(jsonBody[DeleteApiKeyResponse])
       .errorOut(
         oneOf[ErrorInfo](
           oneOfVariantExactMatcher(

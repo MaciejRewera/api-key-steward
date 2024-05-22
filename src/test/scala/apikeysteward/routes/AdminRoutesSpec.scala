@@ -7,7 +7,7 @@ import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtValidator}
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
-import apikeysteward.routes.model.admin.{CreateApiKeyAdminRequest, CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
+import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -48,7 +48,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
   "AdminRoutes on POST /admin/users/{userId}/api-key" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key")
-    val requestBody = CreateApiKeyAdminRequest(
+    val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
       ttl = ttlSeconds,
@@ -127,7 +127,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           AuthTestData.jwtWithMockedSignature.asRight
         )
-        adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+        adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
         for {
           _ <- adminRoutes.run(request)
@@ -141,14 +141,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
-          adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+          adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Created
             _ <- response
-              .as[CreateApiKeyAdminResponse]
-              .asserting(_ shouldBe CreateApiKeyAdminResponse(apiKey_1, apiKeyData_1))
+              .as[CreateApiKeyResponse]
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyData_1))
           } yield ()
         }
 
@@ -156,7 +156,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
-          adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+          adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -164,8 +164,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
             response <- adminRoutes.run(requestWithoutDescription)
             _ = response.status shouldBe Status.Created
             _ <- response
-              .as[CreateApiKeyAdminResponse]
-              .asserting(_ shouldBe CreateApiKeyAdminResponse(apiKey_1, apiKeyData_1))
+              .as[CreateApiKeyResponse]
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyData_1))
           } yield ()
         }
       }
@@ -295,7 +295,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           AuthTestData.jwtWithMockedSignature.asRight
         )
-        adminService.createApiKey(any[String], any[CreateApiKeyAdminRequest]) returns IO.raiseError(testException)
+        adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -648,7 +648,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.Ok
-          _ <- response.as[DeleteApiKeyAdminResponse].asserting(_ shouldBe DeleteApiKeyAdminResponse(apiKeyData_1))
+          _ <- response.as[DeleteApiKeyResponse].asserting(_ shouldBe DeleteApiKeyResponse(apiKeyData_1))
         } yield ()
       }
 

@@ -5,7 +5,7 @@ import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
-import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
+import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.utils.Retry
 import cats.effect.IO
 import org.typelevel.log4cats.StructuredLogger
@@ -20,7 +20,7 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyAdminRequest): IO[(K, ApiKeyData)] = {
+  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(K, ApiKeyData)] = {
     def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
       case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => true
       case _                                                        => false
@@ -31,7 +31,7 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
 
   private def createApiKeyAction(
       userId: String,
-      createApiKeyRequest: CreateApiKeyAdminRequest
+      createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyInsertionError, (K, ApiKeyData)]] = for {
 
     _ <- logger.info("Generating API Key...")

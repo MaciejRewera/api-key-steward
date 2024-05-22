@@ -6,7 +6,7 @@ import apikeysteward.routes.auth.JwtValidator
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
 import apikeysteward.routes.definitions.{AdminEndpoints, ServerConfiguration}
-import apikeysteward.routes.model.admin.{CreateApiKeyAdminResponse, DeleteApiKeyAdminResponse}
+import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
@@ -26,7 +26,7 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
             adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
               (
                 StatusCode.Created,
-                CreateApiKeyAdminResponse(newApiKey, apiKeyData)
+                CreateApiKeyResponse(newApiKey, apiKeyData)
               ).asRight
             }
           }
@@ -68,7 +68,7 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
             val (userId, publicKeyId) = input
             adminService.deleteApiKey(userId, publicKeyId).map {
               case Right(deletedApiKeyData) =>
-                (StatusCode.Ok -> DeleteApiKeyAdminResponse(deletedApiKeyData)).asRight
+                (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
               case Left(_: ApiKeyDataNotFound) =>
                 ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)).asLeft
