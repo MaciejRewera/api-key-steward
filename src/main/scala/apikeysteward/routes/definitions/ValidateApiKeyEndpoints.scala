@@ -21,6 +21,10 @@ object ValidateApiKeyEndpoints {
       .out(jsonBody[ValidateApiKeyResponse])
       .errorOut(
         oneOf[ErrorInfo](
+          oneOfVariantExactMatcher(
+            StatusCode.InternalServerError,
+            jsonBody[ErrorInfo].description("An unexpected error has occurred.")
+          )(ErrorInfo.internalServerErrorInfo()),
           oneOfVariant(
             StatusCode.Forbidden,
             jsonBody[ErrorInfo]

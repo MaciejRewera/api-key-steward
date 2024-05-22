@@ -16,7 +16,6 @@ import io.circe.syntax.EncoderOps
 import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.headers.Authorization
-import org.http4s.implicits.http4sLiteralsSyntax
 import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -27,12 +26,12 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtValidator = mock[JwtValidator]
   private val adminService = mock[AdminService[String]]
 
-  private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtValidator, adminService).allRoutes.orNotFound
+  private val managementRoutes: HttpApp[IO] = new ManagementRoutes(jwtValidator, adminService).allRoutes.orNotFound
 
   private val tokenString: AccessToken = "TOKEN"
   private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
@@ -51,9 +50,9 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     )
   }.flatMap(_ => test)
 
-  "AdminRoutes on POST /admin/users/{userId}/api-key" when {
+  "ManagementRoutes on POST /api-key" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key")
+    val uri = Uri.unsafeFromString("api-key")
     val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
@@ -70,7 +69,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "return Unauthorized" in {
         for {
-          response <- adminRoutes.run(requestWithoutJwt)
+          response <- managementRoutes.run(requestWithoutJwt)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response
             .as[ErrorInfo]
@@ -82,7 +81,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "NOT call either JwtValidator or AdminService" in {
         for {
-          _ <- adminRoutes.run(requestWithoutJwt)
+          _ <- managementRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtValidator, adminService)
         } yield ()
       }
@@ -94,8 +93,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       )
 
       for {
-        _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+        _ <- managementRoutes.run(request)
+        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -109,7 +108,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
         } yield ()
@@ -121,7 +120,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -135,7 +134,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
@@ -147,7 +146,40 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
+          _ = verifyZeroInteractions(adminService)
+        } yield ()
+      }
+    }
+
+    "JwtValidator returns Right containing JsonWebToken, but 'sub' field in JWT is empty'" should {
+
+      val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
+        jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+      )
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+
+      // This case returns Unauthorized because of how endpoint definition is written in Tapir.
+      // This should be revisited once decision is made on how much info to return with Unauthorized response.
+      "return Unauthorized" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          response <- managementRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call AdminService" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -164,7 +196,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "return Bad Request" in authorizedFixture {
           for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            response <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = response.status shouldBe Status.BadRequest
             _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
           } yield ()
@@ -172,7 +204,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "NOT call AdminService" in authorizedFixture {
           for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = verifyZeroInteractions(adminService)
           } yield ()
         }
@@ -187,7 +219,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "return Bad Request" in authorizedFixture {
           for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            response <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = response.status shouldBe Status.BadRequest
             _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
           } yield ()
@@ -195,7 +227,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "NOT call AdminService" in authorizedFixture {
           for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = verifyZeroInteractions(adminService)
           } yield ()
         }
@@ -213,7 +245,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "return Bad Request" in authorizedFixture {
           for {
-            response <- adminRoutes.run(requestWithLongName)
+            response <- managementRoutes.run(requestWithLongName)
             _ = response.status shouldBe Status.BadRequest
             _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
           } yield ()
@@ -221,7 +253,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "NOT call AdminService" in authorizedFixture {
           for {
-            _ <- adminRoutes.run(requestWithLongName)
+            _ <- managementRoutes.run(requestWithLongName)
             _ = verifyZeroInteractions(adminService)
           } yield ()
         }
@@ -236,7 +268,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "return Bad Request" in authorizedFixture {
           for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            response <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = response.status shouldBe Status.BadRequest
             _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
           } yield ()
@@ -244,7 +276,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "NOT call AdminService" in authorizedFixture {
           for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ <- managementRoutes.run(requestWithOnlyWhiteCharacters)
             _ = verifyZeroInteractions(adminService)
           } yield ()
         }
@@ -261,7 +293,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
           "return Bad Request" in authorizedFixture {
             for {
-              response <- adminRoutes.run(requestWithLongName)
+              response <- managementRoutes.run(requestWithLongName)
               _ = response.status shouldBe Status.BadRequest
               _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
             } yield ()
@@ -269,7 +301,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
           "NOT call AdminService" in authorizedFixture {
             for {
-              _ <- adminRoutes.run(requestWithLongName)
+              _ <- managementRoutes.run(requestWithLongName)
               _ = verifyZeroInteractions(adminService)
             } yield ()
           }
@@ -284,7 +316,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
           "return Bad Request" in authorizedFixture {
             for {
-              response <- adminRoutes.run(requestWithNegativeTtl)
+              response <- managementRoutes.run(requestWithNegativeTtl)
               _ = response.status shouldBe Status.BadRequest
               _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
             } yield ()
@@ -292,7 +324,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
           "NOT call AdminService" in authorizedFixture {
             for {
-              _ <- adminRoutes.run(requestWithNegativeTtl)
+              _ <- managementRoutes.run(requestWithNegativeTtl)
               _ = verifyZeroInteractions(adminService)
             } yield ()
           }
@@ -304,10 +336,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "call AdminService" in authorizedFixture {
         adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+        val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
 
         for {
-          _ <- adminRoutes.run(request)
-          _ = verify(adminService).createApiKey(eqTo(userId_1), eqTo(requestBody))
+          _ <- managementRoutes.run(request)
+          _ = verify(adminService).createApiKey(eqTo(expectedUserId), eqTo(requestBody))
         } yield ()
       }
 
@@ -317,7 +350,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
           for {
-            response <- adminRoutes.run(request)
+            response <- managementRoutes.run(request)
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
@@ -335,7 +368,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
           for {
-            response <- adminRoutes.run(requestWithoutDescription)
+            response <- managementRoutes.run(requestWithoutDescription)
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
@@ -348,7 +381,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
@@ -356,9 +389,9 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     }
   }
 
-  "AdminRoutes on GET /admin/users/{userId}/api-key" when {
+  "ManagementRoutes on GET /api-key" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key")
+    val uri = Uri.unsafeFromString("api-key")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -367,7 +400,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "return Unauthorized" in {
         for {
-          response <- adminRoutes.run(requestWithoutJwt)
+          response <- managementRoutes.run(requestWithoutJwt)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response
             .as[ErrorInfo]
@@ -379,7 +412,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "NOT call either JwtValidator or AdminService" in {
         for {
-          _ <- adminRoutes.run(requestWithoutJwt)
+          _ <- managementRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtValidator, adminService)
         } yield ()
       }
@@ -391,8 +424,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       )
 
       for {
-        _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
+        _ <- managementRoutes.run(request)
+        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -407,7 +440,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
         } yield ()
@@ -419,7 +452,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -433,7 +466,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
@@ -445,7 +478,38 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
+          _ = verifyZeroInteractions(adminService)
+        } yield ()
+      }
+    }
+
+    "JwtValidator returns Right containing JsonWebToken, but 'sub' field in JWT is empty'" should {
+
+      val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
+        jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+      )
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+
+      "return Unauthorized" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          response <- managementRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call AdminService" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -455,10 +519,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "call AdminService" in authorizedFixture {
         adminService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+        val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
 
         for {
-          _ <- adminRoutes.run(request)
-          _ = verify(adminService).getAllApiKeysFor(eqTo(userId_1))
+          _ <- managementRoutes.run(request)
+          _ = verify(adminService).getAllApiKeysFor(eqTo(expectedUserId))
         } yield ()
       }
 
@@ -466,11 +531,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.GetAllApiKeysNotFound)))
         } yield ()
       }
 
@@ -478,7 +543,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.getAllApiKeysFor(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.Ok
           _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
         } yield ()
@@ -488,7 +553,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
@@ -496,150 +561,9 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     }
   }
 
-  "AdminRoutes on GET /admin/users" when {
+  "ManagementRoutes on DELETE /api-key/{publicKeyId}" when {
 
-    val uri = uri"/admin/users"
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
-
-    "the JWT is NOT provided" should {
-
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- adminRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtValidator or AdminService" in {
-        for {
-          _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, adminService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-        ErrorInfo.unauthorizedErrorInfo().asLeft
-      )
-
-      for {
-        _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
-      } yield ()
-    }
-
-    "JwtValidator returns Left containing error" should {
-
-      val jwtValidatorError =
-        ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
-        } yield ()
-      }
-
-      "NOT call AdminService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
-        } yield ()
-      }
-    }
-
-    "JwtValidator returns failed IO" should {
-
-      "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "NOT call AdminService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
-        } yield ()
-      }
-    }
-
-    "JwtValidator returns Right containing JsonWebToken" should {
-
-      "call AdminService" in authorizedFixture {
-        adminService.getAllUserIds returns IO.pure(List.empty)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(adminService).getAllUserIds
-        } yield ()
-      }
-
-      "return the value returned by AdminService" when {
-
-        "it is an empty List" in authorizedFixture {
-          adminService.getAllUserIds returns IO.pure(List.empty)
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List.empty[String])
-          } yield ()
-        }
-
-        "it is a List with several elements" in authorizedFixture {
-          adminService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List(userId_1, userId_2, userId_3))
-          } yield ()
-        }
-      }
-
-      "return Internal Server Error when AdminService returns an exception" in authorizedFixture {
-        adminService.getAllUserIds returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminRoutes on DELETE /admin/users/{userId}/api-key/{publicKeyId}" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/api-key/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -648,7 +572,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "return Unauthorized" in {
         for {
-          response <- adminRoutes.run(requestWithoutJwt)
+          response <- managementRoutes.run(requestWithoutJwt)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response
             .as[ErrorInfo]
@@ -660,7 +584,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "NOT call either JwtValidator or AdminService" in {
         for {
-          _ <- adminRoutes.run(requestWithoutJwt)
+          _ <- managementRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtValidator, adminService)
         } yield ()
       }
@@ -672,8 +596,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       )
 
       for {
-        _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+        _ <- managementRoutes.run(request)
+        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -685,7 +609,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
@@ -697,7 +621,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -714,7 +638,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.Unauthorized
           _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
         } yield ()
@@ -726,7 +650,38 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          _ <- adminRoutes.run(request)
+          _ <- managementRoutes.run(request)
+          _ = verifyZeroInteractions(adminService)
+        } yield ()
+      }
+    }
+
+    "JwtValidator returns Right containing JsonWebToken, but 'sub' field in JWT is empty'" should {
+
+      val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
+        jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+      )
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+
+      "return Unauthorized" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          response <- managementRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call AdminService" in {
+        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtWithEmptySubField.asRight
+        )
+
+        for {
+          _ <- managementRoutes.run(request)
           _ = verifyZeroInteractions(adminService)
         } yield ()
       }
@@ -736,10 +691,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "call AdminService" in authorizedFixture {
         adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+        val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
 
         for {
-          _ <- adminRoutes.run(request)
-          _ = verify(adminService).deleteApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ <- managementRoutes.run(request)
+          _ = verify(adminService).deleteApiKey(eqTo(expectedUserId), eqTo(publicKeyId_1))
         } yield ()
       }
 
@@ -747,7 +703,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.Ok
           _ <- response.as[DeleteApiKeyResponse].asserting(_ shouldBe DeleteApiKeyResponse(apiKeyData_1))
         } yield ()
@@ -759,11 +715,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.DeleteApiKeyNotFound)))
         } yield ()
       }
 
@@ -773,7 +729,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         )
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response
             .as[ErrorInfo]
@@ -782,11 +738,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/this-is-not-a-valid-uuid")
+        val uri = Uri.unsafeFromString("/api-key/this-is-not-a-valid-uuid")
         val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
 
         for {
-          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
@@ -798,7 +754,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         adminService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
 
         for {
-          response <- adminRoutes.run(request)
+          response <- managementRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()

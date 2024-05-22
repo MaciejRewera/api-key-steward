@@ -13,10 +13,13 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator) {
+class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]) {
+
+  private val serverInterpreter =
+    Http4sServerInterpreter(ServerConfiguration.options)
 
   private val createApiKeyRoutes: HttpRoutes[IO] =
-    Http4sServerInterpreter(ServerConfiguration.options)
+    serverInterpreter
       .toRoutes(
         AdminEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
@@ -32,7 +35,7 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
       )
 
   private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
-    Http4sServerInterpreter(ServerConfiguration.options)
+    serverInterpreter
       .toRoutes(
         AdminEndpoints.getAllApiKeysForUserEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
@@ -40,15 +43,15 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
             adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
               if (allApiKeyData.isEmpty) {
                 val errorMsg = ErrorMessages.Admin.GetAllApiKeysForUserNotFound
-                Left(ErrorInfo.notFoundErrorInfo(Some(errorMsg)))
+                ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
               } else
-                Right(StatusCode.Ok -> allApiKeyData)
+                (StatusCode.Ok -> allApiKeyData).asRight
             }
           }
       )
 
   private val getAllUserIdsRoutes: HttpRoutes[IO] =
-    Http4sServerInterpreter(ServerConfiguration.options)
+    serverInterpreter
       .toRoutes(
         AdminEndpoints.getAllUserIdsEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
@@ -59,7 +62,7 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
       )
 
   private val deleteApiKeyRoutes: HttpRoutes[IO] =
-    Http4sServerInterpreter(ServerConfiguration.options)
+    serverInterpreter
       .toRoutes(
         AdminEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))

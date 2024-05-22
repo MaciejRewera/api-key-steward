@@ -6,7 +6,7 @@ import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
 import apikeysteward.routes.auth._
-import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ValidateApiKeyRoutes}
+import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -77,13 +77,14 @@ object Application extends IOApp.Simple {
         adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
-        adminRoutes = new AdminRoutes(adminService, jwtValidator).allRoutes
+        managementRoutes = new ManagementRoutes(jwtValidator, adminService).allRoutes
+        adminRoutes = new AdminRoutes(jwtValidator, adminService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
         httpApp = CORS.policy
           .withAllowOriginAll(
-            validateRoutes <+> adminRoutes <+> documentationRoutes
+            validateRoutes <+> managementRoutes <+> adminRoutes <+> documentationRoutes
           )
           .orNotFound
 

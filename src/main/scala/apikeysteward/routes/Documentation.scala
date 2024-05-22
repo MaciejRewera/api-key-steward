@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.{AdminEndpoints, ValidateApiKeyEndpoints}
+import apikeysteward.routes.definitions.{AdminEndpoints, ManagementEndpoints, ValidateApiKeyEndpoints}
 import io.circe.syntax._
 import org.http4s.BuildInfo
 import sttp.apispec.openapi.OpenAPI
@@ -17,9 +17,15 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminEndpoints.deleteApiKeyEndpoint
   )
 
+  private val managementEndpoints = List(
+    ManagementEndpoints.createApiKeyEndpoint,
+    ManagementEndpoints.getAllApiKeysEndpoint,
+    ManagementEndpoints.deleteApiKeyEndpoint
+  )
+
   private val validateApiKeyEndpoints = List(ValidateApiKeyEndpoints.validateApiKeyEndpoint)
 
-  private val allEndpoints = adminEndpoints ++ validateApiKeyEndpoints
+  private val allEndpoints = adminEndpoints ++ managementEndpoints ++ validateApiKeyEndpoints
 
   private val allOpenApiDocs: OpenAPI = toOpenAPI(
     allEndpoints,
