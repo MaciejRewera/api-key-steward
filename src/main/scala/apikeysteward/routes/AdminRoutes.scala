@@ -22,7 +22,7 @@ class AdminRoutes(adminService: AdminService[String], jwtValidator: JwtValidator
         AdminEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
-            val (userId, request) = input
+            val (request, userId) = input
             adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
               (
                 StatusCode.Created,
