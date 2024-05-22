@@ -9,10 +9,6 @@ import sttp.tapir.json.circe.jsonBody
 
 object ValidateApiKeyEndpoints {
 
-  object ErrorMessages {
-    val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."
-  }
-
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     endpoint.post
@@ -28,7 +24,7 @@ object ValidateApiKeyEndpoints {
           oneOfVariant(
             StatusCode.Forbidden,
             jsonBody[ErrorInfo]
-              .description(ErrorMessages.ValidateApiKeyIncorrect)
+              .description(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
           )
         )
       )

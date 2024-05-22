@@ -6,7 +6,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNo
 import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtValidator}
-import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
+import apikeysteward.routes.definitions.ErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
@@ -399,7 +399,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.GetAllApiKeysForUserNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)))
         } yield ()
       }
 
@@ -665,7 +665,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.DeleteApiKeyNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)))
         } yield ()
       }
 
