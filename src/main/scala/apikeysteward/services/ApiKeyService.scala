@@ -2,7 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.definitions.Endpoints.ErrorMessages
+import apikeysteward.routes.definitions.ValidateApiKeyEndpoints.ErrorMessages
 import cats.effect.IO
 
 class ApiKeyService[K](apiKeyRepository: ApiKeyRepository[K]) {

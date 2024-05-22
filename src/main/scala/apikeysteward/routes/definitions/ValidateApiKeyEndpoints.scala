@@ -7,7 +7,7 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-object Endpoints {
+object ValidateApiKeyEndpoints {
 
   object ErrorMessages {
     val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."

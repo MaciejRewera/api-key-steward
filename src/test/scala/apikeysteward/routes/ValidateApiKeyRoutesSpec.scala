@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData.{apiKeyData_1, apiKey_1}
-import apikeysteward.routes.definitions.Endpoints.ErrorMessages
+import apikeysteward.routes.definitions.ValidateApiKeyEndpoints.ErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import apikeysteward.services.ApiKeyService
 import cats.effect.IO
