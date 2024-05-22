@@ -4,8 +4,8 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.auth.JwtValidator
 import apikeysteward.routes.auth.model.JwtPermissions
+import apikeysteward.routes.definitions.AdminEndpoints
 import apikeysteward.routes.definitions.AdminEndpoints.ErrorMessages
-import apikeysteward.routes.definitions.{AdminEndpoints, ServerConfiguration}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.AdminService
 import cats.effect.IO
