@@ -11,6 +11,11 @@ object ErrorMessages {
     val GetAllApiKeysForUserNotFound = "No API Key found for provided userId."
   }
 
+  object Management {
+    val DeleteApiKeyNotFound = "No API Key found for provided keyId."
+    val GetAllApiKeysForUserNotFound = "No API Key found."
+  }
+
   object ValidateApiKey {
     val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."
   }

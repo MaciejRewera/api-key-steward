@@ -11,16 +11,21 @@ import sttp.tapir.json.circe.jsonBody
 
 private[definitions] object ManagementEndpointsBase {
 
-  private val unauthorizedErrorOut: EndpointOutput.OneOfVariant[ErrorInfo] =
-    oneOfVariant(
-      StatusCode.Unauthorized,
-      jsonBody[ErrorInfo].description(ErrorMessages.General.Unauthorized)
-    )
-
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
     endpoint
       .securityIn(auth.bearer[AccessToken]())
-      .errorOut(oneOf[ErrorInfo](unauthorizedErrorOut))
+      .errorOut(
+        oneOf[ErrorInfo](
+          oneOfVariantExactMatcher(
+            StatusCode.InternalServerError,
+            jsonBody[ErrorInfo].description("An unexpected error has occurred.")
+          )(ErrorInfo.internalServerErrorInfo()),
+          oneOfVariant(
+            StatusCode.Unauthorized,
+            jsonBody[ErrorInfo].description(ErrorMessages.General.Unauthorized)
+          )
+        )
+      )
 
   val createApiKeyEndpointBase
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
@@ -36,28 +41,10 @@ private[definitions] object ManagementEndpointsBase {
     authenticatedEndpointBase.get
       .out(statusCode.description(StatusCode.Ok, "API Keys found"))
       .out(jsonBody[List[ApiKeyData]])
-      .errorOutVariantPrepend(
-        oneOfVariantExactMatcher(
-          StatusCode.NotFound,
-          jsonBody[ErrorInfo].description(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)
-        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)))
-      )
 
   val deleteApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     authenticatedEndpointBase.delete
       .out(statusCode.description(StatusCode.Ok, "API Key deleted"))
       .out(jsonBody[DeleteApiKeyResponse])
-      .errorOutVariantPrepend(
-        oneOfVariantExactMatcher(
-          StatusCode.InternalServerError,
-          jsonBody[ErrorInfo].description("An unexpected error has occurred.")
-        )(ErrorInfo.internalServerErrorInfo())
-      )
-      .errorOutVariantPrepend(
-        oneOfVariantExactMatcher(
-          StatusCode.NotFound,
-          jsonBody[ErrorInfo].description(ErrorMessages.Admin.DeleteApiKeyNotFound)
-        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)))
-      )
 
 }

@@ -6,6 +6,7 @@ import apikeysteward.routes.auth.JwtValidator.AccessToken
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
+import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
 import java.util.UUID
@@ -30,9 +31,21 @@ object AdminEndpoints {
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .in("admin" / "users" / userIdPathParameter / "api-key")
+      .errorOutVariantPrepend(
+        oneOfVariantExactMatcher(
+          StatusCode.NotFound,
+          jsonBody[ErrorInfo].description(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)
+        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.GetAllApiKeysForUserNotFound)))
+      )
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ManagementEndpointsBase.deleteApiKeyEndpointBase
       .in("admin" / "users" / userIdPathParameter / "api-key" / keyIdPathParameter)
+      .errorOutVariantPrepend(
+        oneOfVariantExactMatcher(
+          StatusCode.NotFound,
+          jsonBody[ErrorInfo].description(ErrorMessages.Admin.DeleteApiKeyNotFound)
+        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)))
+      )
 
 }
