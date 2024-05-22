@@ -1,6 +1,5 @@
-package apikeysteward.routes.definitions
+package apikeysteward.routes
 
-import apikeysteward.routes.ErrorInfo
 import cats.effect.IO
 import io.circe.Json
 import io.circe.syntax.EncoderOps

@@ -7,19 +7,12 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-object Endpoints {
-
-  object ErrorMessages {
-    val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."
-  }
-
-  private val baseEndpoint: Endpoint[Unit, Unit, Unit, Unit, Any] =
-    endpoint.in("api-key")
+object ValidateApiKeyEndpoints {
 
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
-    baseEndpoint.post
-      .in("validation")
+    endpoint.post
+      .in("api-key" / "validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
           .description("API Key to validate.")
@@ -28,10 +21,14 @@ object Endpoints {
       .out(jsonBody[ValidateApiKeyResponse])
       .errorOut(
         oneOf[ErrorInfo](
+          oneOfVariantExactMatcher(
+            StatusCode.InternalServerError,
+            jsonBody[ErrorInfo].description("An unexpected error has occurred.")
+          )(ErrorInfo.internalServerErrorInfo()),
           oneOfVariant(
             StatusCode.Forbidden,
             jsonBody[ErrorInfo]
-              .description(ErrorMessages.ValidateApiKeyIncorrect)
+              .description(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
           )
         )
       )

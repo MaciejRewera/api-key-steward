@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.{Endpoints, ServerConfiguration}
+import apikeysteward.routes.definitions.ValidateApiKeyEndpoints
 import apikeysteward.routes.model.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyService
 import cats.effect.IO
@@ -13,7 +13,7 @@ class ValidateApiKeyRoutes(apiKeyCreationService: ApiKeyService[String]) {
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        Endpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
+        ValidateApiKeyEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
           apiKeyCreationService.validateApiKey(request.apiKey).map { validationResult =>
             validationResult
               .fold(

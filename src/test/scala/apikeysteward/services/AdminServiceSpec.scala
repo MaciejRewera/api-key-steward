@@ -10,7 +10,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.repositories.{ApiKeyRepository, DoobieUnitSpec}
-import apikeysteward.routes.model.admin.CreateApiKeyAdminRequest
+import apikeysteward.routes.model.CreateApiKeyRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentCaptor
@@ -34,7 +34,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
   override def beforeEach(): Unit =
     reset(apiKeyGenerator, apiKeyRepository)
 
-  private val createApiKeyAdminRequest = CreateApiKeyAdminRequest(
+  private val createApiKeyAdminRequest = CreateApiKeyRequest(
     name = name,
     description = description,
     ttl = ttlSeconds,
