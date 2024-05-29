@@ -3,6 +3,7 @@ package apikeysteward.generators
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
 import cats.implicits.catsSyntaxEitherId
 
+import scala.annotation.tailrec
 import scala.math.pow
 
 object Base62 {
@@ -15,6 +16,7 @@ object Base62 {
     else encodePos(num).asRight
 
   private def encodePos(num: Long): Array[Char] = {
+    @tailrec
     def loop(n: Long, acc: Array[Char] = Array.empty): Array[Char] =
       if (n > 0) {
         val idx = (n % base).toInt

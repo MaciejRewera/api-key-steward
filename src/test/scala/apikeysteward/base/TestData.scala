@@ -10,6 +10,8 @@ trait TestData extends FixedClock {
 
   val apiKey_1 = "test-api-key-1"
   val apiKey_2 = "test-api-key-2"
+  val apiKey_3 = "test-api-key-3"
+  val apiKey_4 = "test-api-key-4"
 
   val publicKeyId_1 = UUID.randomUUID()
   val publicKeyId_2 = UUID.randomUUID()

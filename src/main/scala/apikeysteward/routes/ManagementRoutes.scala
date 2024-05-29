@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]) {
+class ManagementRoutes(jwtValidator: JwtValidator, adminService: AdminService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)

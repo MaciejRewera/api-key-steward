@@ -29,7 +29,7 @@ import java.util.UUID
 class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtValidator = mock[JwtValidator]
-  private val adminService = mock[AdminService[String]]
+  private val adminService = mock[AdminService]
 
   private val managementRoutes: HttpApp[IO] = new ManagementRoutes(jwtValidator, adminService).allRoutes.orNotFound
 

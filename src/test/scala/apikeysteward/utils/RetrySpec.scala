@@ -60,7 +60,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
         } yield ()
       }
 
-      "return exception" in {
+      "return MaxNumberOfRetriesExceeded exception" in {
         action.run returns IO.pure(Left[Throwable, String](testException))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>
@@ -86,7 +86,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
         } yield ()
       }
 
-      "return exception" in {
+      "return ReceivedErrorNotConfiguredToRetry exception" in {
         action.run returns IO.pure(Left[Throwable, String](testException))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>
@@ -112,7 +112,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
         } yield ()
       }
 
-      "return exception" in {
+      "return MaxNumberOfRetriesExceeded exception" in {
         action.run returns IO.pure(Left[Throwable, String](testException))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>

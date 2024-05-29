@@ -14,13 +14,13 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.time.Clock
 import java.util.UUID
 
-class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: ApiKeyRepository[K])(
+class AdminService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(
     implicit clock: Clock
 ) {
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(K, ApiKeyData)] = {
+  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(String, ApiKeyData)] = {
     def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
       case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => true
       case _                                                        => false
@@ -32,7 +32,7 @@ class AdminService[K](apiKeyGenerator: ApiKeyGenerator[K], apiKeyRepository: Api
   private def createApiKeyAction(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
-  ): IO[Either[ApiKeyInsertionError, (K, ApiKeyData)]] = for {
+  ): IO[Either[ApiKeyInsertionError, (String, ApiKeyData)]] = for {
 
     _ <- logger.info("Generating API Key...")
     newApiKey <- apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key."))

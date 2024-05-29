@@ -1,7 +1,7 @@
 package apikeysteward
 
 import apikeysteward.config.AppConfig
-import apikeysteward.generators.{ApiKeyGenerator, StringApiKeyGenerator}
+import apikeysteward.generators.{ApiKeyGenerator, ApiKeyPrefixProvider, CRC32ChecksumCalculator, RandomStringGenerator}
 import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
@@ -59,14 +59,21 @@ object Application extends IOApp.Simple {
         jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator)
         jwtValidator = new JwtValidator(jwtDecoder)
 
-        apiKeyGenerator: ApiKeyGenerator[String] = new StringApiKeyGenerator()
+        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider()
+        randomStringGenerator: RandomStringGenerator = new RandomStringGenerator()
+        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator()
+        apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
+          apiKeyPrefixProvider,
+          randomStringGenerator,
+          checksumCalculator
+        )
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()
         scopeDb = new ScopeDb()
         apiKeyDataScopesDb = new ApiKeyDataScopesDb()
 
-        apiKeyRepository: ApiKeyRepository[String] = new DbApiKeyRepository(
+        apiKeyRepository: ApiKeyRepository = new DbApiKeyRepository(
           apiKeyDb,
           apiKeyDataDb,
           scopeDb,
@@ -74,7 +81,7 @@ object Application extends IOApp.Simple {
         )(transactor)
 
         apiKeyService = new ApiKeyService(apiKeyRepository)
-        adminService = new AdminService[String](apiKeyGenerator, apiKeyRepository)
+        adminService = new AdminService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
         managementRoutes = new ManagementRoutes(jwtValidator, adminService).allRoutes

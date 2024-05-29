@@ -18,7 +18,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
-  private val apiKeyService = mock[ApiKeyService[String]]
+  private val apiKeyService = mock[ApiKeyService]
   private val validateApiKeyRoutes: HttpApp[IO] = new ValidateApiKeyRoutes(apiKeyService).allRoutes.orNotFound
 
   private val testException = new RuntimeException("Test Exception")

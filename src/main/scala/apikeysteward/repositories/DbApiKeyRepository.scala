@@ -1,6 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData
+import apikeysteward.repositories.ApiKeyRepository.ApiKeyHash
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -22,14 +23,14 @@ class DbApiKeyRepository(
     scopeDb: ScopeDb,
     apiKeyDataScopesDb: ApiKeyDataScopesDb
 )(transactor: Transactor[IO])
-    extends ApiKeyRepository[String] {
+    extends ApiKeyRepository {
 
   private val logger: StructuredLogger[doobie.ConnectionIO] = Slf4jLogger.getLogger
 
-  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
+  override def insert(apiKeyHash: ApiKeyHash, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
       _ <- logInfoE("Inserting new API Key...")
-      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
+      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKeyHash)))
         .leftSemiflatTap(e => logger.warn(s"Could not insert API Key because: ${e.message}"))
         .flatTap(_ => logInfoE("Inserted new API Key."))
 
@@ -59,9 +60,9 @@ class DbApiKeyRepository(
       _ <- apiKeyDataScopesDb.insertMany(apiKeyDataScopesEntities)
     } yield Right(scopeEntitiesRead)
 
-  override def get(apiKey: String): IO[Option[ApiKeyData]] =
+  override def get(apiKeyHash: ApiKeyHash): IO[Option[ApiKeyData]] =
     (for {
-      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKey))
+      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKeyHash))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
 
       scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)

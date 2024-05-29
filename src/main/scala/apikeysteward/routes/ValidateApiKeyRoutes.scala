@@ -8,7 +8,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ValidateApiKeyRoutes(apiKeyCreationService: ApiKeyService[String]) {
+class ValidateApiKeyRoutes(apiKeyCreationService: ApiKeyService) {
 
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
