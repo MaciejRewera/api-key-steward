@@ -3,8 +3,9 @@ package apikeysteward
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, ApiKeyPrefixProvider, CRC32ChecksumCalculator, RandomStringGenerator}
 import apikeysteward.license.AlwaysValidLicenseValidator
+import apikeysteward.repositories.SecureHashGenerator.Algorithm
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
-import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository}
+import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository, SecureHashGenerator}
 import apikeysteward.routes.auth._
 import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
@@ -67,6 +68,7 @@ object Application extends IOApp.Simple {
           randomStringGenerator,
           checksumCalculator
         )
+        secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()
@@ -77,7 +79,8 @@ object Application extends IOApp.Simple {
           apiKeyDb,
           apiKeyDataDb,
           scopeDb,
-          apiKeyDataScopesDb
+          apiKeyDataScopesDb,
+          secureHashGenerator
         )(transactor)
 
         apiKeyService = new ApiKeyService(apiKeyRepository)

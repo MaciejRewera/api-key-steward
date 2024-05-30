@@ -321,7 +321,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
-              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyData_1))
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1.value, apiKeyData_1))
           } yield ()
         }
 
@@ -339,7 +339,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
-              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyDataWithoutDescription))
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1.value, apiKeyDataWithoutDescription))
           } yield ()
         }
       }

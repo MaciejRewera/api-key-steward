@@ -2,6 +2,7 @@ package apikeysteward.generators
 
 import apikeysteward.base.TestData.{apiKey_1, apiKey_2, apiKey_3, apiKey_4}
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
+import apikeysteward.model.ApiKey
 import apikeysteward.utils.Retry.RetryException.MaxNumberOfRetriesExceeded
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -35,46 +36,57 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "everything works correctly" should {
 
       "call RandomStringGenerator, CRC32ChecksumCalculator and ApiKeyPrefixProvider" in {
-        randomStringGenerator.generate returns IO.pure(apiKey_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        randomStringGenerator.generate returns IO.pure(apiKey_1.value)
+        checksumCalculator.calcChecksumFor(any[String]) returns 42L
 
         for {
           _ <- apiKeyGenerator.generateApiKey
 
           _ = verify(randomStringGenerator).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1.value))
           _ = verify(apiKeyPrefixProvider).fetchPrefix
 
         } yield ()
       }
 
       "return the newly created Api Key" in {
-        randomStringGenerator.generate returns IO.pure(apiKey_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        randomStringGenerator.generate returns IO.pure(apiKey_1.value)
+        checksumCalculator.calcChecksumFor(any[String]) returns 42L
 
         apiKeyGenerator.generateApiKey.asserting { result =>
           val expectedEncodedChecksum = "00000" + Base62.CharacterSet(42)
 
-          result shouldBe (apiKeyPrefix + apiKey_1 + expectedEncodedChecksum)
+          result shouldBe ApiKey(apiKeyPrefix + apiKey_1.value + expectedEncodedChecksum)
         }
       }
     }
 
     "RandomStringGenerator returns failed IO" should {
 
-      "NOT call either CRC32ChecksumCalculator or ApiKeyPrefixProvider" in {
+      "NOT call CRC32ChecksumCalculator" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns IO.raiseError(testException)
 
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
+          _ = verifyZeroInteractions(checksumCalculator)
+        } yield ()
+      }
 
-          _ = verifyZeroInteractions(checksumCalculator, apiKeyPrefixProvider)
+      "call ApiKeyPrefixProvider" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        randomStringGenerator.generate returns IO.raiseError(testException)
+
+        for {
+          _ <- apiKeyGenerator.generateApiKey.attempt
+          _ = verify(apiKeyPrefixProvider).fetchPrefix
         } yield ()
       }
 
       "return failed IO containing the same exception" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns IO.raiseError(testException)
 
         apiKeyGenerator.generateApiKey.attempt.asserting(_ shouldBe Left(testException))
@@ -84,49 +96,49 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "CRC32ChecksumCalculator returns negative checksum on the first try" should {
 
       "call RandomStringGenerator, CRC32ChecksumCalculator again" in {
-        randomStringGenerator.generate returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
-        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        randomStringGenerator.generate returns (IO.pure(apiKey_1.value), IO.pure(apiKey_2.value))
+        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
 
         for {
           _ <- apiKeyGenerator.generateApiKey
 
           _ = verify(randomStringGenerator, times(2)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_2))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1.value))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_2.value))
         } yield ()
       }
 
       "call ApiKeyPrefixProvider once" in {
-        randomStringGenerator.generate returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
+        randomStringGenerator.generate returns (IO.pure(apiKey_1.value), IO.pure(apiKey_2.value))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
 
         for {
           _ <- apiKeyGenerator.generateApiKey
-
           _ = verify(apiKeyPrefixProvider).fetchPrefix
         } yield ()
       }
 
       "return the second created Api Key" in {
-        randomStringGenerator.generate returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
-        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        randomStringGenerator.generate returns (IO.pure(apiKey_1.value), IO.pure(apiKey_2.value))
+        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
 
         apiKeyGenerator.generateApiKey.asserting { result =>
           val expectedEncodedChecksum = "00000" + Base62.CharacterSet(42)
 
-          result shouldBe (apiKeyPrefix + apiKey_2 + expectedEncodedChecksum)
+          result shouldBe ApiKey(apiKeyPrefix + apiKey_2.value + expectedEncodedChecksum)
         }
       }
     }
 
     "CRC32ChecksumCalculator keeps returning negative checksum" should {
 
-      "call RandomStringGenerator, CRC32ChecksumCalculator again until reaching max retries amount (3)" in {
+      "call RandomStringGenerator and CRC32ChecksumCalculator again until reaching max retries amount (3)" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
+          IO.pure(apiKey_1.value), IO.pure(apiKey_2.value), IO.pure(apiKey_3.value), IO.pure(apiKey_4.value)
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
 
@@ -134,28 +146,30 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           _ <- apiKeyGenerator.generateApiKey.attempt
 
           _ = verify(randomStringGenerator, times(4)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_2))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_3))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_4))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1.value))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_2.value))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_3.value))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_4.value))
         } yield ()
       }
 
-      "NOT call ApiKeyPrefixProvider at all" in {
+      "call ApiKeyPrefixProvider once" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
+          IO.pure(apiKey_1.value), IO.pure(apiKey_2.value), IO.pure(apiKey_3.value), IO.pure(apiKey_4.value)
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
+
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
-
-          _ = verifyZeroInteractions(apiKeyPrefixProvider)
+          _ = verify(apiKeyPrefixProvider).fetchPrefix
         } yield ()
       }
 
       "return failed IO containing MaxNumberOfRetriesExceeded" in {
+        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
+          IO.pure(apiKey_1.value), IO.pure(apiKey_2.value), IO.pure(apiKey_3.value), IO.pure(apiKey_4.value)
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
 
@@ -166,8 +180,22 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     }
 
     "ApiKeyPrefixProvider returns failed IO" should {
+
+      "call RandomStringGenerator and CRC32ChecksumCalculator" in {
+        randomStringGenerator.generate returns IO.pure(apiKey_1.value)
+        checksumCalculator.calcChecksumFor(any[String]) returns 42L
+        apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
+
+        for {
+          _ <- apiKeyGenerator.generateApiKey.attempt
+
+          _ = verify(randomStringGenerator).generate
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKey_1.value))
+        } yield ()
+      }
+
       "return failed IO containing the same exception" in {
-        randomStringGenerator.generate returns IO.pure(apiKey_1)
+        randomStringGenerator.generate returns IO.pure(apiKey_1.value)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
 

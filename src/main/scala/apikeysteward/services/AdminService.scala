@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.ApiKeyData
+import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
@@ -14,13 +14,11 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.time.Clock
 import java.util.UUID
 
-class AdminService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(
-    implicit clock: Clock
-) {
+class AdminService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock) {
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(String, ApiKeyData)] = {
+  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(ApiKey, ApiKeyData)] = {
     def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
       case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => true
       case _                                                        => false
@@ -32,7 +30,7 @@ class AdminService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRep
   private def createApiKeyAction(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
-  ): IO[Either[ApiKeyInsertionError, (String, ApiKeyData)]] = for {
+  ): IO[Either[ApiKeyInsertionError, (ApiKey, ApiKeyData)]] = for {
 
     _ <- logger.info("Generating API Key...")
     newApiKey <- apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key."))

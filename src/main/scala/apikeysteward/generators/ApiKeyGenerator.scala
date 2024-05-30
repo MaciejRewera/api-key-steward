@@ -1,9 +1,10 @@
 package apikeysteward.generators
 
+import apikeysteward.model.ApiKey
 import apikeysteward.utils.Retry
 import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits.catsSyntaxEitherId
+import cats.implicits.{catsSyntaxEitherId, catsSyntaxTuple2Parallel}
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -15,17 +16,21 @@ class ApiKeyGenerator(
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
-  def generateApiKey: IO[String] =
-    Retry.retry(maxRetries = 3, (_: Base62.Base62Error) => true)(generateApiKeyAction)
+  def generateApiKey: IO[ApiKey] =
+    (
+      apiKeyPrefixProvider.fetchPrefix,
+      Retry.retry(maxRetries = 3, (_: Base62.Base62Error) => true)(generateApiKeyWithChecksum)
+    ).parMapN { case (prefix, apiKeyWithChecksum) =>
+      ApiKey(prefix + apiKeyWithChecksum)
+    }
 
-  private def generateApiKeyAction: IO[Either[Base62.Base62Error, String]] =
+  private def generateApiKeyWithChecksum: IO[Either[Base62.Base62Error, String]] =
     (for {
-      apiKey <- EitherT(stringApiKeyGenerator.generate.map(_.asRight))
+      apiKey <- EitherT.right(stringApiKeyGenerator.generate)
       checksum = checksumCalculator.calcChecksumFor(apiKey)
       checksumEncoded <- EitherT(encodeChecksum(checksum))
-      prefix <- EitherT(apiKeyPrefixProvider.fetchPrefix.map(_.asRight[Base62.Base62Error]))
 
-      result = prefix + apiKey + checksumEncoded
+      result = apiKey + checksumEncoded
     } yield result).value
 
   private def encodeChecksum(checksum: Long): IO[Either[Base62.Base62Error, String]] =

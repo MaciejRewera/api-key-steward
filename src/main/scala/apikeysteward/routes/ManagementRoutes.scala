@@ -28,7 +28,7 @@ class ManagementRoutes(jwtValidator: JwtValidator, adminService: AdminService) {
               adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
                 (
                   StatusCode.Created,
-                  CreateApiKeyResponse(newApiKey, apiKeyData)
+                  CreateApiKeyResponse(newApiKey.value, apiKeyData)
                 ).asRight
               }
             }

@@ -1,5 +1,6 @@
 package apikeysteward.routes
 
+import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ValidateApiKeyEndpoints
 import apikeysteward.routes.model.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyService
@@ -14,7 +15,7 @@ class ValidateApiKeyRoutes(apiKeyCreationService: ApiKeyService) {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         ValidateApiKeyEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
-          apiKeyCreationService.validateApiKey(request.apiKey).map { validationResult =>
+          apiKeyCreationService.validateApiKey(ApiKey(request.apiKey)).map { validationResult =>
             validationResult
               .fold(
                 error => Left(ErrorInfo.forbiddenErrorInfo(Some(error))),

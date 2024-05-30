@@ -2,11 +2,14 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
+import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
+import apikeysteward.routes.auth.AuthTestData
+import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -34,13 +37,13 @@ class DbApiKeyRepositorySpec
   private val apiKeyDataDb = mock[ApiKeyDataDb]
   private val scopeDb = mock[ScopeDb]
   private val apiKeyDataScopesDb = mock[ApiKeyDataScopesDb]
+  private val secureHashGenerator = mock[SecureHashGenerator]
 
-  private val apiKeyRepository = new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb)(
-    noopTransactor
-  )
+  private val apiKeyRepository =
+    new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb)
+    reset(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)
 
   private val apiKeyEntityRead = ApiKeyEntity.Read(
     id = 13L,
@@ -104,6 +107,7 @@ class DbApiKeyRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb once, providing correct entities" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
         scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped
@@ -111,7 +115,7 @@ class DbApiKeyRepositorySpec
           any[List[ApiKeyDataScopesEntity.Write]]
         ) returns apiKeyDataScopesInsertResultWrapped
 
-        val expectedEntityWrite = ApiKeyEntity.Write(apiKey_1)
+        val expectedEntityWrite = ApiKeyEntity.Write(hashedApiKey_1.value)
         val expectedDataEntityWrite = ApiKeyDataEntity.Write(
           apiKeyId = 13L,
           publicKeyId = publicKeyId_1.toString,
@@ -127,15 +131,16 @@ class DbApiKeyRepositorySpec
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
-          _ <- IO(verify(apiKeyDb).insert(eqTo(expectedEntityWrite)))
-          _ <- IO(verify(apiKeyDataDb).insert(eqTo(expectedDataEntityWrite)))
-          _ <- IO(verify(scopeDb).insertMany(eqTo(expectedScopeEntitiesWrite)))
-          _ <- IO(verify(apiKeyDataScopesDb).insertMany(eqTo(expectedApiKeyDataScopesEntitiesWrite)))
 
+          _ = verify(apiKeyDb).insert(eqTo(expectedEntityWrite))
+          _ = verify(apiKeyDataDb).insert(eqTo(expectedDataEntityWrite))
+          _ = verify(scopeDb).insertMany(eqTo(expectedScopeEntitiesWrite))
+          _ = verify(apiKeyDataScopesDb).insertMany(eqTo(expectedApiKeyDataScopesEntitiesWrite))
         } yield ()
       }
 
       "return Right containing ApiKeyData" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
         scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped
@@ -150,20 +155,43 @@ class DbApiKeyRepositorySpec
       }
     }
 
+    "SecureHashGenerator returns failed IO" should {
+
+      "NOT call ApiKeyDb, ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+
+        for {
+          _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+          _ = verifyZeroInteractions(apiKeyDb)
+          _ = verifyZeroInteractions(apiKeyDataDb)
+          _ = verifyZeroInteractions(scopeDb)
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "ApiKeyDb returns Left containing ApiKeyAlreadyExistsError" should {
 
       "NOT call ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
-          _ <- IO(verifyZeroInteractions(apiKeyDataDb))
-          _ <- IO(verifyZeroInteractions(scopeDb))
-          _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+          _ = verifyZeroInteractions(apiKeyDataDb)
+          _ = verifyZeroInteractions(scopeDb)
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
         } yield ()
       }
 
       "return Left containing ApiKeyAlreadyExistsError" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
@@ -176,18 +204,20 @@ class DbApiKeyRepositorySpec
     "ApiKeyDb returns different exception" should {
 
       "NOT call ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
-          _ <- IO(verifyZeroInteractions(apiKeyDataDb))
-          _ <- IO(verifyZeroInteractions(scopeDb))
-          _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+          _ = verifyZeroInteractions(apiKeyDataDb)
+          _ = verifyZeroInteractions(scopeDb)
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
         } yield ()
       }
 
       "return failed IO containing this exception" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
@@ -200,21 +230,24 @@ class DbApiKeyRepositorySpec
 
     "ApiKeyDb returns Right containing ApiKeyEntity.Read" when {
 
+      def fixture[T](test: => IO[T]): IO[T] = IO {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+      }.flatMap(_ => test)
+
       "ApiKeyDataDb returns Left containing ApiKeyIdAlreadyExistsError" should {
 
-        "NOT call ScopeDb or ApiKeyDataScopesDb" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "NOT call ScopeDb or ApiKeyDataScopesDb" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
-            _ <- IO(verifyZeroInteractions(scopeDb))
-            _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+            _ = verifyZeroInteractions(scopeDb)
+            _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }
 
-        "return Left containing ApiKeyIdAlreadyExistsError" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "return Left containing ApiKeyIdAlreadyExistsError" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
           apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
@@ -226,19 +259,17 @@ class DbApiKeyRepositorySpec
 
       "ApiKeyDataDb returns Left containing PublicKeyIdAlreadyExistsError" should {
 
-        "NOT call ScopeDb or ApiKeyDataScopesDb" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "NOT call ScopeDb or ApiKeyDataScopesDb" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
-            _ <- IO(verifyZeroInteractions(scopeDb))
-            _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+            _ = verifyZeroInteractions(scopeDb)
+            _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }
 
-        "return Left containing PublicKeyIdAlreadyExistsError" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "return Left containing PublicKeyIdAlreadyExistsError" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
           apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
@@ -250,20 +281,18 @@ class DbApiKeyRepositorySpec
 
       "ApiKeyDataDb returns different exception" should {
 
-        "NOT call ScopeDb or ApiKeyDataScopesDb" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "NOT call ScopeDb or ApiKeyDataScopesDb" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns testException
             .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
-            _ <- IO(verifyZeroInteractions(scopeDb))
-            _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+            _ = verifyZeroInteractions(scopeDb)
+            _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }
 
-        "return failed IO containing this exception" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        "return failed IO containing this exception" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns testException
             .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
@@ -276,21 +305,23 @@ class DbApiKeyRepositorySpec
 
       "ScopeDb returns exception" should {
 
-        "NOT call ApiKeyDataScopesDb" in {
+        def fixture[T](test: => IO[T]): IO[T] = IO {
+          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
           apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
+        }.flatMap(_ => test)
+
+        "NOT call ApiKeyDataScopesDb" in fixture {
           scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped ++ Stream
             .raiseError[doobie.ConnectionIO](testException)
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
-            _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+            _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }
 
-        "return failed IO containing this exception" in {
-          apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
+        "return failed IO containing this exception" in fixture {
           scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped ++ Stream
             .raiseError[doobie.ConnectionIO](testException)
 
@@ -303,6 +334,7 @@ class DbApiKeyRepositorySpec
 
       "ApiKeyDataScopesDb returns exception" should {
         "return failed IO containing this exception" in {
+          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
           apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
           scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped
@@ -320,153 +352,197 @@ class DbApiKeyRepositorySpec
 
   "DbApiKeyRepository on get(:apiKey)" when {
 
-    "should always call ApiKeyDb" in {
-      apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+    "should always call SecureHashGenerator" in {
+      secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
       for {
-        _ <- apiKeyRepository.get(apiKey_1)
-        _ <- IO(verify(apiKeyDb).getByApiKey(eqTo(apiKey_1)))
+        _ <- apiKeyRepository.get(apiKey_1).attempt
+        _ = verify(secureHashGenerator).generateHashFor(eqTo(apiKey_1))
       } yield ()
     }
 
-    "ApiKeyDb returns empty Option" should {
+    "SecureHashGenerator returns failed IO" should {
 
-      "NOT call ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
-        apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+      "NOT call ApiKeyDb, ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyRepository.get(apiKey_1)
-          _ <- IO(verifyZeroInteractions(apiKeyDataDb))
-          _ <- IO(verifyZeroInteractions(scopeDb))
-          _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+          _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+          _ = verifyZeroInteractions(apiKeyDb)
+          _ = verifyZeroInteractions(apiKeyDataDb)
+          _ = verifyZeroInteractions(scopeDb)
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
         } yield ()
       }
 
-      "return empty Option" in {
-        apiKeyDb.getByApiKey(any[String]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+      "return failed IO containing the same exception" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
-        apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
 
-    "ApiKeyDb returns ApiKeyEntity" when {
+    "SecureHashGenerator returns IO containing HashedApiKey" when {
 
-      "should always call ApiKeyDataDb" in {
-        apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-        apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+      "should call ApiKeyDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        apiKeyDb.getByApiKey(any[HashedApiKey]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         for {
           _ <- apiKeyRepository.get(apiKey_1)
-          _ <- IO(verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead.id)))
+          _ = verify(apiKeyDb).getByApiKey(eqTo(hashedApiKey_1))
         } yield ()
       }
 
-      "ApiKeyDataDb returns empty Option" should {
+      "ApiKeyDb returns empty Option" should {
 
-        "NOT call ScopeDb or ApiKeyDataScopesDb" in {
-          apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+        "NOT call ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+          apiKeyDb.getByApiKey(any[HashedApiKey]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
           for {
             _ <- apiKeyRepository.get(apiKey_1)
-            _ <- IO(verifyZeroInteractions(scopeDb))
-            _ <- IO(verifyZeroInteractions(apiKeyDataScopesDb))
+            _ = verifyZeroInteractions(apiKeyDataDb)
+            _ = verifyZeroInteractions(scopeDb)
+            _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }
 
         "return empty Option" in {
-          apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+          apiKeyDb.getByApiKey(any[HashedApiKey]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
           apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
         }
       }
 
-      "ApiKeyDataDb returns ApiKeyDataEntity" when {
+      "ApiKeyDb returns ApiKeyEntity" when {
 
-        "should always call ApiKeyDataScopesDb" in {
-          apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-          apiKeyDataScopesDb
-            .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-          scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+        "should always call ApiKeyDataDb" in {
+          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+          apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+          apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
           for {
             _ <- apiKeyRepository.get(apiKey_1)
-            _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
+            _ = verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead.id))
           } yield ()
         }
 
-        "ApiKeyDataScopesDb returns empty Stream" should {
+        "ApiKeyDataDb returns empty Option" should {
 
-          "call ScopeDb providing empty List" in {
-            apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-            apiKeyDataScopesDb
-              .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-            scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+          "NOT call ScopeDb or ApiKeyDataScopesDb" in {
+            secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+            apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
             for {
               _ <- apiKeyRepository.get(apiKey_1)
-              _ = verify(scopeDb).getByIds(eqTo(List.empty))
+              _ = verifyZeroInteractions(scopeDb)
+              _ = verifyZeroInteractions(apiKeyDataScopesDb)
             } yield ()
           }
 
-          "return ApiKeyData with empty scopes field" in {
-            apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-            apiKeyDataScopesDb
-              .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-            scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+          "return empty Option" in {
+            secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+            apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
-            apiKeyRepository.get(apiKey_1).asserting { result =>
-              result shouldBe defined
-              result.get shouldBe apiKeyData_1.copy(scopes = List.empty)
-            }
+            apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
           }
         }
 
-        "ApiKeyDataScopesDb returns non-empty Stream" should {
+        "ApiKeyDataDb returns ApiKeyDataEntity" when {
 
-          "should always call ScopeDb" in {
-            apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+          "should always call ApiKeyDataScopesDb" in {
+            secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
             apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-            apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
-              .emits(
-                Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
-                )
-              )
-              .covary[doobie.ConnectionIO]
-            scopeDb.getByIds(any[List[Long]]) returns Stream
-              .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
-              .covary[doobie.ConnectionIO]
+            apiKeyDataScopesDb
+              .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
+            scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
 
             for {
               _ <- apiKeyRepository.get(apiKey_1)
-              _ = verify(scopeDb).getByIds(eqTo(List(101L, 102L)))
+              _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
             } yield ()
           }
 
-          "return ApiKeyData with scopes returned from ScopeDb" in {
-            apiKeyDb.getByApiKey(any[String]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-            apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
-              .emits(
-                Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
-                )
-              )
-              .covary[doobie.ConnectionIO]
-            scopeDb.getByIds(any[List[Long]]) returns Stream
-              .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
-              .covary[doobie.ConnectionIO]
+          "ApiKeyDataScopesDb returns empty Stream" should {
 
-            apiKeyRepository.get(apiKey_1).asserting { result =>
-              result shouldBe defined
-              result.get shouldBe apiKeyData_1
+            "call ScopeDb providing empty List" in {
+              secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+              apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataScopesDb
+                .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
+              scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+
+              for {
+                _ <- apiKeyRepository.get(apiKey_1)
+                _ = verify(scopeDb).getByIds(eqTo(List.empty))
+              } yield ()
+            }
+
+            "return ApiKeyData with empty scopes field" in {
+              secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+              apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataScopesDb
+                .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
+              scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+
+              apiKeyRepository.get(apiKey_1).asserting { result =>
+                result shouldBe defined
+                result.get shouldBe apiKeyData_1.copy(scopes = List.empty)
+              }
+            }
+          }
+
+          "ApiKeyDataScopesDb returns non-empty Stream" should {
+
+            "should always call ScopeDb" in {
+              secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+              apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+                .emits(
+                  Seq(
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                  )
+                )
+                .covary[doobie.ConnectionIO]
+              scopeDb.getByIds(any[List[Long]]) returns Stream
+                .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+                .covary[doobie.ConnectionIO]
+
+              for {
+                _ <- apiKeyRepository.get(apiKey_1)
+                _ = verify(scopeDb).getByIds(eqTo(List(101L, 102L)))
+              } yield ()
+            }
+
+            "return ApiKeyData with scopes returned from ScopeDb" in {
+              secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+              apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
+              apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+              apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+                .emits(
+                  Seq(
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                  )
+                )
+                .covary[doobie.ConnectionIO]
+              scopeDb.getByIds(any[List[Long]]) returns Stream
+                .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+                .covary[doobie.ConnectionIO]
+
+              apiKeyRepository.get(apiKey_1).asserting { result =>
+                result shouldBe defined
+                result.get shouldBe apiKeyData_1
+              }
             }
           }
         }

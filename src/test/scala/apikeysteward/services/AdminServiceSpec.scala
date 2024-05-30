@@ -3,8 +3,8 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.ApiKeyRepository
+import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
+import apikeysteward.repositories.{ApiKeyRepository, SecureHashGenerator}
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
@@ -50,7 +50,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
       "call ApiKeyGenerator and ApiKeyRepository providing correct ApiKeyData" in {
         apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
-        apiKeyRepository.insert(any[String], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
+        apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
 
         for {
           _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest)
@@ -67,7 +67,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
       "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
         apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
-        apiKeyRepository.insert(any[String], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
+        apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
 
         adminService.createApiKey(userId_1, createApiKeyAdminRequest).asserting(_ shouldBe (apiKey_1, apiKeyData_1))
       }
@@ -106,7 +106,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
         "call ApiKeyGenerator and ApiKeyRepository again" in {
           apiKeyGenerator.generateApiKey returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
-          apiKeyRepository.insert(any[String], any[ApiKeyData]) returns (
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
             IO.pure(Right(apiKeyData_1))
           )
@@ -131,7 +131,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
         "return the second created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
           apiKeyGenerator.generateApiKey returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
-          apiKeyRepository.insert(any[String], any[ApiKeyData]) returns (
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
             IO.pure(Right(apiKeyData_1))
           )
@@ -148,7 +148,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
-          apiKeyRepository.insert(any[String], any[ApiKeyData]) returns IO.pure(Left(insertionError))
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
 
           for {
             _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
@@ -182,7 +182,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
-          apiKeyRepository.insert(any[String], any[ApiKeyData]) returns IO.pure(Left(insertionError))
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
 
           adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting { result =>
             result shouldBe Left(MaxNumberOfRetriesExceeded(insertionError))
@@ -194,7 +194,7 @@ class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
     "ApiKeyRepository returns a different exception" should {
       "return IO with this exception" in {
         apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
-        apiKeyRepository.insert(any[String], any[ApiKeyData]) returns IO.raiseError(testException)
+        apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
 
         adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting(_ shouldBe Left(testException))
       }

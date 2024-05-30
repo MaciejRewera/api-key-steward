@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.model.ApiKeyData
+import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
 
 import java.util.UUID
 
@@ -8,10 +8,15 @@ object TestData extends TestData
 
 trait TestData extends FixedClock {
 
-  val apiKey_1 = "test-api-key-1"
-  val apiKey_2 = "test-api-key-2"
-  val apiKey_3 = "test-api-key-3"
-  val apiKey_4 = "test-api-key-4"
+  val apiKey_1: ApiKey = ApiKey("test-api-key-1")
+  val apiKey_2: ApiKey = ApiKey("test-api-key-2")
+  val apiKey_3: ApiKey = ApiKey("test-api-key-3")
+  val apiKey_4: ApiKey = ApiKey("test-api-key-4")
+
+  val hashedApiKey_1: HashedApiKey = HashedApiKey("test-hashed-api-key-1")
+  val hashedApiKey_2: HashedApiKey = HashedApiKey("test-hashed-api-key-2")
+  val hashedApiKey_3: HashedApiKey = HashedApiKey("test-hashed-api-key-3")
+  val hashedApiKey_4: HashedApiKey = HashedApiKey("test-hashed-api-key-4")
 
   val publicKeyId_1 = UUID.randomUUID()
   val publicKeyId_2 = UUID.randomUUID()
