@@ -10,7 +10,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class ApiKeyGenerator(
     apiKeyPrefixProvider: ApiKeyPrefixProvider,
-    stringApiKeyGenerator: RandomStringGenerator,
+    randomStringGenerator: RandomStringGenerator,
     checksumCalculator: CRC32ChecksumCalculator
 ) {
 
@@ -26,7 +26,7 @@ class ApiKeyGenerator(
 
   private def generateApiKeyWithChecksum: IO[Either[Base62.Base62Error, String]] =
     (for {
-      apiKey <- EitherT.right(stringApiKeyGenerator.generate)
+      apiKey <- EitherT.right(randomStringGenerator.generate)
       checksum = checksumCalculator.calcChecksumFor(apiKey)
       checksumEncoded <- EitherT(encodeChecksum(checksum))
 

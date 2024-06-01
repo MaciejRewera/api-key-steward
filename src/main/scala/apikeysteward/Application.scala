@@ -3,9 +3,8 @@ package apikeysteward
 import apikeysteward.config.AppConfig
 import apikeysteward.generators.{ApiKeyGenerator, ApiKeyPrefixProvider, CRC32ChecksumCalculator, RandomStringGenerator}
 import apikeysteward.license.AlwaysValidLicenseValidator
-import apikeysteward.repositories.SecureHashGenerator.Algorithm
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
-import apikeysteward.repositories.{ApiKeyRepository, DataSourceBuilder, DatabaseMigrator, DbApiKeyRepository, SecureHashGenerator}
+import apikeysteward.repositories._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ValidateApiKeyRoutes}
 import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
@@ -60,15 +59,15 @@ object Application extends IOApp.Simple {
         jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator)
         jwtValidator = new JwtValidator(jwtDecoder)
 
-        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider()
-        randomStringGenerator: RandomStringGenerator = new RandomStringGenerator()
+        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
+        randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
         checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator()
         apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
           apiKeyPrefixProvider,
           randomStringGenerator,
           checksumCalculator
         )
-        secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
+        secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
         apiKeyDb = new ApiKeyDb()
         apiKeyDataDb = new ApiKeyDataDb()

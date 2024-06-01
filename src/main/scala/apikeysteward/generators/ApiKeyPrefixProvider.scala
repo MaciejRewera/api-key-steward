@@ -1,10 +1,9 @@
 package apikeysteward.generators
 
+import apikeysteward.config.ApiKeyConfig
 import cats.effect.IO
 
-class ApiKeyPrefixProvider {
+class ApiKeyPrefixProvider(apiKeyConfig: ApiKeyConfig) {
 
-  private val prefix = "steward_"
-
-  def fetchPrefix: IO[String] = IO.pure(prefix)
+  def fetchPrefix: IO[String] = IO.pure(apiKeyConfig.prefix)
 }

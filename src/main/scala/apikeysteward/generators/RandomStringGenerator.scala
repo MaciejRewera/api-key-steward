@@ -1,12 +1,13 @@
 package apikeysteward.generators
 
+import apikeysteward.config.ApiKeyConfig
 import cats.effect.IO
 import cats.effect.std.SecureRandom
 import fs2.Stream
 
-class RandomStringGenerator {
+class RandomStringGenerator(apiKeyConfig: ApiKeyConfig) {
 
-  private val DefaultApiKeyLength: Int = 50
+  private val StringLength: Int = apiKeyConfig.randomPartLength
 
 //  TODO: Consider reseeding or re-instantiating the PRNG periodically.
   private val PRNGsAmount: Int = 13
@@ -17,7 +18,7 @@ class RandomStringGenerator {
       rng <- rngIo
       result <- Stream
         .repeatEval(rng.nextAlphaNumeric.map(_.toString))
-        .take(DefaultApiKeyLength)
+        .take(StringLength)
         .compile
         .string
     } yield result
