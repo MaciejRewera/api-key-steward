@@ -1,7 +1,13 @@
 package apikeysteward
 
 import apikeysteward.config.AppConfig
-import apikeysteward.generators.{ApiKeyGenerator, ApiKeyPrefixProvider, CRC32ChecksumCalculator, RandomStringGenerator}
+import apikeysteward.generators.{
+  ApiKeyGenerator,
+  ApiKeyPrefixProvider,
+  CRC32ChecksumCalculator,
+  ChecksumCodec,
+  RandomStringGenerator
+}
 import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories._
@@ -62,10 +68,12 @@ object Application extends IOApp.Simple {
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
         checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator()
+        checksumCodec: ChecksumCodec = new ChecksumCodec()
         apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
           apiKeyPrefixProvider,
           randomStringGenerator,
-          checksumCalculator
+          checksumCalculator,
+          checksumCodec
         )
         secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 

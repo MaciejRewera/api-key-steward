@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData.{apiKeyData_1, apiKey_1}
+import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomFragment_1, apiKey_1}
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}

@@ -4,48 +4,31 @@ import apikeysteward.model.ApiKey
 import apikeysteward.utils.Retry
 import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits.{catsSyntaxEitherId, catsSyntaxTuple2Parallel}
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
+import cats.implicits.catsSyntaxTuple2Parallel
 
 class ApiKeyGenerator(
     apiKeyPrefixProvider: ApiKeyPrefixProvider,
     randomStringGenerator: RandomStringGenerator,
-    checksumCalculator: CRC32ChecksumCalculator
+    checksumCalculator: CRC32ChecksumCalculator,
+    checksumCodec: ChecksumCodec
 ) {
 
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
-
   def generateApiKey: IO[ApiKey] =
-    (
-      apiKeyPrefixProvider.fetchPrefix,
-      Retry.retry(maxRetries = 3, (_: Base62.Base62Error) => true)(generateApiKeyWithChecksum)
-    ).parMapN { case (prefix, apiKeyWithChecksum) =>
-      ApiKey(prefix + apiKeyWithChecksum)
+    for {
+      prefix <- apiKeyPrefixProvider.fetchPrefix.memoize
+      apiKey <- Retry.retry(maxRetries = 3, (_: Base62.Base62Error) => true)(generateApiKeyWithChecksum(prefix))
+    } yield ApiKey(apiKey)
+
+  private def generateApiKeyWithChecksum(prefixIO: IO[String]): IO[Either[Base62.Base62Error, String]] =
+    generateRandomFragmentWithPrefix(prefixIO).flatMap { randomFragmentWithPrefix =>
+      val checksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
+      EitherT(checksumCodec.encode(checksum)).map(randomFragmentWithPrefix + _).value
     }
 
-  private def generateApiKeyWithChecksum: IO[Either[Base62.Base62Error, String]] =
-    (for {
-      apiKey <- EitherT.right(randomStringGenerator.generate)
-      checksum = checksumCalculator.calcChecksumFor(apiKey)
-      checksumEncoded <- EitherT(encodeChecksum(checksum))
+  private def generateRandomFragmentWithPrefix(prefixIO: IO[String]): IO[String] =
+    (
+      prefixIO,
+      randomStringGenerator.generate
+    ).parMapN { case (prefix, randomFragment) => prefix + randomFragment }
 
-      result = apiKey + checksumEncoded
-    } yield result).value
-
-  private def encodeChecksum(checksum: Long): IO[Either[Base62.Base62Error, String]] =
-    Base62
-      .encode(checksum)
-      .map(addPaddingZeros)
-      .map(_.mkString)
-      .fold(
-        err => logger.warn(s"Error while encoding checksum: ${err.message}") >> IO.pure(err.asLeft),
-        result => IO.pure(result.asRight)
-      )
-
-  private val MaxEncodedChecksumLength = 6
-  private def addPaddingZeros(chars: Array[Char]): Array[Char] = {
-    val zerosToAdd = MaxEncodedChecksumLength - chars.length
-    Array.fill(zerosToAdd)('0') ++ chars
-  }
 }
