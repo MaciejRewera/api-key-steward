@@ -25,12 +25,17 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class AdminServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock with BeforeAndAfterEach {
+class ManagementServiceSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with FixedClock
+    with BeforeAndAfterEach {
 
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 
-  private val adminService = new AdminService(apiKeyGenerator, apiKeyRepository)
+  private val adminService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
   override def beforeEach(): Unit =
     reset(apiKeyGenerator, apiKeyRepository)

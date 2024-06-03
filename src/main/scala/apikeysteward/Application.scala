@@ -12,8 +12,8 @@ import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories._
 import apikeysteward.routes.auth._
-import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ValidateApiKeyRoutes}
-import apikeysteward.services.{AdminService, ApiKeyService, LicenseService}
+import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ApiKeyValidationRoutes}
+import apikeysteward.services.{ManagementService, ApiKeyValidationService, LicenseService}
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
@@ -90,10 +90,10 @@ object Application extends IOApp.Simple {
           secureHashGenerator
         )(transactor)
 
-        apiKeyService = new ApiKeyService(apiKeyRepository)
-        adminService = new AdminService(apiKeyGenerator, apiKeyRepository)
+        apiKeyService = new ApiKeyValidationService(apiKeyRepository)
+        adminService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
-        validateRoutes = new ValidateApiKeyRoutes(apiKeyService).allRoutes
+        validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
         managementRoutes = new ManagementRoutes(jwtValidator, adminService).allRoutes
         adminRoutes = new AdminRoutes(jwtValidator, adminService).allRoutes
 

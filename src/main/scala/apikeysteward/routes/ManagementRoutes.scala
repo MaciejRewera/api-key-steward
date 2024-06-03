@@ -6,14 +6,14 @@ import apikeysteward.routes.auth.JwtValidator
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.definitions.{ErrorMessages, ManagementEndpoints}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.AdminService
+import apikeysteward.services.ManagementService
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtValidator: JwtValidator, adminService: AdminService) {
+class ManagementRoutes(jwtValidator: JwtValidator, adminService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)

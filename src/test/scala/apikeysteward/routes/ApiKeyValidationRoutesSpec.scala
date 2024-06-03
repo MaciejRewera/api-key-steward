@@ -4,7 +4,7 @@ import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomFragment_1, apiKey
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
-import apikeysteward.services.ApiKeyService
+import apikeysteward.services.ApiKeyValidationService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import io.circe.syntax.EncoderOps
@@ -17,10 +17,10 @@ import org.mockito.MockitoSugar.{mock, verify}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
+class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
-  private val apiKeyService = mock[ApiKeyService]
-  private val validateApiKeyRoutes: HttpApp[IO] = new ValidateApiKeyRoutes(apiKeyService).allRoutes.orNotFound
+  private val apiKeyService = mock[ApiKeyValidationService]
+  private val validateApiKeyRoutes: HttpApp[IO] = new ApiKeyValidationRoutes(apiKeyService).allRoutes.orNotFound
 
   private val testException = new RuntimeException("Test Exception")
 

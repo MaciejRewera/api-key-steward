@@ -5,7 +5,7 @@ import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.routes.definitions.ErrorMessages
 import cats.effect.IO
 
-class ApiKeyService(apiKeyRepository: ApiKeyRepository) {
+class ApiKeyValidationService(apiKeyRepository: ApiKeyRepository) {
 
   def validateApiKey(apiKey: ApiKey): IO[Either[String, ApiKeyData]] =
     for {

@@ -14,7 +14,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.time.Clock
 import java.util.UUID
 
-class AdminService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock) {
+class ManagementService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock) {
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 

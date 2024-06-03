@@ -8,7 +8,7 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtValidator}
 import apikeysteward.routes.definitions.ErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.AdminService
+import apikeysteward.services.ManagementService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -30,7 +30,7 @@ import java.util.UUID
 class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtValidator = mock[JwtValidator]
-  private val adminService = mock[AdminService]
+  private val adminService = mock[ManagementService]
 
   private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtValidator, adminService).allRoutes.orNotFound
 
