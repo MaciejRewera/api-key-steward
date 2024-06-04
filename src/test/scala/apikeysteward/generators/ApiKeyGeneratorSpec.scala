@@ -41,7 +41,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns IO(Right(encodedValue_42))
+        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         for {
           _ <- apiKeyGenerator.generateApiKey
@@ -58,7 +58,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns IO(Right(encodedValue_42))
+        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         apiKeyGenerator.generateApiKey.asserting { result =>
           result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomFragment_1 + encodedValue_42)
@@ -72,7 +72,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
         randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns IO(Right(encodedValue_42))
+        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
@@ -85,7 +85,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
         randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns IO(Right(encodedValue_42))
+        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
@@ -98,7 +98,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
         randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns IO(Right(encodedValue_42))
+        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         apiKeyGenerator.generateApiKey.attempt.asserting(_ shouldBe Left(testException))
       }
@@ -141,8 +141,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         randomStringGenerator.generate returns (IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         checksumCodec.encode(any[Long]) returns (
-          IO(Left(ProvidedWithNegativeNumberError(-42L))),
-          IO(Right(encodedValue_42))
+          Left(ProvidedWithNegativeNumberError(-42L)),
+          Right(encodedValue_42)
         )
 
         for {
@@ -159,8 +159,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         checksumCodec.encode(any[Long]) returns (
-          IO(Left(ProvidedWithNegativeNumberError(-42L))),
-          IO(Right(encodedValue_42))
+          Left(ProvidedWithNegativeNumberError(-42L)),
+          Right(encodedValue_42)
         )
 
         for {
@@ -174,8 +174,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         randomStringGenerator.generate returns (IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         checksumCodec.encode(any[Long]) returns (
-          IO(Left(ProvidedWithNegativeNumberError(-42L))),
-          IO(Right(encodedValue_42))
+          Left(ProvidedWithNegativeNumberError(-42L)),
+          Right(encodedValue_42)
         )
 
         apiKeyGenerator.generateApiKey.asserting { result =>
@@ -194,7 +194,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns IO(Left(ProvidedWithNegativeNumberError(-42L)))
+        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
 
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
@@ -215,7 +215,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns IO(Left(ProvidedWithNegativeNumberError(-42L)))
+        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
 
         for {
           _ <- apiKeyGenerator.generateApiKey.attempt
@@ -231,7 +231,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns IO(Left(ProvidedWithNegativeNumberError(-42L)))
+        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
 
         apiKeyGenerator.generateApiKey.attempt.asserting(
           _ shouldBe Left(MaxNumberOfRetriesExceeded(ProvidedWithNegativeNumberError(-42L)))

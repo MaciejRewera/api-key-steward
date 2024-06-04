@@ -37,7 +37,7 @@ class ApiKeyValidationService(
 
     val calculatedChecksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
 
-    checksumCodec.decode(checksum).flatMap {
+    checksumCodec.decode(checksum) match {
       case Left(error) =>
         logger.warn(s"Error while decoding checksum: ${error.message}") >> IO.pure(ApiKeyIncorrectError.asLeft)
 

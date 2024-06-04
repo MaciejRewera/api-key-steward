@@ -36,7 +36,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
       "call CRC32ChecksumCalculator, ChecksumCodec and ApiKeyRepository" in {
         val checksum = 42L
         checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns IO.pure(checksum.asRight)
+        checksumCodec.decode(any[String]) returns checksum.asRight
         apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
 
         for {
@@ -51,7 +51,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
       "return ApiKeyData returned from ApiKeyRepository" in {
         val checksum = 42L
         checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns IO.pure(checksum.asRight)
+        checksumCodec.decode(any[String]) returns checksum.asRight
         apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
 
         apiKeyValidationService.validateApiKey(apiKey_1).asserting(result => result shouldBe Right(apiKeyData_1))
@@ -64,9 +64,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
         "NOT call ApiKeyRepository" in {
           checksumCalculator.calcChecksumFor(any[String]) returns 42L
-          checksumCodec.decode(any[String]) returns IO.pure(
-            ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
-          )
+          checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
 
           for {
             _ <- apiKeyValidationService.validateApiKey(apiKey_1)
@@ -76,9 +74,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
         "return Left containing ApiKeyIncorrectError" in {
           checksumCalculator.calcChecksumFor(any[String]) returns 42L
-          checksumCodec.decode(any[String]) returns IO.pure(
-            ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
-          )
+          checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
 
           apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
         }
@@ -90,7 +86,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
           "NOT call ApiKeyRepository" in {
             checksumCalculator.calcChecksumFor(any[String]) returns -42
-            checksumCodec.decode(any[String]) returns IO.pure(42L.asRight)
+            checksumCodec.decode(any[String]) returns 42L.asRight
 
             for {
               _ <- apiKeyValidationService.validateApiKey(apiKey_1)
@@ -100,7 +96,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
           "return Left containing ApiKeyIncorrectError" in {
             checksumCalculator.calcChecksumFor(any[String]) returns -42
-            checksumCodec.decode(any[String]) returns IO.pure(42L.asRight)
+            checksumCodec.decode(any[String]) returns 42L.asRight
 
             apiKeyValidationService
               .validateApiKey(apiKey_1)
@@ -112,7 +108,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
           "NOT call ApiKeyRepository" in {
             checksumCalculator.calcChecksumFor(any[String]) returns 43
-            checksumCodec.decode(any[String]) returns IO.pure(42L.asRight)
+            checksumCodec.decode(any[String]) returns 42L.asRight
 
             for {
               _ <- apiKeyValidationService.validateApiKey(apiKey_1)
@@ -122,7 +118,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
 
           "return Left containing ApiKeyIncorrectError" in {
             checksumCalculator.calcChecksumFor(any[String]) returns 43
-            checksumCodec.decode(any[String]) returns IO.pure(42L.asRight)
+            checksumCodec.decode(any[String]) returns 42L.asRight
 
             apiKeyValidationService
               .validateApiKey(apiKey_1)
@@ -136,7 +132,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
       "return Left containing ApiKeyIncorrectError" in {
         val checksum = 42L
         checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns IO.pure(checksum.asRight)
+        checksumCodec.decode(any[String]) returns checksum.asRight
         apiKeyRepository.get(any[ApiKey]) returns IO.pure(None)
 
         apiKeyValidationService

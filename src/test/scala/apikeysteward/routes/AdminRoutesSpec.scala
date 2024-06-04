@@ -470,7 +470,9 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.GetAllApiKeysForUserNotFound)))
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.GetAllApiKeysForUserNotFound))
+            )
         } yield ()
       }
 

@@ -23,11 +23,7 @@ class ChecksumCodecSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return Left containing ChecksumCodecError" when {
       "provided with negative value" in {
         val input = -1
-        checksumCodec
-          .encode(input)
-          .asserting(
-            _ shouldBe Left(ProvidedWithNegativeNumberError(input))
-          )
+        checksumCodec.encode(input) shouldBe Left(ProvidedWithNegativeNumberError(input))
       }
     }
 
@@ -35,27 +31,27 @@ class ChecksumCodecSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
       "provided with 0 (zero)" in {
         val input = 0
-        checksumCodec.encode(input).asserting(_ shouldBe Right("000000"))
+        checksumCodec.encode(input) shouldBe Right("000000")
       }
 
       "provided with 1" in {
         val input = 1
-        checksumCodec.encode(input).asserting(_ shouldBe Right("000001"))
+        checksumCodec.encode(input) shouldBe Right("000001")
       }
 
       "provided with 10" in {
         val input = 10
-        checksumCodec.encode(input).asserting(_ shouldBe Right("00000A"))
+        checksumCodec.encode(input) shouldBe Right("00000A")
       }
 
       "provided with 62" in {
         val input = 62
-        checksumCodec.encode(input).asserting(_ shouldBe Right("000010"))
+        checksumCodec.encode(input) shouldBe Right("000010")
       }
 
       "provided with Int.MaxValue" in {
         val input = Int.MaxValue
-        checksumCodec.encode(input).asserting(_ shouldBe Right("2LKcb1"))
+        checksumCodec.encode(input) shouldBe Right("2LKcb1")
       }
     }
   }
@@ -66,17 +62,17 @@ class ChecksumCodecSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
       "provided with a String longer than 6 characters" in {
         val input = "qwertyu"
-        checksumCodec.decode(input).asserting(_ shouldBe Left(ProvidedEncodedChecksumTooLongError(input)))
+        checksumCodec.decode(input) shouldBe Left(ProvidedEncodedChecksumTooLongError(input))
       }
 
       "provided with a String longer than 6 characters, containing padding '0's (zeros)" in {
         val input = "0000001"
-        checksumCodec.decode(input).asserting(_ shouldBe Left(ProvidedEncodedChecksumTooLongError(input)))
+        checksumCodec.decode(input) shouldBe Left(ProvidedEncodedChecksumTooLongError(input))
       }
 
       "provided with a String longer than 6 characters, containing only '0's (zeros)" in {
         val input = "0000000"
-        checksumCodec.decode(input).asserting(_ shouldBe Left(ProvidedEncodedChecksumTooLongError(input)))
+        checksumCodec.decode(input) shouldBe Left(ProvidedEncodedChecksumTooLongError(input))
       }
     }
 
@@ -84,49 +80,49 @@ class ChecksumCodecSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
       "provided with '000000'" in {
         val input = "000000"
-        checksumCodec.decode(input).asserting(_ shouldBe Right(0))
+        checksumCodec.decode(input) shouldBe Right(0)
       }
 
       "provided with '000001'" in {
         val input = "000001"
-        checksumCodec.decode(input).asserting(_ shouldBe Right(1))
+        checksumCodec.decode(input) shouldBe Right(1)
       }
 
       "provided with '00000A'" in {
         val input = "00000A"
-        checksumCodec.decode(input).asserting(_ shouldBe Right(10))
+        checksumCodec.decode(input) shouldBe Right(10)
       }
 
       "provided with '000010'" in {
         val input = "000010"
-        checksumCodec.decode(input).asserting(_ shouldBe Right(62))
+        checksumCodec.decode(input) shouldBe Right(62)
       }
 
       "provided with '2LKcb1'" in {
         val input = "2LKcb1"
-        checksumCodec.decode(input).asserting(_ shouldBe Right(Int.MaxValue))
+        checksumCodec.decode(input) shouldBe Right(Int.MaxValue)
       }
 
       "provided with String without padding '0's (zeros)" when {
 
         "provided with '0'" in {
           val input = "0"
-          checksumCodec.decode(input).asserting(_ shouldBe Right(0))
+          checksumCodec.decode(input) shouldBe Right(0)
         }
 
         "provided with '1'" in {
           val input = "1"
-          checksumCodec.decode(input).asserting(_ shouldBe Right(1))
+          checksumCodec.decode(input) shouldBe Right(1)
         }
 
         "provided with 'A'" in {
           val input = "A"
-          checksumCodec.decode(input).asserting(_ shouldBe Right(10))
+          checksumCodec.decode(input) shouldBe Right(10)
         }
 
         "provided with '10'" in {
           val input = "10"
-          checksumCodec.decode(input).asserting(_ shouldBe Right(62))
+          checksumCodec.decode(input) shouldBe Right(62)
         }
       }
     }
