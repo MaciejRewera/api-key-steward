@@ -41,7 +41,6 @@ class Base62Spec extends AnyWordSpec with Matchers with EitherValues {
 
       "provided with 1" in {
         val input = 1
-
         Base62.encode(input).value.mkString shouldBe "1"
       }
 
@@ -84,7 +83,7 @@ class Base62Spec extends AnyWordSpec with Matchers with EitherValues {
 
   "Base62 on decode" should {
 
-    "return the value from before encoding" when {
+    "return the correctly decoded value" when {
 
       "provided with '0'" in {
         val input = Array('0')
