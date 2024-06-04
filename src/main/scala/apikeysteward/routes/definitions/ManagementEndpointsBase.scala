@@ -22,7 +22,7 @@ private[definitions] object ManagementEndpointsBase {
           )(ErrorInfo.internalServerErrorInfo()),
           oneOfVariant(
             StatusCode.Unauthorized,
-            jsonBody[ErrorInfo].description(ErrorMessages.General.Unauthorized)
+            jsonBody[ErrorInfo].description(ApiErrorMessages.General.Unauthorized)
           )
         )
       )

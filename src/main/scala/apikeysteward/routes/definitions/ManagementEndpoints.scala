@@ -26,8 +26,8 @@ object ManagementEndpoints {
       .errorOutVariantPrepend(
         oneOfVariantExactMatcher(
           StatusCode.NotFound,
-          jsonBody[ErrorInfo].description(ErrorMessages.Management.GetAllApiKeysNotFound)
-        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.GetAllApiKeysNotFound)))
+          jsonBody[ErrorInfo].description(ApiErrorMessages.Management.GetAllApiKeysNotFound)
+        )(ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetAllApiKeysNotFound)))
       )
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
@@ -36,8 +36,8 @@ object ManagementEndpoints {
       .errorOutVariantPrepend(
         oneOfVariantExactMatcher(
           StatusCode.NotFound,
-          jsonBody[ErrorInfo].description(ErrorMessages.Management.DeleteApiKeyNotFound)
-        )(ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.DeleteApiKeyNotFound)))
+          jsonBody[ErrorInfo].description(ApiErrorMessages.Management.DeleteApiKeyNotFound)
+        )(ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)))
       )
 
 }

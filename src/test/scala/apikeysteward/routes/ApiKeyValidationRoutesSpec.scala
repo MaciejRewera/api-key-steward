@@ -2,9 +2,10 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomFragment_1, apiKey_1}
 import apikeysteward.model.ApiKey
-import apikeysteward.routes.definitions.ErrorMessages
+import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import apikeysteward.services.ApiKeyValidationService
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import io.circe.syntax.EncoderOps
@@ -52,9 +53,7 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     }
 
     "return Forbidden when ApiKeyService returns Left" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(
-        Left(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
-      )
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
 
       for {
         response <- validateApiKeyRoutes.run(request)
@@ -62,7 +61,7 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         _ <- response
           .as[ErrorInfo]
           .asserting(
-            _ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect))
+            _ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect))
           )
       } yield ()
     }

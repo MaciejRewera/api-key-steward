@@ -4,7 +4,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.auth.JwtValidator
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.definitions.{AdminEndpoints, ErrorMessages}
+import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
 import cats.effect.IO
@@ -42,7 +42,7 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: ManagementService) {
           .serverLogic { _ => userId =>
             adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
               if (allApiKeyData.isEmpty) {
-                val errorMsg = ErrorMessages.Admin.GetAllApiKeysForUserNotFound
+                val errorMsg = ApiErrorMessages.Admin.GetAllApiKeysForUserNotFound
                 ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
               } else
                 (StatusCode.Ok -> allApiKeyData).asRight
@@ -73,7 +73,7 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: ManagementService) {
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
               case Left(_: ApiKeyDataNotFound) =>
-                ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
+                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
               case Left(_: ApiKeyDeletionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }

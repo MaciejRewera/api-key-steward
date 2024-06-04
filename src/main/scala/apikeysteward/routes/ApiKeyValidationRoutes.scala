@@ -18,7 +18,7 @@ class ApiKeyValidationRoutes(apiKeyCreationService: ApiKeyValidationService) {
           apiKeyCreationService.validateApiKey(ApiKey(request.apiKey)).map { validationResult =>
             validationResult
               .fold(
-                error => Left(ErrorInfo.forbiddenErrorInfo(Some(error))),
+                error => Left(ErrorInfo.forbiddenErrorInfo(Some(error.message))),
                 apiKeyData => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
               )
           }

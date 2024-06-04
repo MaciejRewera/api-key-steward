@@ -90,7 +90,7 @@ object Application extends IOApp.Simple {
           secureHashGenerator
         )(transactor)
 
-        apiKeyService = new ApiKeyValidationService(apiKeyRepository)
+        apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         adminService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
