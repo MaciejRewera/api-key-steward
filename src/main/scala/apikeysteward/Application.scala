@@ -94,7 +94,8 @@ object Application extends IOApp.Simple {
         managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
-        managementRoutes = new ManagementRoutes(jwtValidator, managementService).allRoutes
+        jwtOps = new JwtOps()
+        managementRoutes = new ManagementRoutes(jwtOps, jwtValidator, managementService).allRoutes
         adminRoutes = new AdminRoutes(jwtValidator, managementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
