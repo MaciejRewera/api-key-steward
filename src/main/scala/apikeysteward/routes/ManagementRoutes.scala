@@ -82,6 +82,6 @@ class ManagementRoutes(jwtValidator: JwtValidator, managementService: Management
     jwt.jwtClaim.subject match {
       case Some(userId) => f(userId)
       case None =>
-        IO.pure(ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty.")).asLeft)
+        IO.pure(ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty.")).asLeft)
     }
 }

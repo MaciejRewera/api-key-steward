@@ -157,10 +157,8 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
         jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
       )
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+      val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 
-      // This case returns Unauthorized because of how endpoint definition is written in Tapir.
-      // This should be revisited once decision is made on how much info to return with Unauthorized response.
       "return Unauthorized" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtWithEmptySubField.asRight
@@ -489,7 +487,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
         jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
       )
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+      val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 
       "return Unauthorized" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
@@ -661,7 +659,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
         jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
       )
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+      val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 
       "return Unauthorized" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
