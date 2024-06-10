@@ -39,7 +39,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "call ApiKeyPrefixProvider, RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
@@ -48,7 +48,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
           _ = verify(apiKeyPrefixProvider).fetchPrefix
           _ = verify(randomStringGenerator).generate
-          expectedApiKeyWithPrefix = apiKeyPrefix + apiKeyRandomFragment_1
+          expectedApiKeyWithPrefix = apiKeyPrefix + apiKeyRandomSection_1
           _ = verify(checksumCalculator).calcChecksumFor(eqTo(expectedApiKeyWithPrefix))
           _ = verify(checksumCodec).encode(eqTo(42L))
         } yield ()
@@ -56,12 +56,12 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "return the newly created Api Key" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         apiKeyGenerator.generateApiKey.asserting { result =>
-          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomFragment_1 + encodedValue_42)
+          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomSection_1 + encodedValue_42)
         }
       }
     }
@@ -70,7 +70,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "call RandomStringGenerator anyway" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
@@ -83,7 +83,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "NOT call either CRC32ChecksumCalculator or ChecksumCodec" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
@@ -96,7 +96,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "return failed IO containing the same exception" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomFragment_1)
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
@@ -138,7 +138,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "call RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec again" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2))
+        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         checksumCodec.encode(any[Long]) returns (
           Left(ProvidedWithNegativeNumberError(-42L)),
@@ -149,13 +149,13 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           _ <- apiKeyGenerator.generateApiKey
 
           _ = verify(randomStringGenerator, times(2)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_2))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_2))
         } yield ()
       }
 
       "NOT call ApiKeyPrefixProvider again" in {
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2))
+        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         checksumCodec.encode(any[Long]) returns (
@@ -171,7 +171,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
       "return the second created Api Key" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2))
+        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
         checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
         checksumCodec.encode(any[Long]) returns (
           Left(ProvidedWithNegativeNumberError(-42L)),
@@ -179,7 +179,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         )
 
         apiKeyGenerator.generateApiKey.asserting { result =>
-          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomFragment_2 + encodedValue_42)
+          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomSection_2 + encodedValue_42)
         }
       }
     }
@@ -189,8 +189,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       "call RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec again until reaching max retries amount (3)" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2), IO.pure(apiKeyRandomFragment_3), IO.pure(
-            apiKeyRandomFragment_4
+          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
+            apiKeyRandomSection_4
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
@@ -200,18 +200,18 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           _ <- apiKeyGenerator.generateApiKey.attempt
 
           _ = verify(randomStringGenerator, times(4)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_2))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_3))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_4))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_2))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_3))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_4))
         } yield ()
       }
 
       "NOT call ApiKeyPrefixProvider again" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2), IO.pure(apiKeyRandomFragment_3), IO.pure(
-            apiKeyRandomFragment_4
+          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
+            apiKeyRandomSection_4
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
@@ -226,8 +226,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       "return failed IO containing MaxNumberOfRetriesExceeded" in {
         apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
         randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomFragment_1), IO.pure(apiKeyRandomFragment_2), IO.pure(apiKeyRandomFragment_3), IO.pure(
-            apiKeyRandomFragment_4
+          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
+            apiKeyRandomSection_4
           )
         )
         checksumCalculator.calcChecksumFor(any[String]) returns -42L

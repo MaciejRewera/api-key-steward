@@ -42,7 +42,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
         for {
           _ <- apiKeyValidationService.validateApiKey(apiKey_1)
 
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomFragment_1))
+          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
           _ = verify(checksumCodec).decode(eqTo(checksum_1))
           _ = verify(apiKeyRepository).get(eqTo(apiKey_1))
         } yield ()
