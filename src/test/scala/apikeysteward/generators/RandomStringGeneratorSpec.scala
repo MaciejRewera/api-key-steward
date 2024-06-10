@@ -11,7 +11,7 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
   "RandomStringGenerator on generate" should {
 
     val config = ApiKeyConfig(
-      randomPartLength = 42,
+      randomSectionLength = 42,
       prefix = "prefix",
       storageHashingAlgorithm = SHA3_256
     )
@@ -19,17 +19,17 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
     "return String with provided length" in {
       val generator = new RandomStringGenerator(config)
 
-      generator.generate.asserting(_.length shouldBe config.randomPartLength)
+      generator.generate.asserting(_.length shouldBe config.randomSectionLength)
     }
 
     "throw exception when provided with length equal to zero" in {
-      val incorrectConfig = config.copy(randomPartLength = 0)
+      val incorrectConfig = config.copy(randomSectionLength = 0)
 
       a[RuntimeException] shouldBe thrownBy(new RandomStringGenerator(incorrectConfig))
     }
 
     "throw exception when provided with negative length" in {
-      val incorrectConfig = config.copy(randomPartLength = -1)
+      val incorrectConfig = config.copy(randomSectionLength = -1)
 
       a[IllegalArgumentException] shouldBe thrownBy(new RandomStringGenerator(incorrectConfig))
     }

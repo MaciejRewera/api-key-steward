@@ -6,7 +6,7 @@ import pureconfig.error.CannotConvert
 import pureconfig.generic.semiauto.deriveReader
 
 case class ApiKeyConfig(
-    randomPartLength: Int,
+    randomSectionLength: Int,
     prefix: String,
     storageHashingAlgorithm: Algorithm
 )
