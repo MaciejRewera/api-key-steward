@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtValidator: JwtValidator, adminService: ManagementService) {
+class ManagementRoutes(jwtValidator: JwtValidator, managementService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -25,7 +25,7 @@ class ManagementRoutes(jwtValidator: JwtValidator, adminService: ManagementServi
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => request =>
             withUserId(jwt) { userId =>
-              adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
+              managementService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
                 (
                   StatusCode.Created,
                   CreateApiKeyResponse(newApiKey.value, apiKeyData)
@@ -42,7 +42,7 @@ class ManagementRoutes(jwtValidator: JwtValidator, adminService: ManagementServi
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => _ =>
             withUserId(jwt) { userId =>
-              adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
+              managementService.getAllApiKeysFor(userId).map { allApiKeyData =>
                 if (allApiKeyData.isEmpty) {
                   val errorMsg = ApiErrorMessages.Management.GetAllApiKeysNotFound
                   ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
@@ -60,7 +60,7 @@ class ManagementRoutes(jwtValidator: JwtValidator, adminService: ManagementServi
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => publicKeyId =>
             withUserId(jwt) { userId =>
-              adminService.deleteApiKey(userId, publicKeyId).map {
+              managementService.deleteApiKey(userId, publicKeyId).map {
                 case Right(deletedApiKeyData) =>
                   (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
