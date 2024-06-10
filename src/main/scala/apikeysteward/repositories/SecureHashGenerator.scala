@@ -17,20 +17,18 @@ class SecureHashGenerator(algorithm: Algorithm) {
 }
 
 object SecureHashGenerator {
-  sealed trait Algorithm {
-    def name: String
-  }
+  sealed abstract class Algorithm(val name: String)
 
   object Algorithm {
-    case object SHA_224 extends Algorithm { override val name = "SHA-224" }
-    case object SHA_256 extends Algorithm { override val name = "SHA-256" }
-    case object SHA_384 extends Algorithm { override val name = "SHA-384" }
-    case object SHA_512 extends Algorithm { override val name = "SHA-512" }
+    case object SHA_224 extends Algorithm(name = "SHA-224")
+    case object SHA_256 extends Algorithm(name = "SHA-256")
+    case object SHA_384 extends Algorithm(name = "SHA-384")
+    case object SHA_512 extends Algorithm(name = "SHA-512")
 
-    case object SHA3_224 extends Algorithm { override val name = "SHA3-224" }
-    case object SHA3_256 extends Algorithm { override val name = "SHA3-256" }
-    case object SHA3_384 extends Algorithm { override val name = "SHA3-384" }
-    case object SHA3_512 extends Algorithm { override val name = "SHA3-512" }
+    case object SHA3_224 extends Algorithm(name = "SHA3-224")
+    case object SHA3_256 extends Algorithm(name = "SHA3-256")
+    case object SHA3_384 extends Algorithm(name = "SHA3-384")
+    case object SHA3_512 extends Algorithm(name = "SHA3-512")
 
     val AllAlgorithms: Set[Algorithm] = Set(
       SHA_224,
