@@ -91,11 +91,11 @@ object Application extends IOApp.Simple {
         )(transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
-        adminService = new ManagementService(apiKeyGenerator, apiKeyRepository)
+        managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
-        managementRoutes = new ManagementRoutes(jwtValidator, adminService).allRoutes
-        adminRoutes = new AdminRoutes(jwtValidator, adminService).allRoutes
+        managementRoutes = new ManagementRoutes(jwtValidator, managementService).allRoutes
+        adminRoutes = new AdminRoutes(jwtValidator, managementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
