@@ -6,9 +6,9 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNo
 import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtValidator}
-import apikeysteward.routes.definitions.ErrorMessages
+import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.AdminService
+import apikeysteward.services.ManagementService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -29,7 +29,7 @@ import java.util.UUID
 class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtValidator = mock[JwtValidator]
-  private val adminService = mock[AdminService[String]]
+  private val adminService = mock[ManagementService]
 
   private val managementRoutes: HttpApp[IO] = new ManagementRoutes(jwtValidator, adminService).allRoutes.orNotFound
 
@@ -354,7 +354,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
-              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyData_1))
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1.value, apiKeyData_1))
           } yield ()
         }
 
@@ -372,7 +372,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
             _ = response.status shouldBe Status.Created
             _ <- response
               .as[CreateApiKeyResponse]
-              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1, apiKeyDataWithoutDescription))
+              .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1.value, apiKeyDataWithoutDescription))
           } yield ()
         }
       }
@@ -535,7 +535,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.GetAllApiKeysNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetAllApiKeysNotFound)))
         } yield ()
       }
 
@@ -719,7 +719,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Management.DeleteApiKeyNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)))
         } yield ()
       }
 

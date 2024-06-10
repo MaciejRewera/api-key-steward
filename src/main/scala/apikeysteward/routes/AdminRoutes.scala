@@ -4,16 +4,16 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.auth.JwtValidator
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.definitions.{AdminEndpoints, ErrorMessages}
+import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.AdminService
+import apikeysteward.services.ManagementService
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]) {
+class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -25,10 +25,10 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (request, userId) = input
-            adminService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
+            managementService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
               (
                 StatusCode.Created,
-                CreateApiKeyResponse(newApiKey, apiKeyData)
+                CreateApiKeyResponse(newApiKey.value, apiKeyData)
               ).asRight
             }
           }
@@ -40,9 +40,9 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]
         AdminEndpoints.getAllApiKeysForUserEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => userId =>
-            adminService.getAllApiKeysFor(userId).map { allApiKeyData =>
+            managementService.getAllApiKeysFor(userId).map { allApiKeyData =>
               if (allApiKeyData.isEmpty) {
-                val errorMsg = ErrorMessages.Admin.GetAllApiKeysForUserNotFound
+                val errorMsg = ApiErrorMessages.Admin.GetAllApiKeysForUserNotFound
                 ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
               } else
                 (StatusCode.Ok -> allApiKeyData).asRight
@@ -56,7 +56,7 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]
         AdminEndpoints.getAllUserIdsEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => _ =>
-            adminService.getAllUserIds
+            managementService.getAllUserIds
               .map(allUserIds => (StatusCode.Ok -> allUserIds).asRight)
           }
       )
@@ -68,12 +68,12 @@ class AdminRoutes(jwtValidator: JwtValidator, adminService: AdminService[String]
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (userId, publicKeyId) = input
-            adminService.deleteApiKey(userId, publicKeyId).map {
+            managementService.deleteApiKey(userId, publicKeyId).map {
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
               case Left(_: ApiKeyDataNotFound) =>
-                ErrorInfo.notFoundErrorInfo(Some(ErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
+                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
               case Left(_: ApiKeyDeletionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }

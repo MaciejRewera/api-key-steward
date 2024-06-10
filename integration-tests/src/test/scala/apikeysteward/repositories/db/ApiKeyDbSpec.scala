@@ -1,6 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.TestData.{hashedApiKey_1, hashedApiKey_2}
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
@@ -37,11 +38,8 @@ class ApiKeyDbSpec
       sql"SELECT * FROM api_key".query[ApiKeyEntityRaw].stream.compile.toList
   }
 
-  private val testApiKey_1 = "test-api-key-1"
-  private val testApiKey_2 = "test-api-key-2"
-
-  private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
-  private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
+  private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(hashedApiKey_1.value)
+  private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(hashedApiKey_2.value)
 
   private val testApiKeyEntityRead_1 = ApiKeyEntity.Read(id = 1L, createdAt = now, updatedAt = now)
   private val testApiKeyEntityRead_2 = ApiKeyEntity.Read(id = 2L, createdAt = now, updatedAt = now)
@@ -68,7 +66,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_1, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }
@@ -98,10 +96,10 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 2
 
-          val expectedApiKeyRow_1 = (resApiKeys.head._1, testApiKey_1, now, now)
+          val expectedApiKeyRow_1 = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
           resApiKeys.head shouldBe expectedApiKeyRow_1
 
-          val expectedApiKeyRow_2 = (resApiKeys(1)._1, testApiKey_2, now, now)
+          val expectedApiKeyRow_2 = (resApiKeys(1)._1, hashedApiKey_2.value, now, now)
           resApiKeys(1) shouldBe expectedApiKeyRow_2
         }
       }
@@ -132,7 +130,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_1, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
 
           resApiKeys.head shouldBe expectedApiKeyRow
         }
@@ -144,7 +142,7 @@ class ApiKeyDbSpec
 
     "there are no rows in the DB" should {
       "return empty Option" in {
-        val result = apiKeyDb.getByApiKey(testApiKey_1).transact(transactor)
+        val result = apiKeyDb.getByApiKey(hashedApiKey_1).transact(transactor)
 
         result.asserting(_ shouldBe None)
       }
@@ -154,7 +152,7 @@ class ApiKeyDbSpec
       "return empty Option" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
-          res <- apiKeyDb.getByApiKey(testApiKey_1)
+          res <- apiKeyDb.getByApiKey(hashedApiKey_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -165,7 +163,7 @@ class ApiKeyDbSpec
       "return Option containing ApiKeyEntity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          res <- apiKeyDb.getByApiKey(testApiKey_1)
+          res <- apiKeyDb.getByApiKey(hashedApiKey_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -199,7 +197,7 @@ class ApiKeyDbSpec
       "return empty Option" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           res <- apiKeyDb.delete(existingId + 1)
         } yield res).transact(transactor)
@@ -210,7 +208,7 @@ class ApiKeyDbSpec
       "make no changes to the DB" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           _ <- apiKeyDb.delete(existingId + 1)
           res <- Queries.getAllApiKeys
@@ -219,7 +217,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_1, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }
@@ -230,7 +228,7 @@ class ApiKeyDbSpec
       "return deleted entity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           res <- apiKeyDb.delete(existingId)
         } yield (existingId, res)).transact(transactor)
@@ -244,7 +242,7 @@ class ApiKeyDbSpec
       "delete this API Key from the DB" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           _ <- apiKeyDb.delete(existingId)
           res <- Queries.getAllApiKeys
@@ -260,7 +258,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           res <- apiKeyDb.delete(existingId)
         } yield (existingId, res)).transact(transactor)
@@ -275,7 +273,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
-          existingId <- apiKeyDb.getByApiKey(testApiKey_1).map(_.get.id)
+          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
           _ <- apiKeyDb.delete(existingId)
           res <- Queries.getAllApiKeys
@@ -284,7 +282,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, testApiKey_2, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_2.value, now, now)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }

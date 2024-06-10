@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.HashedApiKey
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
@@ -24,7 +25,8 @@ class ApiKeyDb()(implicit clock: Clock) {
       }
   }
 
-  def getByApiKey(apiKey: String): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] = Queries.getByApiKey(apiKey).option
+  def getByApiKey(hashedApiKey: HashedApiKey): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
+    Queries.getByApiKey(hashedApiKey.value).option
 
   def delete(id: Long): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
     for {

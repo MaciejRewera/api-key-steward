@@ -1,6 +1,6 @@
 package apikeysteward.routes.definitions
 
-object ErrorMessages {
+private[routes] object ApiErrorMessages {
 
   object General {
     val Unauthorized = "Credentials are invalid."

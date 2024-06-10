@@ -1,15 +1,35 @@
 package apikeysteward.base
 
-import apikeysteward.model.ApiKeyData
+import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
 
 import java.util.UUID
+import scala.util.Random
 
 object TestData extends TestData
 
 trait TestData extends FixedClock {
 
-  val apiKey_1 = "test-api-key-1"
-  val apiKey_2 = "test-api-key-2"
+  val apiKeyPrefix: String = "testPrefix_"
+
+  val apiKeyRandomSection_1: String = "test-api-key-1"
+  val apiKeyRandomSection_2: String = "test-api-key-2"
+  val apiKeyRandomSection_3: String = "test-api-key-3"
+  val apiKeyRandomSection_4: String = "test-api-key-4"
+
+  val checksum_1: String = Random.alphanumeric.take(6).mkString
+  val checksum_2: String = Random.alphanumeric.take(6).mkString
+  val checksum_3: String = Random.alphanumeric.take(6).mkString
+  val checksum_4: String = Random.alphanumeric.take(6).mkString
+
+  val apiKey_1: ApiKey = ApiKey(apiKeyPrefix + apiKeyRandomSection_1 + checksum_1)
+  val apiKey_2: ApiKey = ApiKey(apiKeyPrefix + apiKeyRandomSection_2 + checksum_2)
+  val apiKey_3: ApiKey = ApiKey(apiKeyPrefix + apiKeyRandomSection_3 + checksum_3)
+  val apiKey_4: ApiKey = ApiKey(apiKeyPrefix + apiKeyRandomSection_4 + checksum_4)
+
+  val hashedApiKey_1: HashedApiKey = HashedApiKey("test-hashed-api-key-1")
+  val hashedApiKey_2: HashedApiKey = HashedApiKey("test-hashed-api-key-2")
+  val hashedApiKey_3: HashedApiKey = HashedApiKey("test-hashed-api-key-3")
+  val hashedApiKey_4: HashedApiKey = HashedApiKey("test-hashed-api-key-4")
 
   val publicKeyId_1 = UUID.randomUUID()
   val publicKeyId_2 = UUID.randomUUID()

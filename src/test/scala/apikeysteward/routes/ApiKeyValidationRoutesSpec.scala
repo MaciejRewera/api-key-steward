@@ -1,9 +1,11 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData.{apiKeyData_1, apiKey_1}
-import apikeysteward.routes.definitions.ErrorMessages
+import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomSection_1, apiKey_1}
+import apikeysteward.model.ApiKey
+import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
-import apikeysteward.services.ApiKeyService
+import apikeysteward.services.ApiKeyValidationService
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import io.circe.syntax.EncoderOps
@@ -16,21 +18,21 @@ import org.mockito.MockitoSugar.{mock, verify}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
+class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
-  private val apiKeyService = mock[ApiKeyService[String]]
-  private val validateApiKeyRoutes: HttpApp[IO] = new ValidateApiKeyRoutes(apiKeyService).allRoutes.orNotFound
+  private val apiKeyService = mock[ApiKeyValidationService]
+  private val validateApiKeyRoutes: HttpApp[IO] = new ApiKeyValidationRoutes(apiKeyService).allRoutes.orNotFound
 
   private val testException = new RuntimeException("Test Exception")
 
   "ValidateApiKeyRoutes on POST /api-key/validation" should {
 
     val uri = uri"/api-key/validation"
-    val requestBody = ValidateApiKeyRequest(apiKey_1)
+    val requestBody = ValidateApiKeyRequest(apiKey_1.value)
     val request = Request[IO](method = Method.POST, uri = uri).withEntity(requestBody.asJson)
 
     "call ApiKeyService" in {
-      apiKeyService.validateApiKey(any[String]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         _ <- validateApiKeyRoutes.run(request)
@@ -39,7 +41,7 @@ class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Match
     }
 
     "return Ok and ApiKeyData when ApiKeyService returns Right" in {
-      apiKeyService.validateApiKey(any[String]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         response <- validateApiKeyRoutes.run(request)
@@ -51,9 +53,7 @@ class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Match
     }
 
     "return Forbidden when ApiKeyService returns Left" in {
-      apiKeyService.validateApiKey(any[String]) returns IO.pure(
-        Left(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
-      )
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
 
       for {
         response <- validateApiKeyRoutes.run(request)
@@ -61,13 +61,13 @@ class ValidateApiKeyRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Match
         _ <- response
           .as[ErrorInfo]
           .asserting(
-            _ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect))
+            _ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect))
           )
       } yield ()
     }
 
     "return Internal Server Error when ApiKeyService returns an exception" in {
-      apiKeyService.validateApiKey(any[String]) returns IO.raiseError(testException)
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.raiseError(testException)
 
       for {
         response <- validateApiKeyRoutes.run(request)

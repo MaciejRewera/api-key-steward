@@ -1,6 +1,6 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.ApiKeyData
+import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -20,16 +20,29 @@ class DbApiKeyRepository(
     apiKeyDb: ApiKeyDb,
     apiKeyDataDb: ApiKeyDataDb,
     scopeDb: ScopeDb,
-    apiKeyDataScopesDb: ApiKeyDataScopesDb
+    apiKeyDataScopesDb: ApiKeyDataScopesDb,
+    secureHashGenerator: SecureHashGenerator
 )(transactor: Transactor[IO])
-    extends ApiKeyRepository[String] {
+    extends ApiKeyRepository {
 
   private val logger: StructuredLogger[doobie.ConnectionIO] = Slf4jLogger.getLogger
 
-  override def insert(apiKey: String, apiKeyData: ApiKeyData): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
+  override def insert(
+      apiKey: ApiKey,
+      apiKeyData: ApiKeyData
+  ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
+    for {
+      hashedApiKey <- secureHashGenerator.generateHashFor(apiKey)
+      apiKeyData <- insertHashed(hashedApiKey, apiKeyData)
+    } yield apiKeyData
+
+  private def insertHashed(
+      hashedApiKey: HashedApiKey,
+      apiKeyData: ApiKeyData
+  ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
       _ <- logInfoE("Inserting new API Key...")
-      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKey)))
+      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(hashedApiKey.value)))
         .leftSemiflatTap(e => logger.warn(s"Could not insert API Key because: ${e.message}"))
         .flatTap(_ => logInfoE("Inserted new API Key."))
 
@@ -59,9 +72,15 @@ class DbApiKeyRepository(
       _ <- apiKeyDataScopesDb.insertMany(apiKeyDataScopesEntities)
     } yield Right(scopeEntitiesRead)
 
-  override def get(apiKey: String): IO[Option[ApiKeyData]] =
+  override def get(apiKey: ApiKey): IO[Option[ApiKeyData]] =
+    for {
+      hashedApiKey <- secureHashGenerator.generateHashFor(apiKey)
+      apiKeyData <- getHashed(hashedApiKey)
+    } yield apiKeyData
+
+  private def getHashed(hashedApiKey: HashedApiKey): IO[Option[ApiKeyData]] =
     (for {
-      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(apiKey))
+      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(hashedApiKey))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
 
       scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)

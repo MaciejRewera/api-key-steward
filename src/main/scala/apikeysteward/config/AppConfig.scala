@@ -12,7 +12,8 @@ case class AppConfig(
     http: HttpConfig,
     database: DatabaseConfig,
     license: LicenseConfig,
-    auth: AuthConfig
+    auth: AuthConfig,
+    apiKey: ApiKeyConfig
 )
 
 object AppConfig {

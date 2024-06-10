@@ -1,5 +1,6 @@
 package apikeysteward.utils
 
+import apikeysteward.utils.Retry.RetryException._
 import cats.effect.IO
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -14,9 +15,9 @@ object Retry {
         if (maxRetries > 0) {
           logger.warn(s"Retrying failed action. Attempts left: ${maxRetries - 1}") >>
             retry(maxRetries - 1, isWorthRetrying)(action)
-        } else IO.raiseError(new RuntimeException(s"Exceeded max number of retries on error: $err"))
+        } else IO.raiseError(MaxNumberOfRetriesExceeded(err))
       } else {
-        IO.raiseError(new RuntimeException(s"Re-throwing error not configured for retrying: $err"))
+        IO.raiseError(ReceivedErrorNotConfiguredToRetry(err))
       }
 
     action.flatMap {
@@ -25,4 +26,18 @@ object Retry {
     }
   }
 
+  sealed trait RetryException extends RuntimeException {
+    val message: String
+    override def getMessage: String = message
+  }
+
+  object RetryException {
+    case class MaxNumberOfRetriesExceeded[E](error: E) extends RetryException {
+      override val message: String = s"Exceeded max number of retries on error: $error"
+    }
+
+    case class ReceivedErrorNotConfiguredToRetry[E](error: E) extends RetryException {
+      override val message: String = s"Re-throwing error not configured for retrying: $error"
+    }
+  }
 }

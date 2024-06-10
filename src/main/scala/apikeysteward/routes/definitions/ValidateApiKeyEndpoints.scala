@@ -28,7 +28,7 @@ object ValidateApiKeyEndpoints {
           oneOfVariant(
             StatusCode.Forbidden,
             jsonBody[ErrorInfo]
-              .description(ErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
+              .description(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
           )
         )
       )
