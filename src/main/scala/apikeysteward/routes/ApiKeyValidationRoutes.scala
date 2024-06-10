@@ -1,9 +1,10 @@
 package apikeysteward.routes
 
 import apikeysteward.model.ApiKey
-import apikeysteward.routes.definitions.ValidateApiKeyEndpoints
+import apikeysteward.routes.definitions.{ApiErrorMessages, ValidateApiKeyEndpoints}
 import apikeysteward.routes.model.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyValidationService
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
 import cats.effect.IO
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
@@ -15,12 +16,11 @@ class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         ValidateApiKeyEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
-          apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map { validationResult =>
-            validationResult
-              .fold(
-                error => Left(ErrorInfo.forbiddenErrorInfo(Some(error.message))),
-                apiKeyData => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
-              )
+          apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map {
+            case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
+
+            case Left(ApiKeyIncorrectError) =>
+              Left(ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)))
           }
         }
       )

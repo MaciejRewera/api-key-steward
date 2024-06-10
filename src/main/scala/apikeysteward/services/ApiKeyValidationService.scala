@@ -3,7 +3,6 @@ package apikeysteward.services
 import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.definitions.ApiErrorMessages.ValidateApiKey
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
 import cats.data.EitherT
@@ -54,10 +53,10 @@ class ApiKeyValidationService(
 
 object ApiKeyValidationService {
 
-  sealed abstract class ApiKeyValidationError(val message: String)
+  sealed abstract class ApiKeyValidationError
   object ApiKeyValidationError {
 
-    case object ApiKeyIncorrectError extends ApiKeyValidationError(ValidateApiKey.ValidateApiKeyIncorrect)
+    case object ApiKeyIncorrectError extends ApiKeyValidationError
   }
 
 }
