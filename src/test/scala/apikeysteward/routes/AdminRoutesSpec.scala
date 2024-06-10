@@ -30,9 +30,9 @@ import java.util.UUID
 class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtValidator = mock[JwtValidator]
-  private val adminService = mock[ManagementService]
+  private val managementService = mock[ManagementService]
 
-  private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtValidator, adminService).allRoutes.orNotFound
+  private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtValidator, managementService).allRoutes.orNotFound
 
   private val tokenString: AccessToken = "TOKEN"
   private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
@@ -42,7 +42,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(adminService, jwtValidator)
+    reset(managementService, jwtValidator)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
@@ -80,10 +80,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or AdminService" in {
+      "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, adminService)
+          _ = verifyZeroInteractions(jwtValidator, managementService)
         } yield ()
       }
     }
@@ -115,14 +115,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
@@ -141,14 +141,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
@@ -170,10 +170,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           } yield ()
         }
 
-        "NOT call AdminService" in authorizedFixture {
+        "NOT call ManagementService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(adminService)
+            _ = verifyZeroInteractions(managementService)
           } yield ()
         }
       }
@@ -193,10 +193,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           } yield ()
         }
 
-        "NOT call AdminService" in authorizedFixture {
+        "NOT call ManagementService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(adminService)
+            _ = verifyZeroInteractions(managementService)
           } yield ()
         }
       }
@@ -219,10 +219,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           } yield ()
         }
 
-        "NOT call AdminService" in authorizedFixture {
+        "NOT call ManagementService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(adminService)
+            _ = verifyZeroInteractions(managementService)
           } yield ()
         }
       }
@@ -242,10 +242,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           } yield ()
         }
 
-        "NOT call AdminService" in authorizedFixture {
+        "NOT call ManagementService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(adminService)
+            _ = verifyZeroInteractions(managementService)
           } yield ()
         }
 
@@ -267,10 +267,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
             } yield ()
           }
 
-          "NOT call AdminService" in authorizedFixture {
+          "NOT call ManagementService" in authorizedFixture {
             for {
               _ <- adminRoutes.run(requestWithLongName)
-              _ = verifyZeroInteractions(adminService)
+              _ = verifyZeroInteractions(managementService)
             } yield ()
           }
         }
@@ -290,10 +290,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
             } yield ()
           }
 
-          "NOT call AdminService" in authorizedFixture {
+          "NOT call ManagementService" in authorizedFixture {
             for {
               _ <- adminRoutes.run(requestWithNegativeTtl)
-              _ = verifyZeroInteractions(adminService)
+              _ = verifyZeroInteractions(managementService)
             } yield ()
           }
         }
@@ -302,19 +302,19 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "JwtValidator returns Right containing JsonWebToken and request body is correct" should {
 
-      "call AdminService" in authorizedFixture {
-        adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+      "call ManagementService" in authorizedFixture {
+        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(adminService).createApiKey(eqTo(userId_1), eqTo(requestBody))
+          _ = verify(managementService).createApiKey(eqTo(userId_1), eqTo(requestBody))
         } yield ()
       }
 
-      "return the value returned by AdminService" when {
+      "return the value returned by ManagementService" when {
 
         "provided with description" in authorizedFixture {
-          adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
 
           for {
             response <- adminRoutes.run(request)
@@ -327,7 +327,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "provided with NO description" in authorizedFixture {
           val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
             apiKey_1,
             apiKeyDataWithoutDescription
           )
@@ -344,8 +344,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
       }
 
-      "return Internal Server Error when AdminService returns failed IO" in authorizedFixture {
-        adminService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
+      "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
+        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -377,10 +377,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or AdminService" in {
+      "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, adminService)
+          _ = verifyZeroInteractions(jwtValidator, managementService)
         } yield ()
       }
     }
@@ -413,14 +413,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
@@ -439,31 +439,31 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
 
     "JwtValidator returns Right containing JsonWebToken" should {
 
-      "call AdminService" in authorizedFixture {
-        adminService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+      "call ManagementService" in authorizedFixture {
+        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(adminService).getAllApiKeysFor(eqTo(userId_1))
+          _ = verify(managementService).getAllApiKeysFor(eqTo(userId_1))
         } yield ()
       }
 
-      "return Not Found when AdminService returns empty List" in authorizedFixture {
-        adminService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+      "return Not Found when ManagementService returns empty List" in authorizedFixture {
+        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
         for {
           response <- adminRoutes.run(request)
@@ -476,8 +476,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Ok and all ApiKeyData when AdminService returns non-empty List" in authorizedFixture {
-        adminService.getAllApiKeysFor(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
+      "return Ok and all ApiKeyData when ManagementService returns non-empty List" in authorizedFixture {
+        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
 
         for {
           response <- adminRoutes.run(request)
@@ -486,8 +486,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Internal Server Error when AdminService returns an exception" in authorizedFixture {
-        adminService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
+      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
+        managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -519,10 +519,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or AdminService" in {
+      "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, adminService)
+          _ = verifyZeroInteractions(jwtValidator, managementService)
         } yield ()
       }
     }
@@ -555,14 +555,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
@@ -581,33 +581,33 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
 
     "JwtValidator returns Right containing JsonWebToken" should {
 
-      "call AdminService" in authorizedFixture {
-        adminService.getAllUserIds returns IO.pure(List.empty)
+      "call ManagementService" in authorizedFixture {
+        managementService.getAllUserIds returns IO.pure(List.empty)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(adminService).getAllUserIds
+          _ = verify(managementService).getAllUserIds
         } yield ()
       }
 
-      "return the value returned by AdminService" when {
+      "return the value returned by ManagementService" when {
 
         "it is an empty List" in authorizedFixture {
-          adminService.getAllUserIds returns IO.pure(List.empty)
+          managementService.getAllUserIds returns IO.pure(List.empty)
 
           for {
             response <- adminRoutes.run(request)
@@ -617,7 +617,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
 
         "it is a List with several elements" in authorizedFixture {
-          adminService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
+          managementService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
 
           for {
             response <- adminRoutes.run(request)
@@ -627,8 +627,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
       }
 
-      "return Internal Server Error when AdminService returns an exception" in authorizedFixture {
-        adminService.getAllUserIds returns IO.raiseError(testException)
+      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
+        managementService.getAllUserIds returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -660,10 +660,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or AdminService" in {
+      "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, adminService)
+          _ = verifyZeroInteractions(jwtValidator, managementService)
         } yield ()
       }
     }
@@ -693,14 +693,14 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
@@ -722,31 +722,31 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call AdminService" in {
+      "NOT call ManagementService" in {
         jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(adminService)
+          _ = verifyZeroInteractions(managementService)
         } yield ()
       }
     }
 
     "JwtValidator returns Right containing JsonWebToken" should {
 
-      "call AdminService" in authorizedFixture {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+      "call ManagementService" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(adminService).deleteApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ = verify(managementService).deleteApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
         } yield ()
       }
 
-      "return Ok and ApiKeyData returned by AdminService" in authorizedFixture {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+      "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
@@ -755,8 +755,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Not Found when AdminService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+      "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
           Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
         )
 
@@ -769,8 +769,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Internal Server Error when AdminService returns Left containing GenericApiKeyDeletionError" in authorizedFixture {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+      "return Internal Server Error when ManagementService returns Left containing GenericApiKeyDeletionError" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
           Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1))
         )
 
@@ -796,8 +796,8 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Internal Server Error when AdminService returns an exception" in authorizedFixture {
-        adminService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

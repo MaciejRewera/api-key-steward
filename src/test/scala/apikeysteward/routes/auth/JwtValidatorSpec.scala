@@ -3,7 +3,7 @@ package apikeysteward.routes.auth
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.AuthTestData._
 import apikeysteward.routes.auth.JwtDecoder._
-import apikeysteward.routes.auth.JwtValidator.buildUnauthorizedErrorInfo
+import apikeysteward.routes.auth.JwtValidator.buildNoRequiredPermissionsUnauthorizedErrorInfo
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtCustom}
 import cats.effect.IO
@@ -191,7 +191,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
               JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, Set.empty))
+              _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
             )
           }
 
@@ -204,7 +204,12 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
               JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, Set(permissionWrite_1, permissionRead_2)))
+              _ shouldBe Left(
+                buildNoRequiredPermissionsUnauthorizedErrorInfo(
+                  requiredPermissions,
+                  Set(permissionWrite_1, permissionRead_2)
+                )
+              )
             )
           }
         }
@@ -252,7 +257,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, Set.empty))
+              _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
             )
           }
 
@@ -265,7 +270,9 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get))
+              _ shouldBe Left(
+                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
+              )
             )
           }
 
@@ -278,7 +285,9 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get))
+              _ shouldBe Left(
+                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
+              )
             )
           }
 
@@ -291,7 +300,9 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(buildUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get))
+              _ shouldBe Left(
+                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
+              )
             )
           }
         }

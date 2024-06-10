@@ -35,7 +35,7 @@ class ManagementServiceSpec
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 
-  private val adminService = new ManagementService(apiKeyGenerator, apiKeyRepository)
+  private val managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
   override def beforeEach(): Unit =
     reset(apiKeyGenerator, apiKeyRepository)
@@ -49,7 +49,7 @@ class ManagementServiceSpec
 
   private val testException = new RuntimeException("Test Exception")
 
-  "AdminService on createApiKey" when {
+  "ManagementService on createApiKey" when {
 
     "everything works correctly" should {
 
@@ -58,7 +58,7 @@ class ManagementServiceSpec
         apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
 
         for {
-          _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest)
+          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest)
           _ = verify(apiKeyGenerator).generateApiKey
 
           _ = {
@@ -74,7 +74,9 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
         apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
 
-        adminService.createApiKey(userId_1, createApiKeyAdminRequest).asserting(_ shouldBe (apiKey_1, apiKeyData_1))
+        managementService
+          .createApiKey(userId_1, createApiKeyAdminRequest)
+          .asserting(_ shouldBe (apiKey_1, apiKeyData_1))
       }
     }
 
@@ -84,7 +86,7 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
           _ = verify(apiKeyGenerator).generateApiKey
           _ = verifyNoMoreInteractions(apiKeyGenerator)
         } yield ()
@@ -94,7 +96,7 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
           _ = verifyNoInteractions(apiKeyRepository)
         } yield ()
       }
@@ -102,7 +104,10 @@ class ManagementServiceSpec
       "return failed IO containing the same exception" in {
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
-        adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting(_ shouldBe Left(testException))
+        managementService
+          .createApiKey(userId_1, createApiKeyAdminRequest)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
 
@@ -117,7 +122,7 @@ class ManagementServiceSpec
           )
 
           for {
-            _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest)
+            _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest)
             _ = verify(apiKeyGenerator, times(2)).generateApiKey
 
             _ = {
@@ -141,7 +146,9 @@ class ManagementServiceSpec
             IO.pure(Right(apiKeyData_1))
           )
 
-          adminService.createApiKey(userId_1, createApiKeyAdminRequest).asserting(_ shouldBe (apiKey_2, apiKeyData_1))
+          managementService
+            .createApiKey(userId_1, createApiKeyAdminRequest)
+            .asserting(_ shouldBe (apiKey_2, apiKeyData_1))
         }
       }
     }
@@ -156,7 +163,7 @@ class ManagementServiceSpec
           apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
 
           for {
-            _ <- adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+            _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
             _ = verify(apiKeyGenerator, times(4)).generateApiKey
 
             _ = {
@@ -189,7 +196,7 @@ class ManagementServiceSpec
           )
           apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
 
-          adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting { result =>
+          managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting { result =>
             result shouldBe Left(MaxNumberOfRetriesExceeded(insertionError))
           }
         }
@@ -201,18 +208,21 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
         apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
 
-        adminService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting(_ shouldBe Left(testException))
+        managementService
+          .createApiKey(userId_1, createApiKeyAdminRequest)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }
 
-  "AdminService on deleteApiKey" should {
+  "ManagementService on deleteApiKey" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
-        _ <- adminService.deleteApiKey(userId_1, publicKeyId_1)
+        _ <- managementService.deleteApiKey(userId_1, publicKeyId_1)
         _ = verify(apiKeyRepository).delete(eqTo(userId_1), eqTo(publicKeyId_1))
       } yield ()
     }
@@ -222,7 +232,7 @@ class ManagementServiceSpec
       "ApiKeyRepository returns Right" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
-        adminService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+        managementService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
       }
 
       "ApiKeyRepository returns Left" in {
@@ -230,20 +240,20 @@ class ManagementServiceSpec
           Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
         )
 
-        adminService
+        managementService
           .deleteApiKey(userId_1, publicKeyId_1)
           .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
       }
     }
   }
 
-  "AdminService on getAllApiKeysFor" should {
+  "ManagementService on getAllApiKeysFor" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1))
 
       for {
-        _ <- adminService.getAllApiKeysFor(userId_1)
+        _ <- managementService.getAllApiKeysFor(userId_1)
         _ = verify(apiKeyRepository).getAll(eqTo(userId_1))
       } yield ()
     }
@@ -251,17 +261,17 @@ class ManagementServiceSpec
     "return the value returned by ApiKeyRepository" in {
       apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
 
-      adminService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
     }
   }
 
-  "AdminService on getAllUserIds" should {
+  "ManagementService on getAllUserIds" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
 
       for {
-        _ <- adminService.getAllUserIds
+        _ <- managementService.getAllUserIds
         _ = verify(apiKeyRepository).getAllUserIds
       } yield ()
     }
@@ -269,7 +279,7 @@ class ManagementServiceSpec
     "return the value returned by ApiKeyRepository" in {
       apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
 
-      adminService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
     }
   }
 }

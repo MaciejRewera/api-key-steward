@@ -2,18 +2,18 @@ package apikeysteward.routes
 
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
-import apikeysteward.routes.auth.JwtValidator
-import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
+import apikeysteward.routes.auth.model.JwtPermissions
+import apikeysteward.routes.auth.{JwtOps, JwtValidator}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ManagementEndpoints}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
 import cats.effect.IO
-import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
+import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps, toTraverseOps}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtValidator: JwtValidator, managementService: ManagementService) {
+class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -24,14 +24,14 @@ class ManagementRoutes(jwtValidator: JwtValidator, managementService: Management
         ManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => request =>
-            withUserId(jwt) { userId =>
-              managementService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
-                (
-                  StatusCode.Created,
-                  CreateApiKeyResponse(newApiKey.value, apiKeyData)
-                ).asRight
+            for {
+              userIdE <- IO(jwtOps.extractUserId(jwt))
+              apiKeyDataE <- userIdE.traverse(managementService.createApiKey(_, request))
+
+              result = apiKeyDataE.map { case (newApiKey, apiKeyData) =>
+                StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)
               }
-            }
+            } yield result
           }
       )
 
@@ -41,15 +41,18 @@ class ManagementRoutes(jwtValidator: JwtValidator, managementService: Management
         ManagementEndpoints.getAllApiKeysEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => _ =>
-            withUserId(jwt) { userId =>
-              managementService.getAllApiKeysFor(userId).map { allApiKeyData =>
+            for {
+              userIdE <- IO(jwtOps.extractUserId(jwt))
+              allApiKeyDataE <- userIdE.traverse(managementService.getAllApiKeysFor)
+
+              result = allApiKeyDataE.flatMap { allApiKeyData =>
                 if (allApiKeyData.isEmpty) {
                   val errorMsg = ApiErrorMessages.Management.GetAllApiKeysNotFound
                   ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
                 } else
                   (StatusCode.Ok -> allApiKeyData).asRight
               }
-            }
+            } yield result
           }
       )
 
@@ -59,8 +62,9 @@ class ManagementRoutes(jwtValidator: JwtValidator, managementService: Management
         ManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => publicKeyId =>
-            withUserId(jwt) { userId =>
-              managementService.deleteApiKey(userId, publicKeyId).map {
+            for {
+              userId <- IO(jwtOps.extractUserId(jwt))
+              result <- userId.flatTraverse(managementService.deleteApiKey(_, publicKeyId).map {
                 case Right(deletedApiKeyData) =>
                   (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
@@ -68,20 +72,13 @@ class ManagementRoutes(jwtValidator: JwtValidator, managementService: Management
                   ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)).asLeft
                 case Left(_: ApiKeyDeletionError) =>
                   ErrorInfo.internalServerErrorInfo().asLeft
-              }
-            }
+              })
+
+            } yield result
           }
       )
 
   val allRoutes: HttpRoutes[IO] =
     createApiKeyRoutes <+> getAllApiKeysRoutes <+> deleteApiKeyRoutes
 
-  private def withUserId[A](
-      jwt: JsonWebToken
-  )(f: String => IO[Either[ErrorInfo, (StatusCode, A)]]): IO[Either[ErrorInfo, (StatusCode, A)]] =
-    jwt.jwtClaim.subject match {
-      case Some(userId) => f(userId)
-      case None =>
-        IO.pure(ErrorInfo.badRequestErrorInfo(Some("'sub' field in provided JWT cannot be empty.")).asLeft)
-    }
 }
