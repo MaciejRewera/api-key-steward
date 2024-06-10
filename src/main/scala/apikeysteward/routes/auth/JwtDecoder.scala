@@ -95,7 +95,7 @@ object JwtDecoder {
 
   case class DecodingError(exception: Throwable) extends JwtDecoderError {
     override val message: String =
-      s"Exception occurred while decoding JWT: ${exception.getMessage}\n${exception.getStackTrace.mkString("\n")}"
+      s"Exception occurred while decoding JWT: ${exception.getMessage}"
   }
 
   case class MissingKeyIdFieldError(accessToken: String) extends JwtDecoderError {

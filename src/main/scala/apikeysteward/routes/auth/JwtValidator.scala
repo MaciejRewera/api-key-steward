@@ -28,7 +28,7 @@ class JwtValidator(jwtDecoder: JwtDecoder) {
     if (requiredPermissions.subsetOf(tokenPermissions))
       Right(jwt)
     else
-      Left(buildUnauthorizedErrorInfo(requiredPermissions, tokenPermissions))
+      Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions))
   }
 
   private def extractTokenPermissions(jwt: JsonWebToken): Set[Permission] = jwt.jwtClaim.permissions match {
@@ -42,7 +42,10 @@ object JwtValidator {
   type AccessToken = String
   type Permission = String
 
-  def buildUnauthorizedErrorInfo(requiredPermissions: Set[Permission], tokenPermissions: Set[Permission]): ErrorInfo =
+  def buildNoRequiredPermissionsUnauthorizedErrorInfo(
+      requiredPermissions: Set[Permission],
+      tokenPermissions: Set[Permission]
+  ): ErrorInfo =
     ErrorInfo.unauthorizedErrorInfo(Some(buildErrorMessage(requiredPermissions, tokenPermissions)))
 
   private def buildErrorMessage(requiredPermissions: Set[Permission], providedPermissions: Set[Permission]): String =
