@@ -9,13 +9,13 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ApiKeyValidationRoutes(apiKeyCreationService: ApiKeyValidationService) {
+class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
 
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         ValidateApiKeyEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
-          apiKeyCreationService.validateApiKey(ApiKey(request.apiKey)).map { validationResult =>
+          apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map { validationResult =>
             validationResult
               .fold(
                 error => Left(ErrorInfo.forbiddenErrorInfo(Some(error.message))),
