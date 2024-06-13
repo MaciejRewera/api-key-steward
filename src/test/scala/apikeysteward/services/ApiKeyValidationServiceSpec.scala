@@ -1,11 +1,12 @@
 package apikeysteward.services
 
+import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.{apiKey_1, _}
 import apikeysteward.generators.ChecksumCodec.ChecksumDecodingError.ProvidedEncodedChecksumTooLongError
 import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
 import apikeysteward.model.ApiKey
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -16,7 +17,12 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class ApiKeyValidationServiceSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with FixedClock {
 
   private val checksumCalculator = mock[CRC32ChecksumCalculator]
   private val checksumCodec = mock[ChecksumCodec]
@@ -48,13 +54,27 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
         } yield ()
       }
 
-      "return ApiKeyData returned from ApiKeyRepository" in {
-        val checksum = 42L
-        checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns checksum.asRight
-        apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+      "return ApiKeyData returned from ApiKeyRepository" when {
 
-        apiKeyValidationService.validateApiKey(apiKey_1).asserting(result => result shouldBe Right(apiKeyData_1))
+        "the key's expiresAt is 1 nanosecond in the future" in {
+          val checksum = 42L
+          val apiKeyData = apiKeyData_1.copy(expiresAt = now.plusNanos(1))
+
+          checksumCalculator.calcChecksumFor(any[String]) returns checksum
+          checksumCodec.decode(any[String]) returns checksum.asRight
+          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+
+          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Right(apiKeyData))
+        }
+
+        "the key's expiresAt is 1 second in the future" in {
+          val checksum = 42L
+          checksumCalculator.calcChecksumFor(any[String]) returns checksum
+          checksumCodec.decode(any[String]) returns checksum.asRight
+          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+
+          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Right(apiKeyData_1))
+        }
       }
     }
 
@@ -98,9 +118,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
             checksumCalculator.calcChecksumFor(any[String]) returns -42
             checksumCodec.decode(any[String]) returns 42L.asRight
 
-            apiKeyValidationService
-              .validateApiKey(apiKey_1)
-              .asserting(result => result shouldBe Left(ApiKeyIncorrectError))
+            apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
           }
         }
 
@@ -120,9 +138,7 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
             checksumCalculator.calcChecksumFor(any[String]) returns 43
             checksumCodec.decode(any[String]) returns 42L.asRight
 
-            apiKeyValidationService
-              .validateApiKey(apiKey_1)
-              .asserting(result => result shouldBe Left(ApiKeyIncorrectError))
+            apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
           }
         }
       }
@@ -135,9 +151,50 @@ class ApiKeyValidationServiceSpec extends AsyncWordSpec with AsyncIOSpec with Ma
         checksumCodec.decode(any[String]) returns checksum.asRight
         apiKeyRepository.get(any[ApiKey]) returns IO.pure(None)
 
-        apiKeyValidationService
-          .validateApiKey(apiKey_1)
-          .asserting(result => result shouldBe Left(ApiKeyIncorrectError))
+        apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
+      }
+    }
+
+    "provided with a key that passes checksum validation, but the key is expired" should {
+
+      "return Left containing ApiKeyExpiredError" when {
+
+        "expiresAt equals current time" in {
+          val checksum = 42L
+          val apiKeyData = apiKeyData_1.copy(expiresAt = now)
+
+          checksumCalculator.calcChecksumFor(any[String]) returns checksum
+          checksumCodec.decode(any[String]) returns checksum.asRight
+          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+
+          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyExpiredError(now)))
+        }
+
+        "expiresAt is 1 nanosecond in the past" in {
+          val checksum = 42L
+          val apiKeyData = apiKeyData_1.copy(expiresAt = now.minusNanos(1))
+
+          checksumCalculator.calcChecksumFor(any[String]) returns checksum
+          checksumCodec.decode(any[String]) returns checksum.asRight
+          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+
+          apiKeyValidationService
+            .validateApiKey(apiKey_1)
+            .asserting(result => result shouldBe Left(ApiKeyExpiredError(now.minusNanos(1))))
+        }
+
+        "expiresAt is 1 second in the past" in {
+          val checksum = 42L
+          val apiKeyData = apiKeyData_1.copy(expiresAt = now.minusSeconds(1))
+
+          checksumCalculator.calcChecksumFor(any[String]) returns checksum
+          checksumCodec.decode(any[String]) returns checksum.asRight
+          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+
+          apiKeyValidationService
+            .validateApiKey(apiKey_1)
+            .asserting(result => result shouldBe Left(ApiKeyExpiredError(now.minusSeconds(1))))
+        }
       }
     }
   }

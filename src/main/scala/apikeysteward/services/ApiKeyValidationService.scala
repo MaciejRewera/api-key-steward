@@ -4,18 +4,20 @@ import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError
-import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
+import java.time.{Clock, Instant}
+
 class ApiKeyValidationService(
     checksumCalculator: CRC32ChecksumCalculator,
     checksumCodec: ChecksumCodec,
     apiKeyRepository: ApiKeyRepository
-) {
+)(implicit clock: Clock) {
 
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -23,12 +25,17 @@ class ApiKeyValidationService(
     (for {
       _ <- validateChecksum(apiKey)
 
-      apiKeyDataEntity <- EitherT(
+      apiKeyData <- EitherT(
         apiKeyRepository
           .get(apiKey)
           .map(_.toRight[ApiKeyValidationError](ApiKeyIncorrectError))
       )
-    } yield apiKeyDataEntity).value
+      _ <- validateExpiryDate(apiKeyData)
+        .leftSemiflatTap(_ =>
+          logger.info(s"Provided API Key: [${apiKey.value}] is expired since: ${apiKeyData.expiresAt}.")
+        )
+
+    } yield apiKeyData).value
 
   private def validateChecksum(apiKey: ApiKey): EitherT[IO, ApiKeyValidationError, ApiKey] = EitherT {
     val splitIndex = apiKey.value.length - ChecksumCodec.EncodedChecksumLength
@@ -44,10 +51,19 @@ class ApiKeyValidationService(
         if (calculatedChecksum == decodedChecksum)
           IO(apiKey.asRight)
         else
-          logger.warn(s"Provided API Key: [${apiKey.value}] contains invalid checksum.") >>
+          logger.info(s"Provided API Key: [${apiKey.value}] contains invalid checksum.") >>
             IO(ApiKeyIncorrectError.asLeft)
     }
   }
+
+  private def validateExpiryDate(apiKeyData: ApiKeyData): EitherT[IO, ApiKeyValidationError, ApiKeyData] =
+    EitherT.fromEither[IO](
+      Either.cond(
+        apiKeyData.expiresAt.isAfter(Instant.now(clock)),
+        apiKeyData,
+        ApiKeyExpiredError(apiKeyData.expiresAt)
+      )
+    )
 
 }
 
@@ -55,8 +71,8 @@ object ApiKeyValidationService {
 
   sealed abstract class ApiKeyValidationError
   object ApiKeyValidationError {
-
     case object ApiKeyIncorrectError extends ApiKeyValidationError
+    case class ApiKeyExpiredError(expiredSince: Instant) extends ApiKeyValidationError
   }
 
 }

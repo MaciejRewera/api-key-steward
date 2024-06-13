@@ -1,11 +1,12 @@
 package apikeysteward.routes
 
+import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomSection_1, apiKey_1}
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import apikeysteward.services.ApiKeyValidationService
-import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.ApiKeyIncorrectError
+import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import io.circe.syntax.EncoderOps
@@ -18,7 +19,7 @@ import org.mockito.MockitoSugar.{mock, verify}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
+class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock {
 
   private val apiKeyService = mock[ApiKeyValidationService]
   private val validateApiKeyRoutes: HttpApp[IO] = new ApiKeyValidationRoutes(apiKeyService).allRoutes.orNotFound
@@ -52,7 +53,7 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
       } yield ()
     }
 
-    "return Forbidden when ApiKeyService returns Left" in {
+    "return Forbidden when ApiKeyService returns Left containing ApiKeyIncorrectError" in {
       apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
 
       for {
@@ -63,6 +64,23 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
           .asserting(
             _ shouldBe ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect))
           )
+      } yield ()
+    }
+
+    "return Forbidden when ApiKeyService returns Left containing ApiKeyExpiredError" in {
+      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(
+        Left(ApiKeyExpiredError(now.minusSeconds(1).plusMillis(123).plusNanos(456)))
+      )
+
+      for {
+        response <- validateApiKeyRoutes.run(request)
+        _ = response.status shouldBe Status.Forbidden
+        _ <- response
+          .as[ErrorInfo]
+          .asserting { resp =>
+            resp.error shouldBe "Access Denied"
+            resp.errorDetail shouldBe Some("Provided API Key is expired since: 2024-02-15T12:34:55.123000456Z.")
+          }
       } yield ()
     }
 
