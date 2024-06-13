@@ -63,8 +63,8 @@ class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementSer
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => publicKeyId =>
             for {
-              userId <- IO(jwtOps.extractUserId(jwt))
-              result <- userId.flatTraverse(managementService.deleteApiKey(_, publicKeyId).map {
+              userIdE <- IO(jwtOps.extractUserId(jwt))
+              result <- userIdE.flatTraverse(managementService.deleteApiKey(_, publicKeyId).map {
                 case Right(deletedApiKeyData) =>
                   (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 

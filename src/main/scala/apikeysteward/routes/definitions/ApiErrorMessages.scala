@@ -1,5 +1,7 @@
 package apikeysteward.routes.definitions
 
+import java.time.Instant
+
 private[routes] object ApiErrorMessages {
 
   object General {
@@ -18,6 +20,7 @@ private[routes] object ApiErrorMessages {
 
   object ValidateApiKey {
     val ValidateApiKeyIncorrect = "Provided API Key is incorrect or does not exist."
+    def validateApiKeyExpired(since: Instant): String = s"Provided API Key is expired since: $since."
   }
 
 }
