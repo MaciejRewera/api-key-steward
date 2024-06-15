@@ -5,11 +5,10 @@ import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
+import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.{Clock, Instant}
 
@@ -17,9 +16,8 @@ class ApiKeyValidationService(
     checksumCalculator: CRC32ChecksumCalculator,
     checksumCodec: ChecksumCodec,
     apiKeyRepository: ApiKeyRepository
-)(implicit clock: Clock) {
-
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+)(implicit clock: Clock)
+    extends Logging {
 
   def validateApiKey(apiKey: ApiKey): IO[Either[ApiKeyValidationError, ApiKeyData]] =
     (for {
@@ -32,7 +30,9 @@ class ApiKeyValidationService(
       )
       _ <- validateExpiryDate(apiKeyData)
         .leftSemiflatTap(_ =>
-          logger.info(s"Provided API Key: [${apiKey.value}] is expired since: ${apiKeyData.expiresAt}.")
+          logger.info(
+            s"Provided API Key with key ID: [${apiKeyData.publicKeyId}] is expired since: ${apiKeyData.expiresAt}."
+          )
         )
 
     } yield apiKeyData).value

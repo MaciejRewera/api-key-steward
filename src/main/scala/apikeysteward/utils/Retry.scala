@@ -7,7 +7,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 object Retry {
 
-  private def logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   def retry[E, A](maxRetries: Int, isWorthRetrying: E => Boolean)(action: => IO[Either[E, A]]): IO[A] = {
     def retryOnLeft(err: E): IO[A] =

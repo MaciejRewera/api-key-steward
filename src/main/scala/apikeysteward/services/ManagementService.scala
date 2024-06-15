@@ -6,17 +6,14 @@ import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.utils.Retry
+import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.Clock
 import java.util.UUID
 
-class ManagementService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock) {
-
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+class ManagementService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock)
+    extends Logging {
 
   def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(ApiKey, ApiKeyData)] = {
     def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
