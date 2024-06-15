@@ -2,6 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.config.LicenseConfig
 import apikeysteward.license.LicenseValidator
+import apikeysteward.utils.Logging
 import cats.effect.IO
 import fs2.Stream
 import org.typelevel.log4cats.StructuredLogger
@@ -12,9 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 class LicenseService(
     config: LicenseService.Configuration,
     licenseValidator: LicenseValidator
-) {
-
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+) extends Logging {
 
   def periodicallyValidateLicense(): IO[Unit] =
     (

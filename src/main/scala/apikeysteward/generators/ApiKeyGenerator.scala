@@ -1,7 +1,7 @@
 package apikeysteward.generators
 
 import apikeysteward.model.ApiKey
-import apikeysteward.utils.Retry
+import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxTuple2Parallel}
 import org.typelevel.log4cats.StructuredLogger
@@ -12,9 +12,7 @@ class ApiKeyGenerator(
     randomStringGenerator: RandomStringGenerator,
     checksumCalculator: CRC32ChecksumCalculator,
     checksumCodec: ChecksumCodec
-) {
-
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+) extends Logging {
 
   def generateApiKey: IO[ApiKey] =
     for {

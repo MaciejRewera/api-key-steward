@@ -5,6 +5,7 @@ import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
+import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
@@ -17,9 +18,8 @@ class ApiKeyValidationService(
     checksumCalculator: CRC32ChecksumCalculator,
     checksumCodec: ChecksumCodec,
     apiKeyRepository: ApiKeyRepository
-)(implicit clock: Clock) {
-
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+)(implicit clock: Clock)
+    extends Logging {
 
   def validateApiKey(apiKey: ApiKey): IO[Either[ApiKeyValidationError, ApiKeyData]] =
     (for {

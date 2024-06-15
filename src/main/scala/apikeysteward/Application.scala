@@ -12,8 +12,9 @@ import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories._
 import apikeysteward.routes.auth._
-import apikeysteward.routes.{AdminRoutes, DocumentationRoutes, ManagementRoutes, ApiKeyValidationRoutes}
-import apikeysteward.services.{ManagementService, ApiKeyValidationService, LicenseService}
+import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
+import apikeysteward.services.{ApiKeyValidationService, LicenseService, ManagementService}
+import apikeysteward.utils.Logging
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
 import com.zaxxer.hikari.HikariDataSource
@@ -31,10 +32,9 @@ import pureconfig.ConfigSource
 import java.time.Clock
 import scala.concurrent.duration.DurationInt
 
-object Application extends IOApp.Simple {
+object Application extends IOApp.Simple with Logging {
 
   private implicit val clock: Clock = Clock.systemUTC()
-  private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   override def run: IO[Unit] = {
 
