@@ -26,7 +26,7 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
       publicKey <- generatePublicKey(jwk)
 
       jsonWebToken <- decodeToken(accessToken, publicKey)
-      _ <- EitherT.fromEither[IO](validateAudClaim(jsonWebToken.jwtClaim))
+      _ <- validateAudClaim(jsonWebToken.jwtClaim)
 
     } yield jsonWebToken).value
 
@@ -72,7 +72,7 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
           .left
           .map(errors => PublicKeyGenerationError(errors.iterator.toSeq))
       ).flatTap {
-        case Right(_)           => IO.pure(())
+        case Right(_)           => IO.unit
         case Left(decoderError) => logger.warn(s"${decoderError.message}. Provided JWK: $jwk")
       }
     )
@@ -94,16 +94,18 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
       )
     )
 
-  private def validateAudClaim(jwtClaim: JwtClaimCustom): Either[JwtDecoderError, JwtClaimCustom] =
-    jwtClaim.audience match {
-      case None => MissingAudienceClaimError.asLeft
+  private def validateAudClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
+    EitherT.fromEither(
+      jwtClaim.audience match {
+        case None => MissingAudienceClaimError.asLeft
 
-      case Some(audienceSet) =>
-        if (audienceSet(authConfig.audience))
-          jwtClaim.asRight
-        else
-          IncorrectAudienceClaimError(audienceSet).asLeft
-    }
+        case Some(audienceSet) =>
+          if (audienceSet(authConfig.audience))
+            jwtClaim.asRight
+          else
+            IncorrectAudienceClaimError(audienceSet).asLeft
+      }
+    )
 }
 
 object JwtDecoder {
