@@ -4,8 +4,6 @@ import apikeysteward.model.ApiKey
 import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxTuple2Parallel}
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class ApiKeyGenerator(
     apiKeyPrefixProvider: ApiKeyPrefixProvider,

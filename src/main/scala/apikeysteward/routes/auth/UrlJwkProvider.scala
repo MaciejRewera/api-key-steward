@@ -10,8 +10,6 @@ import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.client.Client
 import org.http4s.{Response, Status}
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

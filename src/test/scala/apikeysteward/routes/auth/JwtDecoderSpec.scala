@@ -144,9 +144,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       "return Left containing MatchingJwkNotFoundError" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
 
-        jwtDecoder.decode(jwtString).asserting { result =>
-          result shouldBe Left(MatchingJwkNotFoundError(kid_1))
-        }
+        jwtDecoder.decode(jwtString).asserting(result => result shouldBe Left(MatchingJwkNotFoundError(kid_1)))
       }
     }
 
@@ -164,9 +162,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       "return failed IO containing the same error" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.raiseError(testException)
 
-        jwtDecoder.decode(jwtString).attempt.asserting { result =>
-          result shouldBe Left(testException)
-        }
+        jwtDecoder.decode(jwtString).attempt.asserting(result => result shouldBe Left(testException))
       }
     }
 

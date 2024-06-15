@@ -5,8 +5,6 @@ import apikeysteward.license.LicenseValidator
 import apikeysteward.utils.Logging
 import cats.effect.IO
 import fs2.Stream
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.FiniteDuration
 
