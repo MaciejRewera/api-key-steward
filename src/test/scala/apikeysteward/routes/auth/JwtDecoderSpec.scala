@@ -170,7 +170,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
         jwtDecoder.decode(jwtString).asserting { result =>
           result.isLeft shouldBe true
-          result.left.value shouldBe PublicKeyGenerationError(failureReasons.iterator.toSeq, jsonWebKey)
+          result.left.value shouldBe PublicKeyGenerationError(failureReasons.iterator.toSeq)
         }
       }
     }

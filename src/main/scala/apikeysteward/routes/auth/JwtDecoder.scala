@@ -2,6 +2,7 @@ package apikeysteward.routes.auth
 
 import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtCustom}
+import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
@@ -9,7 +10,7 @@ import pdi.jwt._
 
 import java.security.PublicKey
 
-class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator) {
+class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator) extends Logging {
 
   private val FakeKey = "fakeKey"
   private val VerificationFlagsDecode: JwtOptions = new JwtOptions(signature = false, expiration = true)
@@ -65,8 +66,11 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
         publicKeyGenerator
           .generateFrom(jwk)
           .left
-          .map(errors => PublicKeyGenerationError(errors.iterator.toSeq, jwk))
-      )
+          .map(errors => PublicKeyGenerationError(errors.iterator.toSeq))
+      ).flatTap {
+        case Right(_)           => IO.pure(())
+        case Left(decoderError) => logger.warn(s"${decoderError.message}. Provided JWK: $jwk")
+      }
     )
 
   private def decodeToken(accessToken: String, publicKey: PublicKey): EitherT[IO, JwtDecoderError, JsonWebToken] =
@@ -106,12 +110,9 @@ object JwtDecoder {
     override val message: String = s"Cannot find JWK with kid: $keyId."
   }
 
-  case class PublicKeyGenerationError(
-      errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError],
-      jwk: JsonWebKey
-  ) extends JwtDecoderError {
+  case class PublicKeyGenerationError(errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError]) extends JwtDecoderError {
     override val message: String =
-      s"Cannot generate Public Key because: ${errors.map(_.message).mkString("[\"", "\", \"", "\"]")}. Provided JWK: $jwk"
+      s"Cannot generate Public Key because: ${errors.map(_.message).mkString("[\"", "\", \"", "\"]")}."
   }
 
 }

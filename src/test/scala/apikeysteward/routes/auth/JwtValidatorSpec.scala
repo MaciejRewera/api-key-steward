@@ -91,12 +91,13 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             KeyTypeNotSupportedError("RSA", "HSA"),
             KeyUseNotSupportedError("sig", "no-use")
           )
-          val error = PublicKeyGenerationError(failureReasons, jsonWebKey)
+          val error = PublicKeyGenerationError(failureReasons)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
           jwtValidator.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
+            result.left.value.error shouldBe "Invalid Credentials"
+            result.left.value.errorDetail.get shouldBe """Cannot generate Public Key because: ["Algorithm HS256 is not supported. Please use RS256.", "Key Type HSA is not supported. Please use RSA.", "Public Key Use no-use is not supported. Please use sig."]."""
           }
         }
       }
@@ -352,7 +353,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
             KeyTypeNotSupportedError("RSA", "HSA"),
             KeyUseNotSupportedError("sig", "no-use")
           )
-          val error = PublicKeyGenerationError(failureReasons, jsonWebKey)
+          val error = PublicKeyGenerationError(failureReasons)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
