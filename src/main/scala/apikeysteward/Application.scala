@@ -1,16 +1,10 @@
 package apikeysteward
 
 import apikeysteward.config.AppConfig
-import apikeysteward.generators.{
-  ApiKeyGenerator,
-  ApiKeyPrefixProvider,
-  CRC32ChecksumCalculator,
-  ChecksumCodec,
-  RandomStringGenerator
-}
+import apikeysteward.generators._
 import apikeysteward.license.AlwaysValidLicenseValidator
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.repositories._
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth._
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
 import apikeysteward.services.{ApiKeyValidationService, LicenseService, ManagementService}
@@ -25,8 +19,6 @@ import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 import pureconfig.ConfigSource
 
 import java.time.Clock
@@ -62,7 +54,7 @@ object Application extends IOApp.Simple with Logging {
 
         jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
         publicKeyGenerator = new PublicKeyGenerator(config.auth)
-        jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator)
+        jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator, config.auth)
         jwtValidator = new JwtValidator(jwtDecoder)
 
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)

@@ -9,8 +9,6 @@ import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
-import org.typelevel.log4cats.StructuredLogger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.{Clock, Instant}
 
@@ -32,7 +30,9 @@ class ApiKeyValidationService(
       )
       _ <- validateExpiryDate(apiKeyData)
         .leftSemiflatTap(_ =>
-          logger.info(s"Provided API Key: [${apiKey.value}] is expired since: ${apiKeyData.expiresAt}.")
+          logger.info(
+            s"Provided API Key with key ID: [${apiKeyData.publicKeyId}] is expired since: ${apiKeyData.expiresAt}."
+          )
         )
 
     } yield apiKeyData).value
