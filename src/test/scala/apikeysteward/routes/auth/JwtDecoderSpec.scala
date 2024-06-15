@@ -115,6 +115,19 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
+    "provided with a token containing empty audience" should {
+      "return Left containing MissingAudienceClaimError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtWithoutAudienceString =
+          JwtCustom.encode(jwtHeader, jwtClaim.copy(audience = Some(Set.empty)), privateKey)
+
+        jwtDecoder.decode(jwtWithoutAudienceString).asserting { result =>
+          result shouldBe Left(MissingAudienceClaimError)
+        }
+      }
+    }
+
     "provided with a token without required audience" should {
       "return Left containing IncorrectAudienceClaimError" in {
         authConfig.audience returns AuthTestData.audience_1

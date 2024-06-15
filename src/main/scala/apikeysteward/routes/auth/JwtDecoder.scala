@@ -96,15 +96,13 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
 
   private def validateAudClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
     EitherT.fromEither(
-      jwtClaim.audience match {
-        case None => MissingAudienceClaimError.asLeft
+      jwtClaim.audience.map {
+        case audienceSet if audienceSet(authConfig.audience) => jwtClaim.asRight
 
-        case Some(audienceSet) =>
-          if (audienceSet(authConfig.audience))
-            jwtClaim.asRight
-          else
-            IncorrectAudienceClaimError(audienceSet).asLeft
-      }
+        case audienceSet if audienceSet.isEmpty => MissingAudienceClaimError.asLeft
+        case audienceSet                        => IncorrectAudienceClaimError(audienceSet).asLeft
+
+      }.getOrElse(MissingAudienceClaimError.asLeft)
     )
 }
 
