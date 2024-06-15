@@ -70,12 +70,9 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
         publicKeyGenerator
           .generateFrom(jwk)
           .left
-          .map(errors => PublicKeyGenerationError(errors.iterator.toSeq))
-      ).flatTap {
-        case Right(_)           => IO.unit
-        case Left(decoderError) => logger.warn(s"${decoderError.message}. Provided JWK: $jwk")
-      }
-    )
+          .map[JwtDecoderError](errors => PublicKeyGenerationError(errors.iterator.toSeq))
+      )
+    ).leftSemiflatTap(decoderError => logger.warn(s"${decoderError.message}. Provided JWK: $jwk"))
 
   private def decodeToken(accessToken: String, publicKey: PublicKey): EitherT[IO, JwtDecoderError, JsonWebToken] =
     EitherT(
