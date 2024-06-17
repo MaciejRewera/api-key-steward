@@ -31,6 +31,8 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
 
       jsonWebToken <- decodeToken(accessToken, publicKey)
       _ <- validateIssuedAtClaim(jsonWebToken.jwtClaim)
+
+      _ <- validateIssuerClaim(jsonWebToken.jwtClaim)
       _ <- validateAudienceClaim(jsonWebToken.jwtClaim)
 
     } yield jsonWebToken).value
@@ -89,13 +91,12 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
         case None => MissingIssuedAtClaimError.asLeft
 
         case Some(issuedAtClaim) =>
-          authConfig.maxTokenAge.map { maxTokenAge =>
-            if (isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge))
-              jwtClaim.asRight
-            else
-              TokenTooOldError(maxTokenAge).asLeft
+          authConfig.maxTokenAge match {
+            case Some(maxTokenAge) if isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge) => jwtClaim.asRight
+            case None                                                                     => jwtClaim.asRight
 
-          }.getOrElse(jwtClaim.asRight)
+            case Some(maxTokenAge) => TokenTooOldError(maxTokenAge).asLeft
+          }
       }
     )
 
@@ -106,15 +107,26 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
     issuedAt.plus(maxTokenAge) > nowInSeconds
   }
 
+  private def validateIssuerClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
+    EitherT.fromEither(
+      jwtClaim.issuer match {
+        case Some(issuer) if authConfig.allowedIssuersList.contains(issuer) => jwtClaim.asRight
+
+        case Some(issuer) if issuer.isEmpty => MissingIssuerClaimError.asLeft
+        case None                           => MissingIssuerClaimError.asLeft
+        case Some(issuer)                   => IncorrectIssuerClaimError(issuer).asLeft
+      }
+    )
+
   private def validateAudienceClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
     EitherT.fromEither(
-      jwtClaim.audience.map {
-        case audienceSet if audienceSet(authConfig.audience) => jwtClaim.asRight
+      jwtClaim.audience match {
+        case Some(audienceSet) if audienceSet(authConfig.audience) => jwtClaim.asRight
 
-        case audienceSet if audienceSet.isEmpty => MissingAudienceClaimError.asLeft
-        case audienceSet                        => IncorrectAudienceClaimError(audienceSet).asLeft
-
-      }.getOrElse(MissingAudienceClaimError.asLeft)
+        case Some(audienceSet) if audienceSet.isEmpty => MissingAudienceClaimError.asLeft
+        case None                                     => MissingAudienceClaimError.asLeft
+        case Some(audienceSet)                        => IncorrectAudienceClaimError(audienceSet).asLeft
+      }
     )
 }
 
@@ -131,6 +143,14 @@ object JwtDecoder {
 
   case class MissingKeyIdFieldError(accessToken: String) extends JwtDecoderError {
     override val message: String = s"Key ID (kid) claim is not provided in token: $accessToken"
+  }
+
+  case object MissingIssuerClaimError extends JwtDecoderError {
+    override val message: String = "Issuer (iss) claim is missing."
+  }
+
+  case class IncorrectIssuerClaimError(issuer: String) extends JwtDecoderError {
+    override val message: String = s"Issuer (iss): '$issuer' is not supported."
   }
 
   case object MissingAudienceClaimError extends JwtDecoderError {

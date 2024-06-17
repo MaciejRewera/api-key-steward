@@ -33,6 +33,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     reset(jwkProvider, publicKeyGenerator, authConfig)
 
+    authConfig.allowedIssuersList returns List(issuer_1, issuer_2)
     authConfig.audience returns AuthTestData.audience_1
     authConfig.maxTokenAge returns None
   }
@@ -130,6 +131,38 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
+    "provided with a token without any issuer" should {
+      "return Left containing MissingIssuerClaimError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = None), privateKey)
+
+        jwtDecoder.decode(jwtWithoutIssuerString).asserting(result => result shouldBe Left(MissingIssuerClaimError))
+      }
+    }
+
+    "provided with a token containing empty issuer claim" should {
+      "return Left containing MissingIssuerClaimError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = Some("")), privateKey)
+
+        jwtDecoder.decode(jwtWithoutIssuerString).asserting(result => result shouldBe Left(MissingIssuerClaimError))
+      }
+    }
+
+    "provided with a token with not supported issuer" should {
+      "return Left containing IncorrectIssuerClaimError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = Some(issuer_3)), privateKey)
+
+        jwtDecoder.decode(jwtWithoutIssuerString).asserting { result =>
+          result shouldBe Left(IncorrectIssuerClaimError(issuer_3))
+        }
+      }
+    }
+
     "provided with a token without any audience" should {
       "return Left containing MissingAudienceClaimError" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
@@ -142,7 +175,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
-    "provided with a token containing empty audience" should {
+    "provided with a token containing empty audience claim" should {
       "return Left containing MissingAudienceClaimError" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)

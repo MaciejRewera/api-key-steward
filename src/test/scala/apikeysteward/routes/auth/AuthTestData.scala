@@ -53,11 +53,15 @@ private[routes] object AuthTestData {
   val permissionRead_2 = "read:permission-2"
   val permissionWrite_2 = "write:permission-2"
 
+  val issuer_1 = "test-issuer-1"
+  val issuer_2 = "test-issuer-2"
+  val issuer_3 = "test-issuer-3"
+
   val audience_1 = "test-audience-1"
   val audience_2 = "test-audience-2"
 
   val jwtClaim: JwtClaimCustom = JwtClaimCustom(
-    issuer = Some("test-issuer"),
+    issuer = Some(issuer_1),
     subject = Some("test-subject"),
     audience = Some(Set(audience_1, audience_2)),
     expiration = Some((now + 5.minutes).toSeconds),
