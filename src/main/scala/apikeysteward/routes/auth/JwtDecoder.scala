@@ -38,22 +38,12 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
   private def extractKeyId(accessToken: String): EitherT[IO, JwtDecoderError, String] =
     EitherT.fromEither[IO](
       JwtCustom
-        .decodeAll(
-          token = accessToken,
-          key = FakeKey,
-          algorithms = DecodeAlgorithms,
-          options = VerificationFlagsDecode
-        )
-        .toEither
-        .left
-        .map(DecodingError)
-        .flatMap { case (jwtHeader, _, _) =>
-          jwtHeader.keyId
-            .map(Right(_))
-            .getOrElse(
-              Left(MissingKeyIdFieldError(accessToken))
-            )
-        }
+        .decodeAll(token = accessToken, key = FakeKey, algorithms = DecodeAlgorithms, options = VerificationFlagsDecode)
+        .toEither match {
+        case Left(exc) => DecodingError(exc).asLeft
+        case Right((jwtHeader, _, _)) =>
+          jwtHeader.keyId.map(_.asRight).getOrElse(MissingKeyIdFieldError(accessToken).asLeft)
+      }
     )
 
   private def fetchJwk(keyId: String): EitherT[IO, JwtDecoderError, JsonWebKey] =
@@ -86,10 +76,11 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
           algorithms = DecodeAlgorithms,
           options = JwtOptions.DEFAULT
         )
-        .toEither
-        .left
-        .map(DecodingError)
-        .map { case (jwtHeader, jwtClaim, signature) => JsonWebToken(accessToken, jwtHeader, jwtClaim, signature) }
+        .toEither match {
+        case Left(exc) => DecodingError(exc).asLeft
+        case Right((jwtHeader, jwtClaim, signature)) =>
+          JsonWebToken(accessToken, jwtHeader, jwtClaim, signature).asRight
+      }
     )
 
   private def validateIssuedAtClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
@@ -99,16 +90,21 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
 
         case Some(issuedAtClaim) =>
           authConfig.maxTokenAge.map { maxTokenAge =>
-            val issuedAt = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
-            val nowInSeconds = FiniteDuration(Instant.now(clock).getEpochSecond, TimeUnit.SECONDS)
-
-            if (issuedAt.plus(maxTokenAge) > nowInSeconds)
+            if (isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge))
               jwtClaim.asRight
             else
               TokenTooOldError(maxTokenAge).asLeft
+
           }.getOrElse(jwtClaim.asRight)
       }
     )
+
+  private def isYoungerThanMaxAllowed(issuedAtClaim: Long, maxTokenAge: FiniteDuration): Boolean = {
+    val issuedAt = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
+    val nowInSeconds = FiniteDuration(Instant.now(clock).getEpochSecond, TimeUnit.SECONDS)
+
+    issuedAt.plus(maxTokenAge) > nowInSeconds
+  }
 
   private def validateAudienceClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
     EitherT.fromEither(

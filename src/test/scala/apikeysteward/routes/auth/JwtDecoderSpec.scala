@@ -114,7 +114,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
-    "provided with a token without kid (Key ID)`" should {
+    "provided with a token without kid (Key ID)" should {
 
       "NOT call either JwkProvider, nor PublicKeyGenerator" in {
         for {
@@ -169,7 +169,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
-    "provided with a token without 'iat' claim" should {
+    "provided with a token without iat claim" should {
       "return Left containing MissingIssuedAtClaimError" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
