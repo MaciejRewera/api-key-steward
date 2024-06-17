@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.config.{AuthConfig, JwksConfig}
+import apikeysteward.config.JwksConfig
 import apikeysteward.routes.auth.AuthTestData.jsonWebKey
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import org.http4s.Uri
@@ -15,15 +15,15 @@ import scala.concurrent.duration.DurationInt
 
 class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
 
-  private val authConfig = AuthConfig(
+  private val jwksConfig = JwksConfig(
+    url = Uri.unsafeFromString("test/url/to/get/jwks"),
+    cacheRefreshPeriod = 10.minutes,
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",
-    supportedKeyUse = "sig",
-    audience = AuthTestData.audience_1,
-    jwks = JwksConfig(Uri.unsafeFromString("test/url/to/get/jwks"), 10.minutes)
+    supportedKeyUse = "sig"
   )
 
-  private val publicKeyGenerator = new PublicKeyGenerator(authConfig)
+  private val publicKeyGenerator = new PublicKeyGenerator(jwksConfig)
 
   "PublicKeyGenerator on generateFrom" should {
 
@@ -49,7 +49,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         result.isLeft shouldBe true
         result.swap.map { errors =>
           errors.length shouldBe 1
-          errors.head shouldBe AlgorithmNotSupportedError(authConfig.supportedAlgorithm, "HS256")
+          errors.head shouldBe AlgorithmNotSupportedError(jwksConfig.supportedAlgorithm, "HS256")
         }
       }
 
@@ -61,7 +61,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         result.isLeft shouldBe true
         result.swap.map { errors =>
           errors.length shouldBe 1
-          errors.head shouldBe KeyTypeNotSupportedError(authConfig.supportedKeyType, "HSA")
+          errors.head shouldBe KeyTypeNotSupportedError(jwksConfig.supportedKeyType, "HSA")
         }
       }
 
@@ -73,7 +73,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         result.isLeft shouldBe true
         result.swap.map { errors =>
           errors.length shouldBe 1
-          errors.head shouldBe KeyUseNotSupportedError(authConfig.supportedKeyUse, "no-use")
+          errors.head shouldBe KeyUseNotSupportedError(jwksConfig.supportedKeyUse, "no-use")
         }
       }
 
@@ -86,9 +86,9 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         result.swap.map { errors =>
           errors.length shouldBe 3
           errors.toChain.toList should contain theSameElementsAs Seq(
-            AlgorithmNotSupportedError(authConfig.supportedAlgorithm, "HS256"),
-            KeyTypeNotSupportedError(authConfig.supportedKeyType, "HSA"),
-            KeyUseNotSupportedError(authConfig.supportedKeyUse, "no-use")
+            AlgorithmNotSupportedError(jwksConfig.supportedAlgorithm, "HS256"),
+            KeyTypeNotSupportedError(jwksConfig.supportedKeyType, "HSA"),
+            KeyUseNotSupportedError(jwksConfig.supportedKeyUse, "no-use")
           )
         }
       }

@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.config.AuthConfig
+import apikeysteward.config.JwksConfig
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.JsonWebKey
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
@@ -11,11 +11,11 @@ import java.math.BigInteger
 import java.security.spec.RSAPublicKeySpec
 import java.security.{KeyFactory, PublicKey}
 
-class PublicKeyGenerator(authConfig: AuthConfig) {
+class PublicKeyGenerator(jwksConfig: JwksConfig) {
 
-  private val SupportedAlgorithm = authConfig.supportedAlgorithm
-  private val SupportedKeyType = authConfig.supportedKeyType
-  private val SupportedKeyUse = authConfig.supportedKeyUse
+  private val SupportedAlgorithm = jwksConfig.supportedAlgorithm
+  private val SupportedKeyType = jwksConfig.supportedKeyType
+  private val SupportedKeyUse = jwksConfig.supportedKeyUse
 
   def generateFrom(jsonWebKey: JsonWebKey): Either[NonEmptyChain[PublicKeyGeneratorError], PublicKey] =
     validateJwk(jsonWebKey).map { jwk =>

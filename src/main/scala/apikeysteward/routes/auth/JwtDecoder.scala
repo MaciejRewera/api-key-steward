@@ -10,9 +10,13 @@ import cats.implicits.catsSyntaxEitherId
 import pdi.jwt._
 
 import java.security.PublicKey
+import java.time.{Clock, Instant}
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
-class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator, authConfig: AuthConfig)
-    extends Logging {
+class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator, authConfig: AuthConfig)(
+    implicit clock: Clock
+) extends Logging {
 
   private val FakeKey = "fakeKey"
   private val VerificationFlagsDecode: JwtOptions = new JwtOptions(signature = false, expiration = true)
@@ -26,31 +30,20 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
       publicKey <- generatePublicKey(jwk)
 
       jsonWebToken <- decodeToken(accessToken, publicKey)
-      _ <- validateAudClaim(jsonWebToken.jwtClaim)
+      _ <- validateIssuedAtClaim(jsonWebToken.jwtClaim)
+      _ <- validateAudienceClaim(jsonWebToken.jwtClaim)
 
     } yield jsonWebToken).value
 
   private def extractKeyId(accessToken: String): EitherT[IO, JwtDecoderError, String] =
-    EitherT(
-      IO(
-        JwtCirce
-          .decodeAll(
-            token = accessToken,
-            key = FakeKey,
-            algorithms = DecodeAlgorithms,
-            options = VerificationFlagsDecode
-          )
-          .toEither
-          .left
-          .map(DecodingError)
-          .flatMap { case (jwtHeader, _, _) =>
-            jwtHeader.keyId
-              .map(Right(_))
-              .getOrElse(
-                Left(MissingKeyIdFieldError(accessToken))
-              )
-          }
-      )
+    EitherT.fromEither[IO](
+      JwtCustom
+        .decodeAll(token = accessToken, key = FakeKey, algorithms = DecodeAlgorithms, options = VerificationFlagsDecode)
+        .toEither match {
+        case Left(exc) => DecodingError(exc).asLeft
+        case Right((jwtHeader, _, _)) =>
+          jwtHeader.keyId.map(_.asRight).getOrElse(MissingKeyIdFieldError(accessToken).asLeft)
+      }
     )
 
   private def fetchJwk(keyId: String): EitherT[IO, JwtDecoderError, JsonWebKey] =
@@ -65,33 +58,55 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
     )
 
   private def generatePublicKey(jwk: JsonWebKey): EitherT[IO, JwtDecoderError, PublicKey] =
-    EitherT(
-      IO(
+    EitherT
+      .fromEither[IO](
         publicKeyGenerator
           .generateFrom(jwk)
           .left
           .map[JwtDecoderError](errors => PublicKeyGenerationError(errors.iterator.toSeq))
       )
-    ).leftSemiflatTap(decoderError => logger.warn(s"${decoderError.message}. Provided JWK: $jwk"))
+      .leftSemiflatTap(decoderError => logger.warn(s"${decoderError.message}. Provided JWK: $jwk"))
 
   private def decodeToken(accessToken: String, publicKey: PublicKey): EitherT[IO, JwtDecoderError, JsonWebToken] =
-    EitherT(
-      IO(
-        JwtCustom
-          .decodeAll(
-            token = accessToken,
-            key = publicKey,
-            algorithms = DecodeAlgorithms,
-            options = JwtOptions.DEFAULT
-          )
-          .toEither
-          .left
-          .map(DecodingError)
-          .map { case (jwtHeader, jwtClaim, signature) => JsonWebToken(accessToken, jwtHeader, jwtClaim, signature) }
-      )
+    EitherT.fromEither[IO](
+      JwtCustom
+        .decodeAll(
+          token = accessToken,
+          key = publicKey,
+          algorithms = DecodeAlgorithms,
+          options = JwtOptions.DEFAULT
+        )
+        .toEither match {
+        case Left(exc) => DecodingError(exc).asLeft
+        case Right((jwtHeader, jwtClaim, signature)) =>
+          JsonWebToken(accessToken, jwtHeader, jwtClaim, signature).asRight
+      }
     )
 
-  private def validateAudClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
+  private def validateIssuedAtClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
+    EitherT.fromEither(
+      jwtClaim.issuedAt match {
+        case None => MissingIssuedAtClaimError.asLeft
+
+        case Some(issuedAtClaim) =>
+          authConfig.maxTokenAge.map { maxTokenAge =>
+            if (isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge))
+              jwtClaim.asRight
+            else
+              TokenTooOldError(maxTokenAge).asLeft
+
+          }.getOrElse(jwtClaim.asRight)
+      }
+    )
+
+  private def isYoungerThanMaxAllowed(issuedAtClaim: Long, maxTokenAge: FiniteDuration): Boolean = {
+    val issuedAt = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
+    val nowInSeconds = FiniteDuration(Instant.now(clock).getEpochSecond, TimeUnit.SECONDS)
+
+    issuedAt.plus(maxTokenAge) > nowInSeconds
+  }
+
+  private def validateAudienceClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
     EitherT.fromEither(
       jwtClaim.audience.map {
         case audienceSet if audienceSet(authConfig.audience) => jwtClaim.asRight
@@ -133,6 +148,14 @@ object JwtDecoder {
   case class PublicKeyGenerationError(errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError]) extends JwtDecoderError {
     override val message: String =
       s"Cannot generate Public Key because: ${errors.map(_.message).mkString("[\"", "\", \"", "\"]")}."
+  }
+
+  case object MissingIssuedAtClaimError extends JwtDecoderError {
+    override val message: String = "Issued at (iat) claim is missing."
+  }
+
+  case class TokenTooOldError(maxTokenAge: FiniteDuration) extends JwtDecoderError {
+    override val message: String = s"The provided JWT is older than maximum allowed age of: ${maxTokenAge.toString}"
   }
 
 }

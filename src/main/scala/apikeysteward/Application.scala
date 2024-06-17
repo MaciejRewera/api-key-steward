@@ -53,7 +53,7 @@ object Application extends IOApp.Simple with Logging {
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
         jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
-        publicKeyGenerator = new PublicKeyGenerator(config.auth)
+        publicKeyGenerator = new PublicKeyGenerator(config.auth.jwks)
         jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator, config.auth)
         jwtValidator = new JwtValidator(jwtDecoder)
 
