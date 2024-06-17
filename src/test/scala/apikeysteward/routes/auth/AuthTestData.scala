@@ -1,11 +1,13 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.base.FixedClock
 import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtClaimCustom, JwtCustom}
 import pdi.jwt._
 import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
 
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
@@ -43,7 +45,9 @@ private[routes] object AuthTestData {
 
   val algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS256
   val jwtHeader: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(kid_1))
-  val now: FiniteDuration = FiniteDuration.apply(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+
+  val nowInstant: Instant = Instant.ofEpochMilli(System.currentTimeMillis())
+  val now: FiniteDuration = FiniteDuration.apply(nowInstant.toEpochMilli, TimeUnit.MILLISECONDS)
 
   val permissionRead_1 = "read:permission-1"
   val permissionWrite_1 = "write:permission-1"
@@ -58,7 +62,7 @@ private[routes] object AuthTestData {
     subject = Some("test-subject"),
     audience = Some(Set(audience_1, audience_2)),
     expiration = Some((now + 5.minutes).toSeconds),
-    issuedAt = Some(now.toSeconds),
+    issuedAt = Some(now.minus(1.minute).toSeconds),
     permissions = Some(Set(permissionRead_1, permissionWrite_1))
   )
 
@@ -73,13 +77,9 @@ private[routes] object AuthTestData {
   val jwtHeaderWithoutKid: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = None)
   val jwtWithoutKidString: String = JwtCustom.encode(jwtHeaderWithoutKid, jwtClaim, privateKey)
 
-  val expiredJwtClaim: JwtClaimCustom = JwtClaimCustom(
-    issuer = Some("test-issuer"),
-    subject = Some("test-subject"),
-    audience = Some(Set("test-audience-1", "test-audience-2")),
+  val expiredJwtClaim: JwtClaimCustom = jwtClaim.copy(
     expiration = Some((now - 1.minutes).toSeconds),
-    issuedAt = Some((now - 6.minutes).toSeconds),
-    permissions = Some(Set(permissionRead_1, permissionWrite_1))
+    issuedAt = Some((now - 6.minutes).toSeconds)
   )
   val expiredJwtString: String = JwtCustom.encode(jwtHeader, expiredJwtClaim, privateKey)
 }

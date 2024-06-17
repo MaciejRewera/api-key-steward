@@ -20,6 +20,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
     supportedKeyType = "RSA",
     supportedKeyUse = "sig",
     audience = AuthTestData.audience_1,
+    maxTokenAge = None,
     jwks = JwksConfig(Uri.unsafeFromString("test/url/to/get/jwks"), 10.minutes)
   )
 
