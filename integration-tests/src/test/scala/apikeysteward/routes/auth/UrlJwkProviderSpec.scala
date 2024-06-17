@@ -22,8 +22,13 @@ class UrlJwkProviderSpec
     with WireMockIntegrationSpec {
 
   private val url = "/.well-known/jwks.json"
-  private val jwksConfig =
-    JwksConfig(url = wireMockUri.addPath(url.replaceFirst("/", "")), cacheRefreshPeriod = 10.minutes)
+  private val jwksConfig = JwksConfig(
+    url = wireMockUri.addPath(url.replaceFirst("/", "")),
+    cacheRefreshPeriod = 10.minutes,
+    supportedAlgorithm = "RS256",
+    supportedKeyType = "RSA",
+    supportedKeyUse = "sig"
+  )
 
   private val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
     BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
@@ -216,7 +221,10 @@ class UrlJwkProviderSpec
         val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
         val jwksConfig = JwksConfig(
           url = wireMockUri.addPath(url.replaceFirst("/", "")),
-          cacheRefreshPeriod = cacheRefreshPeriod
+          cacheRefreshPeriod = cacheRefreshPeriod,
+          supportedAlgorithm = "RS256",
+          supportedKeyType = "RSA",
+          supportedKeyUse = "sig"
         )
 
         val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
