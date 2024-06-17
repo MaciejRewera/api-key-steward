@@ -1,6 +1,5 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.base.FixedClock
 import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtClaimCustom, JwtCustom}
 import pdi.jwt._
 import pdi.jwt.algorithms.JwtAsymmetricAlgorithm

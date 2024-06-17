@@ -6,5 +6,8 @@ import scala.concurrent.duration.FiniteDuration
 
 case class JwksConfig(
     url: Uri,
-    cacheRefreshPeriod: FiniteDuration
+    cacheRefreshPeriod: FiniteDuration,
+    supportedAlgorithm: String,
+    supportedKeyType: String,
+    supportedKeyUse: String
 )
