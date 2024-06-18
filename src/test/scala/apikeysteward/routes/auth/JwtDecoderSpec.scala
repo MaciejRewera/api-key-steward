@@ -33,7 +33,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     reset(jwkProvider, publicKeyGenerator, authConfig)
 
-    authConfig.allowedIssuersList returns List(issuer_1, issuer_2)
+    authConfig.allowedIssuers returns List(issuer_1, issuer_2)
     authConfig.audience returns AuthTestData.audience_1
     authConfig.maxTokenAge returns None
   }
