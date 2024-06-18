@@ -7,38 +7,55 @@ import apikeysteward.utils.Logging
 import cats.Monoid
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.implicits.toTraverseOps
-import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
+import com.github.blemale.scaffeine.{AsyncCache, Scaffeine}
 import fs2.Stream
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.client.Client
 import org.http4s.{Response, Status, Uri}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.Future
 
 class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit runtime: IORuntime)
     extends JwkProvider
     with Logging {
 
-  private val jwksCache: AsyncLoadingCache[Unit, JsonWebKeySet] =
+  private val allUrlsAmount = jwksConfig.urls.length
+
+  private val jwksUrlsFetchCache: AsyncCache[Uri, JsonWebKeySet] =
     Scaffeine()
       .recordStats()
-      .maximumSize(1)
+      .maximumSize(allUrlsAmount)
       .expireAfterWrite(jwksConfig.cacheRefreshPeriod)
-      .buildAsyncFuture(_ => fetchAllJwkSets().unsafeToFuture())
+      .buildAsync()
 
-  private def fetchAllJwkSets()(implicit M: Monoid[JsonWebKeySet]): IO[JsonWebKeySet] =
+  override def getJsonWebKey(keyId: String): IO[Option[JsonWebKey]] =
+    IO.fromFuture(IO {
+      jwksUrlsFetchCache
+        .getAllFuture(jwksConfig.urls, loadCache)
+        .map(combineSets)
+    }).map(_.findBy(keyId))
+
+  private def loadCache(urls: Iterable[Uri]): Future[Map[Uri, JsonWebKeySet]] =
+    fetchJwkSets(urls.toSeq).unsafeToFuture()
+
+  private def fetchJwkSets(urls: Seq[Uri]): IO[Map[Uri, JsonWebKeySet]] =
     Stream
-      .emits(jwksConfig.urls)
-      .covary[IO]
-      .parEvalMap(jwksConfig.urls.length)(fetchSingleJwkSetOrEmpty)
+      .evalSeq(IO.pure(urls))
+      .parEvalMap(urls.length) { url =>
+        for {
+          jwksOpt <- fetchSingleJwkSetOrNone(url)
+          result = jwksOpt.map(url -> _)
+        } yield result
+      }
+      .collect { case Some(tuple) => tuple }
       .compile
-      .toList
-      .map(M.combineAll)
+      .to(Map)
 
-  private def fetchSingleJwkSetOrEmpty(url: Uri): IO[JsonWebKeySet] =
-    fetchSingleJwkSetWithRetry(url).recover { case _: JwksDownloadException => JsonWebKeySet.empty }
+  private def fetchSingleJwkSetOrNone(url: Uri): IO[Option[JsonWebKeySet]] =
+    fetchSingleJwkSetWithRetry(url)
+      .map(Some(_))
+      .recover { case _: JwksDownloadException => None }
 
   private def fetchSingleJwkSetWithRetry(url: Uri)(implicit M: Monoid[JsonWebKeySet]): IO[JsonWebKeySet] =
     Stream
@@ -50,8 +67,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
         retriable = _.isInstanceOf[JwksDownloadException]
       )
       .compile
-      .toList
-      .map(M.combineAll)
+      .foldMonoid
 
   private def fetchSingleJwkSet(url: Uri): IO[JsonWebKeySet] =
     httpClient.get(url) {
@@ -71,8 +87,8 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
       .toList
       .map(_.mkString)
 
-  override def getJsonWebKey(keyId: String): IO[Option[JsonWebKey]] =
-    IO.fromFuture(IO(jwksCache.get(()).map(_.findBy(keyId))))
+  private def combineSets(setsMap: Map[Uri, JsonWebKeySet])(implicit M: Monoid[JsonWebKeySet]): JsonWebKeySet =
+    M.combineAll(setsMap.values)
 }
 
 object UrlJwkProvider {

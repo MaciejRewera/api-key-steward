@@ -229,7 +229,7 @@ class UrlJwkProviderSpec
         def stubUrlInternalServerError(): StubMapping =
           stubUrl(url_1, StatusCode.InternalServerError.code)("Something went wrong.")
 
-        "call the provider again, until reaching maxRetries" in {
+        "call the provider again until reaching maxRetries" in {
           stubUrlInternalServerError()
           val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
 
@@ -298,6 +298,178 @@ class UrlJwkProviderSpec
           stubUrlInternalServerErrorOnFirstTry()
 
           urlJwkProviderRes.use(_.getJsonWebKey(kid_2)).asserting(_ shouldBe None)
+        }
+      }
+
+      "the JWKS provider returns response other than 200 OK on the first call to UrlJwkProvider, but returns 200 on subsequent calls before cache expires" should {
+
+        def stubUrls(): StubMapping = {
+          val scenarioName = "First try fails"
+          val scenarioStateFailure_1 = "Failure next 1"
+          val scenarioStateFailure_2 = "Failure next 2"
+          val scenarioStateSuccess = "Success next"
+
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(Scenario.STARTED)
+              .willSetStateTo(scenarioStateFailure_1)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioStateFailure_1)
+              .willSetStateTo(scenarioStateFailure_2)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioStateFailure_2)
+              .willSetStateTo(scenarioStateSuccess)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioStateSuccess)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.Ok.code)
+                  .withBody(parser.parse(responseJsonSingleJwk_1).value.spaces2)
+              )
+          )
+        }
+
+        "on the first call, call the provider again until reaching maxRetries" in {
+          stubUrls()
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+
+          for {
+            _ <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = verify(expectedAttempts, getRequestedFor(urlEqualTo(url_1)))
+          } yield ()
+        }
+
+        "on the first call, return empty Option" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+            _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+
+            _ = result shouldBe None
+          } yield ()
+        }
+
+        "on the second call, return JWK with matching key ID" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = result shouldBe defined
+            _ = result.get shouldBe jsonWebKey
+          } yield ()
+        }
+
+        "on the second call, return empty Option if provided key ID does NOT match any JWK key ID" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_2) >>
+                urlJwkProvider.getJsonWebKey(kid_2)
+            }
+
+            _ = result shouldBe None
+          } yield ()
+        }
+      }
+
+      "the JWKS provider returns 200 OK on the first call to UrlJwkProvider, but returns error response on subsequent calls after cache expires" should {
+
+        def stubUrls(): StubMapping = {
+          val scenarioName = "First try fails"
+          val scenarioStateFailure = "Failure next 1"
+
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(Scenario.STARTED)
+              .willSetStateTo(scenarioStateFailure)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.Ok.code)
+                  .withBody(responseJsonSingleJwk_1)
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioStateFailure)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+        }
+
+        val cacheRefreshPeriod = 100.milliseconds
+        val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
+        val jwksConfig = jwksConfigSingleUrl.copy(cacheRefreshPeriod = cacheRefreshPeriod)
+
+        val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
+          BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
+
+        "on the second call, call the provider again until reaching maxRetries" in {
+          stubUrls()
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+
+          for {
+            _ <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                IO.sleep(sleepDuration) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = verify(expectedAttempts, getRequestedFor(urlEqualTo(url_1)))
+          } yield ()
+        }
+
+        "on the second call, return empty Option" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                IO.sleep(sleepDuration) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = result shouldBe None
+          } yield ()
         }
       }
     }
@@ -463,7 +635,7 @@ class UrlJwkProviderSpec
           stubUrl(url_3, StatusCode.InternalServerError.code)("Something went wrong.")
         }
 
-        "call the provider again, until reaching maxRetries" in {
+        "call the provider again until reaching maxRetries" in {
           stubUrlInternalServerError()
           val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
 
@@ -491,7 +663,7 @@ class UrlJwkProviderSpec
           stubUrl(url_3, StatusCode.Ok.code)(responseJsonEmpty)
         }
 
-        "call the provider again, until reaching maxRetries" in {
+        "call the provider again until reaching maxRetries" in {
           stubUrls()
           val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
 
@@ -735,6 +907,144 @@ class UrlJwkProviderSpec
         }
       }
 
+      "one of the JWKS providers returns response other than 200 OK on the first call to UrlJwkProvider, but returns 200 on subsequent calls before cache expires" should {
+
+        def stubUrls(): StubMapping = {
+          val scenarioName_1 = "First try fails"
+          val scenarioStateFailure_1 = "Failure next 1"
+          val scenarioStateFailure_2 = "Failure next 2"
+          val scenarioStateSuccess = "Success next"
+
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName_1)
+              .whenScenarioStateIs(Scenario.STARTED)
+              .willSetStateTo(scenarioStateFailure_1)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName_1)
+              .whenScenarioStateIs(scenarioStateFailure_1)
+              .willSetStateTo(scenarioStateFailure_2)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName_1)
+              .whenScenarioStateIs(scenarioStateFailure_2)
+              .willSetStateTo(scenarioStateSuccess)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.InternalServerError.code)
+                  .withBody("Something went wrong.")
+              )
+          )
+          stubFor(
+            get(url_1)
+              .inScenario(scenarioName_1)
+              .whenScenarioStateIs(scenarioStateSuccess)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.Ok.code)
+                  .withBody(parser.parse(responseJsonSingleJwk_1).value.spaces2)
+              )
+          )
+
+          stubFor(
+            get(url_2)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.Ok.code)
+                  .withBody(parser.parse(responseJsonSingleJwk_2).value.spaces2)
+              )
+          )
+          stubFor(
+            get(url_3)
+              .willReturn(
+                aResponse()
+                  .withStatus(StatusCode.Ok.code)
+                  .withBody(parser.parse(responseJsonSingleJwk_3).value.spaces2)
+              )
+          )
+        }
+
+        "on the first call, call the failing provider again until reaching maxRetries" in {
+          stubUrls()
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+
+          for {
+            _ <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = verify(expectedAttempts, getRequestedFor(urlEqualTo(url_1)))
+            _ = verify(1, getRequestedFor(urlEqualTo(url_2)))
+            _ = verify(1, getRequestedFor(urlEqualTo(url_3)))
+          } yield ()
+        }
+
+        "on the first call, return empty Option if kid is NOT present among retrieved JWKs" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+            _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+
+            _ = result shouldBe None
+          } yield ()
+        }
+
+        "on the first call, return JWK with matching key ID if kid is present among retrieved JWKs" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = result shouldBe defined
+            _ = result.get shouldBe jsonWebKey
+          } yield ()
+        }
+
+        "on the second call, return JWK with matching key ID if kid is present among retrieved JWKs" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_1) >>
+                urlJwkProvider.getJsonWebKey(kid_1)
+            }
+
+            _ = result shouldBe defined
+            _ = result.get shouldBe jsonWebKey
+          } yield ()
+        }
+
+        "on the second call, return empty Option if provided key ID does NOT match any JWK key ID" in {
+          stubUrls()
+
+          for {
+            result <- urlJwkProviderRes.use { urlJwkProvider =>
+              urlJwkProvider.getJsonWebKey(kid_4) >>
+                urlJwkProvider.getJsonWebKey(kid_4)
+            }
+
+            _ = result shouldBe None
+          } yield ()
+        }
+      }
     }
   }
 }
