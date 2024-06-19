@@ -110,7 +110,7 @@ class JwtDecoder(jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerato
   private def validateIssuerClaim(jwtClaim: JwtClaimCustom): EitherT[IO, JwtDecoderError, JwtClaimCustom] =
     EitherT.fromEither(
       jwtClaim.issuer match {
-        case Some(issuer) if authConfig.allowedIssuersList.contains(issuer) => jwtClaim.asRight
+        case Some(issuer) if authConfig.allowedIssuers.contains(issuer) => jwtClaim.asRight
 
         case Some(issuer) if issuer.isEmpty => MissingIssuerClaimError.asLeft
         case None                           => MissingIssuerClaimError.asLeft
