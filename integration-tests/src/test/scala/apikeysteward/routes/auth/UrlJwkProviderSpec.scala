@@ -139,6 +139,34 @@ class UrlJwkProviderSpec
         } yield ()
       }
 
+      "JWKS provider returns incorrect JSON" should {
+        "throw exception" in {
+          val responseJsonIncorrect =
+            s"""{
+               |  "keys": [
+               |    {
+               |      "alg": "RS256",
+               |      "use": "sig",
+               |      "n": "$encodedModulus",
+               |      "e": "$encodedExponent",
+               |      "kid": "${jsonWebKey.kid}",
+               |      "x5t": "${jsonWebKey.x5t.get}",
+               |      "x5c": ["${jsonWebKey.x5c.get.head}"]
+               |    }
+               |  ]
+               |}
+               |""".stripMargin
+          stubUrl(url_1, StatusCode.Ok.code)(parser.parse(responseJsonIncorrect).value.spaces2)
+
+          urlJwkProviderRes.use(_.getJsonWebKey(kid_1)).attempt.asserting { result =>
+            result.isLeft shouldBe true
+            result.left.value.getMessage should include(
+              s"Invalid message body: Could not decode JSON: ${parser.parse(responseJsonIncorrect).value.spaces2}"
+            )
+          }
+        }
+      }
+
       "fetched JWKS contains NO JWKs" should {
         "return empty Option" in {
           stubUrl(url_1, StatusCode.Ok.code)(responseJsonEmpty)
@@ -501,6 +529,36 @@ class UrlJwkProviderSpec
           _ = verify(1, getRequestedFor(urlEqualTo(url_2)))
           _ = verify(1, getRequestedFor(urlEqualTo(url_3)))
         } yield ()
+      }
+
+      "one of JWKS providers return incorrect JSON" should {
+        "throw exception" in {
+          val responseJsonIncorrect =
+            s"""{
+               |  "keys": [
+               |    {
+               |      "alg": "RS256",
+               |      "use": "sig",
+               |      "n": "$encodedModulus",
+               |      "e": "$encodedExponent",
+               |      "kid": "${jsonWebKey.kid}",
+               |      "x5t": "${jsonWebKey.x5t.get}",
+               |      "x5c": ["${jsonWebKey.x5c.get.head}"]
+               |    }
+               |  ]
+               |}
+               |""".stripMargin
+          stubUrl(url_1, StatusCode.Ok.code)(responseJsonEmpty)
+          stubUrl(url_2, StatusCode.Ok.code)(parser.parse(responseJsonIncorrect).value.spaces2)
+          stubUrl(url_3, StatusCode.Ok.code)(responseJsonEmpty)
+
+          urlJwkProviderRes.use(_.getJsonWebKey(kid_1)).attempt.asserting { result =>
+            result.isLeft shouldBe true
+            result.left.value.getMessage should include(
+              s"Invalid message body: Could not decode JSON: ${parser.parse(responseJsonIncorrect).value.spaces2}"
+            )
+          }
+        }
       }
 
       "all JWKS providers return empty sets" should {
