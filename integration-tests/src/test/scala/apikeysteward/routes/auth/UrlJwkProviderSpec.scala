@@ -25,7 +25,7 @@ class UrlJwkProviderSpec
   private val url_1 = "/1/.well-known/jwks.json"
 
   private val jwksConfigSingleUrl = JwksConfig(
-    urls = List(wireMockUri.addPath(url_1.replaceFirst("/", ""))),
+    urls = Set(wireMockUri.addPath(url_1.replaceFirst("/", ""))),
     fetchRetryAttemptInitialDelay = 10.millis,
     fetchRetryMaxAttempts = 3,
     cacheRefreshPeriod = 10.minutes,
@@ -508,7 +508,7 @@ class UrlJwkProviderSpec
       val url_3 = "/3/.well-known/jwks.json"
 
       val jwksConfigMultipleUrls = jwksConfigSingleUrl.copy(urls =
-        List(
+        Set(
           wireMockUri.addPath(url_1.replaceFirst("/", "")),
           wireMockUri.addPath(url_2.replaceFirst("/", "")),
           wireMockUri.addPath(url_3.replaceFirst("/", ""))
@@ -525,10 +525,41 @@ class UrlJwkProviderSpec
 
         for {
           _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+
           _ = verify(1, getRequestedFor(urlEqualTo(url_1)))
           _ = verify(1, getRequestedFor(urlEqualTo(url_2)))
           _ = verify(1, getRequestedFor(urlEqualTo(url_3)))
         } yield ()
+      }
+
+      "configuration contains duplicated urls" should {
+
+        "call such urls only once" in {
+          val jwksConfigDuplicatedUrls = jwksConfigSingleUrl.copy(urls =
+            Set(
+              wireMockUri.addPath(url_1.replaceFirst("/", "")),
+              wireMockUri.addPath(url_2.replaceFirst("/", "")),
+              wireMockUri.addPath(url_2.replaceFirst("/", "")),
+              wireMockUri.addPath(url_3.replaceFirst("/", "")),
+              wireMockUri.addPath(url_1.replaceFirst("/", ""))
+            )
+          )
+
+          val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
+            BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfigDuplicatedUrls, _))
+
+          stubUrl(url_1, StatusCode.Ok.code)(responseJsonEmpty)
+          stubUrl(url_2, StatusCode.Ok.code)(responseJsonEmpty)
+          stubUrl(url_3, StatusCode.Ok.code)(responseJsonEmpty)
+
+          for {
+            _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+
+            _ = verify(1, getRequestedFor(urlEqualTo(url_1)))
+            _ = verify(1, getRequestedFor(urlEqualTo(url_2)))
+            _ = verify(1, getRequestedFor(urlEqualTo(url_3)))
+          } yield ()
+        }
       }
 
       "one of JWKS providers return incorrect JSON" should {

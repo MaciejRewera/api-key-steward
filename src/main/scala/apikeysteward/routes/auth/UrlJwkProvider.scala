@@ -20,7 +20,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
     extends JwkProvider
     with Logging {
 
-  private val allUrlsAmount = jwksConfig.urls.length
+  private val allUrlsAmount = jwksConfig.urls.size
 
   private val jwksUrlsFetchCache: AsyncCache[Uri, JsonWebKeySet] =
     Scaffeine()
