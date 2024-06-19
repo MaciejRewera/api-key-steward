@@ -45,13 +45,7 @@ class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementSer
               userIdE <- IO(jwtOps.extractUserId(jwt))
               allApiKeyDataE <- userIdE.traverse(managementService.getAllApiKeysFor)
 
-              result = allApiKeyDataE.flatMap { allApiKeyData =>
-                if (allApiKeyData.isEmpty) {
-                  val errorMsg = ApiErrorMessages.Management.GetAllApiKeysNotFound
-                  ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
-                } else
-                  (StatusCode.Ok -> allApiKeyData).asRight
-              }
+              result = allApiKeyDataE.flatMap(allApiKeyData => (StatusCode.Ok -> allApiKeyData).asRight)
             } yield result
           }
       )
