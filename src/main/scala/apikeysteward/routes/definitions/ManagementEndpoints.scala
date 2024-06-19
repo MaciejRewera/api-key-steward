@@ -23,12 +23,6 @@ object ManagementEndpoints {
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .in("api-key")
-      .errorOutVariantPrepend(
-        oneOfVariantExactMatcher(
-          StatusCode.NotFound,
-          jsonBody[ErrorInfo].description(ApiErrorMessages.Management.GetAllApiKeysNotFound)
-        )(ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetAllApiKeysNotFound)))
-      )
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ManagementEndpointsBase.deleteApiKeyEndpointBase

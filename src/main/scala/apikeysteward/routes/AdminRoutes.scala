@@ -40,13 +40,11 @@ class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementServi
         AdminEndpoints.getAllApiKeysForUserEndpoint
           .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => userId =>
-            managementService.getAllApiKeysFor(userId).map { allApiKeyData =>
-              if (allApiKeyData.isEmpty) {
-                val errorMsg = ApiErrorMessages.Admin.GetAllApiKeysForUserNotFound
-                ErrorInfo.notFoundErrorInfo(Some(errorMsg)).asLeft
-              } else
-                (StatusCode.Ok -> allApiKeyData).asRight
-            }
+            for {
+              allApiKeyData <- managementService.getAllApiKeysFor(userId)
+
+              result = (StatusCode.Ok -> allApiKeyData).asRight
+            } yield result
           }
       )
 

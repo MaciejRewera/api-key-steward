@@ -617,17 +617,13 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
           } yield ()
         }
 
-        "return Not Found when ManagementService returns empty List" in authorizedFixture {
+        "return Ok and an empty List when ManagementService returns empty List" in authorizedFixture {
           managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
           for {
             response <- managementRoutes.run(request)
-            _ = response.status shouldBe Status.NotFound
-            _ <- response
-              .as[ErrorInfo]
-              .asserting(
-                _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetAllApiKeysNotFound))
-              )
+            _ = response.status shouldBe Status.Ok
+            _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List.empty[ApiKeyData])
           } yield ()
         }
 
