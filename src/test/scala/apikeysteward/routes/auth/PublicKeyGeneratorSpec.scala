@@ -18,7 +18,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
   private val jwksConfig = JwksConfig(
     urls = List(Uri.unsafeFromString("test/url/to/get/jwks")),
     fetchRetryAttemptInitialDelay = 10.millis,
-    fetchRetryAttemptMaxAmount = 3,
+    fetchRetryMaxAttempts = 3,
     cacheRefreshPeriod = 10.minutes,
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",

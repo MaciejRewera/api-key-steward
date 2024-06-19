@@ -7,7 +7,7 @@ import scala.concurrent.duration.FiniteDuration
 case class JwksConfig(
     urls: List[Uri],
     fetchRetryAttemptInitialDelay: FiniteDuration,
-    fetchRetryAttemptMaxAmount: Int,
+    fetchRetryMaxAttempts: Int,
     cacheRefreshPeriod: FiniteDuration,
     supportedAlgorithm: String,
     supportedKeyType: String,

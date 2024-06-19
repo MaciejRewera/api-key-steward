@@ -27,7 +27,7 @@ class UrlJwkProviderSpec
   private val jwksConfigSingleUrl = JwksConfig(
     urls = List(wireMockUri.addPath(url_1.replaceFirst("/", ""))),
     fetchRetryAttemptInitialDelay = 10.millis,
-    fetchRetryAttemptMaxAmount = 3,
+    fetchRetryMaxAttempts = 3,
     cacheRefreshPeriod = 10.minutes,
     supportedAlgorithm = "RS256",
     supportedKeyType = "RSA",
@@ -231,7 +231,7 @@ class UrlJwkProviderSpec
 
         "call the provider again until reaching maxRetries" in {
           stubUrlInternalServerError()
-          val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
@@ -356,7 +356,7 @@ class UrlJwkProviderSpec
 
         "on the first call, call the provider again until reaching maxRetries" in {
           stubUrls()
-          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use { urlJwkProvider =>
@@ -445,7 +445,7 @@ class UrlJwkProviderSpec
 
         "on the second call, call the provider again until reaching maxRetries" in {
           stubUrls()
-          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use { urlJwkProvider =>
@@ -637,7 +637,7 @@ class UrlJwkProviderSpec
 
         "call the provider again until reaching maxRetries" in {
           stubUrlInternalServerError()
-          val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
@@ -665,7 +665,7 @@ class UrlJwkProviderSpec
 
         "call the provider again until reaching maxRetries" in {
           stubUrls()
-          val expectedAttempts = jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
@@ -979,7 +979,7 @@ class UrlJwkProviderSpec
 
         "on the first call, call the failing provider again until reaching maxRetries" in {
           stubUrls()
-          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryAttemptMaxAmount
+          val expectedAttempts = 1 + jwksConfigSingleUrl.fetchRetryMaxAttempts
 
           for {
             _ <- urlJwkProviderRes.use { urlJwkProvider =>

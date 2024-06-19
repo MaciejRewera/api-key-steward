@@ -63,7 +63,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
         fo = fetchSingleJwkSet(url),
         delay = jwksConfig.fetchRetryAttemptInitialDelay,
         nextDelay = _ * 2,
-        maxAttempts = jwksConfig.fetchRetryAttemptMaxAmount,
+        maxAttempts = jwksConfig.fetchRetryMaxAttempts,
         retriable = _.isInstanceOf[JwksDownloadException]
       )
       .compile
