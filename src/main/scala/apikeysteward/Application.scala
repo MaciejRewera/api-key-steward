@@ -53,14 +53,14 @@ object Application extends IOApp.Simple with Logging {
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
         jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
-        publicKeyGenerator = new PublicKeyGenerator(config.auth.jwks)
+        publicKeyGenerator = new PublicKeyGenerator
         jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator, config.auth)
         jwtValidator = new JwtValidator(jwtDecoder)
 
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
-        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator()
-        checksumCodec: ChecksumCodec = new ChecksumCodec()
+        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
+        checksumCodec: ChecksumCodec = new ChecksumCodec
         apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
           apiKeyPrefixProvider,
           randomStringGenerator,
@@ -69,10 +69,10 @@ object Application extends IOApp.Simple with Logging {
         )
         secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-        apiKeyDb = new ApiKeyDb()
-        apiKeyDataDb = new ApiKeyDataDb()
-        scopeDb = new ScopeDb()
-        apiKeyDataScopesDb = new ApiKeyDataScopesDb()
+        apiKeyDb = new ApiKeyDb
+        apiKeyDataDb = new ApiKeyDataDb
+        scopeDb = new ScopeDb
+        apiKeyDataScopesDb = new ApiKeyDataScopesDb
 
         apiKeyRepository: ApiKeyRepository = new DbApiKeyRepository(
           apiKeyDb,
@@ -86,7 +86,7 @@ object Application extends IOApp.Simple with Logging {
         managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
-        jwtOps = new JwtOps()
+        jwtOps = new JwtOps
         managementRoutes = new ManagementRoutes(jwtOps, jwtValidator, managementService).allRoutes
         adminRoutes = new AdminRoutes(jwtValidator, managementService).allRoutes
 

@@ -8,8 +8,5 @@ case class JwksConfig(
     urls: Set[Uri],
     fetchRetryAttemptInitialDelay: FiniteDuration,
     fetchRetryMaxAttempts: Int,
-    cacheRefreshPeriod: FiniteDuration,
-    supportedAlgorithm: String,
-    supportedKeyType: String,
-    supportedKeyUse: String
+    cacheRefreshPeriod: FiniteDuration
 )

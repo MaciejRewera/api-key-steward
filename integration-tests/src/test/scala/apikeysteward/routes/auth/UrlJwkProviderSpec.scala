@@ -28,10 +28,7 @@ class UrlJwkProviderSpec
     urls = Set(wireMockUri.addPath(url_1.replaceFirst("/", ""))),
     fetchRetryAttemptInitialDelay = 10.millis,
     fetchRetryMaxAttempts = 3,
-    cacheRefreshPeriod = 10.minutes,
-    supportedAlgorithm = "RS256",
-    supportedKeyType = "RSA",
-    supportedKeyUse = "sig"
+    cacheRefreshPeriod = 10.minutes
   )
 
   private def stubUrl(url: String, responseStatus: Int)(responseBody: String): StubMapping =
