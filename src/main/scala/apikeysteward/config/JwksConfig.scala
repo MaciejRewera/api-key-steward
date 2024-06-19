@@ -5,7 +5,7 @@ import org.http4s.Uri
 import scala.concurrent.duration.FiniteDuration
 
 case class JwksConfig(
-    urls: List[Uri],
+    urls: Set[Uri],
     fetchRetryAttemptInitialDelay: FiniteDuration,
     fetchRetryMaxAttempts: Int,
     cacheRefreshPeriod: FiniteDuration,

@@ -16,7 +16,7 @@ import scala.concurrent.duration.DurationInt
 class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
 
   private val jwksConfig = JwksConfig(
-    urls = List(Uri.unsafeFromString("test/url/to/get/jwks")),
+    urls = Set(Uri.unsafeFromString("test/url/to/get/jwks")),
     fetchRetryAttemptInitialDelay = 10.millis,
     fetchRetryMaxAttempts = 3,
     cacheRefreshPeriod = 10.minutes,
