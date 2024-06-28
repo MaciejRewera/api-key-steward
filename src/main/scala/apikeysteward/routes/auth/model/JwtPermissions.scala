@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth.model
 
-import apikeysteward.routes.auth.JwtValidator.Permission
+import apikeysteward.routes.auth.JwtAuthorizer.Permission
 
 object JwtPermissions {
 

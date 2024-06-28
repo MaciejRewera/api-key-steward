@@ -9,7 +9,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth.AuthTestData
-import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
+import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._

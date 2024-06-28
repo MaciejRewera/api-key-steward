@@ -2,7 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.auth.JwtValidator.AccessToken
+import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._

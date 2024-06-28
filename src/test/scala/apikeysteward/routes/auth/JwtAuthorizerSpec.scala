@@ -3,7 +3,7 @@ package apikeysteward.routes.auth
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.AuthTestData._
 import apikeysteward.routes.auth.JwtDecoder._
-import apikeysteward.routes.auth.JwtValidator.buildNoRequiredPermissionsUnauthorizedErrorInfo
+import apikeysteward.routes.auth.JwtAuthorizer.buildNoRequiredPermissionsUnauthorizedErrorInfo
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtCustom}
 import cats.effect.IO
@@ -18,11 +18,11 @@ import pdi.jwt.exceptions.JwtExpirationException
 
 import java.time.Instant
 
-class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
+class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
   private val jwtDecoder = mock[JwtDecoder]
 
-  private val jwtValidator = new JwtValidator(jwtDecoder)
+  private val jwtAuthorizer = new JwtAuthorizer(jwtDecoder)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -32,13 +32,13 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
   private val testException = new RuntimeException("Test Exception")
 
-  "JwtValidator on authorised" when {
+  "JwtAuthorizer on authorised" when {
 
     "should always call JwtDecoder providing access token" in {
       jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
 
       for {
-        _ <- jwtValidator.authorised(jwtString)
+        _ <- jwtAuthorizer.authorised(jwtString)
 
         _ = verify(jwtDecoder).decode(eqTo(jwtString))
       } yield ()
@@ -48,7 +48,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
       "return Right containing JsonWebToken returned from JwtDecoder" in {
         jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
 
-        jwtValidator.authorised(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
+        jwtAuthorizer.authorised(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
       }
     }
 
@@ -59,17 +59,17 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
           val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
-          jwtValidator.authorised(jwtString).asserting { result =>
+          jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
             result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
           }
         }
 
         "the error is MissingKeyIdFieldError" in {
-          val error = MissingKeyIdFieldError(jwtString)
+          val error = MissingKeyIdFieldError
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
-          jwtValidator.authorised(jwtString).asserting { result =>
+          jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
             result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
           }
@@ -79,7 +79,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
           val error = MatchingJwkNotFoundError(kid_1)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
-          jwtValidator.authorised(jwtString).asserting { result =>
+          jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
             result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
           }
@@ -94,7 +94,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
           val error = PublicKeyGenerationError(failureReasons)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
-          jwtValidator.authorised(jwtString).asserting { result =>
+          jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
             result.left.value.error shouldBe "Invalid Credentials"
             result.left.value.errorDetail.get shouldBe """Cannot generate Public Key because: ["Algorithm HS256 is not supported. Please use RS256.", "Key Type HSA is not supported. Please use RSA.", "Public Key Use no-use is not supported. Please use sig."]."""
@@ -107,7 +107,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
       "return this failed IO" in {
         jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
 
-        jwtValidator.authorised(jwtString).attempt.asserting { result =>
+        jwtAuthorizer.authorised(jwtString).attempt.asserting { result =>
           result.isLeft shouldBe true
           result.left.value shouldBe testException
         }
@@ -115,13 +115,13 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
     }
   }
 
-  "JwtValidator on authorisedWithPermissions" when {
+  "JwtAuthorizer on authorisedWithPermissions" when {
 
     "should always call JwtDecoder providing access token" in {
       jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
 
       for {
-        _ <- jwtValidator.authorisedWithPermissions(Set(permissionRead_1))(jwtString)
+        _ <- jwtAuthorizer.authorisedWithPermissions(Set(permissionRead_1))(jwtString)
 
         _ = verify(jwtDecoder).decode(eqTo(jwtString))
       } yield ()
@@ -132,7 +132,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
       "there are no permissions required" should {
 
         val subjectFuncNoPermissions: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions()
+          jwtAuthorizer.authorisedWithPermissions()
 
         "return Right containing JsonWebToken returned from JwtDecoder" when {
 
@@ -159,7 +159,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
         val requiredPermissions = Set(permissionRead_1)
         val subjectFuncSinglePermission: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
+          jwtAuthorizer.authorisedWithPermissions(requiredPermissions)
 
         "return Right containing JsonWebToken returned from JwtDecoder" when {
 
@@ -220,7 +220,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
         val requiredPermissions = Set(permissionRead_1, permissionWrite_1)
         val subjectFuncMultiplePermissions: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
+          jwtAuthorizer.authorisedWithPermissions(requiredPermissions)
 
         "return Right containing JsonWebToken returned from JwtDecoder" when {
 
@@ -315,7 +315,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
 
         val requiredPermissions = Set(permissionRead_1)
         val subjectFuncSinglePermission: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
+          jwtAuthorizer.authorisedWithPermissions(requiredPermissions)
 
         "the error is DecodingError" in {
           val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
@@ -368,7 +368,7 @@ class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with
       "return this failed IO" in {
         jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
 
-        jwtValidator.authorisedWithPermissions(Set(permissionRead_1))(jwtString).attempt.asserting { result =>
+        jwtAuthorizer.authorisedWithPermissions(Set(permissionRead_1))(jwtString).attempt.asserting { result =>
           result.isLeft shouldBe true
           result.left.value shouldBe testException
         }

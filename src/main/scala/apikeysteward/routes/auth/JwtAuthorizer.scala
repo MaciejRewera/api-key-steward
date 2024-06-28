@@ -1,11 +1,11 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.auth.JwtValidator._
+import apikeysteward.routes.auth.JwtAuthorizer._
 import apikeysteward.routes.auth.model.JsonWebToken
 import cats.effect.IO
 
-class JwtValidator(jwtDecoder: JwtDecoder) {
+class JwtAuthorizer(jwtDecoder: JwtDecoder) {
 
   def authorised(accessToken: AccessToken): IO[Either[ErrorInfo, JsonWebToken]] =
     jwtDecoder
@@ -38,7 +38,7 @@ class JwtValidator(jwtDecoder: JwtDecoder) {
 
 }
 
-object JwtValidator {
+object JwtAuthorizer {
   type AccessToken = String
   type Permission = String
 

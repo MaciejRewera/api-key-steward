@@ -3,9 +3,9 @@ package apikeysteward.routes
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
-import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
+import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{AuthTestData, JwtValidator}
+import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
@@ -29,10 +29,10 @@ import java.util.UUID
 
 class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
-  private val jwtValidator = mock[JwtValidator]
+  private val jwtAuthorizer = mock[JwtAuthorizer]
   private val managementService = mock[ManagementService]
 
-  private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtValidator, managementService).allRoutes.orNotFound
+  private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtAuthorizer, managementService).allRoutes.orNotFound
 
   private val tokenString: AccessToken = "TOKEN"
   private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
@@ -42,11 +42,11 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(managementService, jwtValidator)
+    reset(managementService, jwtAuthorizer)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
       AuthTestData.jwtWithMockedSignature.asRight
     )
   }.flatMap(_ => test)
@@ -83,19 +83,19 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -104,7 +104,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -116,7 +116,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -130,7 +130,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -142,7 +142,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -380,19 +380,19 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -402,7 +402,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -414,7 +414,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -428,7 +428,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -440,7 +440,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -518,19 +518,19 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -540,7 +540,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -552,7 +552,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -566,7 +566,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -578,7 +578,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -659,26 +659,26 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- adminRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
       } yield ()
     }
 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -690,7 +690,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -707,7 +707,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -719,7 +719,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 

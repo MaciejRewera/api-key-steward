@@ -55,7 +55,7 @@ object Application extends IOApp.Simple with Logging {
         jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
         publicKeyGenerator = new PublicKeyGenerator
         jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator, config.auth)
-        jwtValidator = new JwtValidator(jwtDecoder)
+        jwtAuthorizer = new JwtAuthorizer(jwtDecoder)
 
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
@@ -87,8 +87,8 @@ object Application extends IOApp.Simple with Logging {
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
         jwtOps = new JwtOps
-        managementRoutes = new ManagementRoutes(jwtOps, jwtValidator, managementService).allRoutes
-        adminRoutes = new AdminRoutes(jwtValidator, managementService).allRoutes
+        managementRoutes = new ManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes
+        adminRoutes = new AdminRoutes(jwtAuthorizer, managementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
