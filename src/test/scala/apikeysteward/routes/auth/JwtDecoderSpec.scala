@@ -115,6 +115,72 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
     }
 
+    "provided with a token without exp claim" should {
+      "return Left containing DecodingError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtTooOldString = JwtCustom.encode(jwtHeader, jwtClaim.copy(expiration = None), privateKey)
+
+        jwtDecoder.decode(jwtTooOldString).asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[DecodingError]
+          result.left.value.message should include("Exception occurred while decoding JWT: ")
+          result.left.value.message should include("The token is expired since ")
+        }
+      }
+    }
+
+    "provided with a token without iat claim" should {
+      "return Left containing MissingIssuedAtClaimError" in {
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtTooOldString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuedAt = None), privateKey)
+
+        jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(MissingIssuedAtClaimError))
+      }
+    }
+
+    "provided with a token older than configured max token age" should {
+      "return Left containing TokenTooOldError" in {
+        authConfig.maxTokenAge returns Some(1.minute)
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+        val jwtTooOldString =
+          JwtCustom.encode(
+            jwtHeader,
+            jwtClaim.copy(issuedAt = Some(now.minus(61.seconds).toSeconds)),
+            privateKey
+          )
+
+        jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
+      }
+    }
+
+    "provided with a token of age equal to configured max token age" should {
+      "return Left containing TokenTooOldError" in {
+        authConfig.maxTokenAge returns Some(1.minute)
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+
+        jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
+      }
+    }
+
+    "provided with expired token, but with acceptable max token age" should {
+      "return JwtExpiredException" in {
+        authConfig.maxTokenAge returns Some(10.minutes)
+        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+
+        jwtDecoder.decode(expiredJwtString).asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[DecodingError]
+          result.left.value.message should include("Exception occurred while decoding JWT: ")
+          result.left.value.message should include("The token is expired since ")
+        }
+      }
+    }
+
     "provided with a token without kid (Key ID)" should {
 
       "NOT call either JwkProvider, nor PublicKeyGenerator" in {
@@ -198,57 +264,6 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
         jwtDecoder.decode(jwtWithoutAudienceString).asserting { result =>
           result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
-        }
-      }
-    }
-
-    "provided with a token without iat claim" should {
-      "return Left containing MissingIssuedAtClaimError" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-        val jwtTooOldString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuedAt = None), privateKey)
-
-        jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(MissingIssuedAtClaimError))
-      }
-    }
-
-    "provided with a token older than configured max token age" should {
-      "return Left containing TokenTooOldError" in {
-        authConfig.maxTokenAge returns Some(1.minute)
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-        val jwtTooOldString =
-          JwtCustom.encode(
-            jwtHeader,
-            jwtClaim.copy(issuedAt = Some(now.minus(61.seconds).toSeconds)),
-            privateKey
-          )
-
-        jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
-      }
-    }
-
-    "provided with a token of age equal to configured max token age" should {
-      "return Left containing TokenTooOldError" in {
-        authConfig.maxTokenAge returns Some(1.minute)
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-        jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
-      }
-    }
-
-    "provided with expired token, but with acceptable max token age" should {
-      "return JwtExpiredException" in {
-        authConfig.maxTokenAge returns Some(10.minutes)
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-        jwtDecoder.decode(expiredJwtString).asserting { result =>
-          result.isLeft shouldBe true
-          result.left.value shouldBe an[DecodingError]
-          result.left.value.message should include("Exception occurred while decoding JWT: ")
-          result.left.value.message should include("The token is expired since ")
         }
       }
     }
