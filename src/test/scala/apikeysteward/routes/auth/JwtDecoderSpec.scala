@@ -1,13 +1,14 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.config.AuthConfig
 import apikeysteward.routes.auth.AuthTestData._
 import apikeysteward.routes.auth.JwtDecoder._
+import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
 import apikeysteward.routes.auth.PublicKeyGenerator._
-import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtCustom}
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtClaimCustom, JwtCustom}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
@@ -15,28 +16,28 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
-import java.time.{Clock, ZoneOffset}
 import scala.concurrent.duration.DurationInt
 
 class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
+  private val jwtValidator = mock[JwtValidator]
   private val jwkProvider = mock[JwkProvider]
   private val publicKeyGenerator = mock[PublicKeyGenerator]
-  private val authConfig = mock[AuthConfig]
-
-  implicit private def fixedClock: Clock = Clock.fixed(nowInstant, ZoneOffset.UTC)
-
-  private val jwtDecoder = new JwtDecoder(jwkProvider, publicKeyGenerator, authConfig)
+  private val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(jwkProvider, publicKeyGenerator, authConfig)
+    reset(jwtValidator, jwkProvider, publicKeyGenerator)
 
-    authConfig.allowedIssuers returns List(issuer_1, issuer_2)
-    authConfig.audience returns AuthTestData.audience_1
-    authConfig.maxTokenAge returns None
+    jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
+    publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+
+    jwtValidator.validateAll(any[JsonWebToken]) returns Right(jwtWithMockedSignature)
   }
+
+  private def jwtWithClaimString(jwtClaim: JwtClaimCustom): String =
+    JwtCustom.encode(jwtHeader, jwtClaim, privateKey)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -44,10 +45,17 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     "everything works correctly" should {
 
-      "call JwkProvider providing Key Id from the token" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+      "call JwtValidator providing decoded token" in {
+        for {
+          jwt <- jwtDecoder.decode(jwtString)
 
+          _ = verify(jwtValidator).validateAll(
+            eqTo(jwtWithMockedSignature.copy(signature = jwt.toOption.get.signature))
+          )
+        } yield ()
+      }
+
+      "call JwkProvider providing Key Id from the token" in {
         for {
           _ <- jwtDecoder.decode(jwtString)
           _ = verify(jwkProvider).getJsonWebKey(eqTo(kid_1))
@@ -55,224 +63,220 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       }
 
       "call PublicKeyGenerator providing JWK from JwkProvider" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
         for {
           _ <- jwtDecoder.decode(jwtString)
           _ = verify(publicKeyGenerator).generateFrom(eqTo(jsonWebKey))
         } yield ()
       }
 
-      "return Right containing JsonWebToken" when {
-
-        "provided with a token younger than configured max token age" in {
-          authConfig.maxTokenAge returns Some(5.minutes)
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          jwtDecoder.decode(jwtString).asserting { result =>
-            result shouldBe Right(jwtWithMockedSignature.copy(signature = result.value.signature))
-          }
-        }
-
-        "provided with a token of any age when max token age is NOT configured" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          val jwtClaimVeryOld = jwtClaim.copy(issuedAt = Some(now.minus(366.days).toSeconds))
-          val jwtYoungEnoughString = JwtCustom.encode(jwtHeader, jwtClaimVeryOld, privateKey)
-          val expectedJwt = JsonWebToken(
-            content = jwtYoungEnoughString,
-            jwtHeader = jwtHeader,
-            jwtClaim = jwtClaimVeryOld,
-            signature = "test-signature"
-          )
-
-          jwtDecoder.decode(jwtYoungEnoughString).asserting { result =>
-            result shouldBe Right(expectedJwt.copy(signature = result.value.signature))
-          }
+      "return Right containing JsonWebToken" in {
+        jwtDecoder.decode(jwtString).asserting { result =>
+          result shouldBe Right(jwtWithMockedSignature.copy(signature = result.value.signature))
         }
       }
     }
 
-    "exp claim is incorrect" when {
+    "provided with expired token" should {
 
-      "provided with expired token" should {
+      "NOT call either JwtValidator, JwkProvider, nor PublicKeyGenerator" in {
+        for {
+          _ <- jwtDecoder.decode(expiredJwtString).attempt
 
-        "NOT call either JwkProvider, nor PublicKeyGenerator" in {
-          for {
-            _ <- jwtDecoder.decode(expiredJwtString).attempt
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
+          _ = verifyZeroInteractions(jwtValidator, jwkProvider, publicKeyGenerator)
+        } yield ()
+      }
 
-        "return Left containing DecodingError" in {
-          jwtDecoder.decode(expiredJwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe an[DecodingError]
-            result.left.value.message should include("Exception occurred while decoding JWT: ")
-            result.left.value.message should include("The token is expired since ")
-          }
+      "return Left containing DecodingError" in {
+        jwtDecoder.decode(expiredJwtString).asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[DecodingError]
+          result.left.value.message should include("Exception occurred while decoding JWT: ")
+          result.left.value.message should include("The token is expired since ")
         }
       }
     }
 
-    "iat claim is incorrect" when {
+    "provided with a token with nbf value in the future" should {
 
-      "provided with a token without iat claim" should {
-        val jwtTooOldString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuedAt = None), privateKey)
+      val jwtClaimNbfInTheFuture = jwtClaim.copy(notBefore = Some(now.plus(1.minute).toSeconds))
+      val jwtNbfInTheFutureString = JwtCustom.encode(jwtHeader, jwtClaimNbfInTheFuture, privateKey)
 
-        "call JwkProvider and PublicKeyGenerator" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          for {
-            _ <- jwtDecoder.decode(jwtTooOldString)
-            _ = verify(jwkProvider).getJsonWebKey(eqTo(kid_1))
-            _ = verify(publicKeyGenerator).generateFrom(eqTo(jsonWebKey))
-          } yield ()
-        }
-
-        "return Left containing MissingIssuedAtClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(MissingIssuedAtClaimError))
-        }
+      "NOT call either JwtValidator, JwkProvider, nor PublicKeyGenerator" in {
+        for {
+          _ <- jwtDecoder.decode(jwtNbfInTheFutureString).attempt
+          _ = verifyZeroInteractions(jwtValidator, jwkProvider, publicKeyGenerator)
+        } yield ()
       }
 
-      "provided with a token older than configured max token age" should {
-        "return Left containing TokenTooOldError" in {
-          authConfig.maxTokenAge returns Some(1.minute)
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtTooOldString =
-            JwtCustom.encode(
-              jwtHeader,
-              jwtClaim.copy(issuedAt = Some(now.minus(61.seconds).toSeconds)),
-              privateKey
-            )
-
-          jwtDecoder.decode(jwtTooOldString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
-        }
-      }
-
-      "provided with a token of age equal to configured max token age" should {
-        "return Left containing TokenTooOldError" in {
-          authConfig.maxTokenAge returns Some(1.minute)
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(TokenTooOldError(1.minute)))
-        }
-      }
-
-      "provided with expired token, but with acceptable max token age" should {
-        "return JwtExpiredException" in {
-          authConfig.maxTokenAge returns Some(10.minutes)
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-
-          jwtDecoder.decode(expiredJwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe an[DecodingError]
-            result.left.value.message should include("Exception occurred while decoding JWT: ")
-            result.left.value.message should include("The token is expired since ")
-          }
+      "return Left containing DecodingError" in {
+        jwtDecoder.decode(jwtNbfInTheFutureString).asserting { result =>
+          result.isLeft shouldBe true
+          result.left.value shouldBe an[DecodingError]
+          result.left.value.message should include("Exception occurred while decoding JWT: ")
+          result.left.value.message should include("The token will only be valid after ")
         }
       }
     }
 
     "provided with a token without kid (Key ID)" should {
 
+      "call JwtValidator" in {
+        val jwtCaptor: ArgumentCaptor[JsonWebToken] = ArgumentCaptor.forClass(classOf[JsonWebToken])
+
+        for {
+          _ <- jwtDecoder.decode(jwtWithoutKidString)
+
+          _ = verify(jwtValidator).validateAll(jwtCaptor.capture)
+          jwt = jwtCaptor.getValue
+          _ = jwt.content shouldBe jwtWithoutKidString
+          _ = jwt.jwtHeader shouldBe jwtHeaderWithoutKid
+          _ = jwt.jwtClaim shouldBe jwtClaim
+        } yield ()
+      }
+
       "NOT call either JwkProvider, nor PublicKeyGenerator" in {
         for {
-          _ <- jwtDecoder.decode(jwtWithoutKidString).attempt
+          _ <- jwtDecoder.decode(jwtWithoutKidString)
           _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
         } yield ()
       }
 
-      "return Left containing MissingKeyIdFieldError" in {
-        jwtDecoder.decode(jwtWithoutKidString).asserting { result =>
-          result shouldBe Left(MissingKeyIdFieldError(jwtWithoutKidString))
-        }
+      "return Left containing ValidationError" in {
+        jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
       }
     }
 
-    "iss claim is incorrect" when {
+    "JwtValidator returns Left containing JwtValidatorError" should {
 
-      "provided with a token without any issuer" should {
-        "return Left containing MissingIssuerClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = None), privateKey)
+      "NOT call either JwkProvider, nor PublicKeyGenerator" when {
 
-          jwtDecoder.decode(jwtWithoutIssuerString).asserting(result => result shouldBe Left(MissingIssuerClaimError))
+        "jwtValidator.validateKeyId returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithoutKidString)
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
+        }
+
+        "jwtValidator.validateExpirationTimeClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingExpirationTimeClaimError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(expiration = None)))
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
+        }
+
+        "jwtValidator.validateNotBeforeClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingNotBeforeClaimError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(notBefore = None)))
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
+        }
+
+        "jwtValidator.validateIssuedAtClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuedAtClaimError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(issuedAt = None)))
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
+        }
+
+        "jwtValidator.validateIssuerClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuerClaimError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(issuer = None)))
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
+        }
+
+        "jwtValidator.validateAudienceClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingAudienceClaimError))
+
+          for {
+            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(audience = None)))
+            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+          } yield ()
         }
       }
 
-      "provided with a token containing empty issuer claim" should {
-        "return Left containing MissingIssuerClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = Some("")), privateKey)
+      "return Left containing ValidationError" when {
 
-          jwtDecoder.decode(jwtWithoutIssuerString).asserting(result => result shouldBe Left(MissingIssuerClaimError))
+        "jwtValidator.validateKeyId returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
+
+          jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
+        }
+
+        "jwtValidator.validateExpirationTimeClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingExpirationTimeClaimError))
+
+          jwtDecoder
+            .decode(jwtWithClaimString(jwtClaim.copy(expiration = None)))
+            .asserting(_ shouldBe Left(ValidationError(MissingExpirationTimeClaimError)))
+        }
+
+        "jwtValidator.validateNotBeforeClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingNotBeforeClaimError))
+
+          jwtDecoder
+            .decode(jwtWithClaimString(jwtClaim.copy(notBefore = None)))
+            .asserting(_ shouldBe Left(ValidationError(MissingNotBeforeClaimError)))
+        }
+
+        "jwtValidator.validateIssuedAtClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuedAtClaimError))
+
+          jwtDecoder
+            .decode(jwtWithClaimString(jwtClaim.copy(issuedAt = None)))
+            .asserting(_ shouldBe Left(ValidationError(MissingIssuedAtClaimError)))
+        }
+
+        "jwtValidator.validateIssuerClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuerClaimError))
+
+          jwtDecoder
+            .decode(jwtWithClaimString(jwtClaim.copy(issuer = None)))
+            .asserting(_ shouldBe Left(ValidationError(MissingIssuerClaimError)))
+        }
+
+        "jwtValidator.validateAudienceClaim returns error" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingAudienceClaimError))
+
+          jwtDecoder
+            .decode(jwtWithClaimString(jwtClaim.copy(audience = None)))
+            .asserting(_ shouldBe Left(ValidationError(MissingAudienceClaimError)))
         }
       }
 
-      "provided with a token with not supported issuer" should {
-        "return Left containing IncorrectIssuerClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtWithoutIssuerString = JwtCustom.encode(jwtHeader, jwtClaim.copy(issuer = Some(issuer_3)), privateKey)
+      "return Left containing multiple ValidationErrors" when {
+        "JwtValidator returns errors for several calls" in {
+          jwtValidator.validateAll(any[JsonWebToken]) returns Left(
+            NonEmptyChain(
+              MissingKeyIdFieldError,
+              MissingExpirationTimeClaimError,
+              MissingNotBeforeClaimError,
+              MissingIssuedAtClaimError,
+              MissingIssuerClaimError,
+              MissingAudienceClaimError
+            )
+          )
 
-          jwtDecoder.decode(jwtWithoutIssuerString).asserting { result =>
-            result shouldBe Left(IncorrectIssuerClaimError(issuer_3))
-          }
-        }
-      }
-    }
+          val validationErrors = Seq(
+            MissingKeyIdFieldError,
+            MissingExpirationTimeClaimError,
+            MissingNotBeforeClaimError,
+            MissingIssuedAtClaimError,
+            MissingIssuerClaimError,
+            MissingAudienceClaimError
+          )
 
-    "aud claim is incorrect" when {
-
-      "provided with a token without any audience" should {
-        "return Left containing MissingAudienceClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtWithoutAudienceString = JwtCustom.encode(jwtHeader, jwtClaim.copy(audience = None), privateKey)
-
-          jwtDecoder.decode(jwtWithoutAudienceString).asserting { result =>
-            result shouldBe Left(MissingAudienceClaimError)
-          }
-        }
-      }
-
-      "provided with a token containing empty audience claim" should {
-        "return Left containing MissingAudienceClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val jwtWithoutAudienceString =
-            JwtCustom.encode(jwtHeader, jwtClaim.copy(audience = Some(Set.empty)), privateKey)
-
-          jwtDecoder.decode(jwtWithoutAudienceString).asserting { result =>
-            result shouldBe Left(MissingAudienceClaimError)
-          }
-        }
-      }
-
-      "provided with a token without required audience" should {
-        "return Left containing IncorrectAudienceClaimError" in {
-          jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-          publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
-          val incorrectAudience = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
-          val jwtWithoutAudienceString =
-            JwtCustom.encode(jwtHeader, jwtClaim.copy(audience = Some(incorrectAudience)), privateKey)
-
-          jwtDecoder.decode(jwtWithoutAudienceString).asserting { result =>
-            result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
-          }
+          jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(ValidationError(validationErrors)))
         }
       }
     }
@@ -283,7 +287,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
 
         for {
-          _ <- jwtDecoder.decode(jwtString).attempt
+          _ <- jwtDecoder.decode(jwtString)
           _ = verifyZeroInteractions(publicKeyGenerator)
         } yield ()
       }
@@ -291,7 +295,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
       "return Left containing MatchingJwkNotFoundError" in {
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
 
-        jwtDecoder.decode(jwtString).asserting(result => result shouldBe Left(MatchingJwkNotFoundError(kid_1)))
+        jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(MatchingJwkNotFoundError(kid_1)))
       }
     }
 
@@ -315,7 +319,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     "PublicKeyGenerator returns Left containing errors" should {
 
-      "call JwkProvider" in {
+      "have called JwkProvider" in {
         val failureReasons = NonEmptyChain(
           AlgorithmNotSupportedError("RS256", "HS256"),
           KeyTypeNotSupportedError("RSA", "HSA"),
@@ -339,9 +343,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
         jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
         publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Left(failureReasons)
 
-        jwtDecoder.decode(jwtString).asserting { result =>
-          result shouldBe Left(PublicKeyGenerationError(failureReasons.iterator.toSeq))
-        }
+        jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(PublicKeyGenerationError(failureReasons.iterator.toSeq)))
       }
     }
   }

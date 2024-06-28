@@ -42,9 +42,6 @@ private[routes] object AuthTestData {
     x5c = Some(Seq("nedesMA0GCSqGSIb3DQEBCwUAMCwxKjAoBgNVBAMTIWRldi1oeDFpMjh4eHZhcWY"))
   )
 
-  val algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS256
-  val jwtHeader: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(kid_1))
-
   val nowInstant: Instant = Instant.ofEpochMilli(System.currentTimeMillis())
   val now: FiniteDuration = FiniteDuration.apply(nowInstant.toEpochMilli, TimeUnit.MILLISECONDS)
 
@@ -60,11 +57,15 @@ private[routes] object AuthTestData {
   val audience_1 = "test-audience-1"
   val audience_2 = "test-audience-2"
 
+  val algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS256
+  val jwtHeader: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(kid_1))
+
   val jwtClaim: JwtClaimCustom = JwtClaimCustom(
     issuer = Some(issuer_1),
     subject = Some("test-subject"),
     audience = Some(Set(audience_1, audience_2)),
     expiration = Some((now + 5.minutes).toSeconds),
+    notBefore = Some(now.minus(1.minute).toSeconds),
     issuedAt = Some(now.minus(1.minute).toSeconds),
     permissions = Some(Set(permissionRead_1, permissionWrite_1))
   )

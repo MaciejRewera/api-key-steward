@@ -2,8 +2,9 @@ package apikeysteward.routes.auth
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.AuthTestData._
-import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.JwtAuthorizer.buildNoRequiredPermissionsUnauthorizedErrorInfo
+import apikeysteward.routes.auth.JwtDecoder._
+import apikeysteward.routes.auth.JwtValidator.JwtValidatorError.MissingKeyIdFieldError
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtCustom}
 import cats.effect.IO
@@ -66,7 +67,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
         }
 
         "the error is MissingKeyIdFieldError" in {
-          val error = MissingKeyIdFieldError
+          val error = ValidationError(MissingKeyIdFieldError)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
           jwtAuthorizer.authorised(jwtString).asserting { result =>
@@ -328,7 +329,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
         }
 
         "the error is MissingKeyIdFieldError" in {
-          val error = MissingKeyIdFieldError(jwtString)
+          val error = ValidationError(MissingKeyIdFieldError)
           jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
