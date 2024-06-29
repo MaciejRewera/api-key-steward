@@ -148,126 +148,28 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     "JwtValidator returns Left containing JwtValidatorError" should {
 
-      "NOT call either JwkProvider, nor PublicKeyGenerator" when {
+      "NOT call either JwkProvider, nor PublicKeyGenerator" in {
+        jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
 
-        "jwtValidator.validateKeyId returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithoutKidString)
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
-
-        "jwtValidator.validateExpirationTimeClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingExpirationTimeClaimError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(expiration = None)))
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
-
-        "jwtValidator.validateNotBeforeClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingNotBeforeClaimError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(notBefore = None)))
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
-
-        "jwtValidator.validateIssuedAtClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuedAtClaimError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(issuedAt = None)))
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
-
-        "jwtValidator.validateIssuerClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuerClaimError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(issuer = None)))
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
-
-        "jwtValidator.validateAudienceClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingAudienceClaimError))
-
-          for {
-            _ <- jwtDecoder.decode(jwtWithClaimString(jwtClaim.copy(audience = None)))
-            _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
-          } yield ()
-        }
+        for {
+          _ <- jwtDecoder.decode(jwtWithoutKidString)
+          _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+        } yield ()
       }
 
-      "return Left containing ValidationError" when {
+      "return Left containing ValidationError" in {
 
-        "jwtValidator.validateKeyId returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
+        jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
 
-          jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
-        }
-
-        "jwtValidator.validateExpirationTimeClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingExpirationTimeClaimError))
-
-          jwtDecoder
-            .decode(jwtWithClaimString(jwtClaim.copy(expiration = None)))
-            .asserting(_ shouldBe Left(ValidationError(MissingExpirationTimeClaimError)))
-        }
-
-        "jwtValidator.validateNotBeforeClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingNotBeforeClaimError))
-
-          jwtDecoder
-            .decode(jwtWithClaimString(jwtClaim.copy(notBefore = None)))
-            .asserting(_ shouldBe Left(ValidationError(MissingNotBeforeClaimError)))
-        }
-
-        "jwtValidator.validateIssuedAtClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuedAtClaimError))
-
-          jwtDecoder
-            .decode(jwtWithClaimString(jwtClaim.copy(issuedAt = None)))
-            .asserting(_ shouldBe Left(ValidationError(MissingIssuedAtClaimError)))
-        }
-
-        "jwtValidator.validateIssuerClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingIssuerClaimError))
-
-          jwtDecoder
-            .decode(jwtWithClaimString(jwtClaim.copy(issuer = None)))
-            .asserting(_ shouldBe Left(ValidationError(MissingIssuerClaimError)))
-        }
-
-        "jwtValidator.validateAudienceClaim returns error" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingAudienceClaimError))
-
-          jwtDecoder
-            .decode(jwtWithClaimString(jwtClaim.copy(audience = None)))
-            .asserting(_ shouldBe Left(ValidationError(MissingAudienceClaimError)))
-        }
+        jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
       }
+    }
 
-      "return Left containing multiple ValidationErrors" when {
-        "JwtValidator returns errors for several calls" in {
-          jwtValidator.validateAll(any[JsonWebToken]) returns Left(
-            NonEmptyChain(
-              MissingKeyIdFieldError,
-              MissingExpirationTimeClaimError,
-              MissingNotBeforeClaimError,
-              MissingIssuedAtClaimError,
-              MissingIssuerClaimError,
-              MissingAudienceClaimError
-            )
-          )
+    "JwtValidator returns Left containing several JwtValidatorErrors" should {
 
-          val validationErrors = Seq(
+      "NOT call either JwkProvider, nor PublicKeyGenerator" in {
+        jwtValidator.validateAll(any[JsonWebToken]) returns Left(
+          NonEmptyChain(
             MissingKeyIdFieldError,
             MissingExpirationTimeClaimError,
             MissingNotBeforeClaimError,
@@ -275,9 +177,36 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
             MissingIssuerClaimError,
             MissingAudienceClaimError
           )
+        )
 
-          jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(ValidationError(validationErrors)))
-        }
+        for {
+          _ <- jwtDecoder.decode(jwtWithoutKidString)
+          _ = verifyZeroInteractions(jwkProvider, publicKeyGenerator)
+        } yield ()
+      }
+
+      "return Left containing several ValidationErrors" in {
+        jwtValidator.validateAll(any[JsonWebToken]) returns Left(
+          NonEmptyChain(
+            MissingKeyIdFieldError,
+            MissingExpirationTimeClaimError,
+            MissingNotBeforeClaimError,
+            MissingIssuedAtClaimError,
+            MissingIssuerClaimError,
+            MissingAudienceClaimError
+          )
+        )
+
+        val validationErrors = Seq(
+          MissingKeyIdFieldError,
+          MissingExpirationTimeClaimError,
+          MissingNotBeforeClaimError,
+          MissingIssuedAtClaimError,
+          MissingIssuerClaimError,
+          MissingAudienceClaimError
+        )
+
+        jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(ValidationError(validationErrors)))
       }
     }
 
