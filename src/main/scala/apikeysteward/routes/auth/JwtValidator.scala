@@ -63,8 +63,8 @@ class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging 
       case (Some(""), true) => MissingIssuerClaimError.asLeft
       case (Some(""), _)    => jwtClaim.asRight
 
-      case (Some(issuer), _) if jwtConfig.allowedIssuers.contains(issuer) => jwtClaim.asRight
-      case (Some(issuer), _)                                              => IncorrectIssuerClaimError(issuer).asLeft
+      case (Some(issuer), _) if jwtConfig.allowedIssuers(issuer) => jwtClaim.asRight
+      case (Some(issuer), _)                                     => IncorrectIssuerClaimError(issuer).asLeft
     }
 
   def validateAudienceClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
@@ -82,10 +82,16 @@ class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging 
       case (_, true) if jwtConfig.requireAud => MissingAudienceClaimError.asLeft
       case (_, true)                         => audienceSet.asRight
 
-      case (filteredAudienceSet, _) if filteredAudienceSet(jwtConfig.allowedAudience) => audienceSet.asRight
-      case (filteredAudienceSet, _)                                                   => IncorrectAudienceClaimError(filteredAudienceSet).asLeft
+      case (filteredAudienceSet, _) =>
+        if (isAtLeastOneAllowedAudiencePresent(filteredAudienceSet))
+          audienceSet.asRight
+        else
+          IncorrectAudienceClaimError(filteredAudienceSet).asLeft
     }
   }
+
+  private def isAtLeastOneAllowedAudiencePresent(audienceSet: Set[String]): Boolean =
+    jwtConfig.allowedAudiences.exists(audienceSet(_))
 
   def validateAll(token: JsonWebToken): Either[NonEmptyChain[JwtValidatorError], JsonWebToken] =
     (

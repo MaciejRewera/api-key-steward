@@ -56,6 +56,7 @@ private[routes] object AuthTestData {
 
   val audience_1 = "test-audience-1"
   val audience_2 = "test-audience-2"
+  val audience_3 = "test-audience-3"
 
   val algorithm: JwtAsymmetricAlgorithm = JwtAlgorithm.RS256
   val jwtHeader: JwtHeader = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(kid_1))

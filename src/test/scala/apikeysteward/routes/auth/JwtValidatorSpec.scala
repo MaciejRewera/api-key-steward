@@ -27,8 +27,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
     reset(jwtConfig)
 
-    jwtConfig.allowedIssuers returns List(issuer_1, issuer_2)
-    jwtConfig.allowedAudience returns AuthTestData.audience_1
+    jwtConfig.allowedIssuers returns Set(issuer_1, issuer_2)
+    jwtConfig.allowedAudiences returns Set(AuthTestData.audience_1, AuthTestData.audience_2)
     jwtConfig.maxAge returns None
 
     jwtConfig.requireExp returns true
@@ -347,9 +347,79 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
   "JwtValidator on validateAudienceClaim" when {
 
-    "provided with a token with correct aud claim" should {
+    "provided with a token with all allowed audiences" should {
       "return Right containing JwtClaim" in {
         jwtValidator.validateAudienceClaim(jwtClaim) shouldBe Right(jwtClaim)
+      }
+    }
+
+    "provided with a token with a single allowed audience" when {
+
+      val audience = Set(AuthTestData.audience_2)
+      val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token with at least one of allowed audiences" when {
+
+      val audience = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
+      val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token with different audiences" when {
+
+      val incorrectAudience = Set(AuthTestData.audience_3, "some-other-audience-1", "some-other-audience-2")
+      val incorrectAudienceClaim = jwtClaim.copy(audience = Some(incorrectAudience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Left containing IncorrectAudienceClaimError" in {
+          jwtConfig.requireAud returns true
+
+          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
+
+          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Left containing IncorrectAudienceClaimError" in {
+          jwtConfig.requireAud returns false
+
+          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
+
+          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
+        }
       }
     }
 
@@ -412,32 +482,6 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
           jwtConfig.requireAud returns false
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
-        }
-      }
-    }
-
-    "provided with a token without required audience" when {
-
-      val incorrectAudience = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
-      val incorrectAudienceClaim = jwtClaim.copy(audience = Some(incorrectAudience))
-
-      "AuthConfig 'requireAud' field is set to TRUE" should {
-        "return Left containing IncorrectAudienceClaimError" in {
-          jwtConfig.requireAud returns true
-
-          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
-
-          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
-        }
-      }
-
-      "AuthConfig 'requireAud' field is set to FALSE" should {
-        "return Left containing IncorrectAudienceClaimError" in {
-          jwtConfig.requireAud returns false
-
-          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
-
-          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
         }
       }
     }
