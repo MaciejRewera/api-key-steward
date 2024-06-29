@@ -1,377 +1,528 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.routes.ErrorInfo
+import apikeysteward.config.JwtConfig
 import apikeysteward.routes.auth.AuthTestData._
-import apikeysteward.routes.auth.JwtDecoder._
-import apikeysteward.routes.auth.JwtValidator.buildNoRequiredPermissionsUnauthorizedErrorInfo
-import apikeysteward.routes.auth.PublicKeyGenerator._
-import apikeysteward.routes.auth.model.{JsonWebToken, JwtCustom}
-import cats.effect.IO
-import cats.effect.testing.scalatest.AsyncIOSpec
-import org.mockito.ArgumentMatchersSugar.{any, eqTo}
+import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
+import cats.data.NonEmptyChainImpl
 import org.mockito.IdiomaticMockito.StubbingOps
-import org.mockito.MockitoSugar.{mock, reset, verify}
+import org.mockito.MockitoSugar._
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AsyncWordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
-import pdi.jwt.exceptions.JwtExpirationException
+import pdi.jwt.JwtHeader
 
-import java.time.Instant
+import java.time.{Clock, ZoneOffset}
+import scala.concurrent.duration.DurationInt
 
-class JwtValidatorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
+class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
-  private val jwtDecoder = mock[JwtDecoder]
+  private val jwtConfig = mock[JwtConfig]
 
-  private val jwtValidator = new JwtValidator(jwtDecoder)
+  implicit private def fixedClock: Clock = Clock.fixed(nowInstant, ZoneOffset.UTC)
+
+  private val jwtValidator = new JwtValidator(jwtConfig)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(jwtDecoder)
+    reset(jwtConfig)
+
+    jwtConfig.allowedIssuers returns Set(issuer_1, issuer_2)
+    jwtConfig.allowedAudiences returns Set(AuthTestData.audience_1, AuthTestData.audience_2)
+    jwtConfig.maxAge returns None
+
+    jwtConfig.requireExp returns true
+    jwtConfig.requireNbf returns true
+    jwtConfig.requireIat returns true
+    jwtConfig.requireIss returns true
+    jwtConfig.requireAud returns true
   }
 
-  private val testException = new RuntimeException("Test Exception")
+  "JwtValidator on validateKeyId" should {
 
-  "JwtValidator on authorised" when {
+    "NOT call AuthConfig" in {
+      jwtValidator.validateKeyId(jwtHeader)
 
-    "should always call JwtDecoder providing access token" in {
-      jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
-
-      for {
-        _ <- jwtValidator.authorised(jwtString)
-
-        _ = verify(jwtDecoder).decode(eqTo(jwtString))
-      } yield ()
+      verifyZeroInteractions(jwtConfig)
     }
 
-    "JwtDecoder returns Right containing JsonWebToken" should {
-      "return Right containing JsonWebToken returned from JwtDecoder" in {
-        jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
-
-        jwtValidator.authorised(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
+    "return Right containing JwtClaim" when {
+      "provided with a token with correct kid (Key ID) claim" in {
+        jwtValidator.validateKeyId(jwtHeader) shouldBe Right(jwtHeader)
       }
     }
 
-    "JwtDecoder returns Left containing JwtDecoderError" should {
-      "return Left containing ErrorInfo with detail explaining the reason why token decoding failed" when {
+    "return Left containing MissingKeyIdFieldError" when {
 
-        "the error is DecodingError" in {
-          val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
-
-          jwtValidator.authorised(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
-        }
-
-        "the error is MissingKeyIdFieldError" in {
-          val error = MissingKeyIdFieldError(jwtString)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
-
-          jwtValidator.authorised(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
-        }
-
-        "the error is MatchingJwkNotFoundError" in {
-          val error = MatchingJwkNotFoundError(kid_1)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
-
-          jwtValidator.authorised(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
-        }
-
-        "the error is PublicKeyGenerationError" in {
-          val failureReasons = Seq(
-            AlgorithmNotSupportedError("RS256", "HS256"),
-            KeyTypeNotSupportedError("RSA", "HSA"),
-            KeyUseNotSupportedError("sig", "no-use")
-          )
-          val error = PublicKeyGenerationError(failureReasons)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
-
-          jwtValidator.authorised(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value.error shouldBe "Invalid Credentials"
-            result.left.value.errorDetail.get shouldBe """Cannot generate Public Key because: ["Algorithm HS256 is not supported. Please use RS256.", "Key Type HSA is not supported. Please use RSA.", "Public Key Use no-use is not supported. Please use sig."]."""
-          }
-        }
+      "provided with a token without kid (Key ID) claim" in {
+        jwtValidator.validateKeyId(jwtHeaderWithoutKid) shouldBe Left(MissingKeyIdFieldError)
       }
-    }
 
-    "JwtDecoder returns failed IO" should {
-      "return this failed IO" in {
-        jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
+      "provided with a token with empty kid (Key ID) claim" in {
+        val jwtHeaderWithEmptyKid = JwtHeader(algorithm = Some(algorithm), typ = Some("JWT"), keyId = Some(""))
 
-        jwtValidator.authorised(jwtString).attempt.asserting { result =>
-          result.isLeft shouldBe true
-          result.left.value shouldBe testException
-        }
+        jwtValidator.validateKeyId(jwtHeaderWithEmptyKid) shouldBe Left(MissingKeyIdFieldError)
       }
     }
   }
 
-  "JwtValidator on authorisedWithPermissions" when {
+  "JwtValidator on validateExpirationTimeClaim" when {
 
-    "should always call JwtDecoder providing access token" in {
-      jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
-
-      for {
-        _ <- jwtValidator.authorisedWithPermissions(Set(permissionRead_1))(jwtString)
-
-        _ = verify(jwtDecoder).decode(eqTo(jwtString))
-      } yield ()
+    "provided with a token with correct exp claim" should {
+      "return Right containing JwtClaim" in {
+        jwtValidator.validateExpirationTimeClaim(jwtClaim) shouldBe Right(jwtClaim)
+      }
     }
 
-    "JwtDecoder returns Right containing JsonWebToken" when {
+    "provided with a token without exp claim" when {
 
-      "there are no permissions required" should {
+      val noExpirationTimeClaim = jwtClaim.copy(expiration = None)
 
-        val subjectFuncNoPermissions: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions()
+      "AuthConfig 'requireExp' field is set to TRUE" should {
+        "return Left containing MissingExpirationTimeClaimError" in {
+          jwtConfig.requireExp returns true
 
-        "return Right containing JsonWebToken returned from JwtDecoder" when {
-
-          "provided token contains NO permissions" in {
-            val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
-
-            subjectFuncNoPermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
-          }
-
-          "provided token contains permissions" in {
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
-
-            subjectFuncNoPermissions(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
-          }
+          jwtValidator.validateExpirationTimeClaim(noExpirationTimeClaim) shouldBe Left(MissingExpirationTimeClaimError)
         }
       }
 
-      "there is a single permission required" should {
+      "AuthConfig 'requireExp' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireExp returns false
 
-        val requiredPermissions = Set(permissionRead_1)
-        val subjectFuncSinglePermission: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
-
-        "return Right containing JsonWebToken returned from JwtDecoder" when {
-
-          "provided token contains this single permission" in {
-            val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncSinglePermission(accessToken).asserting(_ shouldBe Right(jsonWebToken))
-          }
-
-          "provided token contains this permission together with other permissions" in {
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
-
-            subjectFuncSinglePermission(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
-          }
-        }
-
-        "return Left containing ErrorInfo with detail explaining the reason why token decoding failed" when {
-
-          "provided token contains NO permissions" in {
-            val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
-
-            subjectFuncSinglePermission(accessToken).asserting(
-              _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
-            )
-          }
-
-          "provided token contains different permissions" in {
-            val tokenPermissions = Some(Set(permissionWrite_1, permissionRead_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
-
-            subjectFuncSinglePermission(accessToken).asserting(
-              _ shouldBe Left(
-                buildNoRequiredPermissionsUnauthorizedErrorInfo(
-                  requiredPermissions,
-                  Set(permissionWrite_1, permissionRead_2)
-                )
-              )
-            )
-          }
-        }
-      }
-
-      "there are multiple permissions required" should {
-
-        val requiredPermissions = Set(permissionRead_1, permissionWrite_1)
-        val subjectFuncMultiplePermissions: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
-
-        "return Right containing JsonWebToken returned from JwtDecoder" when {
-
-          "provided token contains all required permissions" in {
-            val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
-          }
-
-          "provided token contains all required permissions together with other permissions" in {
-            val tokenPermissions = Some(requiredPermissions ++ Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
-          }
-        }
-
-        "return Left containing ErrorInfo with detail explaining the reason why token decoding failed" when {
-
-          "provided token contains NO permissions" in {
-            val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
-            )
-          }
-
-          "provided token contains different permissions" in {
-            val tokenPermissions = Some(Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(
-                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
-              )
-            )
-          }
-
-          "provided token contains only a subset of required permissions" in {
-            val tokenPermissions = Some(Set(permissionRead_1))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(
-                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
-              )
-            )
-          }
-
-          "provided token contains only a subset of required permissions together with other permissions" in {
-            val tokenPermissions = Some(Set(permissionRead_1, permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
-
-            val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
-
-            subjectFuncMultiplePermissions(accessToken).asserting(
-              _ shouldBe Left(
-                buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions.get)
-              )
-            )
-          }
+          jwtValidator.validateExpirationTimeClaim(noExpirationTimeClaim) shouldBe Right(noExpirationTimeClaim)
         }
       }
     }
 
-    "JwtDecoder returns Left containing JwtDecoderError" should {
-      "return Left containing ErrorInfo with detail explaining the reason why token decoding failed" when {
+    "provided with expired token" when {
 
-        val requiredPermissions = Set(permissionRead_1)
-        val subjectFuncSinglePermission: String => IO[Either[ErrorInfo, JsonWebToken]] =
-          jwtValidator.authorisedWithPermissions(requiredPermissions)
+      "AuthConfig 'requireExp' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireExp returns true
 
-        "the error is DecodingError" in {
-          val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtValidator.validateExpirationTimeClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
+        }
+      }
 
-          subjectFuncSinglePermission(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
+      "AuthConfig 'requireExp' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireExp returns false
+
+          jwtValidator.validateExpirationTimeClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
+        }
+      }
+    }
+  }
+
+  "JwtValidator on validateNotBeforeClaim" when {
+
+    "provided with a token with correct nbf claim" should {
+      "return Right containing JwtClaim" in {
+        jwtValidator.validateNotBeforeClaim(jwtClaim) shouldBe Right(jwtClaim)
+      }
+    }
+
+    "provided with a token without nbf claim" when {
+
+      val noNotBeforeClaim = jwtClaim.copy(notBefore = None)
+
+      "AuthConfig 'requireNbf' field is set to TRUE" should {
+        "return Left containing MissingNotBeforeClaimError" in {
+          jwtConfig.requireNbf returns true
+
+          jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Left(MissingNotBeforeClaimError)
+        }
+      }
+
+      "AuthConfig 'requireNbf' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireNbf returns false
+
+          jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
+        }
+      }
+    }
+
+    "provided with a token with nbf value in the future" when {
+
+      val noNotBeforeClaim = jwtClaim.copy(notBefore = Some(now.plus(1.minute).toSeconds))
+
+      "AuthConfig 'requireNbf' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireNbf returns true
+
+          jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
+        }
+      }
+
+      "AuthConfig 'requireNbf' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireNbf returns false
+
+          jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
+        }
+      }
+    }
+  }
+
+  "JwtValidator on validateIssuedAtClaim" when {
+
+    "provided with a token with correct iat claim" should {
+
+      "return Right containing JwtClaim" when {
+
+        "provided with a token younger than configured max token age" in {
+          jwtConfig.maxAge returns Some(5.minutes)
+
+          jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Right(jwtClaim)
         }
 
-        "the error is MissingKeyIdFieldError" in {
-          val error = MissingKeyIdFieldError(jwtString)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+        "provided with a token of any age when max token age is NOT configured" in {
+          val jwtClaimVeryOld = jwtClaim.copy(issuedAt = Some(now.minus(366.days).toSeconds))
 
-          subjectFuncSinglePermission(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
+          jwtValidator.validateIssuedAtClaim(jwtClaimVeryOld) shouldBe Right(jwtClaimVeryOld)
         }
+      }
+    }
 
-        "the error is MatchingJwkNotFoundError" in {
-          val error = MatchingJwkNotFoundError(kid_1)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+    "provided with a token without iat claim" when {
 
-          subjectFuncSinglePermission(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
+      val noIssuedAtClaim = jwtClaim.copy(issuedAt = None)
+
+      "AuthConfig 'requireIat' field is set to TRUE" should {
+        "return Left containing MissingIssuedAtClaimError" in {
+          jwtConfig.requireIat returns true
+
+          jwtValidator.validateIssuedAtClaim(noIssuedAtClaim) shouldBe Left(MissingIssuedAtClaimError)
         }
+      }
 
-        "the error is PublicKeyGenerationError" in {
-          val failureReasons = Seq(
-            AlgorithmNotSupportedError("RS256", "HS256"),
-            KeyTypeNotSupportedError("RSA", "HSA"),
-            KeyUseNotSupportedError("sig", "no-use")
+      "AuthConfig 'requireIat' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireIat returns false
+
+          jwtValidator.validateIssuedAtClaim(noIssuedAtClaim) shouldBe Right(noIssuedAtClaim)
+        }
+      }
+    }
+
+    "provided with a token older than configured max token age" when {
+
+      val jwtTooOld = jwtClaim.copy(issuedAt = Some(now.minus(61.seconds).toSeconds))
+
+      "AuthConfig 'requireIat' field is set to TRUE" should {
+        "return Left containing TokenTooOldError" in {
+          jwtConfig.requireIat returns true
+          jwtConfig.maxAge returns Some(1.minute)
+
+          jwtValidator.validateIssuedAtClaim(jwtTooOld) shouldBe Left(TokenTooOldError(1.minute))
+        }
+      }
+
+      "AuthConfig 'requireIat' field is set to FALSE" should {
+        "return Left containing TokenTooOldError" in {
+          jwtConfig.requireIat returns false
+          jwtConfig.maxAge returns Some(1.minute)
+
+          jwtValidator.validateIssuedAtClaim(jwtTooOld) shouldBe Left(TokenTooOldError(1.minute))
+        }
+      }
+    }
+
+    "provided with a token of age equal to configured max token age" when {
+
+      "AuthConfig 'requireIat' field is set to TRUE" should {
+        "return Left containing TokenTooOldError" in {
+          jwtConfig.requireIat returns true
+          jwtConfig.maxAge returns Some(1.minute)
+
+          jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Left(TokenTooOldError(1.minute))
+        }
+      }
+
+      "AuthConfig 'requireIat' field is set to FALSE" should {
+        "return Left containing TokenTooOldError" in {
+          jwtConfig.requireIat returns false
+          jwtConfig.maxAge returns Some(1.minute)
+
+          jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Left(TokenTooOldError(1.minute))
+        }
+      }
+    }
+
+    "provided with expired token, but with acceptable max token age" when {
+
+      "AuthConfig 'requireIat' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireIat returns true
+          jwtConfig.maxAge returns Some(10.minutes)
+
+          jwtValidator.validateIssuedAtClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
+        }
+      }
+
+      "AuthConfig 'requireIat' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireIat returns false
+          jwtConfig.maxAge returns Some(10.minutes)
+
+          jwtValidator.validateIssuedAtClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
+        }
+      }
+    }
+  }
+
+  "JwtValidator on validateIssuerClaim" when {
+
+    "provided with a token with correct iss claim" should {
+      "return Right containing JwtClaim" in {
+        jwtValidator.validateIssuerClaim(jwtClaim) shouldBe Right(jwtClaim)
+      }
+    }
+
+    "provided with a token without any issuer" when {
+
+      val noIssuerClaim = jwtClaim.copy(issuer = None)
+
+      "AuthConfig 'requireIss' field is set to TRUE" should {
+        "return Left containing MissingIssuerClaimError" in {
+          jwtConfig.requireIss returns true
+
+          jwtValidator.validateIssuerClaim(noIssuerClaim) shouldBe Left(MissingIssuerClaimError)
+        }
+      }
+
+      "AuthConfig 'requireIss' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireIss returns false
+
+          jwtValidator.validateIssuerClaim(noIssuerClaim) shouldBe Right(noIssuerClaim)
+        }
+      }
+    }
+
+    "provided with a token containing empty issuer claim" when {
+
+      val emptyIssuerClaim = jwtClaim.copy(issuer = Some(""))
+
+      "AuthConfig 'requireIss' field is set to TRUE" should {
+        "return Left containing MissingIssuerClaimError" in {
+          jwtConfig.requireIss returns true
+
+          jwtValidator.validateIssuerClaim(emptyIssuerClaim) shouldBe Left(MissingIssuerClaimError)
+        }
+      }
+
+      "AuthConfig 'requireIss' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireIss returns false
+
+          jwtValidator.validateIssuerClaim(emptyIssuerClaim) shouldBe Right(emptyIssuerClaim)
+        }
+      }
+    }
+
+    "provided with a token with not supported issuer" when {
+
+      val notSupportedIssuerClaim = jwtClaim.copy(issuer = Some(issuer_3))
+
+      "AuthConfig 'requireIss' field is set to TRUE" should {
+        "return Left containing IncorrectIssuerClaimError" in {
+          jwtConfig.requireIss returns true
+
+          jwtValidator.validateIssuerClaim(notSupportedIssuerClaim) shouldBe Left(IncorrectIssuerClaimError(issuer_3))
+        }
+      }
+
+      "AuthConfig 'requireIss' field is set to FALSE" should {
+        "return Left containing IncorrectIssuerClaimError" in {
+          jwtConfig.requireIss returns false
+
+          jwtValidator.validateIssuerClaim(notSupportedIssuerClaim) shouldBe Left(IncorrectIssuerClaimError(issuer_3))
+        }
+      }
+    }
+  }
+
+  "JwtValidator on validateAudienceClaim" when {
+
+    "provided with a token with all allowed audiences" should {
+      "return Right containing JwtClaim" in {
+        jwtValidator.validateAudienceClaim(jwtClaim) shouldBe Right(jwtClaim)
+      }
+    }
+
+    "provided with a token with a single allowed audience" when {
+
+      val audience = Set(AuthTestData.audience_2)
+      val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token with at least one of allowed audiences" when {
+
+      val audience = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
+      val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token with different audiences" when {
+
+      val incorrectAudience = Set(AuthTestData.audience_3, "some-other-audience-1", "some-other-audience-2")
+      val incorrectAudienceClaim = jwtClaim.copy(audience = Some(incorrectAudience))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Left containing IncorrectAudienceClaimError" in {
+          jwtConfig.requireAud returns true
+
+          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
+
+          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Left containing IncorrectAudienceClaimError" in {
+          jwtConfig.requireAud returns false
+
+          val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
+
+          result shouldBe Left(IncorrectAudienceClaimError(incorrectAudience))
+        }
+      }
+    }
+
+    "provided with a token without any audience" when {
+
+      val noAudienceClaim = jwtClaim.copy(audience = None)
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Left containing MissingAudienceClaimError" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token containing empty audience claim" when {
+
+      val noAudienceClaim = jwtClaim.copy(audience = Some(Set.empty))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Left containing MissingAudienceClaimError" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
+        }
+      }
+    }
+
+    "provided with a token containing empty String as audience" when {
+
+      val noAudienceClaim = jwtClaim.copy(audience = Some(Set("")))
+
+      "AuthConfig 'requireAud' field is set to TRUE" should {
+        "return Left containing MissingAudienceClaimError" in {
+          jwtConfig.requireAud returns true
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
+        }
+      }
+
+      "AuthConfig 'requireAud' field is set to FALSE" should {
+        "return Right containing JwtClaim" in {
+          jwtConfig.requireAud returns false
+
+          jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
+        }
+      }
+    }
+  }
+
+  "JwtValidator on validateAll" should {
+
+    "return Right containing JsonWebToken" when {
+      "provided with correct token" in {
+        jwtValidator.validateAll(jwtWithMockedSignature) shouldBe Right(jwtWithMockedSignature)
+      }
+    }
+
+    "return Left containing errors" when {
+
+      "there is a single error during token validation" in {
+        val jwtSingleError = jwtWithMockedSignature.copy(header = jwtHeaderWithoutKid)
+
+        jwtValidator.validateAll(jwtSingleError) shouldBe Left(NonEmptyChainImpl.one(MissingKeyIdFieldError))
+      }
+
+      "there are multiple errors during token validation" in {
+        val jwtMultipleErrors = jwtWithMockedSignature.copy(
+          header = jwtHeaderWithoutKid,
+          claim = jwtClaim.copy(
+            issuer = None,
+            audience = None,
+            expiration = None
           )
-          val error = PublicKeyGenerationError(failureReasons)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+        )
+        val expectedErrors = Seq(
+          MissingKeyIdFieldError,
+          MissingIssuerClaimError,
+          MissingAudienceClaimError,
+          MissingExpirationTimeClaimError
+        )
 
-          subjectFuncSinglePermission(jwtString).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ErrorInfo.unauthorizedErrorInfo(Some(error.message))
-          }
-        }
-      }
-    }
+        val result = jwtValidator.validateAll(jwtMultipleErrors)
 
-    "JwtDecoder returns failed IO" should {
-      "return this failed IO" in {
-        jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
-
-        jwtValidator.authorisedWithPermissions(Set(permissionRead_1))(jwtString).attempt.asserting { result =>
-          result.isLeft shouldBe true
-          result.left.value shouldBe testException
-        }
+        result.isLeft shouldBe true
+        result.left.value.iterator.toList should contain theSameElementsAs expectedErrors
       }
     }
   }

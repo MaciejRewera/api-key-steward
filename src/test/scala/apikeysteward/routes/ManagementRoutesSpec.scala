@@ -3,9 +3,9 @@ package apikeysteward.routes
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
-import apikeysteward.routes.auth.JwtValidator.{AccessToken, Permission}
+import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
-import apikeysteward.routes.auth.{AuthTestData, JwtOps, JwtValidator}
+import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
@@ -29,11 +29,11 @@ import java.util.UUID
 class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtOps = mock[JwtOps]
-  private val jwtValidator = mock[JwtValidator]
+  private val jwtAuthorizer = mock[JwtAuthorizer]
   private val managementService = mock[ManagementService]
 
   private val managementRoutes: HttpApp[IO] =
-    new ManagementRoutes(jwtOps, jwtValidator, managementService).allRoutes.orNotFound
+    new ManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes.orNotFound
 
   private val tokenString: AccessToken = "TOKEN"
   private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
@@ -44,14 +44,14 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(jwtOps, jwtValidator, managementService)
+    reset(jwtOps, jwtAuthorizer, managementService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
       AuthTestData.jwtWithMockedSignature.asRight
     )
-    jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get.asRight
+    jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight
   }.flatMap(_ => test)
 
   "ManagementRoutes on POST /api-key" when {
@@ -86,19 +86,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- managementRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -107,7 +107,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -119,7 +119,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -133,7 +133,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -145,7 +145,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -159,7 +159,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     "JwtValidator returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           AuthTestData.jwtWithMockedSignature.asRight
         )
         jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -173,11 +173,11 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -190,7 +190,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -205,7 +205,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps throws an exception" should {
 
         "return Internal Server Error" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -217,7 +217,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -380,7 +380,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
@@ -461,19 +461,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- managementRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadApiKey)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
@@ -483,7 +483,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -495,7 +495,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -509,7 +509,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -521,7 +521,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -535,7 +535,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     "JwtValidator returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           AuthTestData.jwtWithMockedSignature.asRight
         )
         jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -549,11 +549,11 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -566,7 +566,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -581,7 +581,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps throws an exception" should {
 
         "return Internal Server Error" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -593,7 +593,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -609,7 +609,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
@@ -676,26 +676,26 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "NOT call either JwtValidator or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtValidator, managementService)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
     "the JWT is provided should call JwtValidator providing access token" in {
-      jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- managementRoutes.run(request)
-        _ = verify(jwtValidator).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteApiKey)))(eqTo(tokenString))
       } yield ()
     }
 
     "JwtValidator returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -707,7 +707,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
@@ -724,7 +724,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -736,7 +736,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       }
 
       "NOT call ManagementService" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
@@ -750,7 +750,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     "JwtValidator returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
-        jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           AuthTestData.jwtWithMockedSignature.asRight
         )
         jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -764,11 +764,11 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -781,7 +781,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             jwtWithEmptySubField.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
@@ -796,7 +796,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps throws an exception" should {
 
         "return Internal Server Error" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -808,7 +808,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "NOT call ManagementService" in {
-          jwtValidator.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
             AuthTestData.jwtWithMockedSignature.asRight
           )
           jwtOps.extractUserId(any[JsonWebToken]) throws testException
@@ -824,7 +824,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)

@@ -14,7 +14,7 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
     "return Right containing userId" when {
       "provided with JsonWebToken containing non-empty 'sub' field" in {
         val jwt = AuthTestData.jwtWithMockedSignature
-        val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+        val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
         jwtOps.extractUserId(jwt) shouldBe Right(expectedUserId)
       }
@@ -24,7 +24,7 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
 
       "provided with JsonWebToken without the 'sub' field" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field is not present in provided JWT."))
 
@@ -33,7 +33,7 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
 
       "provided with JsonWebToken containing empty 'sub' field" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = Some(""))
+          claim = AuthTestData.jwtClaim.copy(subject = Some(""))
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 
@@ -42,7 +42,7 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
 
       "provided with JsonWebToken containing 'sub' field with only white characters" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = Some("   \n   \n\n "))
+          claim = AuthTestData.jwtClaim.copy(subject = Some("   \n   \n\n "))
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 

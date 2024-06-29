@@ -8,7 +8,7 @@ import cats.implicits.catsSyntaxEitherId
 class JwtOps {
 
   def extractUserId(jwt: JsonWebToken): Either[ErrorInfo, String] =
-    jwt.jwtClaim.subject.map(_.trim) match {
+    jwt.claim.subject.map(_.trim) match {
       case None     => SubFieldNotProvidedErrorInfo.asLeft
       case Some("") => SubFieldIsEmptyErrorInfo.asLeft
 

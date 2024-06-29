@@ -3,7 +3,7 @@ package apikeysteward.routes
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{JwtOps, JwtValidator}
+import apikeysteward.routes.auth.{JwtOps, JwtAuthorizer}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ManagementEndpoints}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementService: ManagementService) {
+class ManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -22,7 +22,7 @@ class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementSer
     serverInterpreter
       .toRoutes(
         ManagementEndpoints.createApiKeyEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => request =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
@@ -39,7 +39,7 @@ class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementSer
     serverInterpreter
       .toRoutes(
         ManagementEndpoints.getAllApiKeysEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => _ =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
@@ -54,7 +54,7 @@ class ManagementRoutes(jwtOps: JwtOps, jwtValidator: JwtValidator, managementSer
     serverInterpreter
       .toRoutes(
         ManagementEndpoints.deleteApiKeyEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => publicKeyId =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))

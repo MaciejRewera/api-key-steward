@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
-import apikeysteward.routes.auth.JwtValidator
+import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementService) {
+class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -22,7 +22,7 @@ class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementServi
     serverInterpreter
       .toRoutes(
         AdminEndpoints.createApiKeyEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (request, userId) = input
             managementService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
@@ -38,7 +38,7 @@ class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementServi
     serverInterpreter
       .toRoutes(
         AdminEndpoints.getAllApiKeysForUserEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => userId =>
             for {
               allApiKeyData <- managementService.getAllApiKeysFor(userId)
@@ -52,7 +52,7 @@ class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementServi
     serverInterpreter
       .toRoutes(
         AdminEndpoints.getAllUserIdsEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => _ =>
             managementService.getAllUserIds
               .map(allUserIds => (StatusCode.Ok -> allUserIds).asRight)
@@ -63,7 +63,7 @@ class AdminRoutes(jwtValidator: JwtValidator, managementService: ManagementServi
     serverInterpreter
       .toRoutes(
         AdminEndpoints.deleteApiKeyEndpoint
-          .serverSecurityLogic(jwtValidator.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (userId, publicKeyId) = input
             managementService.deleteApiKey(userId, publicKeyId).map {

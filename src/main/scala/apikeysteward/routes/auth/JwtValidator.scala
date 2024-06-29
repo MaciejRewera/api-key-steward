@@ -1,55 +1,135 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.auth.JwtValidator._
-import apikeysteward.routes.auth.model.JsonWebToken
-import cats.effect.IO
+import apikeysteward.config.JwtConfig
+import apikeysteward.routes.auth.JwtValidator.JwtValidatorError
+import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
+import apikeysteward.routes.auth.model.{JsonWebToken, JwtClaimCustom}
+import apikeysteward.utils.Logging
+import cats.data.NonEmptyChain
+import cats.implicits._
+import pdi.jwt.JwtHeader
 
-class JwtValidator(jwtDecoder: JwtDecoder) {
+import java.time.{Clock, Instant}
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
-  def authorised(accessToken: AccessToken): IO[Either[ErrorInfo, JsonWebToken]] =
-    jwtDecoder
-      .decode(accessToken)
-      .map(_.left.map(error => ErrorInfo.unauthorizedErrorInfo(Some(error.message))))
+class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging {
 
-  def authorisedWithPermissions(permissions: Set[Permission] = Set.empty)(
-      accessToken: AccessToken
-  ): IO[Either[ErrorInfo, JsonWebToken]] =
-    authorised(accessToken).map {
-      case Right(jwt)  => validatePermissions(permissions)(jwt)
-      case Left(error) => Left(error)
+  def validateKeyId(jwtHeader: JwtHeader): Either[JwtValidatorError, JwtHeader] =
+    jwtHeader.keyId match {
+      case None     => MissingKeyIdFieldError.asLeft
+      case Some("") => MissingKeyIdFieldError.asLeft
+      case Some(_)  => jwtHeader.asRight
     }
 
-  private def validatePermissions(
-      requiredPermissions: Set[Permission]
-  )(jwt: JsonWebToken): Either[ErrorInfo, JsonWebToken] = {
-    val tokenPermissions = extractTokenPermissions(jwt)
+  def validateExpirationTimeClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
+    jwtClaim.expiration match {
+      case None if jwtConfig.requireExp => MissingExpirationTimeClaimError.asLeft
+      case _                            => jwtClaim.asRight
+    }
 
-    if (requiredPermissions.subsetOf(tokenPermissions))
-      Right(jwt)
-    else
-      Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions))
+  def validateNotBeforeClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
+    jwtClaim.notBefore match {
+      case None if jwtConfig.requireNbf => MissingNotBeforeClaimError.asLeft
+      case _                            => jwtClaim.asRight
+    }
+
+  def validateIssuedAtClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
+    jwtClaim.issuedAt match {
+      case None if jwtConfig.requireIat => MissingIssuedAtClaimError.asLeft
+      case Some(issuedAtClaim)          => validateIssuedAtClaim(issuedAtClaim).map(_ => jwtClaim)
+      case _                            => jwtClaim.asRight
+    }
+
+  private def validateIssuedAtClaim(issuedAtClaim: Long): Either[JwtValidatorError, Long] =
+    jwtConfig.maxAge match {
+      case Some(maxTokenAge) if isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge) => issuedAtClaim.asRight
+      case None                                                                     => issuedAtClaim.asRight
+
+      case Some(maxTokenAge) => TokenTooOldError(maxTokenAge).asLeft
+    }
+
+  private def isYoungerThanMaxAllowed(issuedAtClaim: Long, maxTokenAge: FiniteDuration): Boolean = {
+    val issuedAt = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
+    val nowInSeconds = FiniteDuration(Instant.now(clock).getEpochSecond, TimeUnit.SECONDS)
+
+    issuedAt.plus(maxTokenAge) > nowInSeconds
   }
 
-  private def extractTokenPermissions(jwt: JsonWebToken): Set[Permission] = jwt.jwtClaim.permissions match {
-    case Some(tokenPermissions) => tokenPermissions
-    case None                   => Set.empty
+  def validateIssuerClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
+    (jwtClaim.issuer, jwtConfig.requireIss) match {
+      case (None, true)     => MissingIssuerClaimError.asLeft
+      case (None, _)        => jwtClaim.asRight
+      case (Some(""), true) => MissingIssuerClaimError.asLeft
+      case (Some(""), _)    => jwtClaim.asRight
+
+      case (Some(issuer), _) if jwtConfig.allowedIssuers(issuer) => jwtClaim.asRight
+      case (Some(issuer), _)                                     => IncorrectIssuerClaimError(issuer).asLeft
+    }
+
+  def validateAudienceClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
+    jwtClaim.audience match {
+      case None if jwtConfig.requireAud => MissingAudienceClaimError.asLeft
+      case None                         => jwtClaim.asRight
+
+      case Some(audienceSet) => validateAudienceClaim(audienceSet).map(_ => jwtClaim)
+    }
+
+  private def validateAudienceClaim(audienceSet: Set[String]): Either[JwtValidatorError, Set[String]] = {
+    val filteredAudienceSet = audienceSet.filter(_.nonEmpty)
+
+    (filteredAudienceSet, filteredAudienceSet.isEmpty) match {
+      case (_, true) if jwtConfig.requireAud => MissingAudienceClaimError.asLeft
+      case (_, true)                         => audienceSet.asRight
+
+      case (filteredAudienceSet, _) =>
+        if (isAtLeastOneAllowedAudiencePresent(filteredAudienceSet))
+          audienceSet.asRight
+        else
+          IncorrectAudienceClaimError(filteredAudienceSet).asLeft
+    }
   }
+
+  private def isAtLeastOneAllowedAudiencePresent(audienceSet: Set[String]): Boolean =
+    jwtConfig.allowedAudiences.exists(audienceSet(_))
+
+  def validateAll(token: JsonWebToken): Either[NonEmptyChain[JwtValidatorError], JsonWebToken] =
+    (
+      validateKeyId(token.header).toValidatedNec,
+      validateExpirationTimeClaim(token.claim).toValidatedNec,
+      validateNotBeforeClaim(token.claim).toValidatedNec,
+      validateIssuedAtClaim(token.claim).toValidatedNec,
+      validateIssuerClaim(token.claim).toValidatedNec,
+      validateAudienceClaim(token.claim).toValidatedNec
+    ).mapN((_, _, _, _, _, _) => token).toEither
 
 }
 
 object JwtValidator {
-  type AccessToken = String
-  type Permission = String
 
-  def buildNoRequiredPermissionsUnauthorizedErrorInfo(
-      requiredPermissions: Set[Permission],
-      tokenPermissions: Set[Permission]
-  ): ErrorInfo =
-    ErrorInfo.unauthorizedErrorInfo(Some(buildErrorMessage(requiredPermissions, tokenPermissions)))
+  sealed abstract class JwtValidatorError(val message: String)
+  object JwtValidatorError {
 
-  private def buildErrorMessage(requiredPermissions: Set[Permission], providedPermissions: Set[Permission]): String =
-    s"Provided token does not contain all required permissions: ${requiredPermissions.mkString("[", ", ", "]")}. Permissions provided in the token: ${providedPermissions
-      .mkString("[", ", ", "]")}."
+    case object MissingKeyIdFieldError extends JwtValidatorError("Key ID (kid) claim is missing.")
 
+    case object MissingExpirationTimeClaimError extends JwtValidatorError("Expiration time (exp) claim is missing.")
+
+    case object MissingNotBeforeClaimError extends JwtValidatorError("Not before (nbf) claim is missing.")
+
+    case object MissingIssuerClaimError extends JwtValidatorError("Issuer (iss) claim is missing.")
+
+    case class IncorrectIssuerClaimError(issuer: String)
+        extends JwtValidatorError(s"Issuer (iss): '$issuer' is not supported.")
+
+    case object MissingAudienceClaimError extends JwtValidatorError("Audience (aud) claim is missing.")
+
+    case class IncorrectAudienceClaimError(audience: Set[String])
+        extends JwtValidatorError(s"Audience (aud) claim is incorrect: ${audience.mkString("[", ", ", "]")}.")
+
+    case object MissingIssuedAtClaimError extends JwtValidatorError("Issued at (iat) claim is missing.")
+
+    case class TokenTooOldError(maxTokenAge: FiniteDuration)
+        extends JwtValidatorError(s"The provided JWT is older than maximum allowed age of: ${maxTokenAge.toString}")
+
+  }
 }
