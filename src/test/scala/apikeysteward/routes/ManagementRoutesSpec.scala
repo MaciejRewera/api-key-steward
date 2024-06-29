@@ -51,7 +51,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
       AuthTestData.jwtWithMockedSignature.asRight
     )
-    jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get.asRight
+    jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight
   }.flatMap(_ => test)
 
   "ManagementRoutes on POST /api-key" when {
@@ -173,7 +173,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
@@ -380,7 +380,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
@@ -549,7 +549,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
@@ -609,7 +609,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
@@ -764,7 +764,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Left containing ErrorInfo" should {
 
         val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
-          jwtClaim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(subject = None)
         )
 
         "return Unauthorized" in {
@@ -824,7 +824,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "call ManagementService" in authorizedFixture {
           managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
-          val expectedUserId = AuthTestData.jwtWithMockedSignature.jwtClaim.subject.get
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)

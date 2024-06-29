@@ -454,15 +454,15 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
     "return Left containing errors" when {
 
       "there is a single error during token validation" in {
-        val jwtSingleError = jwtWithMockedSignature.copy(jwtHeader = jwtHeaderWithoutKid)
+        val jwtSingleError = jwtWithMockedSignature.copy(header = jwtHeaderWithoutKid)
 
         jwtValidator.validateAll(jwtSingleError) shouldBe Left(NonEmptyChainImpl.one(MissingKeyIdFieldError))
       }
 
       "there are multiple errors during token validation" in {
         val jwtMultipleErrors = jwtWithMockedSignature.copy(
-          jwtHeader = jwtHeaderWithoutKid,
-          jwtClaim = jwtClaim.copy(
+          header = jwtHeaderWithoutKid,
+          claim = jwtClaim.copy(
             issuer = None,
             audience = None,
             expiration = None

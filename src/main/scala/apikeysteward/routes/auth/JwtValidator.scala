@@ -89,12 +89,12 @@ class JwtValidator(authConfig: AuthConfig)(implicit clock: Clock) extends Loggin
 
   def validateAll(token: JsonWebToken): Either[NonEmptyChain[JwtValidatorError], JsonWebToken] =
     (
-      validateKeyId(token.jwtHeader).toValidatedNec,
-      validateExpirationTimeClaim(token.jwtClaim).toValidatedNec,
-      validateNotBeforeClaim(token.jwtClaim).toValidatedNec,
-      validateIssuedAtClaim(token.jwtClaim).toValidatedNec,
-      validateIssuerClaim(token.jwtClaim).toValidatedNec,
-      validateAudienceClaim(token.jwtClaim).toValidatedNec
+      validateKeyId(token.header).toValidatedNec,
+      validateExpirationTimeClaim(token.claim).toValidatedNec,
+      validateNotBeforeClaim(token.claim).toValidatedNec,
+      validateIssuedAtClaim(token.claim).toValidatedNec,
+      validateIssuerClaim(token.claim).toValidatedNec,
+      validateAudienceClaim(token.claim).toValidatedNec
     ).mapN((_, _, _, _, _, _) => token).toEither
 
 }

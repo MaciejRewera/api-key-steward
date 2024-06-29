@@ -139,7 +139,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
@@ -166,7 +166,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains this single permission" in {
             val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -186,7 +186,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
@@ -199,7 +199,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains different permissions" in {
             val tokenPermissions = Some(Set(permissionWrite_1, permissionRead_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
@@ -227,7 +227,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains all required permissions" in {
             val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -238,7 +238,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains all required permissions together with other permissions" in {
             val tokenPermissions = Some(requiredPermissions ++ Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -252,7 +252,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -265,7 +265,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains different permissions" in {
             val tokenPermissions = Some(Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -280,7 +280,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains only a subset of required permissions" in {
             val tokenPermissions = Some(Set(permissionRead_1))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
@@ -295,7 +295,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
           "provided token contains only a subset of required permissions together with other permissions" in {
             val tokenPermissions = Some(Set(permissionRead_1, permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(jwtClaim = jwtClaim.copy(permissions = tokenPermissions))
+            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)

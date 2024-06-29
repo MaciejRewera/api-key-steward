@@ -129,8 +129,8 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
           _ = verify(jwtValidator).validateAll(jwtCaptor.capture)
           jwt = jwtCaptor.getValue
           _ = jwt.content shouldBe jwtWithoutKidString
-          _ = jwt.jwtHeader shouldBe jwtHeaderWithoutKid
-          _ = jwt.jwtClaim shouldBe jwtClaim
+          _ = jwt.header shouldBe jwtHeaderWithoutKid
+          _ = jwt.claim shouldBe jwtClaim
         } yield ()
       }
 

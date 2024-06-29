@@ -31,7 +31,7 @@ class JwtAuthorizer(jwtDecoder: JwtDecoder) {
       Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, tokenPermissions))
   }
 
-  private def extractTokenPermissions(jwt: JsonWebToken): Set[Permission] = jwt.jwtClaim.permissions match {
+  private def extractTokenPermissions(jwt: JsonWebToken): Set[Permission] = jwt.claim.permissions match {
     case Some(tokenPermissions) => tokenPermissions
     case None                   => Set.empty
   }

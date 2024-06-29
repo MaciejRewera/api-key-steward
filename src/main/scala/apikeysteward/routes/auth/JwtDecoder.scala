@@ -23,7 +23,7 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
       jwt <- decodeNoSignature(accessToken)
       _ <- validateToken(jwt)
 
-      keyId <- extractKeyId(jwt.jwtHeader)
+      keyId <- extractKeyId(jwt.header)
       jwk <- fetchJwk(keyId)
       publicKey <- generatePublicKey(jwk)
 

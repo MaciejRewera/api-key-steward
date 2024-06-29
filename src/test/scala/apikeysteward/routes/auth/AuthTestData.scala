@@ -73,8 +73,8 @@ private[routes] object AuthTestData {
   val jwtString: String = JwtCustom.encode(jwtHeader, jwtClaim, privateKey)
   val jwtWithMockedSignature: JsonWebToken = JsonWebToken(
     content = jwtString,
-    jwtHeader = jwtHeader,
-    jwtClaim = jwtClaim,
+    header = jwtHeader,
+    claim = jwtClaim,
     signature = "test-signature"
   )
 
