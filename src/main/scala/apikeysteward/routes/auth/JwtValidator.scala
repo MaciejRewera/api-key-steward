@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.config.AuthConfig
+import apikeysteward.config.JwtConfig
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtClaimCustom}
@@ -13,7 +13,7 @@ import java.time.{Clock, Instant}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
-class JwtValidator(authConfig: AuthConfig)(implicit clock: Clock) extends Logging {
+class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging {
 
   def validateKeyId(jwtHeader: JwtHeader): Either[JwtValidatorError, JwtHeader] =
     jwtHeader.keyId match {
@@ -24,25 +24,25 @@ class JwtValidator(authConfig: AuthConfig)(implicit clock: Clock) extends Loggin
 
   def validateExpirationTimeClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
     jwtClaim.expiration match {
-      case None if authConfig.requireExp => MissingExpirationTimeClaimError.asLeft
-      case _                             => jwtClaim.asRight
+      case None if jwtConfig.requireExp => MissingExpirationTimeClaimError.asLeft
+      case _                            => jwtClaim.asRight
     }
 
   def validateNotBeforeClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
     jwtClaim.notBefore match {
-      case None if authConfig.requireNbf => MissingNotBeforeClaimError.asLeft
-      case _                             => jwtClaim.asRight
+      case None if jwtConfig.requireNbf => MissingNotBeforeClaimError.asLeft
+      case _                            => jwtClaim.asRight
     }
 
   def validateIssuedAtClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
     jwtClaim.issuedAt match {
-      case None if authConfig.requireIat => MissingIssuedAtClaimError.asLeft
-      case Some(issuedAtClaim)           => validateIssuedAtClaim(issuedAtClaim).map(_ => jwtClaim)
-      case _                             => jwtClaim.asRight
+      case None if jwtConfig.requireIat => MissingIssuedAtClaimError.asLeft
+      case Some(issuedAtClaim)          => validateIssuedAtClaim(issuedAtClaim).map(_ => jwtClaim)
+      case _                            => jwtClaim.asRight
     }
 
   private def validateIssuedAtClaim(issuedAtClaim: Long): Either[JwtValidatorError, Long] =
-    authConfig.maxTokenAge match {
+    jwtConfig.maxAge match {
       case Some(maxTokenAge) if isYoungerThanMaxAllowed(issuedAtClaim, maxTokenAge) => issuedAtClaim.asRight
       case None                                                                     => issuedAtClaim.asRight
 
@@ -57,20 +57,20 @@ class JwtValidator(authConfig: AuthConfig)(implicit clock: Clock) extends Loggin
   }
 
   def validateIssuerClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
-    (jwtClaim.issuer, authConfig.requireIss) match {
+    (jwtClaim.issuer, jwtConfig.requireIss) match {
       case (None, true)     => MissingIssuerClaimError.asLeft
       case (None, _)        => jwtClaim.asRight
       case (Some(""), true) => MissingIssuerClaimError.asLeft
       case (Some(""), _)    => jwtClaim.asRight
 
-      case (Some(issuer), _) if authConfig.allowedIssuers.contains(issuer) => jwtClaim.asRight
-      case (Some(issuer), _)                                               => IncorrectIssuerClaimError(issuer).asLeft
+      case (Some(issuer), _) if jwtConfig.allowedIssuers.contains(issuer) => jwtClaim.asRight
+      case (Some(issuer), _)                                              => IncorrectIssuerClaimError(issuer).asLeft
     }
 
   def validateAudienceClaim(jwtClaim: JwtClaimCustom): Either[JwtValidatorError, JwtClaimCustom] =
     jwtClaim.audience match {
-      case None if authConfig.requireAud => MissingAudienceClaimError.asLeft
-      case None                          => jwtClaim.asRight
+      case None if jwtConfig.requireAud => MissingAudienceClaimError.asLeft
+      case None                         => jwtClaim.asRight
 
       case Some(audienceSet) => validateAudienceClaim(audienceSet).map(_ => jwtClaim)
     }
@@ -79,11 +79,11 @@ class JwtValidator(authConfig: AuthConfig)(implicit clock: Clock) extends Loggin
     val filteredAudienceSet = audienceSet.filter(_.nonEmpty)
 
     (filteredAudienceSet, filteredAudienceSet.isEmpty) match {
-      case (_, true) if authConfig.requireAud => MissingAudienceClaimError.asLeft
-      case (_, true)                          => audienceSet.asRight
+      case (_, true) if jwtConfig.requireAud => MissingAudienceClaimError.asLeft
+      case (_, true)                         => audienceSet.asRight
 
-      case (filteredAudienceSet, _) if filteredAudienceSet(authConfig.audience) => audienceSet.asRight
-      case (filteredAudienceSet, _)                                             => IncorrectAudienceClaimError(filteredAudienceSet).asLeft
+      case (filteredAudienceSet, _) if filteredAudienceSet(jwtConfig.allowedAudience) => audienceSet.asRight
+      case (filteredAudienceSet, _)                                                   => IncorrectAudienceClaimError(filteredAudienceSet).asLeft
     }
   }
 
