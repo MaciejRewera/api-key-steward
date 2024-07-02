@@ -6,6 +6,7 @@ import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories._
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth._
+import apikeysteward.routes.auth.model.JwtCustom
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
 import apikeysteward.services.{ApiKeyValidationService, LicenseService, ManagementService}
 import apikeysteward.utils.Logging
@@ -16,6 +17,7 @@ import doobie.ExecutionContexts
 import doobie.hikari.HikariTransactor
 import org.http4s.HttpApp
 import org.http4s.blaze.client.BlazeClientBuilder
+import org.http4s.client.Client
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import org.http4s.server.middleware.CORS
@@ -26,7 +28,7 @@ import scala.concurrent.duration.DurationInt
 
 object Application extends IOApp.Simple with Logging {
 
-  private implicit val clock: Clock = Clock.systemUTC()
+  private implicit val clock: Clock = Clock.systemUTC
 
   override def run: IO[Unit] = {
 
@@ -52,12 +54,6 @@ object Application extends IOApp.Simple with Logging {
         migrationResult <- DatabaseMigrator.migrateDatabase(transactor.kernel, config.database)
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
-        jwtValidator: JwtValidator = new JwtValidator(config.auth.jwt)
-        jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
-        publicKeyGenerator = new PublicKeyGenerator
-        jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)
-        jwtAuthorizer = new JwtAuthorizer(jwtDecoder)
-
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
         checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
@@ -68,26 +64,16 @@ object Application extends IOApp.Simple with Logging {
           checksumCalculator,
           checksumCodec
         )
-        secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-        apiKeyDb = new ApiKeyDb
-        apiKeyDataDb = new ApiKeyDataDb
-        scopeDb = new ScopeDb
-        apiKeyDataScopesDb = new ApiKeyDataScopesDb
-
-        apiKeyRepository: ApiKeyRepository = new DbApiKeyRepository(
-          apiKeyDb,
-          apiKeyDataDb,
-          scopeDb,
-          apiKeyDataScopesDb,
-          secureHashGenerator
-        )(transactor)
+        apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
+
         jwtOps = new JwtOps
+        jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
         managementRoutes = new ManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes
         adminRoutes = new AdminRoutes(jwtAuthorizer, managementService).allRoutes
 
@@ -112,6 +98,33 @@ object Application extends IOApp.Simple with Logging {
         _ <- IO.race(licenseService.periodicallyValidateLicense(), app.useForever)
       } yield ()
     }
+  }
+
+  private def buildApiKeyRepository(config: AppConfig, transactor: HikariTransactor[IO]) = {
+    val apiKeyDb = new ApiKeyDb
+    val apiKeyDataDb = new ApiKeyDataDb
+    val scopeDb = new ScopeDb
+    val apiKeyDataScopesDb = new ApiKeyDataScopesDb
+
+    val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
+
+    new DbApiKeyRepository(
+      apiKeyDb,
+      apiKeyDataDb,
+      scopeDb,
+      apiKeyDataScopesDb,
+      secureHashGenerator
+    )(transactor)
+  }
+
+  private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {
+    val jwtValidator: JwtValidator = new JwtValidator(config.auth.jwt)
+    val jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
+    val publicKeyGenerator = new PublicKeyGenerator
+    val jwtCustom = new JwtCustom(clock, config.auth.jwt)
+    val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
+
+    new JwtAuthorizer(jwtDecoder)
   }
 
   private def buildServerResource(httpApp: HttpApp[IO], config: AppConfig): Resource[IO, Server] =

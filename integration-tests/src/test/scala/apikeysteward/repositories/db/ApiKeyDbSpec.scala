@@ -41,8 +41,8 @@ class ApiKeyDbSpec
   private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(hashedApiKey_1.value)
   private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(hashedApiKey_2.value)
 
-  private val testApiKeyEntityRead_1 = ApiKeyEntity.Read(id = 1L, createdAt = now, updatedAt = now)
-  private val testApiKeyEntityRead_2 = ApiKeyEntity.Read(id = 2L, createdAt = now, updatedAt = now)
+  private val testApiKeyEntityRead_1 = ApiKeyEntity.Read(id = 1L, createdAt = nowInstant, updatedAt = nowInstant)
+  private val testApiKeyEntityRead_2 = ApiKeyEntity.Read(id = 2L, createdAt = nowInstant, updatedAt = nowInstant)
 
   "ApiKeyDb on insert" when {
 
@@ -66,7 +66,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, nowInstant, nowInstant)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }
@@ -96,10 +96,10 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 2
 
-          val expectedApiKeyRow_1 = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
+          val expectedApiKeyRow_1 = (resApiKeys.head._1, hashedApiKey_1.value, nowInstant, nowInstant)
           resApiKeys.head shouldBe expectedApiKeyRow_1
 
-          val expectedApiKeyRow_2 = (resApiKeys(1)._1, hashedApiKey_2.value, now, now)
+          val expectedApiKeyRow_2 = (resApiKeys(1)._1, hashedApiKey_2.value, nowInstant, nowInstant)
           resApiKeys(1) shouldBe expectedApiKeyRow_2
         }
       }
@@ -130,7 +130,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, nowInstant, nowInstant)
 
           resApiKeys.head shouldBe expectedApiKeyRow
         }
@@ -217,7 +217,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_1.value, nowInstant, nowInstant)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }
@@ -235,7 +235,7 @@ class ApiKeyDbSpec
 
         result.asserting { case (existingId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyEntity.Read(existingId, now, now)
+          res.get shouldBe ApiKeyEntity.Read(existingId, nowInstant, nowInstant)
         }
       }
 
@@ -265,7 +265,7 @@ class ApiKeyDbSpec
 
         result.asserting { case (existingId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyEntity.Read(existingId, now, now)
+          res.get shouldBe ApiKeyEntity.Read(existingId, nowInstant, nowInstant)
         }
       }
 
@@ -282,7 +282,7 @@ class ApiKeyDbSpec
         result.asserting { resApiKeys =>
           resApiKeys.size shouldBe 1
 
-          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_2.value, now, now)
+          val expectedApiKeyRow = (resApiKeys.head._1, hashedApiKey_2.value, nowInstant, nowInstant)
           resApiKeys.head shouldBe expectedApiKeyRow
         }
       }

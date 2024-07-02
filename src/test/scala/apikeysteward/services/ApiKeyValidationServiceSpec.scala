@@ -58,7 +58,7 @@ class ApiKeyValidationServiceSpec
 
         "the key's expiresAt is 1 nanosecond in the future" in {
           val checksum = 42L
-          val apiKeyData = apiKeyData_1.copy(expiresAt = now.plusNanos(1))
+          val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.plusNanos(1))
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
@@ -161,18 +161,18 @@ class ApiKeyValidationServiceSpec
 
         "expiresAt equals current time" in {
           val checksum = 42L
-          val apiKeyData = apiKeyData_1.copy(expiresAt = now)
+          val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant)
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
           apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
 
-          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyExpiredError(now)))
+          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyExpiredError(nowInstant)))
         }
 
         "expiresAt is 1 nanosecond in the past" in {
           val checksum = 42L
-          val apiKeyData = apiKeyData_1.copy(expiresAt = now.minusNanos(1))
+          val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.minusNanos(1))
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
@@ -180,12 +180,12 @@ class ApiKeyValidationServiceSpec
 
           apiKeyValidationService
             .validateApiKey(apiKey_1)
-            .asserting(result => result shouldBe Left(ApiKeyExpiredError(now.minusNanos(1))))
+            .asserting(result => result shouldBe Left(ApiKeyExpiredError(nowInstant.minusNanos(1))))
         }
 
         "expiresAt is 1 second in the past" in {
           val checksum = 42L
-          val apiKeyData = apiKeyData_1.copy(expiresAt = now.minusSeconds(1))
+          val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.minusSeconds(1))
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
@@ -193,7 +193,7 @@ class ApiKeyValidationServiceSpec
 
           apiKeyValidationService
             .validateApiKey(apiKey_1)
-            .asserting(result => result shouldBe Left(ApiKeyExpiredError(now.minusSeconds(1))))
+            .asserting(result => result shouldBe Left(ApiKeyExpiredError(nowInstant.minusSeconds(1))))
         }
       }
     }

@@ -1,12 +1,13 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.base.FixedJwtCustom
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.AuthTestData._
 import apikeysteward.routes.auth.JwtAuthorizer.buildNoRequiredPermissionsUnauthorizedErrorInfo
 import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError.MissingKeyIdFieldError
 import apikeysteward.routes.auth.PublicKeyGenerator._
-import apikeysteward.routes.auth.model.{JsonWebToken, JwtCustom}
+import apikeysteward.routes.auth.model.JsonWebToken
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
@@ -19,7 +20,13 @@ import pdi.jwt.exceptions.JwtExpirationException
 
 import java.time.Instant
 
-class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
+class JwtAuthorizerSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with EitherValues
+    with FixedJwtCustom {
 
   private val jwtDecoder = mock[JwtDecoder]
 
@@ -143,7 +150,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
+              jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
 
             subjectFuncNoPermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
@@ -170,7 +177,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
@@ -190,7 +197,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
+              jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(
               _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
@@ -203,7 +210,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val accessToken: String =
-              JwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
+              jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(
               _ shouldBe Left(
@@ -231,7 +238,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
@@ -242,7 +249,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
@@ -256,7 +263,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
@@ -269,7 +276,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(
@@ -284,7 +291,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(
@@ -299,7 +306,7 @@ class JwtAuthorizerSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
             jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = JwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(

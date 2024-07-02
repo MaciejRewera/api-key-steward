@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.{apiKeyData_1, apiKeyRandomSection_1, apiKey_1}
+import apikeysteward.base.TestData.{apiKeyData_1, apiKey_1}
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
@@ -69,7 +69,7 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
 
     "return Forbidden when ApiKeyService returns Left containing ApiKeyExpiredError" in {
       apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(
-        Left(ApiKeyExpiredError(now.minusSeconds(1).plusMillis(123).plusNanos(456)))
+        Left(ApiKeyExpiredError(nowInstant.minusSeconds(1).plusMillis(123).plusNanos(456)))
       )
 
       for {

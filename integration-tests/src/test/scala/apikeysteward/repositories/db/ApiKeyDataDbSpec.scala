@@ -461,7 +461,7 @@ class ApiKeyDataDbSpec
     ): ApiKeyDataDeletedEntity.Read =
       ApiKeyDataDeletedEntity.Read(
         id = id,
-        deletedAt = now,
+        deletedAt = nowInstant,
         apiKeyDataId = apiKeyDataEntityRead.id,
         apiKeyId = apiKeyDataEntityRead.apiKeyId,
         publicKeyId = apiKeyDataEntityRead.publicKeyId,

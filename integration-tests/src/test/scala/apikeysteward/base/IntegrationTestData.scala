@@ -42,7 +42,7 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 1",
     description = Some("Test key description no. 1"),
     userId = testUserId_1,
-    expiresAt = now.plusSeconds(ttlSeconds)
+    expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
   val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
     id = 1L,
@@ -51,9 +51,9 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 1",
     description = Some("Test key description no. 1"),
     userId = testUserId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
 
   val apiKeyDataEntityWrite_2 = ApiKeyDataEntity.Write(
@@ -62,7 +62,7 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 2",
     description = Some("Test key description no. 2"),
     userId = testUserId_2,
-    expiresAt = now.plusSeconds(ttlSeconds)
+    expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
   val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
     id = 2L,
@@ -71,9 +71,9 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 2",
     description = Some("Test key description no. 2"),
     userId = testUserId_2,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
 
   val apiKeyDataEntityWrite_3 = ApiKeyDataEntity.Write(
@@ -82,7 +82,7 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 3",
     description = Some("Test key description no. 3"),
     userId = testUserId_3,
-    expiresAt = now.plusSeconds(ttlSeconds)
+    expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
   val apiKeyDataEntityRead_3 = ApiKeyDataEntity.Read(
     id = 3L,
@@ -91,9 +91,9 @@ trait IntegrationTestData extends FixedClock {
     name = "Test API Key name no. 3",
     description = Some("Test key description no. 3"),
     userId = testUserId_3,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
 
 }
