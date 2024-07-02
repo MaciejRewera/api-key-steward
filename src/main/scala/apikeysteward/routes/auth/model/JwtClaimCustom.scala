@@ -24,7 +24,10 @@ object JwtClaimCustom {
   implicit def codec(implicit config: JwtConfig): Codec[JwtClaimCustom] = new Codec[JwtClaimCustom] {
 
     override def apply(claim: JwtClaimCustom): Json = {
-      val userIdFieldOpt = config.userIdClaimName.map(_ -> claim.userId.orElse(Some("")).map(Json.fromString))
+      val userIdFieldOpt: Option[(String, Option[Json])] = config.userIdClaimName.flatMap {
+        case ""        => None
+        case claimName => Some(claimName -> claim.userId.orElse(Some("")).map(Json.fromString))
+      }
 
       val definedFields = (
         Seq(

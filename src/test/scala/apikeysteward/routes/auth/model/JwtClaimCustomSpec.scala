@@ -70,7 +70,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
-          (result \\ "userId") shouldBe List.empty[Json]
+          result shouldBe parser.parse(jwtClaimJsonString).value
         }
 
         "userId field is a non-empty Option" in {
@@ -79,7 +79,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
-          (result \\ "userId") shouldBe List.empty[Json]
+          result shouldBe parser.parse(jwtClaimJsonString).value
         }
       }
 
@@ -91,7 +91,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
-          (result \\ "userId") shouldBe List.empty[Json]
+          result shouldBe parser.parse(jwtClaimJsonString).value
         }
 
         "userId field is a non-empty Option" in {
@@ -100,7 +100,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
-          (result \\ "userId") shouldBe List.empty[Json]
+          result shouldBe parser.parse(jwtClaimJsonString).value
         }
       }
     }
