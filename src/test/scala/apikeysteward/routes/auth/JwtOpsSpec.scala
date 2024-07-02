@@ -12,9 +12,9 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
   "JwtOps on extractUserId" should {
 
     "return Right containing userId" when {
-      "provided with JsonWebToken containing non-empty 'sub' field" in {
+      "provided with JsonWebToken containing non-empty userId field" in {
         val jwt = AuthTestData.jwtWithMockedSignature
-        val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
+        val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.userId.get
 
         jwtOps.extractUserId(jwt) shouldBe Right(expectedUserId)
       }
@@ -22,27 +22,27 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
 
     "return Left containing ErrorInfo" when {
 
-      "provided with JsonWebToken without the 'sub' field" in {
+      "provided with JsonWebToken without the userId field" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          claim = AuthTestData.jwtClaim.copy(subject = None)
+          claim = AuthTestData.jwtClaim.copy(userId = None)
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field is not present in provided JWT."))
 
         jwtOps.extractUserId(jwt) shouldBe Left(expectedErrorInfo)
       }
 
-      "provided with JsonWebToken containing empty 'sub' field" in {
+      "provided with JsonWebToken containing empty userId field" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          claim = AuthTestData.jwtClaim.copy(subject = Some(""))
+          claim = AuthTestData.jwtClaim.copy(userId = Some(""))
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 
         jwtOps.extractUserId(jwt) shouldBe Left(expectedErrorInfo)
       }
 
-      "provided with JsonWebToken containing 'sub' field with only white characters" in {
+      "provided with JsonWebToken containing userId field with only white characters" in {
         val jwt = AuthTestData.jwtWithMockedSignature.copy(
-          claim = AuthTestData.jwtClaim.copy(subject = Some("   \n   \n\n "))
+          claim = AuthTestData.jwtClaim.copy(userId = Some("   \n   \n\n "))
         )
         val expectedErrorInfo = ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
 

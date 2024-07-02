@@ -12,11 +12,11 @@ import scala.concurrent.duration.DurationInt
 
 class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom with EitherValues {
 
-  private def buildJwtConfig(userIdFieldName: Option[String]): JwtConfig = JwtConfig(
+  private def buildJwtConfig(userIdClaimName: Option[String]): JwtConfig = JwtConfig(
     allowedIssuers = Set.empty,
     allowedAudiences = Set.empty,
     maxAge = None,
-    userIdClaimName = userIdFieldName,
+    userIdClaimName = userIdClaimName,
     requireExp = true,
     requireNbf = false,
     requireIat = true,
@@ -302,7 +302,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
         result.value.userId shouldBe Some(subject_1)
       }
 
-      "JwtConfig contains Option with empty String for userIdFieldName" in {
+      "JwtConfig contains Option with empty String for userIdClaimName" in {
         val jwtClaimJsonString: String =
           s"""{
              |  "iss": "$issuer_1",
@@ -324,7 +324,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
         result.value.userId shouldBe Some(subject_1)
       }
 
-      "JwtConfig contains 'sub' value for userIdFieldName" in {
+      "JwtConfig contains 'sub' value for userIdClaimName" in {
         val jwtClaimJsonString: String =
           s"""{
              |  "iss": "$issuer_1",
@@ -348,7 +348,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
     }
 
     "return JwtClaimCustom with userId value obtained from claim with provided name" when {
-      "JwtConfig contains Option with non-empty String for userIdFieldName" when {
+      "JwtConfig contains Option with non-empty String for userIdClaimName" when {
 
         "the claim is non-empty" in {
           val userId = "test-user-id-1"
@@ -400,7 +400,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
     }
 
     "return Left containing DecodingFailure" when {
-      "JwtConfig contains Option with non-empty String for userIdFieldName and this claim does not exist in provided token" in {
+      "JwtConfig contains Option with non-empty String for userIdClaimName and this claim does not exist in provided token" in {
         val jwtClaimJsonString: String =
           s"""{
              |  "iss": "$issuer_1",
