@@ -24,15 +24,19 @@ object JwtClaimCustom {
   implicit def codec(implicit config: JwtConfig): Codec[JwtClaimCustom] = new Codec[JwtClaimCustom] {
 
     override def apply(claim: JwtClaimCustom): Json = {
-      val definedFields = Seq(
-        "iss" -> claim.issuer.map(Json.fromString),
-        "sub" -> claim.subject.map(Json.fromString),
-        "aud" -> claim.audience.map(set => Json.fromValues(set.map(Json.fromString))),
-        "exp" -> claim.expiration.map(Json.fromLong),
-        "nbf" -> claim.notBefore.map(Json.fromLong),
-        "iat" -> claim.issuedAt.map(Json.fromLong),
-        "jti" -> claim.jwtId.map(Json.fromString),
-        "permissions" -> claim.permissions.map(set => Json.fromValues(set.map(Json.fromString)))
+      val userIdFieldOpt = config.userIdClaimName.map(_ -> claim.userId.orElse(Some("")).map(Json.fromString))
+
+      val definedFields = (
+        Seq(
+          "iss" -> claim.issuer.map(Json.fromString),
+          "sub" -> claim.subject.map(Json.fromString),
+          "aud" -> claim.audience.map(set => Json.fromValues(set.map(Json.fromString))),
+          "exp" -> claim.expiration.map(Json.fromLong),
+          "nbf" -> claim.notBefore.map(Json.fromLong),
+          "iat" -> claim.issuedAt.map(Json.fromLong),
+          "jti" -> claim.jwtId.map(Json.fromString),
+          "permissions" -> claim.permissions.map(set => Json.fromValues(set.map(Json.fromString)))
+        ) ++ userIdFieldOpt
       ).collect { case (key, Some(value)) =>
         key -> value
       }

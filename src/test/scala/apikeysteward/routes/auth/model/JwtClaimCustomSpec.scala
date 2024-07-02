@@ -24,6 +24,129 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
     requireAud = true
   )
 
+  "JwtClaimCustom on codec.apply(:JwtClaimCustom)" should {
+
+    "return Json with permissions field" when {
+
+      "JwtClaimCustom.permission field contains empty Option" in {
+        val jwtConfig: JwtConfig = buildJwtConfig(None)
+        val jwtClaimCustom = jwtClaim.copy(permissions = None)
+
+        val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+        val permissions = (result \\ "permissions").flatMap(_.asArray).flatten.flatMap(_.asString)
+        permissions shouldBe List.empty[Json]
+      }
+
+      "JwtClaimCustom.permission field contains Option with empty Set" in {
+        val jwtConfig: JwtConfig = buildJwtConfig(None)
+        val jwtClaimCustom = jwtClaim.copy(permissions = Some(Set.empty[String]))
+
+        val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+        val permissions = (result \\ "permissions").flatMap(_.asArray).flatten.flatMap(_.asString)
+        permissions shouldBe List.empty[Json]
+      }
+
+      "JwtClaimCustom.permission field contains Option with non-empty Set" in {
+        val jwtConfig: JwtConfig = buildJwtConfig(None)
+        val jwtClaimCustom = jwtClaim
+
+        val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+        val permissions = (result \\ "permissions").flatMap(_.asArray).flatten.flatMap(_.asString)
+        permissions.size shouldBe 2
+        permissions should contain theSameElementsAs List(permissionRead_1, permissionWrite_1)
+      }
+    }
+
+    "return Json without any extra field containing user ID" when {
+
+      "JwtConfig contains empty Option for userIdClaimName" when {
+
+        "userId field is an empty Option" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(None)
+          val jwtClaimCustom = jwtClaim.copy(userId = None)
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          (result \\ "userId") shouldBe List.empty[Json]
+        }
+
+        "userId field is a non-empty Option" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(None)
+          val jwtClaimCustom = jwtClaim
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          (result \\ "userId") shouldBe List.empty[Json]
+        }
+      }
+
+      "JwtConfig contains non-empty Option containing empty String for userIdClaimName" when {
+
+        "userId field is an empty Option" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(Some(""))
+          val jwtClaimCustom = jwtClaim.copy(userId = None)
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          (result \\ "userId") shouldBe List.empty[Json]
+        }
+
+        "userId field is a non-empty Option" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(Some(""))
+          val jwtClaimCustom = jwtClaim
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          (result \\ "userId") shouldBe List.empty[Json]
+        }
+      }
+    }
+
+    "return Json with an extra field containing user ID" when {
+
+      "JwtConfig contains non-empty Option for userIdClaimName" when {
+
+        val userIdClaimName = "test-user-id-claim-name"
+
+        "userId field contains empty Option" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
+          val jwtClaimCustom = jwtClaim.copy(userId = None)
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          val userId = (result \\ userIdClaimName).flatMap(_.asString)
+          userId.size shouldBe 1
+          userId.head shouldBe ""
+        }
+
+        "userId field contains non-empty Option with empty String" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
+          val jwtClaimCustom = jwtClaim.copy(userId = Some(""))
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          val userId = (result \\ userIdClaimName).flatMap(_.asString)
+          userId.size shouldBe 1
+          userId.head shouldBe ""
+        }
+
+        "userId field contains non-empty Option with non-empty String" in {
+          val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
+          val jwtClaimCustom = jwtClaim.copy(userId = Some("test-user-id-1"))
+
+          val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
+
+          val userId = (result \\ userIdClaimName).flatMap(_.asString)
+          userId.size shouldBe 1
+          userId.head shouldBe "test-user-id-1"
+        }
+      }
+    }
+  }
+
   "JwtClaimCustom on codec.apply(:HCursor)" should {
 
     "return JwtClaimCustom with content field containing the whole Json" when {
@@ -157,7 +280,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
     "return JwtClaimCustom with userId value equal to subject value" when {
 
-      "JwtConfig contains empty Option for userIdFieldName" in {
+      "JwtConfig contains empty Option for userIdClaimName" in {
         val jwtClaimJsonString: String =
           s"""{
              |  "iss": "$issuer_1",
