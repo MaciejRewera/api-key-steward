@@ -1,5 +1,6 @@
 package apikeysteward.routes.auth.model
 
+import apikeysteward.config.JwtConfig
 import io.circe.syntax.EncoderOps
 import pdi.jwt.algorithms.{JwtAsymmetricAlgorithm, JwtHmacAlgorithm}
 import pdi.jwt.exceptions.JwtValidationException
@@ -9,15 +10,13 @@ import java.security.{Key, PrivateKey}
 import java.time.Clock
 import javax.crypto.SecretKey
 
-object JwtCustom extends JwtCustom(Clock.systemUTC) {
-  def apply(clock: Clock): JwtCustom = new JwtCustom(clock)
-}
+class JwtCustom(override val clock: Clock, config: JwtConfig) extends JwtCirceParser[JwtHeader, JwtClaimCustom] {
 
-class JwtCustom(override val clock: Clock) extends JwtCirceParser[JwtHeader, JwtClaimCustom] {
+  implicit private val implicitConfig: JwtConfig = config
 
-  def parseHeader(header: String): JwtHeader = parseHeaderHelp(header)
+  override def parseHeader(header: String): JwtHeader = parseHeaderHelp(header)
 
-  def parseClaim(claim: String): JwtClaimCustom = parseClaimHelp(claim)
+  override def parseClaim(claim: String): JwtClaimCustom = parseClaimHelp(claim)
 
   private def parseHeaderHelp(header: String): JwtHeader = {
     val cursor = parse(header).hcursor

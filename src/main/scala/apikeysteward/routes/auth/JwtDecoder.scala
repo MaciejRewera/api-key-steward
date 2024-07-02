@@ -13,8 +13,9 @@ import pdi.jwt._
 import java.security.PublicKey
 import scala.util.Try
 
-class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator)
-    extends Logging {
+class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKeyGenerator: PublicKeyGenerator)(
+    jwtCustom: JwtCustom
+) extends Logging {
 
   private val DecodeAlgorithms: Seq[JwtAlgorithm.RS256.type] = Seq(JwtAlgorithm.RS256)
 
@@ -59,14 +60,14 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
     val VerificationFlagsDecode: JwtOptions = new JwtOptions(signature = false, expiration = true)
 
     decodeToken(accessToken)(
-      JwtCustom
+      jwtCustom
         .decodeAll(token = accessToken, key = FakeKey, algorithms = DecodeAlgorithms, options = VerificationFlagsDecode)
     )
   }
 
   private def decodeToken(accessToken: String, publicKey: PublicKey): EitherT[IO, JwtDecoderError, JsonWebToken] =
     decodeToken(accessToken)(
-      JwtCustom
+      jwtCustom
         .decodeAll(
           token = accessToken,
           key = publicKey,

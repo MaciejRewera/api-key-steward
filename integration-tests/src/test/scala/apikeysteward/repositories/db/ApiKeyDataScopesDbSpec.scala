@@ -105,8 +105,8 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.head shouldBe ApiKeyDataScopesEntity.Read(
               apiKeyDataId = inputEntities.head.apiKeyDataId,
               scopeId = inputEntities.head.scopeId,
-              createdAt = now,
-              updatedAt = now
+              createdAt = nowInstant,
+              updatedAt = nowInstant
             )
           }
         }
@@ -149,8 +149,8 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.head shouldBe ApiKeyDataScopesEntity.Read(
               apiKeyDataId = inputEntities.head.apiKeyDataId,
               scopeId = inputEntities.head.scopeId,
-              createdAt = now,
-              updatedAt = now
+              createdAt = nowInstant,
+              updatedAt = nowInstant
             )
           }
         }
@@ -186,7 +186,7 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.size shouldBe 2
 
             allEntitiesInDb should contain theSameElementsAs inputEntities.map(e =>
-              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, now, now)
+              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, nowInstant, nowInstant)
             )
           }
         }
@@ -222,7 +222,7 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.size shouldBe 4
 
             allEntitiesInDb should contain theSameElementsAs inputEntities.map(e =>
-              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, now, now)
+              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, nowInstant, nowInstant)
             )
           }
         }
@@ -259,7 +259,7 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.size shouldBe 4
 
             allEntitiesInDb should contain theSameElementsAs inputEntities.map(e =>
-              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, now, now)
+              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, nowInstant, nowInstant)
             )
           }
         }
@@ -311,7 +311,7 @@ class ApiKeyDataScopesDbSpec
             allEntitiesInDb.size shouldBe 8
 
             allEntitiesInDb should contain theSameElementsAs inputEntities.map(e =>
-              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, now, now)
+              ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, nowInstant, nowInstant)
             )
           }
         }
@@ -359,8 +359,8 @@ class ApiKeyDataScopesDbSpec
           res.head shouldBe ApiKeyDataScopesEntity.Read(
             apiKeyDataId = inputEntities.head.apiKeyDataId,
             scopeId = inputEntities.head.scopeId,
-            createdAt = now,
-            updatedAt = now
+            createdAt = nowInstant,
+            updatedAt = nowInstant
           )
         }
       }
@@ -386,7 +386,7 @@ class ApiKeyDataScopesDbSpec
           res.size shouldBe 2
 
           res should contain theSameElementsAs inputEntities.map(e =>
-            ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, now, now)
+            ApiKeyDataScopesEntity.Read(e.apiKeyDataId, e.scopeId, nowInstant, nowInstant)
           )
         }
       }
@@ -404,11 +404,11 @@ class ApiKeyDataScopesDbSpec
     ): ApiKeyDataScopesDeletedEntity.Read =
       ApiKeyDataScopesDeletedEntity.Read(
         id = id,
-        deletedAt = now,
+        deletedAt = nowInstant,
         apiKeyDataId = apiKeyDataId,
         scopeId = scopeId,
-        createdAt = now,
-        updatedAt = now
+        createdAt = nowInstant,
+        updatedAt = nowInstant
       )
 
     "there are no entities in the junction table" should {
@@ -501,7 +501,7 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
         }
       }
 
@@ -537,7 +537,7 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
         }
       }
 
@@ -576,11 +576,11 @@ class ApiKeyDataScopesDbSpec
     ): ApiKeyDataScopesDeletedEntity.Read =
       ApiKeyDataScopesDeletedEntity.Read(
         id = id,
-        deletedAt = now,
+        deletedAt = nowInstant,
         apiKeyDataId = apiKeyDataId,
         scopeId = scopeId,
-        createdAt = now,
-        updatedAt = now
+        createdAt = nowInstant,
+        updatedAt = nowInstant
       )
 
     "there are no entities in the junction table" should {
@@ -650,7 +650,7 @@ class ApiKeyDataScopesDbSpec
 
           result.asserting { case (apiKeyDataId, scopeId, res) =>
             res.size shouldBe 1
-            res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+            res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
           }
         }
 
@@ -686,7 +686,7 @@ class ApiKeyDataScopesDbSpec
 
           result.asserting { case (apiKeyDataId, scopeId, res) =>
             res shouldBe defined
-            res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+            res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
           }
         }
 
@@ -732,7 +732,9 @@ class ApiKeyDataScopesDbSpec
           result.asserting { case (apiKeyDataId, scopeIds, res) =>
             res.size shouldBe 4
 
-            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+            res shouldBe scopeIds.map(scopeId =>
+              ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
+            )
           }
         }
 
@@ -774,7 +776,9 @@ class ApiKeyDataScopesDbSpec
           result.asserting { case (apiKeyDataId, scopeIds, res) =>
             res.size shouldBe 4
 
-            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+            res shouldBe scopeIds.map(scopeId =>
+              ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
+            )
           }
         }
 
@@ -818,7 +822,9 @@ class ApiKeyDataScopesDbSpec
           result.asserting { case (apiKeyDataId, scopeIds, res) =>
             res.size shouldBe 4
 
-            res shouldBe scopeIds.map(scopeId => ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now))
+            res shouldBe scopeIds.map(scopeId =>
+              ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
+            )
           }
         }
 
@@ -902,8 +908,8 @@ class ApiKeyDataScopesDbSpec
           res.head shouldBe ApiKeyDataScopesEntity.Read(
             apiKeyDataId = inputEntities.head.apiKeyDataId,
             scopeId = inputEntities.head.scopeId,
-            createdAt = now,
-            updatedAt = now
+            createdAt = nowInstant,
+            updatedAt = nowInstant
           )
         }
       }
@@ -940,8 +946,8 @@ class ApiKeyDataScopesDbSpec
           res.head shouldBe ApiKeyDataScopesEntity.Read(
             apiKeyDataId = inputEntities.head.apiKeyDataId,
             scopeId = inputEntities.head.scopeId,
-            createdAt = now,
-            updatedAt = now
+            createdAt = nowInstant,
+            updatedAt = nowInstant
           )
         }
       }
@@ -960,7 +966,7 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
         }
       }
 
@@ -1001,7 +1007,7 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res shouldBe defined
-          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          res.get shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
         }
       }
 
@@ -1030,8 +1036,8 @@ class ApiKeyDataScopesDbSpec
             ApiKeyDataScopesEntity.Read(
               apiKeyDataId = e.apiKeyDataId,
               scopeId = e.scopeId,
-              createdAt = now,
-              updatedAt = now
+              createdAt = nowInstant,
+              updatedAt = nowInstant
             )
           )
         }
@@ -1097,8 +1103,8 @@ class ApiKeyDataScopesDbSpec
           res.head shouldBe ApiKeyDataScopesEntity.Read(
             apiKeyDataId = inputEntities.head.apiKeyDataId,
             scopeId = inputEntities.head.scopeId,
-            createdAt = now,
-            updatedAt = now
+            createdAt = nowInstant,
+            updatedAt = nowInstant
           )
         }
       }
@@ -1117,7 +1123,7 @@ class ApiKeyDataScopesDbSpec
 
         result.asserting { case (apiKeyDataId, scopeId, res) =>
           res.size shouldBe 1
-          res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+          res.head shouldBe ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
         }
       }
 
@@ -1162,7 +1168,7 @@ class ApiKeyDataScopesDbSpec
           res.size shouldBe 2
 
           res should contain theSameElementsAs scopeIds.map(scopeId =>
-            ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, now, now)
+            ApiKeyDataScopesEntity.Read(apiKeyDataId, scopeId, nowInstant, nowInstant)
           )
         }
       }
@@ -1192,8 +1198,8 @@ class ApiKeyDataScopesDbSpec
             ApiKeyDataScopesEntity.Read(
               apiKeyDataId = e.apiKeyDataId,
               scopeId = e.scopeId,
-              createdAt = now,
-              updatedAt = now
+              createdAt = nowInstant,
+              updatedAt = nowInstant
             )
           )
         }

@@ -6,6 +6,7 @@ import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories._
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth._
+import apikeysteward.routes.auth.model.JwtCustom
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
 import apikeysteward.services.{ApiKeyValidationService, LicenseService, ManagementService}
 import apikeysteward.utils.Logging
@@ -26,7 +27,7 @@ import scala.concurrent.duration.DurationInt
 
 object Application extends IOApp.Simple with Logging {
 
-  private implicit val clock: Clock = Clock.systemUTC()
+  private implicit val clock: Clock = Clock.systemUTC
 
   override def run: IO[Unit] = {
 
@@ -55,7 +56,8 @@ object Application extends IOApp.Simple with Logging {
         jwtValidator: JwtValidator = new JwtValidator(config.auth.jwt)
         jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
         publicKeyGenerator = new PublicKeyGenerator
-        jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)
+        jwtCustom = new JwtCustom(clock, config.auth.jwt)
+        jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
         jwtAuthorizer = new JwtAuthorizer(jwtDecoder)
 
         apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)

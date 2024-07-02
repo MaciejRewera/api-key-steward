@@ -57,7 +57,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
     scopes = scopes_1
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
@@ -65,7 +65,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
     scopes = scopes_2
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
@@ -73,7 +73,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
     scopes = scopes_3
   )
 }

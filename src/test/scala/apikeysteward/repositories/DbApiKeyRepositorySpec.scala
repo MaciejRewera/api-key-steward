@@ -8,8 +8,6 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
-import apikeysteward.routes.auth.AuthTestData
-import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -47,8 +45,8 @@ class DbApiKeyRepositorySpec
 
   private val apiKeyEntityRead = ApiKeyEntity.Read(
     id = 13L,
-    createdAt = now,
-    updatedAt = now
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
 
   private val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
@@ -58,9 +56,9 @@ class DbApiKeyRepositorySpec
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
   private val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
     id = 2L,
@@ -69,9 +67,9 @@ class DbApiKeyRepositorySpec
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = now.plusSeconds(ttlSeconds),
-    createdAt = now,
-    updatedAt = now
+    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
   )
 
   private val scopeEntities_1 = scopes_1.zipWithIndex.map { case (scope, idx) => ScopeEntity.Read(idx, scope) }
@@ -122,7 +120,7 @@ class DbApiKeyRepositorySpec
           name = name,
           description = description,
           userId = userId_1,
-          expiresAt = now.plusSeconds(ttlSeconds)
+          expiresAt = nowInstant.plusSeconds(ttlSeconds)
         )
         val expectedScopeEntitiesWrite = scopes_1.map(ScopeEntity.Write)
         val expectedApiKeyDataScopesEntitiesWrite = scopeEntities_1.map(_.id).map { scopeId =>
@@ -508,8 +506,8 @@ class DbApiKeyRepositorySpec
               apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
                 .emits(
                   Seq(
-                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
                   )
                 )
                 .covary[doobie.ConnectionIO]
@@ -530,8 +528,8 @@ class DbApiKeyRepositorySpec
               apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
                 .emits(
                   Seq(
-                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                    ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
                   )
                 )
                 .covary[doobie.ConnectionIO]
@@ -638,16 +636,16 @@ class DbApiKeyRepositorySpec
             Stream
               .emits(
                 Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
                 )
               )
               .covary[doobie.ConnectionIO],
             Stream
               .emits(
                 Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 201L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 202L, now, now)
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 201L, nowInstant, nowInstant),
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 202L, nowInstant, nowInstant)
                 )
               )
               .covary[doobie.ConnectionIO]
@@ -675,16 +673,16 @@ class DbApiKeyRepositorySpec
             Stream
               .emits(
                 Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, now, now)
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
                 )
               )
               .covary[doobie.ConnectionIO],
             Stream
               .emits(
                 Seq(
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 201L, now, now),
-                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 202L, now, now)
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 201L, nowInstant, nowInstant),
+                  ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_2.id, 202L, nowInstant, nowInstant)
                 )
               )
               .covary[doobie.ConnectionIO]
@@ -713,11 +711,11 @@ class DbApiKeyRepositorySpec
     val scopeId_1 = 101L
     val scopeId_2 = 102L
 
-    val apiKeyEntityRead_1 = ApiKeyEntity.Read(1L, now, now)
+    val apiKeyEntityRead_1 = ApiKeyEntity.Read(1L, nowInstant, nowInstant)
 
     val apiKeyDataScopesEntitiesRead = Seq(
-      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_1, now, now),
-      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_2, now, now)
+      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_1, nowInstant, nowInstant),
+      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_2, nowInstant, nowInstant)
     )
 
     "everything works correctly" when {

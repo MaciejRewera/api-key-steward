@@ -1,10 +1,11 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.base.FixedJwtCustom
 import apikeysteward.routes.auth.AuthTestData._
 import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
 import apikeysteward.routes.auth.PublicKeyGenerator._
-import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken, JwtClaimCustom, JwtCustom}
+import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebToken}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -18,12 +19,19 @@ import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 import scala.concurrent.duration.DurationInt
 
-class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach with EitherValues {
+class JwtDecoderSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with EitherValues
+    with FixedJwtCustom {
 
   private val jwtValidator = mock[JwtValidator]
   private val jwkProvider = mock[JwkProvider]
   private val publicKeyGenerator = mock[PublicKeyGenerator]
-  private val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)
+
+  private val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -35,9 +43,6 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
 
     jwtValidator.validateAll(any[JsonWebToken]) returns Right(jwtWithMockedSignature)
   }
-
-  private def jwtWithClaimString(jwtClaim: JwtClaimCustom): String =
-    JwtCustom.encode(jwtHeader, jwtClaim, privateKey)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -99,7 +104,7 @@ class JwtDecoderSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with B
     "provided with a token with nbf value in the future" should {
 
       val jwtClaimNbfInTheFuture = jwtClaim.copy(notBefore = Some(now.plus(1.minute).toSeconds))
-      val jwtNbfInTheFutureString = JwtCustom.encode(jwtHeader, jwtClaimNbfInTheFuture, privateKey)
+      val jwtNbfInTheFutureString = jwtCustom.encode(jwtHeader, jwtClaimNbfInTheFuture, privateKey)
 
       "NOT call either JwtValidator, JwkProvider, nor PublicKeyGenerator" in {
         for {
