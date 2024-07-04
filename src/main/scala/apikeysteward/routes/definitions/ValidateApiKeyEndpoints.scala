@@ -1,7 +1,7 @@
 package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.definitions.EndpointsBase._
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -13,13 +13,18 @@ object ValidateApiKeyEndpoints {
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     endpoint.post
+      .description("Validate API key.")
       .in("api-key" / "validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
-          .description("API Key to validate.")
+          .description("API key to validate.")
+          .example(ValidateApiKeyRequest(apiKey = EndpointsBase.ApiKeyExample.value))
       )
-      .out(statusCode.description(StatusCode.Ok, "API Key is valid."))
-      .out(jsonBody[ValidateApiKeyResponse])
+      .out(statusCode.description(StatusCode.Ok, "API key is valid."))
+      .out(
+        jsonBody[ValidateApiKeyResponse]
+          .example(ValidateApiKeyResponse(EndpointsBase.ApiKeyDataExample))
+      )
       .errorOut(
         oneOf[ErrorInfo](
           errorOutVariantInternalServerError,

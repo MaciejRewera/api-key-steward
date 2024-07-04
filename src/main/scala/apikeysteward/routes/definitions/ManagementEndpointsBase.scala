@@ -16,19 +16,40 @@ private[definitions] object ManagementEndpointsBase {
     EndpointsBase.authenticatedEndpointBase.post
       .in(
         jsonBody[CreateApiKeyRequest]
-          .description("Details of the API Key to create.")
+          .description("Details of the API key to create.")
+          .example(
+            CreateApiKeyRequest(
+              name = "My API key",
+              description = Some("A short description what this API key is for."),
+              ttl = 3600,
+              scopes = List("read:myApi", "write:myApi")
+            )
+          )
       )
-      .out(statusCode.description(StatusCode.Created, "API Key created"))
-      .out(jsonBody[CreateApiKeyResponse])
+      .out(statusCode.description(StatusCode.Created, "API key created"))
+      .out(
+        jsonBody[CreateApiKeyResponse].example(
+          CreateApiKeyResponse(
+            apiKey = EndpointsBase.ApiKeyExample.value,
+            apiKeyData = EndpointsBase.ApiKeyDataExample
+          )
+        )
+      )
 
   val getAllApiKeysForUserEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .out(statusCode.description(StatusCode.Ok, "API Keys found"))
-      .out(jsonBody[List[ApiKeyData]])
+      .out(statusCode.description(StatusCode.Ok, "API keys found"))
+      .out(
+        jsonBody[List[ApiKeyData]]
+          .example(List(EndpointsBase.ApiKeyDataExample, EndpointsBase.ApiKeyDataExample))
+      )
 
   val deleteApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
-      .out(statusCode.description(StatusCode.Ok, "API Key deleted"))
-      .out(jsonBody[DeleteApiKeyResponse])
+      .out(statusCode.description(StatusCode.Ok, "API key deleted"))
+      .out(
+        jsonBody[DeleteApiKeyResponse]
+          .example(DeleteApiKeyResponse(EndpointsBase.ApiKeyDataExample))
+      )
 
 }
