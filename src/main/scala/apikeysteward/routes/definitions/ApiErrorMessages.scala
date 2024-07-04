@@ -5,18 +5,17 @@ import java.time.Instant
 private[routes] object ApiErrorMessages {
 
   object General {
+    val InternalServerError = "An unexpected error has occurred."
     val Unauthorized = "Credentials are invalid."
-    val BadRequest = "Invalid value for body provided."
+    val BadRequest = "Invalid input value provided."
   }
 
   object Admin {
     val DeleteApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
-    val GetAllApiKeysForUserNotFound = "No API Key found for provided userId."
   }
 
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
-    val GetAllApiKeysNotFound = "No API Key found."
   }
 
   object ValidateApiKey {

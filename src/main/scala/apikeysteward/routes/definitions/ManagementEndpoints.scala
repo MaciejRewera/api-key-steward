@@ -17,15 +17,18 @@ object ManagementEndpoints {
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
     ManagementEndpointsBase.createApiKeyEndpointBase
+      .description("Create new API key.")
       .in("api-key")
       .errorOutVariant(errorOutVariantBadRequest)
 
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
+      .description("Get all API keys.")
       .in("api-key")
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ManagementEndpointsBase.deleteApiKeyEndpointBase
+      .description("Delete API key with given key ID.")
       .in("api-key" / keyIdPathParameter)
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariant(errorOutVariantBadRequest)
