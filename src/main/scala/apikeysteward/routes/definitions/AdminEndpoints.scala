@@ -4,7 +4,6 @@ import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
-import apikeysteward.routes.definitions.EndpointsBase.Tags
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -20,7 +19,7 @@ object AdminEndpoints {
 
   val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[String]), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all user IDs which have at least one API key.")
+      .description("Get all user IDs that have at least one API key.")
       .in("admin" / "users")
       .out(statusCode.description(StatusCode.Ok, "All user IDs found"))
       .out(
@@ -37,7 +36,7 @@ object AdminEndpoints {
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
-      .description("Get all API keys for given user ID.")
+      .description("Get all API keys data for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-key")
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =

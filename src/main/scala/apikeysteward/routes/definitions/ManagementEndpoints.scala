@@ -23,7 +23,7 @@ object ManagementEndpoints {
 
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
-      .description("Get all API keys.")
+      .description("Get all API keys data.")
       .in("api-key")
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
