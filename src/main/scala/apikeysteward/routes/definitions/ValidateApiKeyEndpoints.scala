@@ -1,6 +1,7 @@
 package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
+import apikeysteward.routes.definitions.EndpointsBase._
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -21,15 +22,9 @@ object ValidateApiKeyEndpoints {
       .out(jsonBody[ValidateApiKeyResponse])
       .errorOut(
         oneOf[ErrorInfo](
-          oneOfVariantExactMatcher(
-            StatusCode.InternalServerError,
-            jsonBody[ErrorInfo].description("An unexpected error has occurred.")
-          )(ErrorInfo.internalServerErrorInfo()),
-          oneOfVariant(
-            StatusCode.Forbidden,
-            jsonBody[ErrorInfo]
-              .description(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)
-          )
+          errorOutVariantInternalServerError,
+          errorOutVariantForbidden,
+          errorOutVariantBadRequest
         )
       )
 }

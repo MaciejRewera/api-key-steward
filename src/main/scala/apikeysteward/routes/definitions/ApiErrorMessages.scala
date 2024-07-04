@@ -6,6 +6,7 @@ private[routes] object ApiErrorMessages {
 
   object General {
     val Unauthorized = "Credentials are invalid."
+    val BadRequest = "Invalid value for body provided."
   }
 
   object Admin {
