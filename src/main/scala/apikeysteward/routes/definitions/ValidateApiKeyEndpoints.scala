@@ -1,7 +1,7 @@
 package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
-import apikeysteward.routes.definitions.EndpointsBase._
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._

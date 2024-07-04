@@ -3,7 +3,7 @@ package apikeysteward.routes.definitions
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.definitions.EndpointsBase.{errorOutVariantBadRequest, errorOutVariantNotFound}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
