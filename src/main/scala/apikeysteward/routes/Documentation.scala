@@ -2,7 +2,6 @@ package apikeysteward.routes
 
 import apikeysteward.routes.definitions.{AdminEndpoints, ManagementEndpoints, ValidateApiKeyEndpoints}
 import io.circe.syntax._
-import org.http4s.BuildInfo
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe._
 import sttp.apispec.openapi.circe.yaml._
@@ -30,7 +29,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val allOpenApiDocs: OpenAPI = toOpenAPI(
     allEndpoints,
     title = "API Key Steward documentation",
-    version = s"${BuildInfo.version}"
+    version = "0.1.0"
   )
 
   val allJsonDocs: String = allOpenApiDocs.asJson.deepDropNullValues.toString
