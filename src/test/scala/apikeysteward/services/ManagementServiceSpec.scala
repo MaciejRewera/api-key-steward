@@ -3,14 +3,16 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
-import apikeysteward.repositories.{ApiKeyRepository, SecureHashGenerator}
+import apikeysteward.model.{ApiKey, ApiKeyData}
+import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException.MaxNumberOfRetriesExceeded
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -32,20 +34,26 @@ class ManagementServiceSpec
     with FixedClock
     with BeforeAndAfterEach {
 
+  private val createApiKeyRequestValidator = mock[CreateApiKeyRequestValidator]
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 
-  private val managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
+  private val managementService = new ManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
-  override def beforeEach(): Unit =
-    reset(apiKeyGenerator, apiKeyRepository)
-
-  private val createApiKeyAdminRequest = CreateApiKeyRequest(
+  private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,
     description = description,
     ttl = ttlSeconds,
     scopes = List(scopeRead_1, scopeWrite_1)
   )
+
+  override def beforeEach(): Unit = {
+    reset(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
+
+    createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
+    apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
+    apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
+  }
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -53,14 +61,12 @@ class ManagementServiceSpec
 
     "everything works correctly" should {
 
-      "call ApiKeyGenerator and ApiKeyRepository providing correct ApiKeyData" in {
-        apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
-        apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
-
+      "call CreateApiKeyRequestValidator, ApiKeyGenerator and ApiKeyRepository providing correct ApiKeyData" in {
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest)
-          _ = verify(apiKeyGenerator).generateApiKey
+          _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
 
+          _ = verify(createApiKeyRequestValidator).validateRequest(eqTo(createApiKeyRequest))
+          _ = verify(apiKeyGenerator).generateApiKey
           _ = {
             val captor: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
             verify(apiKeyRepository).insert(eqTo(apiKey_1), captor.capture())
@@ -71,12 +77,33 @@ class ManagementServiceSpec
       }
 
       "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
-        apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
-        apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
+        managementService
+          .createApiKey(userId_1, createApiKeyRequest)
+          .asserting(_ shouldBe Right(apiKey_1 -> apiKeyData_1))
+      }
+    }
+
+    "CreateApiKeyRequestValidator returns Left" should {
+
+      "NOT call ApiKeyGenerator or ApiKeyRepository" in {
+        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(
+          NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
+        )
+
+        for {
+          _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
+
+          _ = verifyNoInteractions(apiKeyGenerator, apiKeyRepository)
+        } yield ()
+      }
+
+      "return successful IO containing Left with ValidationError" in {
+        val error = NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
+        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(error)
 
         managementService
-          .createApiKey(userId_1, createApiKeyAdminRequest)
-          .asserting(_ shouldBe (apiKey_1, apiKeyData_1))
+          .createApiKey(userId_1, createApiKeyRequest)
+          .asserting(_ shouldBe Left(ValidationError(error.message)))
       }
     }
 
@@ -86,7 +113,7 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
           _ = verify(apiKeyGenerator).generateApiKey
           _ = verifyNoMoreInteractions(apiKeyGenerator)
         } yield ()
@@ -96,7 +123,7 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
           _ = verifyNoInteractions(apiKeyRepository)
         } yield ()
       }
@@ -105,7 +132,7 @@ class ManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         managementService
-          .createApiKey(userId_1, createApiKeyAdminRequest)
+          .createApiKey(userId_1, createApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -122,7 +149,7 @@ class ManagementServiceSpec
           )
 
           for {
-            _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest)
+            _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
             _ = verify(apiKeyGenerator, times(2)).generateApiKey
 
             _ = {
@@ -147,23 +174,23 @@ class ManagementServiceSpec
           )
 
           managementService
-            .createApiKey(userId_1, createApiKeyAdminRequest)
-            .asserting(_ shouldBe (apiKey_2, apiKeyData_1))
+            .createApiKey(userId_1, createApiKeyRequest)
+            .asserting(_ shouldBe Right(apiKey_2 -> apiKeyData_1))
         }
       }
     }
 
-    Seq(ApiKeyAlreadyExistsError, PublicKeyIdAlreadyExistsError).foreach { insertionError =>
-      s"ApiKeyRepository keeps returning ${insertionError.getClass.getSimpleName}" should {
+    Seq(ApiKeyAlreadyExistsError, PublicKeyIdAlreadyExistsError).foreach { dbInsertionError =>
+      s"ApiKeyRepository keeps returning ${dbInsertionError.getClass.getSimpleName}" should {
 
         "call ApiKeyGenerator and ApiKeyRepository again until reaching max retries amount (3)" in {
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
-          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
 
           for {
-            _ <- managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt
+            _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
             _ = verify(apiKeyGenerator, times(4)).generateApiKey
 
             _ = {
@@ -190,14 +217,14 @@ class ManagementServiceSpec
           } yield ()
         }
 
-        "return failed IO containing MaxNumberOfRetriesExceeded" in {
+        "return successful IO containing MaxNumberOfRetriesExceeded" in {
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
-          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(insertionError))
+          apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
 
-          managementService.createApiKey(userId_1, createApiKeyAdminRequest).attempt.asserting { result =>
-            result shouldBe Left(MaxNumberOfRetriesExceeded(insertionError))
+          managementService.createApiKey(userId_1, createApiKeyRequest).attempt.asserting { result =>
+            result shouldBe Left(MaxNumberOfRetriesExceeded(InsertionError(dbInsertionError)))
           }
         }
       }
@@ -209,7 +236,7 @@ class ManagementServiceSpec
         apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
 
         managementService
-          .createApiKey(userId_1, createApiKeyAdminRequest)
+          .createApiKey(userId_1, createApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

@@ -3,48 +3,74 @@ package apikeysteward.services
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
+import apikeysteward.repositories.db.DbCommons
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.services.ManagementService.ApiKeyCreationError
+import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import apikeysteward.utils.{Logging, Retry}
+import cats.data.EitherT
 import cats.effect.IO
 
 import java.time.Clock
 import java.util.UUID
 
-class ManagementService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiKeyRepository)(implicit clock: Clock)
+class ManagementService(
+    createApiKeyRequestValidator: CreateApiKeyRequestValidator,
+    apiKeyGenerator: ApiKeyGenerator,
+    apiKeyRepository: ApiKeyRepository
+)(implicit clock: Clock)
     extends Logging {
 
-  def createApiKey(userId: String, createApiKeyRequest: CreateApiKeyRequest): IO[(ApiKey, ApiKeyData)] = {
-    def isWorthRetrying(err: ApiKeyInsertionError): Boolean = err match {
-      case ApiKeyAlreadyExistsError | PublicKeyIdAlreadyExistsError => true
-      case _                                                        => false
+  def createApiKey(
+      userId: String,
+      createApiKeyRequest: CreateApiKeyRequest
+  ): IO[Either[ApiKeyCreationError, (ApiKey, ApiKeyData)]] = {
+    def isWorthRetrying(err: ApiKeyCreationError): Boolean = err match {
+      case InsertionError(_) => true
+      case _                 => false
     }
 
-    Retry.retry(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, createApiKeyRequest))
+    (for {
+      validatedRequest <- EitherT.fromEither[IO](
+        createApiKeyRequestValidator
+          .validateRequest(createApiKeyRequest)
+          .left
+          .map(err => ValidationError(err.message))
+      )
+
+      result <- EitherT[IO, ApiKeyCreationError, (ApiKey, ApiKeyData)] {
+        Retry.retryE(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, validatedRequest))
+      }
+    } yield result).value
   }
 
   private def createApiKeyAction(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
-  ): IO[Either[ApiKeyInsertionError, (ApiKey, ApiKeyData)]] = for {
+  ): IO[Either[ApiKeyCreationError, (ApiKey, ApiKeyData)]] =
+    (for {
+      _ <- logInfoF("Generating API Key...")
+      newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
 
-    _ <- logger.info("Generating API Key...")
-    newApiKey <- apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key."))
+      _ <- logInfoF("Generating public key ID...")
+      publicKeyId <- EitherT.right(IO(UUID.randomUUID()).flatTap(_ => logger.info("Generated public key ID.")))
 
-    _ <- logger.info("Generating public key ID...")
-    publicKeyId <- IO(UUID.randomUUID()).flatTap(_ => logger.info("Generated public key ID."))
+      apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
-    apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
+      _ <- logInfoF("Inserting API Key into database...")
+      insertionResult <- EitherT(insertNewApiKey(newApiKey, apiKeyData))
 
-    _ <- logger.info("Inserting API Key into database...")
-    insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
-      case Right(_) => logger.info("Inserted API Key into database.")
-      case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
-    }
+    } yield newApiKey -> insertionResult).value
 
-    res = insertionResult.map(newApiKey -> _)
-  } yield res
+  private def insertNewApiKey(newApiKey: ApiKey, apiKeyData: ApiKeyData): IO[Either[InsertionError, ApiKeyData]] =
+    for {
+      insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
+        case Right(_) => logger.info("Inserted API Key into database.")
+        case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
+      }
+      res = insertionResult.left.map(InsertionError)
+    } yield res
 
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
     apiKeyRepository.delete(userId, publicKeyId)
@@ -53,4 +79,16 @@ class ManagementService(apiKeyGenerator: ApiKeyGenerator, apiKeyRepository: ApiK
     apiKeyRepository.getAll(userId)
 
   def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
+
+  private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
+}
+
+object ManagementService {
+
+  sealed abstract class ApiKeyCreationError(val message: String)
+  object ApiKeyCreationError {
+
+    case class ValidationError(override val message: String) extends ApiKeyCreationError(message)
+    case class InsertionError(cause: DbCommons.ApiKeyInsertionError) extends ApiKeyCreationError(cause.message)
+  }
 }

@@ -7,6 +7,7 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
+import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -25,11 +26,15 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementSer
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (request, userId) = input
-            managementService.createApiKey(userId, request).map { case (newApiKey, apiKeyData) =>
-              (
-                StatusCode.Created,
-                CreateApiKeyResponse(newApiKey.value, apiKeyData)
-              ).asRight
+            managementService.createApiKey(userId, request).map {
+
+              case Right((newApiKey, apiKeyData)) =>
+                (StatusCode.Created, CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
+
+              case Left(validationError: ValidationError) =>
+                ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
+              case Left(_: InsertionError) =>
+                ErrorInfo.internalServerErrorInfo().asLeft
             }
           }
       )

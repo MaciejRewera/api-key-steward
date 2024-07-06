@@ -32,7 +32,7 @@ object AdminEndpoints {
     ManagementEndpointsBase.createApiKeyEndpointBase
       .description("Create new API key for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-key")
-      .errorOutVariant(errorOutVariantBadRequest)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
@@ -44,6 +44,6 @@ object AdminEndpoints {
       .description("Delete API key for given user ID and with given key ID.")
       .in("admin" / "users" / userIdPathParameter / "api-key" / keyIdPathParameter)
       .errorOutVariantPrepend(errorOutVariantNotFound)
-      .errorOutVariant(errorOutVariantBadRequest)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
 }
