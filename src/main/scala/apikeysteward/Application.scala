@@ -8,7 +8,7 @@ import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
-import apikeysteward.services.{ApiKeyValidationService, LicenseService, ManagementService}
+import apikeysteward.services.{ApiKeyValidationService, CreateApiKeyRequestValidator, LicenseService, ManagementService}
 import apikeysteward.utils.Logging
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -68,7 +68,8 @@ object Application extends IOApp.Simple with Logging {
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
-        managementService = new ManagementService(apiKeyGenerator, apiKeyRepository)
+        createApiKeyRequestValidator = new CreateApiKeyRequestValidator(config.apiKey)
+        managementService = new ManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
 

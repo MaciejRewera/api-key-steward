@@ -10,6 +10,7 @@ object Retry {
   private val logger: StructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   def retry[E, A](maxRetries: Int, isWorthRetrying: E => Boolean)(action: => IO[Either[E, A]]): IO[A] = {
+
     def retryOnLeft(err: E): IO[A] =
       if (isWorthRetrying(err)) {
         if (maxRetries > 0) {
@@ -26,18 +27,15 @@ object Retry {
     }
   }
 
-  sealed trait RetryException extends RuntimeException {
-    val message: String
+  sealed abstract class RetryException[E](val error: E, val message: String) extends RuntimeException {
     override def getMessage: String = message
   }
 
   object RetryException {
-    case class MaxNumberOfRetriesExceeded[E](error: E) extends RetryException {
-      override val message: String = s"Exceeded max number of retries on error: $error"
-    }
+    case class MaxNumberOfRetriesExceeded[E](override val error: E)
+        extends RetryException[E](error, message = s"Exceeded max number of retries on error: $error")
 
-    case class ReceivedErrorNotConfiguredToRetry[E](error: E) extends RetryException {
-      override val message: String = s"Re-throwing error not configured for retrying: $error"
-    }
+    case class ReceivedErrorNotConfiguredToRetry[E](override val error: E)
+        extends RetryException[E](error, message = s"Re-throwing error not configured for retrying: $error")
   }
 }

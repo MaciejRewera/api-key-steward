@@ -3,10 +3,11 @@ package apikeysteward.routes
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{JwtOps, JwtAuthorizer}
+import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ManagementEndpoints}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
+import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps, toTraverseOps}
 import org.http4s.HttpRoutes
@@ -26,11 +27,16 @@ class ManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementS
           .serverLogic { jwt => request =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              apiKeyDataE <- userIdE.traverse(managementService.createApiKey(_, request))
+              result <- userIdE.flatTraverse(managementService.createApiKey(_, request).map {
+                case Right((newApiKey, apiKeyData)) =>
+                  (StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
 
-              result = apiKeyDataE.map { case (newApiKey, apiKeyData) =>
-                StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)
-              }
+                case Left(validationError: ValidationError) =>
+                  ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
+                case Left(_: InsertionError) =>
+                  ErrorInfo.internalServerErrorInfo().asLeft
+              })
+
             } yield result
           }
       )

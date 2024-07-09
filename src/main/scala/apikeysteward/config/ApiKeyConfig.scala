@@ -8,6 +8,7 @@ import pureconfig.generic.semiauto.deriveReader
 case class ApiKeyConfig(
     randomSectionLength: Int,
     prefix: String,
+    allowedScopes: Set[String],
     storageHashingAlgorithm: Algorithm
 )
 

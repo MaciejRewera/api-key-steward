@@ -81,5 +81,5 @@ private[routes] object EndpointsBase {
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
     endpoint
       .securityIn(auth.bearer[AccessToken]())
-      .errorOut(oneOf[ErrorInfo](errorOutVariantInternalServerError, errorOutVariantUnauthorized))
+      .errorOut(oneOf[ErrorInfo](errorOutVariantUnauthorized, errorOutVariantInternalServerError))
 }

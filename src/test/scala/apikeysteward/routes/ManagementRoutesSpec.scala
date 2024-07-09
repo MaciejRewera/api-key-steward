@@ -3,12 +3,14 @@ package apikeysteward.routes
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
+import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -379,7 +381,9 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       "JwtOps returns Right containing user ID and request body is correct" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(apiKey_1, apiKeyData_1)
+          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+            (apiKey_1, apiKeyData_1).asRight
+          )
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
@@ -388,12 +392,11 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
           } yield ()
         }
 
-        "return the value returned by ManagementService" when {
+        "return successful value returned by ManagementService" when {
 
           "provided with description" in authorizedFixture {
             managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
-              apiKey_1,
-              apiKeyData_1
+              (apiKey_1, apiKeyData_1).asRight
             )
 
             for {
@@ -408,8 +411,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
           "provided with NO description" in authorizedFixture {
             val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
             managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
-              apiKey_1,
-              apiKeyDataWithoutDescription
+              (apiKey_1, apiKeyDataWithoutDescription).asRight
             )
 
             val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
@@ -422,6 +424,31 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
                 .asserting(_ shouldBe CreateApiKeyResponse(apiKey_1.value, apiKeyDataWithoutDescription))
             } yield ()
           }
+        }
+
+        "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
+          val errorMessage = "Validation failed!"
+          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+            Left(ValidationError(errorMessage))
+          )
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some(errorMessage)))
+          } yield ()
+        }
+
+        "return Internal Server Error when ManagementService returns successful IO with Left containing InsertionError" in authorizedFixture {
+          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+            Left(InsertionError(ApiKeyIdAlreadyExistsError))
+          )
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.InternalServerError
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+          } yield ()
         }
 
         "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {

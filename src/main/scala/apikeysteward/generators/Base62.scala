@@ -38,14 +38,11 @@ object Base62 {
       positionInBase62 * pow(base, idx).toLong
     }.sum
 
-  sealed trait Base62Error {
-    val message: String
-  }
+  sealed abstract class Base62Error(val message: String)
 
   object Base62Error {
-    case class ProvidedWithNegativeNumberError(number: Long) extends Base62Error {
-      override val message: String = s"Base62 encoder can only encode non-negative numbers, but received: $number"
-    }
+    case class ProvidedWithNegativeNumberError(number: Long)
+        extends Base62Error(message = s"Base62 encoder can only encode non-negative numbers, but received: $number")
   }
 
 }
