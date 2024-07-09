@@ -40,6 +40,13 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
+      "ApiKeyConfig returns non-empty Set and the request contains no scopes" in {
+        apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
+        val request = buildRequest(List.empty)
+
+        requestValidator.validateRequest(request) shouldBe Right(request)
+      }
+
       "ApiKeyConfig returns non-empty Set and the request contains scopes forming a subset of the allowed scopes" in {
         apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
         val request = buildRequest(List(scopeRead_1, scopeWrite_1))
