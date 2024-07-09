@@ -13,7 +13,6 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
-import apikeysteward.utils.Retry.RetryException.MaxNumberOfRetriesExceeded
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentCaptor
@@ -217,14 +216,14 @@ class ManagementServiceSpec
           } yield ()
         }
 
-        "return successful IO containing MaxNumberOfRetriesExceeded" in {
+        "return successful IO containing Left with MaxNumberOfRetriesExceeded" in {
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
           apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
 
-          managementService.createApiKey(userId_1, createApiKeyRequest).attempt.asserting { result =>
-            result shouldBe Left(MaxNumberOfRetriesExceeded(InsertionError(dbInsertionError)))
+          managementService.createApiKey(userId_1, createApiKeyRequest).asserting { result =>
+            result shouldBe Left(InsertionError(dbInsertionError))
           }
         }
       }

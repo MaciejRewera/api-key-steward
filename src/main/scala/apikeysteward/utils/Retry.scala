@@ -2,7 +2,6 @@ package apikeysteward.utils
 
 import apikeysteward.utils.Retry.RetryException._
 import cats.effect.IO
-import cats.implicits.catsSyntaxEitherId
 import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -28,38 +27,15 @@ object Retry {
     }
   }
 
-  def retryE[E, A](maxRetries: Int, isWorthRetrying: E => Boolean)(
-      action: => IO[Either[E, A]]
-  ): IO[Either[E, A]] = {
-
-    def retryOnLeft(err: E): IO[Either[E, A]] =
-      if (isWorthRetrying(err)) {
-        if (maxRetries > 0) {
-          logger.warn(s"Retrying failed action. Attempts left: ${maxRetries - 1}") >>
-            retryE(maxRetries - 1, isWorthRetrying)(action)
-        } else IO.raiseError(MaxNumberOfRetriesExceeded(err))
-      } else {
-        IO.raiseError(ReceivedErrorNotConfiguredToRetry(err))
-      }
-
-    action.flatMap {
-      case Left(err)  => retryOnLeft(err)
-      case Right(res) => IO(res.asRight)
-    }
-  }
-
-  sealed trait RetryException extends RuntimeException {
-    val message: String
+  sealed abstract class RetryException[E](val error: E, val message: String) extends RuntimeException {
     override def getMessage: String = message
   }
 
   object RetryException {
-    case class MaxNumberOfRetriesExceeded[E](error: E) extends RetryException {
-      override val message: String = s"Exceeded max number of retries on error: $error"
-    }
+    case class MaxNumberOfRetriesExceeded[E](override val error: E)
+        extends RetryException[E](error, message = s"Exceeded max number of retries on error: $error")
 
-    case class ReceivedErrorNotConfiguredToRetry[E](error: E) extends RetryException {
-      override val message: String = s"Re-throwing error not configured for retrying: $error"
-    }
+    case class ReceivedErrorNotConfiguredToRetry[E](override val error: E)
+        extends RetryException[E](error, message = s"Re-throwing error not configured for retrying: $error")
   }
 }

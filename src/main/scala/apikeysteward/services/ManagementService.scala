@@ -8,9 +8,11 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.services.ManagementService.ApiKeyCreationError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
 import cats.effect.IO
+import cats.implicits.catsSyntaxEitherId
 
 import java.time.Clock
 import java.util.UUID
@@ -25,24 +27,37 @@ class ManagementService(
   def createApiKey(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
-  ): IO[Either[ApiKeyCreationError, (ApiKey, ApiKeyData)]] = {
+  ): IO[Either[ApiKeyCreationError, (ApiKey, ApiKeyData)]] =
+    (for {
+      validatedRequest <- validateRequest(createApiKeyRequest)
+      result <- createApiKeyActionWithRetry(userId, validatedRequest)
+    } yield result).value
+
+  private def validateRequest(
+      createApiKeyRequest: CreateApiKeyRequest
+  ): EitherT[IO, ValidationError, CreateApiKeyRequest] = EitherT.fromEither[IO](
+    createApiKeyRequestValidator
+      .validateRequest(createApiKeyRequest)
+      .left
+      .map(err => ValidationError(err.message))
+  )
+
+  private def createApiKeyActionWithRetry(
+      userId: String,
+      createApiKeyRequest: CreateApiKeyRequest
+  ): EitherT[IO, ApiKeyCreationError, (ApiKey, ApiKeyData)] = {
+
     def isWorthRetrying(err: ApiKeyCreationError): Boolean = err match {
       case InsertionError(_) => true
       case _                 => false
     }
 
-    (for {
-      validatedRequest <- EitherT.fromEither[IO](
-        createApiKeyRequestValidator
-          .validateRequest(createApiKeyRequest)
-          .left
-          .map(err => ValidationError(err.message))
-      )
-
-      result <- EitherT[IO, ApiKeyCreationError, (ApiKey, ApiKeyData)] {
-        Retry.retryE(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, validatedRequest))
-      }
-    } yield result).value
+    EitherT {
+      Retry
+        .retry(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, createApiKeyRequest))
+        .map(_.asRight)
+        .recover { case exc: RetryException[ApiKeyCreationError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
+    }
   }
 
   private def createApiKeyAction(
