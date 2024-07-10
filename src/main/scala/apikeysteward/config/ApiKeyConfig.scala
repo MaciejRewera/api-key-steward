@@ -9,6 +9,7 @@ case class ApiKeyConfig(
     randomSectionLength: Int,
     prefix: String,
     allowedScopes: Set[String],
+    ttlMax: Int,
     storageHashingAlgorithm: Algorithm
 )
 

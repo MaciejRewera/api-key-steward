@@ -6,6 +6,7 @@ import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.ManagementService.ApiKeyCreationError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException
@@ -39,7 +40,7 @@ class ManagementService(
     createApiKeyRequestValidator
       .validateRequest(createApiKeyRequest)
       .left
-      .map(err => ValidationError(err.message))
+      .map(err => ValidationError(err.iterator.toSeq))
   )
 
   private def createApiKeyActionWithRetry(
@@ -103,7 +104,11 @@ object ManagementService {
   sealed abstract class ApiKeyCreationError(val message: String)
   object ApiKeyCreationError {
 
-    case class ValidationError(override val message: String) extends ApiKeyCreationError(message)
+    case class ValidationError(errors: Seq[CreateApiKeyRequestValidatorError])
+        extends ApiKeyCreationError(
+          message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
+        )
+
     case class InsertionError(cause: DbCommons.ApiKeyInsertionError) extends ApiKeyCreationError(cause.message)
   }
 }

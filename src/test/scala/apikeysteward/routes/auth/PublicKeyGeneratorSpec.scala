@@ -2,6 +2,7 @@ package apikeysteward.routes.auth
 
 import apikeysteward.routes.auth.AuthTestData.jsonWebKey
 import apikeysteward.routes.auth.PublicKeyGenerator._
+import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import pdi.jwt.JwtBase64
@@ -10,7 +11,7 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.spec.RSAPublicKeySpec
 
-class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
+class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers with EitherValues {
 
   private val publicKeyGenerator = new PublicKeyGenerator
 
@@ -28,10 +29,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val result = publicKeyGenerator.generateFrom(jwk)
 
         result.isLeft shouldBe true
-        result.swap.map { errors =>
-          errors.length shouldBe 1
-          errors.head shouldBe AlgorithmNotProvidedError
-        }
+        result.left.value.iterator.toSeq shouldBe Seq(AlgorithmNotProvidedError)
       }
 
       "provided with Json Web Key with incorrect algorithm (alg field)" in {
@@ -40,10 +38,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val result = publicKeyGenerator.generateFrom(jwk)
 
         result.isLeft shouldBe true
-        result.swap.map { errors =>
-          errors.length shouldBe 1
-          errors.head shouldBe AlgorithmNotSupportedError(SupportedAlgorithm, "HS256")
-        }
+        result.left.value.iterator.toSeq shouldBe Seq(AlgorithmNotSupportedError(SupportedAlgorithm, "HS256"))
       }
 
       "provided with Json Web Key with incorrect key type (kty field)" in {
@@ -52,10 +47,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val result = publicKeyGenerator.generateFrom(jwk)
 
         result.isLeft shouldBe true
-        result.swap.map { errors =>
-          errors.length shouldBe 1
-          errors.head shouldBe KeyTypeNotSupportedError(SupportedKeyType, "HSA")
-        }
+        result.left.value.iterator.toSeq shouldBe Seq(KeyTypeNotSupportedError(SupportedKeyType, "HSA"))
       }
 
       "provided with Json Web Key with incorrect use (use field)" in {
@@ -64,10 +56,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val result = publicKeyGenerator.generateFrom(jwk)
 
         result.isLeft shouldBe true
-        result.swap.map { errors =>
-          errors.length shouldBe 1
-          errors.head shouldBe KeyUseNotSupportedError(SupportedKeyUse, "no-use")
-        }
+        result.left.value.iterator.toSeq shouldBe Seq(KeyUseNotSupportedError(SupportedKeyUse, "no-use"))
       }
 
       "provided with all 3 incorrect fields" in {
@@ -76,14 +65,12 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val result = publicKeyGenerator.generateFrom(jwk)
 
         result.isLeft shouldBe true
-        result.swap.map { errors =>
-          errors.length shouldBe 3
-          errors.toChain.toList should contain theSameElementsAs Seq(
-            AlgorithmNotSupportedError(SupportedAlgorithm, "HS256"),
-            KeyTypeNotSupportedError(SupportedKeyType, "HSA"),
-            KeyUseNotSupportedError(SupportedKeyUse, "no-use")
-          )
-        }
+        result.left.value.length shouldBe 3
+        result.left.value.iterator.toSeq should contain theSameElementsAs Seq(
+          AlgorithmNotSupportedError(SupportedAlgorithm, "HS256"),
+          KeyTypeNotSupportedError(SupportedKeyType, "HSA"),
+          KeyUseNotSupportedError(SupportedKeyUse, "no-use")
+        )
       }
     }
 
@@ -99,7 +86,7 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers {
         val expectedPublicKey = KeyFactory.getInstance("RSA").generatePublic(keySpec)
 
         result.isRight shouldBe true
-        result.map(_ shouldBe expectedPublicKey)
+        result.value shouldBe expectedPublicKey
       }
     }
   }

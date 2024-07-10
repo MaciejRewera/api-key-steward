@@ -9,6 +9,7 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -350,15 +351,13 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
-        val errorMessage = "Validation failed!"
-        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
-          Left(ValidationError(errorMessage))
-        )
+        val error = ValidationError(Seq(NotAllowedScopesProvidedError(Set("illegal-scope-1", "illegal-scope-2"))))
+        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(Left(error))
 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some(errorMessage)))
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some(error.message)))
         } yield ()
       }
 

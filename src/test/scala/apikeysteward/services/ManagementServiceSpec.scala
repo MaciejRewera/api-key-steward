@@ -13,6 +13,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentCaptor
@@ -86,7 +87,7 @@ class ManagementServiceSpec
 
       "NOT call ApiKeyGenerator or ApiKeyRepository" in {
         createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(
-          NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
+          NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2)))
         )
 
         for {
@@ -98,11 +99,11 @@ class ManagementServiceSpec
 
       "return successful IO containing Left with ValidationError" in {
         val error = NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
-        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(error)
+        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(NonEmptyChain.one(error))
 
         managementService
           .createApiKey(userId_1, createApiKeyRequest)
-          .asserting(_ shouldBe Left(ValidationError(error.message)))
+          .asserting(_ shouldBe Left(ValidationError(Seq(error))))
       }
     }
 
