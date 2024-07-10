@@ -102,7 +102,7 @@ object JwtDecoder {
 
   case class ValidationError(errors: Seq[JwtValidatorError]) extends JwtDecoderError {
     override val message: String =
-      s"An error occurred while validating the JWT: ${errors.map(_.message).mkString("[\"", "\", \"", "\"]")}."
+      s"An error occurred while validating the JWT: ${errors.map(_.message).mkString("['", "', '", "']")}."
   }
   object ValidationError {
     def apply(jwtValidationError: JwtValidatorError): ValidationError = ValidationError(Seq(jwtValidationError))
@@ -114,7 +114,7 @@ object JwtDecoder {
 
   case class PublicKeyGenerationError(errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError]) extends JwtDecoderError {
     override val message: String =
-      s"Cannot generate Public Key because: ${errors.map(_.message).mkString("[\"", "\", \"", "\"]")}."
+      s"Cannot generate Public Key because: ${errors.map(_.message).mkString("['", "', '", "']")}."
   }
 
 }

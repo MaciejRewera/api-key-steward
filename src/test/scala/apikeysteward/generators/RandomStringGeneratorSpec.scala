@@ -15,6 +15,7 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
       randomSectionLength = 42,
       prefix = "prefix",
       allowedScopes = Set.empty,
+      ttlMax = 60,
       storageHashingAlgorithm = SHA3_256
     )
 

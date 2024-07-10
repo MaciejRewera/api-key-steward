@@ -3,14 +3,15 @@ package apikeysteward.services
 import apikeysteward.base.TestData._
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
+import cats.data.NonEmptyChain
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset}
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
-class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach {
+class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
   private val apiKeyConfig = mock[ApiKeyConfig]
 
@@ -20,6 +21,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
     super.beforeEach()
 
     reset(apiKeyConfig)
+    apiKeyConfig.ttlMax returns ttlSeconds
   }
 
   private def buildRequest(scopes: List[String]): CreateApiKeyRequest = CreateApiKeyRequest(
@@ -33,37 +35,51 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
 
     "return Right containing CreateApiKeyRequest" when {
 
-      "ApiKeyConfig returns empty Set and the request contains no scopes" in {
+      "ApiKeyConfig.allowedScopes returns empty Set and the request contains no scopes" in {
         apiKeyConfig.allowedScopes returns Set.empty[String]
         val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
-      "ApiKeyConfig returns non-empty Set and the request contains no scopes" in {
+      "ApiKeyConfig.allowedScopes returns non-empty Set and the request contains no scopes" in {
         apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
         val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
-      "ApiKeyConfig returns non-empty Set and the request contains scopes forming a subset of the allowed scopes" in {
+      "ApiKeyConfig.allowedScopes returns non-empty Set and the request contains scopes forming a subset of the allowed scopes" in {
         apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
         val request = buildRequest(List(scopeRead_1, scopeWrite_1))
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
-      "ApiKeyConfig returns non-empty Set and the request contains all scopes from the allowed scopes" in {
+      "ApiKeyConfig.allowedScopes returns non-empty Set and the request contains all scopes from the allowed scopes" in {
         apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
         val request = buildRequest(List(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2))
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
-      "ApiKeyConfig returns non-empty Set and the request contains repeated scopes forming a subset of the allowed scopes" in {
+      "ApiKeyConfig.allowedScopes returns non-empty Set and the request contains repeated scopes forming a subset of the allowed scopes" in {
         apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
         val request = buildRequest(List(scopeRead_1, scopeRead_1, scopeRead_1, scopeWrite_1, scopeWrite_1))
+
+        requestValidator.validateRequest(request) shouldBe Right(request)
+      }
+
+      "the request contains ttl value smaller then ApiKeyConfig.ttlMax" in {
+        apiKeyConfig.ttlMax returns (ttlSeconds + 1)
+        val request = buildRequest(List.empty)
+
+        requestValidator.validateRequest(request) shouldBe Right(request)
+      }
+
+      "the request contains ttl value equal to ApiKeyConfig.ttlMax" in {
+        apiKeyConfig.ttlMax returns ttlSeconds
+        val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
@@ -71,13 +87,15 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
 
     "return Left containing CreateApiKeyRequestValidatorError" when {
 
-      "ApiKeyConfig returns empty Set" when {
+      "ApiKeyConfig.allowedScopes returns empty Set" when {
 
         "the request contains a single scope" in {
           apiKeyConfig.allowedScopes returns Set.empty[String]
           val request = buildRequest(List(scopeRead_1))
 
-          requestValidator.validateRequest(request) shouldBe Left(NotAllowedScopesProvidedError(Set(scopeRead_1)))
+          requestValidator.validateRequest(request) shouldBe Left(
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_1)))
+          )
         }
 
         "the request contains multiple scopes" in {
@@ -85,7 +103,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
           val request = buildRequest(List(scopeRead_1, scopeWrite_1, scopeWrite_2))
 
           requestValidator.validateRequest(request) shouldBe Left(
-            NotAllowedScopesProvidedError(Set(scopeRead_1, scopeWrite_1, scopeWrite_2))
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_1, scopeWrite_1, scopeWrite_2)))
           )
         }
 
@@ -94,18 +112,20 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
           val request = buildRequest(List(scopeRead_1, scopeWrite_1, scopeWrite_1))
 
           requestValidator.validateRequest(request) shouldBe Left(
-            NotAllowedScopesProvidedError(Set(scopeRead_1, scopeWrite_1))
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_1, scopeWrite_1)))
           )
         }
       }
 
-      "ApiKeyConfig returns non-empty Set" when {
+      "ApiKeyConfig.allowedScopes returns non-empty Set" when {
 
         "the request contains a single scope not present in the allowed scopes" in {
           apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
           val request = buildRequest(List(scopeRead_3))
 
-          requestValidator.validateRequest(request) shouldBe Left(NotAllowedScopesProvidedError(Set(scopeRead_3)))
+          requestValidator.validateRequest(request) shouldBe Left(
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_3)))
+          )
         }
 
         "the request contains multiple scopes not present in the allowed scopes" in {
@@ -113,7 +133,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
           val request = buildRequest(List(scopeRead_3, scopeWrite_3))
 
           requestValidator.validateRequest(request) shouldBe Left(
-            NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3))
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3)))
           )
         }
 
@@ -122,7 +142,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
           val request = buildRequest(List(scopeRead_3, scopeRead_3, scopeRead_3, scopeWrite_3, scopeWrite_3))
 
           requestValidator.validateRequest(request) shouldBe Left(
-            NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3))
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3)))
           )
         }
 
@@ -130,7 +150,9 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
           apiKeyConfig.allowedScopes returns Set(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_2)
           val request = buildRequest(List(scopeRead_1, scopeRead_2, scopeWrite_1, scopeWrite_3))
 
-          requestValidator.validateRequest(request) shouldBe Left(NotAllowedScopesProvidedError(Set(scopeWrite_3)))
+          requestValidator.validateRequest(request) shouldBe Left(
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeWrite_3)))
+          )
         }
 
         "the request contains multiple scopes, but some of them are not present in the allowed scopes" in {
@@ -139,9 +161,36 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
             buildRequest(List(scopeRead_1, scopeRead_2, scopeRead_3, scopeWrite_1, scopeWrite_2, scopeWrite_3))
 
           requestValidator.validateRequest(request) shouldBe Left(
-            NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3))
+            NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_3, scopeWrite_3)))
           )
         }
+      }
+
+      "the request contains ttl value bigger than ApiKeyConfig.ttlMax" in {
+        apiKeyConfig.ttlMax returns (ttlSeconds - 1)
+        val request = buildRequest(List.empty)
+
+        requestValidator.validateRequest(request) shouldBe Left(
+          NonEmptyChain.one(TtlTooLargeError(ttlRequest = ttlSeconds, ttlMax = ttlSeconds - 1))
+        )
+      }
+    }
+
+    "return Left containing multiple CreateApiKeyRequestValidatorErrors" when {
+
+      "both scopes and ttl validation fail" in {
+        apiKeyConfig.allowedScopes returns Set.empty[String]
+        apiKeyConfig.ttlMax returns (ttlSeconds - 1)
+        val request = buildRequest(List(scopeRead_1))
+
+        val result = requestValidator.validateRequest(request)
+
+        result.isLeft shouldBe true
+        result.left.value.length shouldBe 2
+        result.left.value.iterator.toSeq should contain theSameElementsAs Seq(
+          NotAllowedScopesProvidedError(Set(scopeRead_1)),
+          TtlTooLargeError(ttlRequest = ttlSeconds, ttlMax = ttlSeconds - 1)
+        )
       }
     }
 

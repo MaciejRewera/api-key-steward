@@ -105,7 +105,7 @@ class JwtAuthorizerSpec
           jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
             result.left.value.error shouldBe "Invalid Credentials"
-            result.left.value.errorDetail.get shouldBe """Cannot generate Public Key because: ["Algorithm HS256 is not supported. Please use RS256.", "Key Type HSA is not supported. Please use RSA.", "Public Key Use no-use is not supported. Please use sig."]."""
+            result.left.value.errorDetail.get shouldBe "Cannot generate Public Key because: ['Algorithm HS256 is not supported. Please use RS256.', 'Key Type HSA is not supported. Please use RSA.', 'Public Key Use no-use is not supported. Please use sig.']."
           }
         }
       }
