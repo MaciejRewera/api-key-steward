@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.model.ApiKey
-import apikeysteward.routes.definitions.{ApiErrorMessages, ValidateApiKeyEndpoints}
+import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyValidationEndpoints}
 import apikeysteward.routes.model.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyValidationService
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
@@ -15,7 +15,7 @@ class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        ValidateApiKeyEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
+        ApiKeyValidationEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
           apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map {
 
             case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))

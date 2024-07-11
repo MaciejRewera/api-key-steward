@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.routes.definitions.EndpointsBase.Tags
-import apikeysteward.routes.definitions.{AdminEndpoints, ManagementEndpoints, ValidateApiKeyEndpoints}
+import apikeysteward.routes.definitions.{AdminEndpoints, ManagementEndpoints, ApiKeyValidationEndpoints}
 import io.circe.syntax._
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe._
@@ -24,7 +24,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   ).map(_.withTag(Tags.Public))
 
   private val validateApiKeyEndpoints =
-    List(ValidateApiKeyEndpoints.validateApiKeyEndpoint)
+    List(ApiKeyValidationEndpoints.validateApiKeyEndpoint)
       .map(_.withTag(Tags.Public))
 
   private val allEndpoints = adminEndpoints ++ managementEndpoints ++ validateApiKeyEndpoints

@@ -8,7 +8,7 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-object ValidateApiKeyEndpoints {
+object ApiKeyValidationEndpoints {
 
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
