@@ -1,6 +1,7 @@
 package apikeysteward.generators
 
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
+import apikeysteward.model.CustomError
 import cats.implicits.catsSyntaxEitherId
 
 import scala.annotation.tailrec
@@ -38,9 +39,9 @@ object Base62 {
       positionInBase62 * pow(base, idx).toLong
     }.sum
 
-  sealed abstract class Base62Error(val message: String)
-
+  sealed abstract class Base62Error(override val message: String) extends CustomError
   object Base62Error {
+
     case class ProvidedWithNegativeNumberError(number: Long)
         extends Base62Error(message = s"Base62 encoder can only encode non-negative numbers, but received: $number")
   }

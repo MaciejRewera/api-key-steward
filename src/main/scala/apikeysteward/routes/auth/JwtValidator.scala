@@ -1,6 +1,7 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.config.JwtConfig
+import apikeysteward.model.CustomError
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtClaimCustom}
@@ -107,7 +108,7 @@ class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging 
 
 object JwtValidator {
 
-  sealed abstract class JwtValidatorError(val message: String)
+  sealed abstract class JwtValidatorError(override val message: String) extends CustomError
   object JwtValidatorError {
 
     case object MissingKeyIdFieldError extends JwtValidatorError("Key ID (kid) claim is missing.")

@@ -1,10 +1,12 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.CustomError
+
 import java.util.UUID
 
 object DbCommons {
 
-  sealed abstract class ApiKeyInsertionError(val message: String)
+  sealed abstract class ApiKeyInsertionError(override val message: String) extends CustomError
   object ApiKeyInsertionError {
 
     case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
@@ -15,7 +17,7 @@ object DbCommons {
         extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
   }
 
-  sealed abstract class ApiKeyDeletionError(val message: String)
+  sealed abstract class ApiKeyDeletionError(override val message: String) extends CustomError
   object ApiKeyDeletionError {
 
     case class ApiKeyDataNotFound(userId: String, publicKeyId: UUID)
