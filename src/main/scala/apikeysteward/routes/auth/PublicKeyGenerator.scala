@@ -1,5 +1,6 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.model.CustomError
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.JsonWebKey
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
@@ -73,24 +74,22 @@ class PublicKeyGenerator {
 
 object PublicKeyGenerator {
 
-  sealed trait PublicKeyGeneratorError {
-    val message: String
-  }
+  sealed abstract class PublicKeyGeneratorError(override val message: String) extends CustomError
 
-  case object AlgorithmNotProvidedError extends PublicKeyGeneratorError {
-    override val message: String = "Algorithm not provided."
-  }
+  case object AlgorithmNotProvidedError extends PublicKeyGeneratorError(message = "Algorithm not provided.")
 
   case class AlgorithmNotSupportedError(supportedAlgorithm: String, actualAlgorithm: String)
-      extends PublicKeyGeneratorError {
-    override val message: String = s"Algorithm $actualAlgorithm is not supported. Please use $supportedAlgorithm."
-  }
+      extends PublicKeyGeneratorError(
+        message = s"Algorithm $actualAlgorithm is not supported. Please use $supportedAlgorithm."
+      )
 
-  case class KeyTypeNotSupportedError(supportedKeyType: String, actualKeyType: String) extends PublicKeyGeneratorError {
-    override val message: String = s"Key Type $actualKeyType is not supported. Please use $supportedKeyType."
-  }
+  case class KeyTypeNotSupportedError(supportedKeyType: String, actualKeyType: String)
+      extends PublicKeyGeneratorError(
+        message = s"Key Type $actualKeyType is not supported. Please use $supportedKeyType."
+      )
 
-  case class KeyUseNotSupportedError(supportedKeyUse: String, actualKeyUse: String) extends PublicKeyGeneratorError {
-    override val message: String = s"Public Key Use $actualKeyUse is not supported. Please use $supportedKeyUse."
-  }
+  case class KeyUseNotSupportedError(supportedKeyUse: String, actualKeyUse: String)
+      extends PublicKeyGeneratorError(
+        message = s"Public Key Use $actualKeyUse is not supported. Please use $supportedKeyUse."
+      )
 }

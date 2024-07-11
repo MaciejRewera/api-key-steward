@@ -1,6 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
+import apikeysteward.model.CustomError
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
@@ -43,7 +44,7 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
 object CreateApiKeyRequestValidator {
 
-  sealed abstract class CreateApiKeyRequestValidatorError(val message: String)
+  sealed abstract class CreateApiKeyRequestValidatorError(override val message: String) extends CustomError
   object CreateApiKeyRequestValidatorError {
 
     case class NotAllowedScopesProvidedError(notAllowedScopes: Set[String])

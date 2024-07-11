@@ -1,5 +1,6 @@
 package apikeysteward.routes.auth
 
+import apikeysteward.model.CustomError
 import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._
@@ -91,30 +92,27 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
 
 object JwtDecoder {
 
-  sealed trait JwtDecoderError {
-    val message: String
-  }
+  sealed abstract class JwtDecoderError(override val message: String) extends CustomError
 
-  case class DecodingError(exception: Throwable) extends JwtDecoderError {
-    override val message: String =
-      s"Exception occurred while decoding JWT: ${exception.getMessage}"
-  }
+  case class DecodingError(exception: Throwable)
+      extends JwtDecoderError(message = s"Exception occurred while decoding JWT: ${exception.getMessage}")
 
-  case class ValidationError(errors: Seq[JwtValidatorError]) extends JwtDecoderError {
-    override val message: String =
-      s"An error occurred while validating the JWT: ${errors.map(_.message).mkString("['", "', '", "']")}."
-  }
+  case class ValidationError(errors: Seq[JwtValidatorError])
+      extends JwtDecoderError(
+        message = s"An error occurred while validating the JWT: ${errors.map(_.message).mkString("['", "', '", "']")}."
+      )
   object ValidationError {
     def apply(jwtValidationError: JwtValidatorError): ValidationError = ValidationError(Seq(jwtValidationError))
   }
 
-  case class MatchingJwkNotFoundError(keyId: String) extends JwtDecoderError {
-    override val message: String = s"Cannot find JWK with kid: $keyId."
-  }
+  case class MatchingJwkNotFoundError(keyId: String)
+      extends JwtDecoderError(
+        message = s"Cannot find JWK with kid: $keyId."
+      )
 
-  case class PublicKeyGenerationError(errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError]) extends JwtDecoderError {
-    override val message: String =
-      s"Cannot generate Public Key because: ${errors.map(_.message).mkString("['", "', '", "']")}."
-  }
+  case class PublicKeyGenerationError(errors: Seq[PublicKeyGenerator.PublicKeyGeneratorError])
+      extends JwtDecoderError(
+        message = s"Cannot generate Public Key because: ${errors.map(_.message).mkString("['", "', '", "']")}."
+      )
 
 }

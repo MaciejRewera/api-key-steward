@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData}
+import apikeysteward.model.{ApiKey, ApiKeyData, CustomError}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
@@ -101,7 +101,7 @@ class ManagementService(
 
 object ManagementService {
 
-  sealed abstract class ApiKeyCreationError(val message: String)
+  sealed abstract class ApiKeyCreationError(override val message: String) extends CustomError
   object ApiKeyCreationError {
 
     case class ValidationError(errors: Seq[CreateApiKeyRequestValidatorError])
