@@ -57,9 +57,9 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight
   }.flatMap(_ => test)
 
-  "ManagementRoutes on POST /api-key" when {
+  "ManagementRoutes on POST /api-keys" when {
 
-    val uri = Uri.unsafeFromString("/api-key")
+    val uri = Uri.unsafeFromString("/api-keys")
     val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
@@ -463,9 +463,9 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     }
   }
 
-  "ManagementRoutes on GET /api-key" when {
+  "ManagementRoutes on GET /api-keys" when {
 
-    val uri = Uri.unsafeFromString("/api-key")
+    val uri = Uri.unsafeFromString("/api-keys")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -678,9 +678,9 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     }
   }
 
-  "ManagementRoutes on GET /api-key/{publicKeyId}" when {
+  "ManagementRoutes on GET /api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/api-key/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -883,7 +883,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-          val uri = Uri.unsafeFromString("/api-key/this-is-not-a-valid-uuid")
+          val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
           val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
 
           for {
@@ -908,9 +908,9 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     }
   }
 
-  "ManagementRoutes on DELETE /api-key/{publicKeyId}" when {
+  "ManagementRoutes on DELETE /api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/api-key/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -1127,7 +1127,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         }
 
         "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-          val uri = Uri.unsafeFromString("/api-key/this-is-not-a-valid-uuid")
+          val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
           val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
 
           for {
