@@ -23,7 +23,7 @@ object Documentation extends OpenAPIDocsInterpreter {
     ManagementEndpoints.getAllApiKeysEndpoint,
     ManagementEndpoints.getSingleApiKeyEndpoint,
     ManagementEndpoints.deleteApiKeyEndpoint
-  ).map(_.withTag(Tags.Public))
+  ).map(_.withTag(Tags.Management))
 
   private val validateApiKeyEndpoints =
     List(ApiKeyValidationEndpoints.validateApiKeyEndpoint)

@@ -64,6 +64,7 @@ private[routes] object EndpointsBase {
 
   object Tags {
     val Admin = "Admin"
+    val Management = "Management"
     val Public = "Public"
   }
 
