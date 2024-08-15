@@ -22,7 +22,7 @@ import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 import java.util.UUID
 
-class DbApiKeyRepositorySpec
+class ApiKeyRepositorySpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -38,7 +38,7 @@ class DbApiKeyRepositorySpec
   private val secureHashGenerator = mock[SecureHashGenerator]
 
   private val apiKeyRepository =
-    new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)(noopTransactor)
+    new ApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)(noopTransactor)
 
   override def beforeEach(): Unit =
     reset(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)
@@ -100,7 +100,7 @@ class DbApiKeyRepositorySpec
 
   private val testException = new RuntimeException("Test Exception")
 
-  "DbApiKeyRepository on insert" when {
+  "ApiKeyRepository on insert" when {
 
     "everything works correctly" should {
 
@@ -348,7 +348,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on get(:apiKey)" when {
+  "ApiKeyRepository on get(:apiKey)" when {
 
     "should always call SecureHashGenerator" in {
       secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
@@ -545,7 +545,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on get(:userId, :publicKeyId)" when {
+  "ApiKeyRepository on get(:userId, :publicKeyId)" when {
 
     "should always call ApiKeyDataDb" in {
       apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
@@ -662,7 +662,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on getAll(:userId)" when {
+  "ApiKeyRepository on getAll(:userId)" when {
 
     "should always call ApiKeyDataDb" in {
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
@@ -819,7 +819,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on delete(:userId, :publicKeyId)" when {
+  "ApiKeyRepository on delete(:userId, :publicKeyId)" when {
 
     val scopeId_1 = 101L
     val scopeId_2 = 102L
@@ -1133,7 +1133,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on getAllUserIds" should {
+  "ApiKeyRepository on getAllUserIds" should {
 
     "call ApiKeyDataDb" in {
       apiKeyDataDb.getAllUserIds returns Stream.empty
