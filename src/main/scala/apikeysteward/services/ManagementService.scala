@@ -94,6 +94,9 @@ class ManagementService(
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
     apiKeyRepository.getAll(userId)
 
+  def getApiKey(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    apiKeyRepository.get(userId, publicKeyId)
+
   def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
 
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))

@@ -3,6 +3,10 @@ package apikeysteward.routes.definitions
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
+  errorOutVariantBadRequest,
+  errorOutVariantNotFound
+}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -35,6 +39,7 @@ private[definitions] object ManagementEndpointsBase {
           )
         )
       )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysForUserEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     EndpointsBase.authenticatedEndpointBase.get
@@ -44,6 +49,16 @@ private[definitions] object ManagementEndpointsBase {
           .example(List(EndpointsBase.ApiKeyDataExample, EndpointsBase.ApiKeyDataExample))
       )
 
+  val getSingleApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, ApiKeyData), Any] =
+    EndpointsBase.authenticatedEndpointBase.get
+      .out(statusCode.description(StatusCode.Ok, "API key found"))
+      .out(
+        jsonBody[ApiKeyData]
+          .example(EndpointsBase.ApiKeyDataExample)
+      )
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
   val deleteApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .out(statusCode.description(StatusCode.Ok, "API key deleted"))
@@ -51,5 +66,7 @@ private[definitions] object ManagementEndpointsBase {
         jsonBody[DeleteApiKeyResponse]
           .example(DeleteApiKeyResponse(EndpointsBase.ApiKeyDataExample))
       )
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
 }

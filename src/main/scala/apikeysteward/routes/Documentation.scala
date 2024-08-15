@@ -13,6 +13,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val adminEndpoints = List(
     AdminEndpoints.createApiKeyEndpoint,
     AdminEndpoints.getAllApiKeysForUserEndpoint,
+    AdminEndpoints.getSingleApiKeyForUserEndpoint,
     AdminEndpoints.getAllUserIdsEndpoint,
     AdminEndpoints.deleteApiKeyEndpoint
   ).map(_.withTag(Tags.Admin))
@@ -20,8 +21,9 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val managementEndpoints = List(
     ManagementEndpoints.createApiKeyEndpoint,
     ManagementEndpoints.getAllApiKeysEndpoint,
+    ManagementEndpoints.getSingleApiKeyEndpoint,
     ManagementEndpoints.deleteApiKeyEndpoint
-  ).map(_.withTag(Tags.Public))
+  ).map(_.withTag(Tags.Management))
 
   private val validateApiKeyEndpoints =
     List(ApiKeyValidationEndpoints.validateApiKeyEndpoint)

@@ -26,9 +26,9 @@ class ApiKeyValidationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
 
   private val testException = new RuntimeException("Test Exception")
 
-  "ValidateApiKeyRoutes on POST /api-key/validation" should {
+  "ValidateApiKeyRoutes on POST /api-keys/validation" should {
 
-    val uri = uri"/api-key/validation"
+    val uri = uri"/api-keys/validation"
     val requestBody = ValidateApiKeyRequest(apiKey_1.value)
     val request = Request[IO](method = Method.POST, uri = uri).withEntity(requestBody.asJson)
 

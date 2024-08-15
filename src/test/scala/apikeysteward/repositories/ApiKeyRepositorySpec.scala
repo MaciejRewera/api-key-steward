@@ -22,7 +22,7 @@ import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 import java.util.UUID
 
-class DbApiKeyRepositorySpec
+class ApiKeyRepositorySpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -38,7 +38,7 @@ class DbApiKeyRepositorySpec
   private val secureHashGenerator = mock[SecureHashGenerator]
 
   private val apiKeyRepository =
-    new DbApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)(noopTransactor)
+    new ApiKeyRepository(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)(noopTransactor)
 
   override def beforeEach(): Unit =
     reset(apiKeyDb, apiKeyDataDb, scopeDb, apiKeyDataScopesDb, secureHashGenerator)
@@ -100,7 +100,7 @@ class DbApiKeyRepositorySpec
 
   private val testException = new RuntimeException("Test Exception")
 
-  "DbApiKeyRepository on insert" when {
+  "ApiKeyRepository on insert" when {
 
     "everything works correctly" should {
 
@@ -348,7 +348,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on get(:apiKey)" when {
+  "ApiKeyRepository on get(:apiKey)" when {
 
     "should always call SecureHashGenerator" in {
       secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
@@ -499,7 +499,7 @@ class DbApiKeyRepositorySpec
 
           "ApiKeyDataScopesDb returns non-empty Stream" should {
 
-            "should always call ScopeDb" in {
+            "call ScopeDb" in {
               secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
               apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
               apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -537,10 +537,7 @@ class DbApiKeyRepositorySpec
                 .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
                 .covary[doobie.ConnectionIO]
 
-              apiKeyRepository.get(apiKey_1).asserting { result =>
-                result shouldBe defined
-                result.get shouldBe apiKeyData_1
-              }
+              apiKeyRepository.get(apiKey_1).asserting(_ shouldBe Some(apiKeyData_1))
             }
           }
         }
@@ -548,14 +545,131 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on getAll(:userId)" when {
+  "ApiKeyRepository on get(:userId, :publicKeyId)" when {
+
+    "should always call ApiKeyDataDb" in {
+      apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+      for {
+        _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+        _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "should NOT call ApiKeyDb" in {
+      apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+      for {
+        _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+        _ = verifyZeroInteractions(apiKeyDb)
+      } yield ()
+    }
+
+    "ApiKeyDataDb returns empty Option" should {
+
+      "NOT call ScopeDb or ApiKeyDataScopesDb" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+          _ = verifyZeroInteractions(scopeDb, apiKeyDataScopesDb)
+        } yield ()
+      }
+
+      "return empty Option" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository.get(userId_1, publicKeyId_1).asserting(_ shouldBe Option.empty[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "ApiKeyDataDb returns ApiKeyDataEntity" when {
+
+      "should always call ApiKeyDataScopesDb" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+        scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+        for {
+          _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+          _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
+        } yield ()
+      }
+
+      "ApiKeyDataScopesDb returns empty Stream" should {
+
+        "call ScopeDb providing empty List" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          for {
+            _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+            _ = verify(scopeDb).getByIds(eqTo(List.empty))
+          } yield ()
+        }
+
+        "return ApiKeyData with empty scopes fields" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          apiKeyRepository
+            .get(userId_1, publicKeyId_1)
+            .asserting(_ shouldBe Some(apiKeyData_1.copy(scopes = List.empty)))
+        }
+      }
+
+      "ApiKeyDataScopesDb returns non-empty Stream" should {
+
+        "call ScopeDb" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+            .emits(
+              Seq(
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
+              )
+            )
+            .covary[doobie.ConnectionIO]
+          scopeDb.getByIds(any[List[Long]]) returns Stream
+            .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+            .covary[doobie.ConnectionIO]
+
+          for {
+            _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+            _ = verify(scopeDb).getByIds(eqTo(List(101L, 102L)))
+          } yield ()
+        }
+
+        "return ApiKeyData with scopes returned from ScopeDb" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+            .emits(
+              Seq(
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
+              )
+            )
+            .covary[doobie.ConnectionIO]
+          scopeDb.getByIds(any[List[Long]]) returns Stream
+            .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+            .covary[doobie.ConnectionIO]
+
+          apiKeyRepository.get(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+        }
+      }
+    }
+  }
+
+  "ApiKeyRepository on getAll(:userId)" when {
 
     "should always call ApiKeyDataDb" in {
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
         _ <- apiKeyRepository.getAll(userId_1)
-        _ <- IO(verify(apiKeyDataDb).getByUserId(eqTo(userId_1)))
+        _ = verify(apiKeyDataDb).getByUserId(eqTo(userId_1))
       } yield ()
     }
 
@@ -564,19 +678,18 @@ class DbApiKeyRepositorySpec
 
       for {
         _ <- apiKeyRepository.getAll(userId_1)
-        _ <- IO(verifyZeroInteractions(apiKeyDb))
+        _ = verifyZeroInteractions(apiKeyDb)
       } yield ()
     }
 
     "ApiKeyDataDb returns empty Stream" should {
 
-      "NOT call scopeDb or ApiKeyDataScopesDb" in {
+      "NOT call ScopeDb or ApiKeyDataScopesDb" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
         for {
           _ <- apiKeyRepository.getAll(userId_1)
-          _ = verifyZeroInteractions(scopeDb)
-          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+          _ = verifyZeroInteractions(scopeDb, apiKeyDataScopesDb)
         } yield ()
       }
 
@@ -592,8 +705,8 @@ class DbApiKeyRepositorySpec
       "should always call ApiKeyDataScopesDb" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
         apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-        scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+          .getByApiKeyDataId(any[Long]) returns Stream.empty
+        scopeDb.getByIds(any[List[Long]]) returns Stream.empty
 
         for {
           _ <- apiKeyRepository.getAll(userId_1)
@@ -606,8 +719,8 @@ class DbApiKeyRepositorySpec
         "call ScopeDb providing empty List" in {
           apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
           apiKeyDataScopesDb
-            .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-          scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+            .getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
 
           for {
             _ <- apiKeyRepository.getAll(userId_1)
@@ -618,8 +731,8 @@ class DbApiKeyRepositorySpec
         "return ApiKeyData with empty scopes fields" in {
           apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
           apiKeyDataScopesDb
-            .getByApiKeyDataId(any[Long]) returns Stream[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read]()
-          scopeDb.getByIds(any[List[Long]]) returns Stream[doobie.ConnectionIO, ScopeEntity.Read]()
+            .getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
 
           apiKeyRepository.getAll(userId_1).asserting { result =>
             result.size shouldBe 2
@@ -630,7 +743,7 @@ class DbApiKeyRepositorySpec
 
       "ApiKeyDataScopesDb returns non-empty Stream" should {
 
-        "should always call ScopeDb for each found ApiKeyData" in {
+        "call ScopeDb for each found ApiKeyData" in {
           apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
           apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns (
             Stream
@@ -706,7 +819,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on delete(:userId, :publicKeyId)" when {
+  "ApiKeyRepository on delete(:userId, :publicKeyId)" when {
 
     val scopeId_1 = 101L
     val scopeId_2 = 102L
@@ -1020,7 +1133,7 @@ class DbApiKeyRepositorySpec
     }
   }
 
-  "DbApiKeyRepository on getAllUserIds" should {
+  "ApiKeyRepository on getAllUserIds" should {
 
     "call ApiKeyDataDb" in {
       apiKeyDataDb.getAllUserIds returns Stream.empty

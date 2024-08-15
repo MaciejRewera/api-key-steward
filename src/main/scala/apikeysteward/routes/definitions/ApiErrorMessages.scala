@@ -12,10 +12,12 @@ private[routes] object ApiErrorMessages {
 
   object Admin {
     val DeleteApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
+    val GetSingleApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
   }
 
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
+    val GetSingleApiKeyNotFound = "No API Key found for provided keyId."
   }
 
   object ValidateApiKey {

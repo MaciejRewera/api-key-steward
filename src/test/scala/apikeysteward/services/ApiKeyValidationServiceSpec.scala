@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.{apiKey_1, _}
+import apikeysteward.base.TestData._
 import apikeysteward.generators.ChecksumCodec.ChecksumDecodingError.ProvidedEncodedChecksumTooLongError
 import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
 import apikeysteward.model.ApiKey

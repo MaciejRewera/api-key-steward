@@ -109,7 +109,7 @@ object Application extends IOApp.Simple with Logging {
 
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-    new DbApiKeyRepository(
+    new ApiKeyRepository(
       apiKeyDb,
       apiKeyDataDb,
       scopeDb,

@@ -30,8 +30,7 @@ object Retry {
     }
   }
 
-  sealed abstract class RetryException[E <: CustomError](val error: E, val message: String)
-      extends RuntimeException {
+  sealed abstract class RetryException[E <: CustomError](val error: E, val message: String) extends RuntimeException {
     override def getMessage: String = message
   }
 
