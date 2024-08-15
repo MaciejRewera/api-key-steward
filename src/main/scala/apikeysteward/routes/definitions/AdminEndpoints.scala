@@ -30,21 +30,21 @@ object AdminEndpoints {
       : Endpoint[AccessToken, (CreateApiKeyRequest, String), ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
     ManagementEndpointsBase.createApiKeyEndpointBase
       .description("Create new API key for given user ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-key")
+      .in("admin" / "users" / userIdPathParameter / "api-keys")
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .description("Get all API keys data for given user ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-key")
+      .in("admin" / "users" / userIdPathParameter / "api-keys")
 
   val getSingleApiKeyForUserEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, ApiKeyData), Any] =
     ManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given user ID and key ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-key" / keyIdPathParameter)
+      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ManagementEndpointsBase.deleteApiKeyEndpointBase
       .description("Delete API key for given user ID and key ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-key" / keyIdPathParameter)
+      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
 }

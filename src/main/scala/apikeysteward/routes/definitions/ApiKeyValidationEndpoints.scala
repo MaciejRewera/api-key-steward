@@ -14,7 +14,7 @@ object ApiKeyValidationEndpoints {
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     endpoint.post
       .description("Validate API key.")
-      .in("api-key" / "validation")
+      .in("api-keys" / "validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
           .description("API key to validate.")
