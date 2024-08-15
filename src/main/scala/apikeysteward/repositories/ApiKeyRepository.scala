@@ -16,5 +16,7 @@ trait ApiKeyRepository {
 
   def getAll(userId: String): IO[List[ApiKeyData]]
 
+  def get(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]]
+
   def getAllUserIds: IO[List[String]]
 }

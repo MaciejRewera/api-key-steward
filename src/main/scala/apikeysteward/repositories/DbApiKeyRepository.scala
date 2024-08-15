@@ -91,8 +91,18 @@ class DbApiKeyRepository(
   override def getAll(userId: String): IO[List[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- apiKeyDataDb.getByUserId(userId)
-      apiKeyData <- Stream.eval(getScopes(apiKeyDataEntityRead.id)).map(ApiKeyData.from(apiKeyDataEntityRead, _))
+      scopes <- Stream.eval(getScopes(apiKeyDataEntityRead.id))
+
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
     } yield apiKeyData).transact(transactor).compile.toList
+
+  override def get(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    (for {
+      apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getBy(userId, publicKeyId))
+      scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
+
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
+    } yield apiKeyData).value.transact(transactor)
 
   private def getScopes(apiKeyDataId: Long): doobie.ConnectionIO[List[ScopeEntity.Read]] =
     for {

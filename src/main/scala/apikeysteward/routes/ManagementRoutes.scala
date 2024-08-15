@@ -56,6 +56,24 @@ class ManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementS
           }
       )
 
+  private val getSingleApiKeyRoutes: HttpRoutes[IO] =
+    serverInterpreter
+      .toRoutes(
+        ManagementEndpoints.getSingleApiKeyEndpoint
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
+          .serverLogic { jwt => publicKeyId =>
+            for {
+              userIdE <- IO(jwtOps.extractUserId(jwt))
+              result <- userIdE.flatTraverse(managementService.getApiKey(_, publicKeyId).map {
+                case Some(apiKeyData) => (StatusCode.Ok -> apiKeyData).asRight
+                case None =>
+                  ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound)).asLeft
+              })
+
+            } yield result
+          }
+      )
+
   private val deleteApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
@@ -79,6 +97,6 @@ class ManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementS
       )
 
   val allRoutes: HttpRoutes[IO] =
-    createApiKeyRoutes <+> getAllApiKeysRoutes <+> deleteApiKeyRoutes
+    createApiKeyRoutes <+> getAllApiKeysRoutes <+> getSingleApiKeyRoutes <+> deleteApiKeyRoutes
 
 }

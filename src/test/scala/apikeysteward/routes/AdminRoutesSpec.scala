@@ -83,7 +83,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtAuthorizer or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtAuthorizer, managementService)
@@ -91,7 +91,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -102,7 +102,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       } yield ()
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
@@ -130,7 +130,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -156,7 +156,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken, but request body is incorrect" when {
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
 
       "request body is provided with empty name" should {
 
@@ -303,7 +303,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken and request body is correct" should {
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ManagementService" in authorizedFixture {
         managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
@@ -406,7 +406,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtAuthorizer or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtAuthorizer, managementService)
@@ -414,7 +414,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -425,7 +425,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       } yield ()
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError =
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
@@ -454,7 +454,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -480,7 +480,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" should {
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
         managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
@@ -544,7 +544,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtAuthorizer or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtAuthorizer, managementService)
@@ -552,7 +552,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -563,7 +563,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       } yield ()
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError =
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
@@ -592,7 +592,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -618,7 +618,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" should {
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
         managementService.getAllUserIds returns IO.pure(List.empty)
@@ -664,10 +664,10 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     }
   }
 
-  "AdminRoutes on DELETE /admin/users/{userId}/api-key/{publicKeyId}" when {
+  "AdminRoutes on GET /admin/users/{userId}/api-key/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/$publicKeyId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
 
@@ -685,7 +685,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtAuthorizer or ManagementService" in {
         for {
           _ <- adminRoutes.run(requestWithoutJwt)
           _ = verifyZeroInteractions(jwtAuthorizer, managementService)
@@ -693,18 +693,18 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
 
       for {
         _ <- adminRoutes.run(request)
-        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadAdmin)))(eqTo(tokenString))
       } yield ()
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -730,7 +730,7 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError =
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
@@ -759,7 +759,161 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" should {
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ManagementService" in authorizedFixture {
+        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(managementService).getApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+        } yield ()
+      }
+
+      "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response.as[ApiKeyData].asserting(_ shouldBe apiKeyData_1)
+        } yield ()
+      }
+
+      "return Not Found when ManagementService returns empty Option" in authorizedFixture {
+        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(None)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.GetSingleApiKeyNotFound)))
+        } yield ()
+      }
+
+      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
+        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+
+        for {
+          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+
+      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
+        managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+
+  }
+
+  "AdminRoutes on DELETE /admin/users/{userId}/api-key/{publicKeyId}" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-key/$publicKeyId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+    "the JWT is NOT provided" should {
+
+      val requestWithoutJwt = request.withHeaders(Headers.empty)
+
+      "return Unauthorized" in {
+        for {
+          response <- adminRoutes.run(requestWithoutJwt)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
+            )
+        } yield ()
+      }
+
+      "NOT call either JwtAuthorizer or ManagementService" in {
+        for {
+          _ <- adminRoutes.run(requestWithoutJwt)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
+        } yield ()
+      }
+    }
+
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        ErrorInfo.unauthorizedErrorInfo().asLeft
+      )
+
+      for {
+        _ <- adminRoutes.run(request)
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+      } yield ()
+    }
+
+    "JwtAuthorizer returns failed IO" should {
+
+      "return Internal Server Error" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "NOT call ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verifyZeroInteractions(managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Left containing error" should {
+
+      val jwtValidatorError =
+        ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
+
+      "return Unauthorized" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
+        } yield ()
+      }
+
+      "NOT call ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verifyZeroInteractions(managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
         managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))

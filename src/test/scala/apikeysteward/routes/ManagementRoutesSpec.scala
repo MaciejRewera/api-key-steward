@@ -59,7 +59,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
   "ManagementRoutes on POST /api-key" when {
 
-    val uri = Uri.unsafeFromString("api-key")
+    val uri = Uri.unsafeFromString("/api-key")
     val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
@@ -86,15 +86,15 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtOps, JwtAuthorizer or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
+          _ = verifyZeroInteractions(jwtOps, jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -105,7 +105,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       } yield ()
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
@@ -121,19 +121,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -147,19 +147,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" when {
+    "JwtAuthorizer returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
@@ -465,7 +465,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
   "ManagementRoutes on GET /api-key" when {
 
-    val uri = Uri.unsafeFromString("api-key")
+    val uri = Uri.unsafeFromString("/api-key")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     "the JWT is NOT provided" should {
@@ -484,15 +484,15 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtOps, JwtAuthorizer or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
+          _ = verifyZeroInteractions(jwtOps, jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -503,7 +503,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       } yield ()
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError =
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
@@ -520,19 +520,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -546,19 +546,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" when {
+    "JwtAuthorizer returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
@@ -678,6 +678,236 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     }
   }
 
+  "ManagementRoutes on GET /api-key/{publicKeyId}" when {
+
+    val uri = Uri.unsafeFromString(s"/api-key/$publicKeyId_1")
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+    "the JWT is NOT provided" should {
+
+      val requestWithoutJwt = request.withHeaders(Headers.empty)
+
+      "return Unauthorized" in {
+        for {
+          response <- managementRoutes.run(requestWithoutJwt)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
+            )
+        } yield ()
+      }
+
+      "NOT call either JwtOps, JwtAuthorizer or ManagementService" in {
+        for {
+          _ <- managementRoutes.run(requestWithoutJwt)
+          _ = verifyZeroInteractions(jwtOps, jwtAuthorizer, managementService)
+        } yield ()
+      }
+    }
+
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        ErrorInfo.unauthorizedErrorInfo().asLeft
+      )
+
+      for {
+        _ <- managementRoutes.run(request)
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.ReadApiKey)))(eqTo(tokenString))
+      } yield ()
+    }
+
+    "JwtAuthorizer returns failed IO" should {
+
+      "return Internal Server Error" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          response <- managementRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "NOT call either JwtOps or ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          _ <- managementRoutes.run(request)
+          _ = verifyZeroInteractions(jwtOps, managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Left containing error" should {
+
+      val jwtValidatorError =
+        ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
+
+      "return Unauthorized" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          response <- managementRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
+        } yield ()
+      }
+
+      "NOT call either JwtOps or ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          _ <- managementRoutes.run(request)
+          _ = verifyZeroInteractions(jwtOps, managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken" when {
+
+      "should always call JwtOps" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          AuthTestData.jwtWithMockedSignature.asRight
+        )
+        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+
+        for {
+          _ <- managementRoutes.run(request)
+          _ = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
+        } yield ()
+      }
+
+      "JwtOps returns Left containing ErrorInfo" should {
+
+        val jwtWithEmptySubField = AuthTestData.jwtWithMockedSignature.copy(
+          claim = AuthTestData.jwtClaim.copy(subject = None)
+        )
+
+        "return Unauthorized" in {
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+            jwtWithEmptySubField.asRight
+          )
+          jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.Unauthorized
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtOpsTestError)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in {
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+            jwtWithEmptySubField.asRight
+          )
+          jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+
+          for {
+            _ <- managementRoutes.run(request)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "JwtOps throws an exception" should {
+
+        "return Internal Server Error" in {
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+            AuthTestData.jwtWithMockedSignature.asRight
+          )
+          jwtOps.extractUserId(any[JsonWebToken]) throws testException
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.InternalServerError
+          } yield ()
+        }
+
+        "NOT call ManagementService" in {
+          jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+            AuthTestData.jwtWithMockedSignature.asRight
+          )
+          jwtOps.extractUserId(any[JsonWebToken]) throws testException
+
+          for {
+            _ <- managementRoutes.run(request)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "JwtOps returns Right containing user ID" should {
+
+        "call ManagementService" in authorizedFixture {
+          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+          val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
+
+          for {
+            _ <- managementRoutes.run(request)
+            _ = verify(managementService).getApiKey(eqTo(expectedUserId), eqTo(publicKeyId_1))
+          } yield ()
+        }
+
+        "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response.as[ApiKeyData].asserting(_ shouldBe apiKeyData_1)
+          } yield ()
+        }
+
+        "return Not Found when ManagementService returns empty Option" in authorizedFixture {
+          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(None)
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.NotFound
+            _ <- response
+              .as[ErrorInfo]
+              .asserting(
+                _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound))
+              )
+          } yield ()
+        }
+
+        "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
+          val uri = Uri.unsafeFromString("/api-key/this-is-not-a-valid-uuid")
+          val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+
+          for {
+            response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response
+              .as[ErrorInfo]
+              .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+          } yield ()
+        }
+
+        "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
+          managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.InternalServerError
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+          } yield ()
+        }
+      }
+    }
+  }
+
   "ManagementRoutes on DELETE /api-key/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/api-key/$publicKeyId_1")
@@ -699,15 +929,15 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call either JwtValidator or ManagementService" in {
+      "NOT call either JwtOps, JwtAuthorizer or ManagementService" in {
         for {
           _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
+          _ = verifyZeroInteractions(jwtOps, jwtAuthorizer, managementService)
         } yield ()
       }
     }
 
-    "the JWT is provided should call JwtValidator providing access token" in {
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
       jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
         ErrorInfo.unauthorizedErrorInfo().asLeft
       )
@@ -718,7 +948,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
       } yield ()
     }
 
-    "JwtValidator returns failed IO" should {
+    "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
@@ -732,19 +962,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns Left containing error" should {
+    "JwtAuthorizer returns Left containing error" should {
 
       val jwtValidatorError =
         ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
@@ -761,19 +991,19 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
         } yield ()
       }
 
-      "NOT call ManagementService" in {
+      "NOT call either JwtOps or ManagementService" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
 
-    "JwtValidator returns Right containing JsonWebToken" when {
+    "JwtAuthorizer returns Right containing JsonWebToken" when {
 
       "should always call JwtOps" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(

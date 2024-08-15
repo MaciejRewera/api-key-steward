@@ -292,6 +292,24 @@ class ManagementServiceSpec
     }
   }
 
+  "ManagementService on getApiKey" should {
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+      for {
+        _ <- managementService.getApiKey(userId_1, publicKeyId_1)
+        _ = verify(apiKeyRepository).get(eqTo(userId_1), eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" in {
+      apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+      managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+    }
+  }
+
   "ManagementService on getAllUserIds" should {
 
     "call ApiKeyRepository" in {
