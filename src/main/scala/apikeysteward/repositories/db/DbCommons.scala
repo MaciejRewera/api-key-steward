@@ -31,4 +31,11 @@ object DbCommons {
         )
   }
 
+  sealed abstract class ScopeTemplateInsertionError(override val message: String) extends CustomError
+  object ScopeTemplateInsertionError {
+
+    case object ScopeTemplateAlreadyExistsError
+        extends ScopeTemplateInsertionError(message = "Scope Template already exists.")
+  }
+
 }

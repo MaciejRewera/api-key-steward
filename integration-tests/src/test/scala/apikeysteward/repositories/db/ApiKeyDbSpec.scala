@@ -123,7 +123,7 @@ class ApiKeyDbSpec
       "NOT insert the second API Key into the DB" in {
         val result = for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1).transact(transactor)
-          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1).transact(transactor).attempt
+          _ <- apiKeyDb.insert(testApiKeyEntityWrite_1).transact(transactor)
           resApiKeys <- Queries.getAllApiKeys.transact(transactor)
         } yield resApiKeys
 

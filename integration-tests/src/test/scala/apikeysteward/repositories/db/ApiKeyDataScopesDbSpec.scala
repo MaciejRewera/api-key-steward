@@ -117,9 +117,7 @@ class ApiKeyDataScopesDbSpec
         "return duplication exception" in {
           val result = for {
             inputEntities <- insertPrerequisiteData(apiKeyEntityWrite_1, apiKeyDataEntityWrite_1, scopeEntitiesWrite)
-              .transact(
-                transactor
-              )
+              .transact(transactor)
             _ <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor)
 
             res <- apiKeyDataScopesDb.insertMany(inputEntities).transact(transactor).attempt

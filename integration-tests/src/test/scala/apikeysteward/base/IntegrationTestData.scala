@@ -32,6 +32,20 @@ trait IntegrationTestData extends FixedClock {
   val scopeWrite_2 = "write:scope-2"
   val scopeWrite_3 = "write:scope-3"
 
+  val scopeReadName_1 = "Scope Read 1"
+  val scopeReadName_2 = "Scope Read 2"
+  val scopeReadName_3 = "Scope Read 3"
+  val scopeWriteName_1 = "Scope Write 1"
+  val scopeWriteName_2 = "Scope Write 2"
+  val scopeWriteName_3 = "Scope Write 3"
+
+  val scopeReadDescription_1 = "This is a description of the Scope Read 1"
+  val scopeReadDescription_2 = "This is a description of the Scope Read 2"
+  val scopeReadDescription_3 = "This is a description of the Scope Read 3"
+  val scopeWriteDescription_1 = "This is a description of the Scope Write 1"
+  val scopeWriteDescription_2 = "This is a description of the Scope Write 2"
+  val scopeWriteDescription_3 = "This is a description of the Scope Write 3"
+
   val apiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
   val apiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
   val apiKeyEntityWrite_3 = ApiKeyEntity.Write(testApiKey_3)
