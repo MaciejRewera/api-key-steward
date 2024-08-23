@@ -67,4 +67,12 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
           res <- fly4s.migrate
         } yield res
       }
+
+  override def afterAll(): Unit =
+    (
+      for {
+        _ <- IO(super.afterAll())
+        _ <- IO.blocking(dataSource.close())
+      } yield ()
+    ).unsafeRunSync
 }

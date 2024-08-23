@@ -3,7 +3,7 @@ package apikeysteward.repositories.db
 import apikeysteward.base.IntegrationTestData._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ScopeTemplateInsertionError.ScopeTemplateAlreadyExistsError
-import apikeysteward.repositories.db.entity.ScopeTemplateEntity
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ScopeTemplateEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
@@ -20,9 +20,10 @@ class ScopeTemplateDbSpec
     with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE scope_template CASCADE".update.run
+    _ <- sql"TRUNCATE scope_template, api_key_template CASCADE".update.run
   } yield ()
 
+  private val apiKeyTemplateDb = new ApiKeyTemplateDb
   private val scopeTemplateDb = new ScopeTemplateDb
 
   private object Queries {
@@ -34,10 +35,13 @@ class ScopeTemplateDbSpec
       sql"SELECT * FROM scope_template".query[ScopeTemplateEntity.Read].stream
   }
 
+  private def insertPrerequisiteData(apiKeyTemplateEntityWrite: ApiKeyTemplateEntity.Write): doobie.ConnectionIO[Long] =
+    apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite).map(_.value.id)
+
   private implicit class ScopeTemplateEntityReadToWrite(scopeTemplateEntityRead: ScopeTemplateEntity.Read) {
     def toWrite: ScopeTemplateEntity.Write =
       ScopeTemplateEntity.Write(
-        apiKeyTemplateId = 123L,
+        apiKeyTemplateId = scopeTemplateEntityRead.apiKeyTemplateId,
         value = scopeTemplateEntityRead.value,
         name = scopeTemplateEntityRead.name,
         description = scopeTemplateEntityRead.description
@@ -88,7 +92,7 @@ class ScopeTemplateDbSpec
       val inputScopeTemplates = List.empty[ScopeTemplateEntity.Write]
 
       "return empty Stream" in {
-        scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor).asserting(_.value shouldBe empty)
+        scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor).asserting(_.value shouldBe List.empty)
       }
 
       "NOT insert anything into DB" in {
@@ -98,41 +102,51 @@ class ScopeTemplateDbSpec
           res <- Queries.getAllScopes.compile.toList
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe empty)
+        result.asserting(_ shouldBe List.empty)
       }
     }
 
     "provided with a single scope" when {
 
-      val inputScopeTemplates = List(scopeTemplateRead_1)
-
       "there are no rows in the DB" should {
 
         "return inserted entity" in {
-          scopeTemplateDb
-            .insertMany(inputScopeTemplates)
-            .transact(transactor)
-            .asserting(_.value.map(_.toWrite) shouldBe List(scopeTemplateRead_1))
+          val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
+            res <- scopeTemplateDb.insertMany(inputScopeTemplates)
+          } yield (inputScopeTemplates, res)).transact(transactor)
+
+          result.asserting { case (inputScopeTemplates, res) =>
+            res.value.map(_.toWrite) shouldBe inputScopeTemplates
+          }
         }
 
         "insert entity into DB" in {
           val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
             _ <- scopeTemplateDb.insertMany(inputScopeTemplates)
 
             res <- Queries.getAllScopes.compile.toList
-          } yield res).transact(transactor)
+          } yield (inputScopeTemplates, res)).transact(transactor)
 
-          result.asserting(_.map(_.toWrite) shouldBe List(scopeTemplateRead_1))
+          result.asserting { case (inputScopeTemplates, res) =>
+            res.map(_.toWrite) shouldBe inputScopeTemplates
+          }
         }
       }
 
       "there is a row with the same apiKeyTemplateId and value in the DB" should {
 
-        val oldScopeTemplate = scopeTemplateRead_2.copy(value = scopeRead_1)
-        val oldScopeTemplates = List(oldScopeTemplate)
-
         "return Left containing ScopeTemplateAlreadyExistsError" in {
           val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplates = List(scopeTemplateRead_2.copy(apiKeyTemplateId = templateId, value = scopeRead_1))
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
             _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
 
             res <- scopeTemplateDb.insertMany(inputScopeTemplates)
@@ -143,68 +157,94 @@ class ScopeTemplateDbSpec
 
         "NOT insert the new entity into DB" in {
           val result = for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1).transact(transactor)
+            oldScopeTemplates = List(scopeTemplateRead_2.copy(apiKeyTemplateId = templateId, value = scopeRead_1))
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
             _ <- scopeTemplateDb.insertMany(oldScopeTemplates).transact(transactor)
             _ <- scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor)
 
             res <- Queries.getAllScopes.transact(transactor).compile.toList
-          } yield res
+          } yield (oldScopeTemplates, res)
 
-          result.asserting(_.map(_.toWrite) shouldBe oldScopeTemplates)
+          result.asserting { case (oldScopeTemplates, res) =>
+            res.map(_.toWrite) shouldBe oldScopeTemplates
+          }
         }
       }
 
       "there is a different row in the DB" should {
 
-        val oldScopeTemplate = scopeTemplateRead_2
-        val oldScopeTemplates = List(oldScopeTemplate)
-
         "return inserted entity" in {
           val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplates = List(scopeTemplateRead_2.copy(apiKeyTemplateId = templateId))
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
             _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
 
             res <- scopeTemplateDb.insertMany(inputScopeTemplates)
-          } yield res).transact(transactor)
+          } yield (inputScopeTemplates, res)).transact(transactor)
 
-          result.asserting(_.value.map(_.toWrite) shouldBe List(scopeTemplateRead_1))
+          result.asserting { case (inputScopeTemplates, res) =>
+            res.value.map(_.toWrite) shouldBe inputScopeTemplates
+          }
         }
 
         "insert entity into DB" in {
           val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplates = List(scopeTemplateRead_2.copy(apiKeyTemplateId = templateId))
+            inputScopeTemplates = List(scopeTemplateRead_1.copy(apiKeyTemplateId = templateId))
+
             _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
             _ <- scopeTemplateDb.insertMany(inputScopeTemplates)
 
             res <- Queries.getAllScopes.compile.toList
-          } yield res).transact(transactor)
+            allScopeTemplates = oldScopeTemplates ++ inputScopeTemplates
+          } yield (allScopeTemplates, res)).transact(transactor)
 
-          result.asserting(
-            _.map(_.toWrite) should contain theSameElementsAs List(oldScopeTemplate, scopeTemplateRead_1)
-          )
+          result.asserting { case (allScopeTemplates, res) =>
+            res.map(_.toWrite) should contain theSameElementsAs allScopeTemplates
+          }
         }
       }
     }
 
     "provided with multiple scope templates" when {
 
-      val inputScopeTemplates =
+      def inputScopeTemplates(templateId: Long): List[ScopeTemplateEntity.Write] =
         List(scopeTemplateRead_1, scopeTemplateRead_2, scopeTemplateWrite_1, scopeTemplateWrite_2)
+          .map(_.copy(apiKeyTemplateId = templateId))
 
       "there are no rows in the DB" should {
 
         "return inserted entities" in {
-          scopeTemplateDb
-            .insertMany(inputScopeTemplates)
-            .transact(transactor)
-            .asserting(_.value.map(_.toWrite) should contain theSameElementsAs inputScopeTemplates)
+          val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
+
+            res <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId)
+          } yield (inputScopeTemplatesCorrectTemplateId, res)).transact(transactor)
+
+          result.asserting { case (inputScopeTemplatesCorrectTemplateId, res) =>
+            res.value.map(_.toWrite) should contain theSameElementsAs inputScopeTemplatesCorrectTemplateId
+          }
         }
 
         "insert entities into DB" in {
           val result = (for {
-            _ <- scopeTemplateDb.insertMany(inputScopeTemplates)
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
+
+            _ <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId)
 
             res <- Queries.getAllScopes.compile.toList
-          } yield res).transact(transactor)
+          } yield (inputScopeTemplatesCorrectTemplateId, res)).transact(transactor)
 
-          result.asserting(_.map(_.toWrite) should contain theSameElementsAs inputScopeTemplates)
+          result.asserting { case (inputScopeTemplatesCorrectTemplateId, res) =>
+            res.map(_.toWrite) should contain theSameElementsAs inputScopeTemplatesCorrectTemplateId
+          }
         }
       }
 
@@ -212,13 +252,18 @@ class ScopeTemplateDbSpec
 
         val oldScopeTemplate_1 = scopeTemplateRead_3.copy(value = scopeRead_2)
         val oldScopeTemplate_2 = scopeTemplateWrite_3.copy(value = scopeWrite_2)
-        val oldScopeTemplates = List(oldScopeTemplate_1, oldScopeTemplate_2)
+        def oldScopeTemplates(templateId: Long): List[ScopeTemplateEntity.Write] =
+          List(oldScopeTemplate_1, oldScopeTemplate_2).map(_.copy(apiKeyTemplateId = templateId))
 
         "return Left containing ScopeTemplateAlreadyExistsError" in {
           val result = (for {
-            _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplatesCorrectTemplateId = oldScopeTemplates(templateId)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
 
-            res <- scopeTemplateDb.insertMany(inputScopeTemplates)
+            _ <- scopeTemplateDb.insertMany(oldScopeTemplatesCorrectTemplateId)
+
+            res <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId)
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe Left(ScopeTemplateAlreadyExistsError))
@@ -226,39 +271,59 @@ class ScopeTemplateDbSpec
 
         "NOT insert the new entities into DB" in {
           val result = for {
-            _ <- scopeTemplateDb.insertMany(oldScopeTemplates).transact(transactor)
-            _ <- scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor)
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1).transact(transactor)
+            oldScopeTemplatesCorrectTemplateId = oldScopeTemplates(templateId)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
+
+            _ <- scopeTemplateDb.insertMany(oldScopeTemplatesCorrectTemplateId).transact(transactor)
+            _ <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId).transact(transactor)
 
             res <- Queries.getAllScopes.transact(transactor).compile.toList
-          } yield res
+          } yield (oldScopeTemplatesCorrectTemplateId, res)
 
-          result.asserting(_.map(_.toWrite) should contain theSameElementsAs oldScopeTemplates)
+          result.asserting { case (oldScopeTemplatesCorrectTemplateId, res) =>
+            res.map(_.toWrite) should contain theSameElementsAs oldScopeTemplatesCorrectTemplateId
+          }
         }
       }
 
       "there are different rows in the DB" should {
 
-        val oldScopeTemplates = List(scopeTemplateRead_3, scopeTemplateWrite_3)
+        def oldScopeTemplates(templateId: Long): List[ScopeTemplateEntity.Write] =
+          List(scopeTemplateRead_3, scopeTemplateWrite_3).map(_.copy(apiKeyTemplateId = templateId))
 
         "return inserted entities" in {
-          val result = for {
-            _ <- scopeTemplateDb.insertMany(oldScopeTemplates).transact(transactor)
+          val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplatesCorrectTemplateId = oldScopeTemplates(templateId)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
 
-            res <- scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor)
-          } yield res
+            _ <- scopeTemplateDb.insertMany(oldScopeTemplatesCorrectTemplateId)
 
-          result.asserting(_.value.map(_.toWrite) should contain theSameElementsAs inputScopeTemplates)
+            res <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId)
+          } yield (inputScopeTemplatesCorrectTemplateId, res)).transact(transactor)
+
+          result.asserting { case (inputScopeTemplatesCorrectTemplateId, res) =>
+            res.value.map(_.toWrite) should contain theSameElementsAs inputScopeTemplatesCorrectTemplateId
+          }
         }
 
         "insert entities into DB" in {
-          val result = for {
-            _ <- scopeTemplateDb.insertMany(oldScopeTemplates).transact(transactor)
-            _ <- scopeTemplateDb.insertMany(inputScopeTemplates).transact(transactor)
+          val result = (for {
+            templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+            oldScopeTemplatesCorrectTemplateId = oldScopeTemplates(templateId)
+            inputScopeTemplatesCorrectTemplateId = inputScopeTemplates(templateId)
 
-            res <- Queries.getAllScopes.transact(transactor).compile.toList
-          } yield res
+            _ <- scopeTemplateDb.insertMany(oldScopeTemplatesCorrectTemplateId)
+            _ <- scopeTemplateDb.insertMany(inputScopeTemplatesCorrectTemplateId)
 
-          result.asserting(_.map(_.toWrite) should contain theSameElementsAs oldScopeTemplates ++ inputScopeTemplates)
+            res <- Queries.getAllScopes.compile.toList
+            allScopeTemplates = oldScopeTemplatesCorrectTemplateId ++ inputScopeTemplatesCorrectTemplateId
+          } yield (allScopeTemplates, res)).transact(transactor)
+
+          result.asserting { case (allScopeTemplates, res) =>
+            res.map(_.toWrite) should contain theSameElementsAs allScopeTemplates
+          }
         }
       }
     }
@@ -272,12 +337,13 @@ class ScopeTemplateDbSpec
       }
     }
 
-    "there are rows in the DB with a different API Key Template ID" should {
+    "there are rows in the DB with different API Key Template ID" should {
       "return empty Stream" in {
-        val oldScopeTemplates =
-          List(scopeTemplateRead_1, scopeTemplateRead_2, scopeTemplateWrite_1, scopeTemplateWrite_2)
-
         val result = (for {
+          templateId <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+          oldScopeTemplates = List(scopeTemplateRead_1, scopeTemplateRead_2, scopeTemplateWrite_1, scopeTemplateWrite_2)
+            .map(_.copy(apiKeyTemplateId = templateId))
+
           _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
 
           res <- scopeTemplateDb.getByApiKeyTemplateId(124L).compile.toList
@@ -289,22 +355,29 @@ class ScopeTemplateDbSpec
 
     "there are rows in the DB with the same API Key Template ID" should {
       "return only these rows" in {
-        val oldScopeTemplates = List(
-          scopeTemplateRead_1,
-          scopeTemplateRead_2.copy(apiKeyTemplateId = 124L),
-          scopeTemplateRead_3.copy(apiKeyTemplateId = 125L),
-          scopeTemplateWrite_1,
-          scopeTemplateWrite_2.copy(apiKeyTemplateId = 124L),
-          scopeTemplateWrite_3.copy(apiKeyTemplateId = 125L)
-        )
-
         val result = (for {
+          templateId_1 <- insertPrerequisiteData(apiKeyTemplateEntityWrite_1)
+          templateId_2 <- insertPrerequisiteData(apiKeyTemplateEntityWrite_2)
+          oldScopeTemplates = List(
+            scopeTemplateRead_1.copy(apiKeyTemplateId = templateId_1),
+            scopeTemplateWrite_1.copy(apiKeyTemplateId = templateId_1),
+            scopeTemplateRead_2.copy(apiKeyTemplateId = templateId_2),
+            scopeTemplateWrite_2.copy(apiKeyTemplateId = templateId_2),
+            scopeTemplateRead_3.copy(apiKeyTemplateId = templateId_2),
+            scopeTemplateWrite_3.copy(apiKeyTemplateId = templateId_2)
+          )
+
           _ <- scopeTemplateDb.insertMany(oldScopeTemplates)
 
-          res <- scopeTemplateDb.getByApiKeyTemplateId(123L).compile.toList
-        } yield res).transact(transactor)
+          res <- scopeTemplateDb.getByApiKeyTemplateId(templateId_1).compile.toList
+        } yield (templateId_1, res)).transact(transactor)
 
-        result.asserting(_.map(_.toWrite) shouldBe List(scopeTemplateRead_1, scopeTemplateWrite_1))
+        result.asserting { case (templateId, res) =>
+          val expectedResult =
+            List(scopeTemplateRead_1, scopeTemplateWrite_1).map(_.copy(apiKeyTemplateId = templateId))
+
+          res.map(_.toWrite) shouldBe expectedResult
+        }
       }
     }
   }

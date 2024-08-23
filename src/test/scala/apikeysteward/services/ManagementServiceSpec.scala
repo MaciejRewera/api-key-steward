@@ -5,7 +5,7 @@ import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
@@ -264,12 +264,12 @@ class ManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
         )
 
         managementService
           .deleteApiKey(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
   }

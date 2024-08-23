@@ -1,6 +1,6 @@
 
 CREATE TABLE IF NOT EXISTS api_key (
-    id INTEGER PRIMARY key generated always as identity,
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     api_key VARCHAR(256) NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS api_key (
 );
 
 CREATE TABLE IF NOT EXISTS api_key_data (
-    id INTEGER primary key generated always as identity,
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     api_key_id INTEGER NOT NULL,
     public_key_id VARCHAR(128) NOT NULL,
     name VARCHAR(256) NOT NULL,
@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS api_key_data (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (api_key_id),
     UNIQUE (public_key_id),
-    constraint fk_api_key_id foreign key (api_key_id) references api_key (id)
+    CONSTRAINT fk_api_key_id FOREIGN KEY (api_key_id) REFERENCES api_key (id)
 );
 
 CREATE INDEX idx_api_key_data_user_id ON api_key_data (user_id);
 
 CREATE TABLE IF NOT EXISTS api_key_data_deleted (
-    id INTEGER primary key generated always as identity,
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     deleted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     api_key_data_id INTEGER NOT NULL,
 

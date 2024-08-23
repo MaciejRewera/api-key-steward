@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
@@ -116,7 +116,7 @@ class ApiKeyRepository(
     for {
       apiKeyDataToDeleteE <- apiKeyDataDb
         .getBy(userId, publicKeyIdToDelete)
-        .map(_.toRight(ApiKeyDataNotFound(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
+        .map(_.toRight(ApiKeyDataNotFoundError(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
 
       apiKeyDataScopesToDeleteE <- apiKeyDataToDeleteE
         .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id).compile.toList)

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS scope
 (
-    id    INTEGER PRIMARY key generated always as identity,
+    id    INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     scope VARCHAR(256) NOT NULL,
     UNIQUE (scope)
 );
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS api_key_data_scopes
 
 CREATE TABLE IF NOT EXISTS api_key_data_scopes_deleted
 (
-    id              INTEGER primary key generated always as identity,
+    id              INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     deleted_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     api_key_data_id INTEGER     NOT NULL,

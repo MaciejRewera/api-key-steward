@@ -20,7 +20,7 @@ object DbCommons {
   sealed abstract class ApiKeyDeletionError(override val message: String) extends CustomError
   object ApiKeyDeletionError {
 
-    case class ApiKeyDataNotFound(userId: String, publicKeyId: UUID)
+    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
         extends ApiKeyDeletionError(
           message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
         )
@@ -36,6 +36,20 @@ object DbCommons {
 
     case object ScopeTemplateAlreadyExistsError
         extends ScopeTemplateInsertionError(message = "Scope Template already exists.")
+  }
+
+  sealed abstract class ApiKeyTemplateInsertionError(override val message: String) extends CustomError
+  object ApiKeyTemplateInsertionError {
+
+    case class ApiKeyTemplateAlreadyExistsError(publicId: String)
+        extends ApiKeyTemplateInsertionError(message = s"API Key Template with publicId: [$publicId] already exists.")
+  }
+
+  sealed abstract class ApiKeyTemplateUpdateError(override val message: String) extends CustomError
+  object ApiKeyTemplateUpdateError {
+
+    case class ApiKeyTemplateNotFoundError(publicId: String)
+        extends ApiKeyTemplateUpdateError(message = s"API Key Template with publicId: [$publicId] does not exist.")
   }
 
 }

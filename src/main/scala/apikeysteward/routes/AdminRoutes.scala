@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
@@ -90,7 +90,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementSer
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
-              case Left(_: ApiKeyDataNotFound) =>
+              case Left(_: ApiKeyDataNotFoundError) =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
               case Left(_: ApiKeyDeletionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft

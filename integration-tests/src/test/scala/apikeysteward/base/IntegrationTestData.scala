@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ApiKeyTemplateEntity}
 
 import java.util.UUID
 
@@ -45,6 +45,22 @@ trait IntegrationTestData extends FixedClock {
   val scopeWriteDescription_1 = "This is a description of the Scope Write 1"
   val scopeWriteDescription_2 = "This is a description of the Scope Write 2"
   val scopeWriteDescription_3 = "This is a description of the Scope Write 3"
+
+  val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
+    publicId = UUID.randomUUID().toString,
+    apiKeyExpiryPeriodMaxSeconds = 3600
+  )
+  val apiKeyTemplateEntityWrite_2: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
+    publicId = UUID.randomUUID().toString,
+    apiKeyExpiryPeriodMaxSeconds = 3600
+  )
+  val apiKeyTemplateEntityRead_1: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
+    id = 1L,
+    publicId = apiKeyTemplateEntityWrite_1.publicId,
+    apiKeyExpiryPeriodMaxSeconds = apiKeyTemplateEntityWrite_1.apiKeyExpiryPeriodMaxSeconds,
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
 
   val apiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
   val apiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
