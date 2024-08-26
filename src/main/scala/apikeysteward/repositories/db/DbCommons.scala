@@ -44,4 +44,17 @@ object DbCommons {
         )
   }
 
+  sealed abstract class TenantDbError(override val message: String) extends CustomError
+  object TenantDbError {
+
+    case class TenantNotFoundError(publicId: UUID)
+      extends TenantDbError(message = s"Could not find Tenant with publicId = ${publicId.toString}")
+
+    sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
+    object TenantInsertionError {
+      case class TenantAlreadyExistsError(publicId: UUID)
+        extends TenantInsertionError(message = s"Tenant with publicId = ${publicId.toString} already exists.")
+    }
+
+  }
 }

@@ -4,7 +4,7 @@ import apikeysteward.base.IntegrationTestData._
 import apikeysteward.base.TestData._
 import apikeysteward.base.{FixedClock, TestData}
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
