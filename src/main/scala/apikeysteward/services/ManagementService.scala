@@ -82,14 +82,19 @@ class ManagementService(
   private def insertNewApiKey(newApiKey: ApiKey, apiKeyData: ApiKeyData): IO[Either[InsertionError, ApiKeyData]] =
     for {
       insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
-        case Right(_) => logger.info("Inserted API Key into database.")
+        case Right(_) => logger.info(s"Inserted API Key with publicKeyId: [${apiKeyData.publicKeyId}] into database.")
         case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
       }
       res = insertionResult.left.map(InsertionError)
     } yield res
 
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
-    apiKeyRepository.delete(userId, publicKeyId)
+    for {
+      resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
+        case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
+        case Left(e)  => logger.warn(s"Could not delete API Key because: ${e.message}")
+      }
+    } yield resE
 
   def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
     apiKeyRepository.getAll(userId)

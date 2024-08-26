@@ -883,6 +883,7 @@ class ApiKeyRepositorySpec
         "call ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb" in {
           initMocks()
           apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          apiKeyDataScopesDb.delete(any[Long]) returns Stream.empty
           scopeDb.getByIds(any[List[Long]]) returns Stream.empty
 
           for {
@@ -892,7 +893,7 @@ class ApiKeyRepositorySpec
             _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(apiKeyDataEntityRead_1.id)
             _ = verify(scopeDb).getByIds(eqTo(List.empty[Long]))
 
-            _ = verify(apiKeyDataScopesDb, never).delete(any[Long], any[Long])
+            _ = verify(apiKeyDataScopesDb, never).delete(any[Long])
             _ = verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1))
             _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
 
@@ -902,6 +903,7 @@ class ApiKeyRepositorySpec
         "return Right containing deleted ApiKeyData" in {
           initMocks()
           apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          apiKeyDataScopesDb.delete(any[Long]) returns Stream.empty
           scopeDb.getByIds(any[List[Long]]) returns Stream.empty
 
           apiKeyRepository

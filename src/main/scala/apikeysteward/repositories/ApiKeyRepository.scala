@@ -142,7 +142,7 @@ class ApiKeyRepository(
     val publicKeyIdToDelete = UUID.fromString(apiKeyDataToDelete.publicKeyId)
 
     (for {
-      _ <- deleteApiKeyDataScopes(apiKeyDataToDelete.id, userId, publicKeyIdToDelete)
+      _ <- deleteApiKeyDataScopes(apiKeyDataScopesToDelete, userId, publicKeyIdToDelete)
       _ <- deleteApiKeyData(userId, publicKeyIdToDelete)
       _ <- deleteApiKey(apiKeyDataToDelete.apiKeyId, userId, publicKeyIdToDelete)
 
@@ -152,15 +152,30 @@ class ApiKeyRepository(
   }
 
   private def deleteApiKeyDataScopes(
-      apiKeyDataId: Long,
+      apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read],
       userId: String,
       publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] =
-    OptionT(for {
-      _ <- logger.info(s"Deleting ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
-      res <- apiKeyDataScopesDb.delete(apiKeyDataId).compile.toList.map(_.headOption).handleError(_ => None)
-      _ <- logger.info(s"Deleted ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
-    } yield res)
+  ): OptionT[doobie.ConnectionIO, List[ApiKeyDataScopesEntity.Read]] = {
+    val apiKeyDataIds = apiKeyDataScopesToDelete.map(_.apiKeyDataId).distinct
+
+    val result = if (apiKeyDataIds.nonEmpty) {
+      for {
+        _ <- logger.info(s"Deleting ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
+
+        res <- apiKeyDataIds.flatTraverse(apiKeyDataScopesDb.delete(_).compile.toList).map(Option(_)).handleErrorWith {
+          err =>
+            logger.warn(s"An exception occurred while deleting ApiKeyDataScopes: ${err.getMessage}") >>
+              Option.empty[List[ApiKeyDataScopesEntity.Read]].pure[doobie.ConnectionIO]
+        }
+
+        _ <- logger.info(s"Deleted ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
+      } yield res
+    } else {
+      Option(List.empty[ApiKeyDataScopesEntity.Read]).pure[doobie.ConnectionIO]
+    }
+
+    OptionT(result)
+  }
 
   private def deleteApiKeyData(
       userId: String,
