@@ -846,11 +846,6 @@ class ApiKeyRepositorySpec
           .emits(Seq(ScopeEntity.Read(scopeId_1, scopeRead_1), ScopeEntity.Read(scopeId_2, scopeWrite_1)))
           .covary[doobie.ConnectionIO]
 
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -868,9 +863,6 @@ class ApiKeyRepositorySpec
             _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
             _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(apiKeyDataEntityRead_1.id)
             _ = verify(scopeDb).getByIds(eqTo(List(scopeId_1, scopeId_2)))
-
-            _ = verify(apiKeyDataDb).copyIntoDeletedTable(eqTo(userId_1), eqTo(publicKeyId_1))
-            _ = verify(apiKeyDataScopesDb).copyIntoDeletedTable(eqTo(apiKeyDataEntityRead_1.id))
 
             _ = verify(apiKeyDataScopesDb).delete(eqTo(apiKeyDataEntityRead_1.id))
             _ = verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1))
@@ -900,9 +892,6 @@ class ApiKeyRepositorySpec
             _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(apiKeyDataEntityRead_1.id)
             _ = verify(scopeDb).getByIds(eqTo(List.empty[Long]))
 
-            _ = verify(apiKeyDataDb).copyIntoDeletedTable(eqTo(userId_1), eqTo(publicKeyId_1))
-            _ = verify(apiKeyDataScopesDb, never).copyIntoDeletedTable(any[Long], any[Long])
-
             _ = verify(apiKeyDataScopesDb, never).delete(any[Long], any[Long])
             _ = verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1))
             _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
@@ -930,7 +919,6 @@ class ApiKeyRepositorySpec
         for {
           _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
 
-          _ = verify(apiKeyDataDb, never).copyIntoDeletedTable(any[String], any[UUID])
           _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
           _ = verifyZeroInteractions(apiKeyDb)
           _ = verifyZeroInteractions(scopeDb)
@@ -947,83 +935,12 @@ class ApiKeyRepositorySpec
       }
     }
 
-    "ApiKeyDataDb.copyIntoDeletedTable returns failure (no rows copied)" should {
-
-      "NOT call ApiKeyDb, ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb anymore" in {
-        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
-
-        for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
-
-          _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
-          _ = verifyZeroInteractions(apiKeyDb)
-          _ = verifyZeroInteractions(scopeDb)
-          _ = verify(apiKeyDataScopesDb, never).copyIntoDeletedTable(any[Long], any[Long])
-          _ = verify(apiKeyDataScopesDb, never).delete(any[Long], any[Long])
-        } yield ()
-      }
-
-      "return Left containing GenericApiKeyDeletionError" in {
-        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
-
-        apiKeyRepository
-          .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
-      }
-    }
-
-    "ApiKeyDataScopesDb.copyIntoDeletedTable returns failure" should {
-
-      "NOT call ApiKeyDb, ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb anymore" in {
-        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
-
-        for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
-
-          _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
-          _ = verifyZeroInteractions(apiKeyDb)
-          _ = verifyZeroInteractions(scopeDb)
-          _ = verify(apiKeyDataScopesDb, never).delete(any[Long])
-        } yield ()
-      }
-
-      "return Left containing GenericApiKeyDeletionError" in {
-        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
-
-        apiKeyRepository
-          .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
-      }
-    }
-
     "ApiKeyDataScopesDb.delete returns failure" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb or ScopeDb anymore" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
 
         for {
@@ -1039,10 +956,6 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
 
         apiKeyRepository
@@ -1057,10 +970,6 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
@@ -1077,10 +986,6 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
@@ -1097,10 +1002,6 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -1117,10 +1018,6 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.copyIntoDeletedTable(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb.copyIntoDeletedTable(any[Long]) returns
-          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]

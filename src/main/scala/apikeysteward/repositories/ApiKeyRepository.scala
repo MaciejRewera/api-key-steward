@@ -142,9 +142,6 @@ class ApiKeyRepository(
     val publicKeyIdToDelete = UUID.fromString(apiKeyDataToDelete.publicKeyId)
 
     (for {
-      _ <- copyApiKeyDataIntoDeletedTable(userId, publicKeyIdToDelete)
-      _ <- copyApiKeyDataScopesIntoDeletedTable(apiKeyDataToDelete.id, userId, publicKeyIdToDelete)
-
       _ <- deleteApiKeyDataScopes(apiKeyDataToDelete.id, userId, publicKeyIdToDelete)
       _ <- deleteApiKeyData(userId, publicKeyIdToDelete)
       _ <- deleteApiKey(apiKeyDataToDelete.apiKeyId, userId, publicKeyIdToDelete)
@@ -153,40 +150,6 @@ class ApiKeyRepository(
     } yield res).value
       .map(_.toRight(GenericApiKeyDeletionError(userId, publicKeyIdToDelete)))
   }
-
-  private def copyApiKeyDataIntoDeletedTable(
-      userId: String,
-      publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
-    OptionT(for {
-      _ <- logger.info(
-        s"Copying ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table..."
-      )
-      res <- apiKeyDataDb.copyIntoDeletedTable(userId, publicKeyIdToDelete)
-      _ <- logger.info(
-        s"Copied ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table."
-      )
-    } yield res)
-
-  private def copyApiKeyDataScopesIntoDeletedTable(
-      apiKeyDataId: Long,
-      userId: String,
-      publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, ApiKeyDataScopesEntity.Read] =
-    OptionT(for {
-      _ <- logger.info(
-        s"Copying ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table..."
-      )
-      res <- apiKeyDataScopesDb
-        .copyIntoDeletedTable(apiKeyDataId)
-        .compile
-        .toList
-        .map(_.headOption)
-        .handleError(_ => None)
-      _ <- logger.info(
-        s"Copied ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete] into deleted table."
-      )
-    } yield res)
 
   private def deleteApiKeyDataScopes(
       apiKeyDataId: Long,
