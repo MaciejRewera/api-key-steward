@@ -97,6 +97,8 @@ object Application extends IOApp.Simple with Logging {
         app = buildServerResource(httpApp, config)
 
         _ <- IO.race(licenseService.periodicallyValidateLicense(), app.useForever)
+
+        _ <- IO.blocking(transactor.kernel.close())
       } yield ()
     }
   }
