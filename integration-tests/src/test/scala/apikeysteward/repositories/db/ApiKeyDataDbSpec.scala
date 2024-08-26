@@ -21,7 +21,7 @@ class ApiKeyDataDbSpec
     with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE api_key, api_key_data, api_key_data_deleted CASCADE".update.run
+    _ <- sql"TRUNCATE api_key, api_key_data CASCADE".update.run
   } yield ()
 
   private val apiKeyDb = new ApiKeyDb
@@ -34,9 +34,6 @@ class ApiKeyDataDbSpec
 
     val getAllApiKeysData: doobie.ConnectionIO[List[ApiKeyDataEntity.Read]] =
       sql"SELECT * FROM api_key_data".query[ApiKeyDataEntity.Read].stream.compile.toList
-
-    val getAllDeletedApiKeysData: doobie.ConnectionIO[List[ApiKeyDataDeletedEntity.Read]] =
-      sql"SELECT * FROM api_key_data_deleted".query[ApiKeyDataDeletedEntity.Read].stream.compile.toList
   }
 
   "ApiKeyDataDb on insert" when {
@@ -448,184 +445,6 @@ class ApiKeyDataDbSpec
         result.asserting { result =>
           result.size shouldBe 2
           result should contain theSameElementsAs List(testUserId_1, testUserId_2)
-        }
-      }
-    }
-  }
-
-  "ApiKeyDataDb on copyIntoDeletedTable" when {
-
-    def buildApiKeyDataDeletedEntityRead(
-        id: Long,
-        apiKeyDataEntityRead: ApiKeyDataEntity.Read
-    ): ApiKeyDataDeletedEntity.Read =
-      ApiKeyDataDeletedEntity.Read(
-        id = id,
-        deletedAt = nowInstant,
-        apiKeyDataId = apiKeyDataEntityRead.id,
-        apiKeyId = apiKeyDataEntityRead.apiKeyId,
-        publicKeyId = apiKeyDataEntityRead.publicKeyId,
-        name = apiKeyDataEntityRead.name,
-        description = apiKeyDataEntityRead.description,
-        userId = apiKeyDataEntityRead.userId,
-        expiresAt = apiKeyDataEntityRead.expiresAt,
-        createdAt = apiKeyDataEntityRead.createdAt,
-        updatedAt = apiKeyDataEntityRead.updatedAt
-      )
-
-    "there are no rows in the API Key Data table" should {
-
-      "return empty Option" in {
-        apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1).transact(transactor).asserting(_ shouldBe None)
-      }
-
-      "NOT make any insertions into table with deleted rows" in {
-        val result = (for {
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-          res <- Queries.getAllDeletedApiKeysData
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty[ApiKeyDataDeletedEntity.Read])
-      }
-    }
-
-    "there is a row in the API Key Data table with different userId" should {
-
-      "return empty Option" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_2, publicKeyId_1)
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe None)
-      }
-
-      "NOT make any insertions into table with deleted rows" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_2, publicKeyId_1)
-
-          res <- Queries.getAllDeletedApiKeysData
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty[ApiKeyDataDeletedEntity.Read])
-      }
-    }
-
-    "there is a row in the API Key Data table with different publicKeyId" should {
-
-      "return empty Option" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_2)
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe None)
-      }
-
-      "NOT make any insertions into table with deleted rows" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_2)
-
-          res <- Queries.getAllDeletedApiKeysData
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty[ApiKeyDataDeletedEntity.Read])
-      }
-    }
-
-    "there is a row in the API Key Data table with the same userId and publicKeyId" should {
-
-      "return copied entity" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-        } yield res).transact(transactor)
-
-        result.asserting { res =>
-          res shouldBe defined
-          res.get shouldBe apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = res.get.apiKeyId)
-        }
-      }
-
-      "insert the same row into table with deleted rows" in {
-        val result = (for {
-          apiKeyEntityRead <- apiKeyDb.insert(apiKeyEntityWrite_1)
-          apiKeyId = apiKeyEntityRead.value.id
-          apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-          apiKeyDataId = apiKeyDataEntityRead.value.id
-
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-
-          res <- Queries.getAllDeletedApiKeysData
-        } yield (apiKeyId, apiKeyDataId, res)).transact(transactor)
-
-        result.asserting { case (apiKeyId, apiKeyDataId, res) =>
-          res.size shouldBe 1
-
-          val expectedDeletedEntityRead =
-            buildApiKeyDataDeletedEntityRead(id = res.head.id, apiKeyDataEntityRead_1).copy(
-              apiKeyDataId = apiKeyDataId,
-              apiKeyId = apiKeyId
-            )
-
-          res.head shouldBe expectedDeletedEntityRead
-        }
-      }
-    }
-
-    "there is a row in the API Key Data table with the same userId and publicKeyId, and it is copied for the second time into the API Key Deleted table" should {
-
-      "return copied entity" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-          res <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-        } yield res).transact(transactor)
-
-        result.asserting { res =>
-          res shouldBe defined
-          res.get shouldBe apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = res.get.apiKeyId)
-        }
-      }
-
-      "insert this row into table with deleted rows" in {
-        val result = (for {
-          apiKeyEntityRead <- apiKeyDb.insert(apiKeyEntityWrite_1)
-          apiKeyId = apiKeyEntityRead.value.id
-          apiKeyDataEntityRead <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-          apiKeyDataId = apiKeyDataEntityRead.value.id
-
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-          _ <- apiKeyDataDb.copyIntoDeletedTable(testUserId_1, publicKeyId_1)
-
-          res <- Queries.getAllDeletedApiKeysData
-        } yield (apiKeyId, apiKeyDataId, res)).transact(transactor)
-
-        result.asserting { case (apiKeyId, apiKeyDataId, res) =>
-          res.size shouldBe 2
-
-          val expectedDeletedEntityRead =
-            buildApiKeyDataDeletedEntityRead(id = res.head.id, apiKeyDataEntityRead_1).copy(
-              apiKeyDataId = apiKeyDataId,
-              apiKeyId = apiKeyId
-            )
-
-          res.head shouldBe expectedDeletedEntityRead.copy(id = res.head.id)
-          res(1) shouldBe expectedDeletedEntityRead.copy(id = res(1).id)
         }
       }
     }

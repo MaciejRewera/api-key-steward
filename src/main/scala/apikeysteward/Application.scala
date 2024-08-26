@@ -39,8 +39,8 @@ object Application extends IOApp.Simple with Logging {
           case Right(config)  => IO.pure(config)
         })
 
-      jdbcConnectionEC <- ExecutionContexts.fixedThreadPool[IO](16)
       dataSource: HikariDataSource = DataSourceBuilder.buildDataSource(config.database)
+      jdbcConnectionEC <- ExecutionContexts.fixedThreadPool[IO](16)
       transactor = HikariTransactor[IO](dataSource, jdbcConnectionEC)
 
       httpClient <- BlazeClientBuilder[IO].withConnectTimeout(1.minute).withIdleTimeout(5.minutes).resource
@@ -97,6 +97,8 @@ object Application extends IOApp.Simple with Logging {
         app = buildServerResource(httpApp, config)
 
         _ <- IO.race(licenseService.periodicallyValidateLicense(), app.useForever)
+
+        _ <- IO.blocking(transactor.kernel.close())
       } yield ()
     }
   }

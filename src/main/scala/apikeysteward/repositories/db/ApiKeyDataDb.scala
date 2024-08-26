@@ -62,12 +62,6 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
 
-  def copyIntoDeletedTable(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    for {
-      result <- getBy(userId, publicKeyId)
-      n <- Queries.copyIntoDeletedTable(userId, publicKeyId.toString, Instant.now(clock)).run
-    } yield if (n > 0) result else None
-
   def delete(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     for {
       result <- getBy(userId, publicKeyId)
@@ -109,34 +103,6 @@ class ApiKeyDataDb()(implicit clock: Clock) {
 
     val getAllUserIds: doobie.Query0[String] =
       sql"SELECT DISTINCT user_id FROM api_key_data".query[String]
-
-    def copyIntoDeletedTable(userId: String, publicKeyId: String, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key_data_deleted(
-              deleted_at,
-              api_key_data_id,
-              api_key_id,
-              public_key_id,
-              name,
-              description,
-              user_id,
-              expires_at,
-              created_at,
-              updated_at
-            ) (
-              SELECT
-                $now,
-                id,
-                api_key_id,
-                public_key_id,
-                name,
-                description,
-                user_id,
-                expires_at,
-                created_at,
-                updated_at
-              FROM api_key_data
-              WHERE api_key_data.user_id = $userId AND api_key_data.public_key_id = $publicKeyId
-            )""".stripMargin.update
 
     def delete(userId: String, publicKeyId: String): doobie.Update0 =
       sql"""DELETE FROM api_key_data
