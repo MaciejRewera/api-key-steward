@@ -11,23 +11,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-#   Still not sure about using Vault. Leaving this commented because I may want to use it in the end.
-#   But I need to learn more about the application requirements.
-#
-#  vault-server:
-#    image: hashicorp/vault:latest
-#    container_name: vault-server
-#    ports:
-#      - 8200:8200
-#    restart: always
-#    volumes:
-#      - ~/docker-vault/logs:/vault/logs
-#      - ~/docker-vault/file:/vault/file
-#      - ~/docker-vault/config:/vault/config
-#    cap_add:
-#      - IPC_LOCK
-#    entrypoint: vault server -config=/vault/config/vault.json
-
 volumes:
   pgdata:
 
