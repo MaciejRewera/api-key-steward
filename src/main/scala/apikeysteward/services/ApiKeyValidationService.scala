@@ -35,7 +35,12 @@ class ApiKeyValidationService(
           )
         )
 
-    } yield apiKeyData).value
+    } yield apiKeyData)
+      .biSemiflatTap(
+        _ => logger.info("Provided API Key is incorrect or does not exist."),
+        apiKeyData => logger.info(s"Provided API Key with key ID: [${apiKeyData.publicKeyId}] is valid.")
+      )
+      .value
 
   private def validateChecksum(apiKey: ApiKey): EitherT[IO, ApiKeyValidationError, ApiKey] = EitherT {
     val splitIndex = apiKey.value.length - ChecksumCodec.EncodedChecksumLength
@@ -48,11 +53,12 @@ class ApiKeyValidationService(
         logger.warn(s"Error while decoding checksum: ${error.message}") >> IO.pure(ApiKeyIncorrectError.asLeft)
 
       case Right(decodedChecksum) =>
-        if (calculatedChecksum == decodedChecksum)
-          IO(apiKey.asRight)
-        else
-          logger.info(s"Provided API Key: [${apiKey.value}] contains invalid checksum.") >>
-            IO(ApiKeyIncorrectError.asLeft)
+        IO {
+          if (calculatedChecksum == decodedChecksum)
+            apiKey.asRight
+          else
+            ApiKeyIncorrectError.asLeft
+        }
     }
   }
 
