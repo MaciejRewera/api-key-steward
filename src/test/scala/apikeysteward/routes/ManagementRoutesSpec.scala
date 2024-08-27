@@ -63,7 +63,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
     val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
-      ttl = ttlSeconds,
+      ttl = ttlMinutes,
       scopes = List(scopeRead_1, scopeWrite_1)
     )
 

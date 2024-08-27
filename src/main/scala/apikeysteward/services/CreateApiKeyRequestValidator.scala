@@ -8,6 +8,8 @@ import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestVa
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import cats.implicits.catsSyntaxTuple2Semigroupal
 
+import scala.concurrent.duration.FiniteDuration
+
 class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
   def validateRequest(
@@ -36,7 +38,7 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
     Validated
       .condNec(
-        createApiKeyRequest.ttl <= apiKeyConfig.ttlMax,
+        FiniteDuration(createApiKeyRequest.ttl, CreateApiKeyRequest.ttlTimeUnit) <= apiKeyConfig.ttlMax,
         createApiKeyRequest,
         TtlTooLargeError(createApiKeyRequest.ttl, apiKeyConfig.ttlMax)
       )
@@ -52,10 +54,10 @@ object CreateApiKeyRequestValidator {
           message = s"Provided request contains not allowed scopes: [${notAllowedScopes.mkString("'", "', '", "'")}]."
         )
 
-    case class TtlTooLargeError(ttlRequest: Int, ttlMax: Int)
+    case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
         extends CreateApiKeyRequestValidatorError(
           message =
-            s"Provided request contains time-to-live (ttl) of: $ttlRequest which is bigger than maximum allowed value of: $ttlMax."
+            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${CreateApiKeyRequest.ttlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
         )
   }
 

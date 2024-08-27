@@ -5,16 +5,19 @@ import pureconfig.ConfigReader
 import pureconfig.error.CannotConvert
 import pureconfig.generic.semiauto.deriveReader
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+
 case class ApiKeyConfig(
     randomSectionLength: Int,
     prefix: String,
     allowedScopes: Set[String],
-    ttlMax: Int,
+    ttlMax: FiniteDuration,
     storageHashingAlgorithm: Algorithm
 )
 
 object ApiKeyConfig {
-  implicit val hashingAlgorithmReader: ConfigReader[Algorithm] =
+  implicit val hashingAlgorithmReader: ConfigReader[Algorithm] = {
+    1.minute
     ConfigReader.fromString { str =>
       Algorithm.AllAlgorithms
         .find(_.name == str)
@@ -26,6 +29,7 @@ object ApiKeyConfig {
           )
         )
     }
+  }
 
   implicit val apiKeyConfigReader: ConfigReader[ApiKeyConfig] = deriveReader[ApiKeyConfig]
 }
