@@ -1,6 +1,6 @@
 package apikeysteward
 
-import apikeysteward.config.AppConfig
+import apikeysteward.config.{AppConfig, LicenseConfig}
 import apikeysteward.generators._
 import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories._
@@ -89,7 +89,7 @@ object Application extends IOApp.Simple with Logging {
         licenseServiceConfig = LicenseService.Configuration(
           initialDelay = 15.minutes,
           validationPeriod = 24.hours,
-          licenseConfig = config.license
+          licenseConfig = LicenseConfig("ALWAYS-VALID-LICENSE-KEY")
         )
         licenseValidator = new AlwaysValidLicenseValidator
         licenseService = new LicenseService(licenseServiceConfig, licenseValidator)

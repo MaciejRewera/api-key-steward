@@ -11,7 +11,6 @@ import scala.concurrent.duration.FiniteDuration
 case class AppConfig(
     http: HttpConfig,
     database: DatabaseConfig,
-    license: LicenseConfig,
     auth: AuthConfig,
     apiKey: ApiKeyConfig
 )
