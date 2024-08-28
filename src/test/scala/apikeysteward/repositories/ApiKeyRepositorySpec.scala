@@ -8,6 +8,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
+import apikeysteward.routes.model.CreateApiKeyRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -21,6 +22,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class ApiKeyRepositorySpec
     extends AsyncWordSpec
@@ -56,7 +58,7 @@ class ApiKeyRepositorySpec
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -67,7 +69,7 @@ class ApiKeyRepositorySpec
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -120,7 +122,7 @@ class ApiKeyRepositorySpec
           name = name,
           description = description,
           userId = userId_1,
-          expiresAt = nowInstant.plusSeconds(ttlSeconds)
+          expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
         )
         val expectedScopeEntitiesWrite = scopes_1.map(ScopeEntity.Write)
         val expectedApiKeyDataScopesEntitiesWrite = scopeEntities_1.map(_.id).map { scopeId =>

@@ -5,11 +5,13 @@ import pureconfig.ConfigReader
 import pureconfig.error.CannotConvert
 import pureconfig.generic.semiauto.deriveReader
 
+import scala.concurrent.duration.FiniteDuration
+
 case class ApiKeyConfig(
     randomSectionLength: Int,
     prefix: String,
     allowedScopes: Set[String],
-    ttlMax: Int,
+    ttlMax: FiniteDuration,
     storageHashingAlgorithm: Algorithm
 )
 

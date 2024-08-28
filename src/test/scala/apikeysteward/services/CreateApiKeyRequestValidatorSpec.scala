@@ -11,6 +11,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
+
 class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
   private val apiKeyConfig = mock[ApiKeyConfig]
@@ -21,13 +24,13 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
     super.beforeEach()
 
     reset(apiKeyConfig)
-    apiKeyConfig.ttlMax returns ttlSeconds
+    apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes, TimeUnit.MINUTES)
   }
 
   private def buildRequest(scopes: List[String]): CreateApiKeyRequest = CreateApiKeyRequest(
     name = name,
     description = description,
-    ttl = ttlSeconds,
+    ttl = ttlMinutes,
     scopes = scopes
   )
 
@@ -71,14 +74,14 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
       }
 
       "the request contains ttl value smaller then ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns (ttlSeconds + 1)
+        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes + 1, TimeUnit.MINUTES)
         val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Right(request)
       }
 
       "the request contains ttl value equal to ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns ttlSeconds
+        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes, TimeUnit.MINUTES)
         val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Right(request)
@@ -167,11 +170,13 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
       }
 
       "the request contains ttl value bigger than ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns (ttlSeconds - 1)
+        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)
         val request = buildRequest(List.empty)
 
         requestValidator.validateRequest(request) shouldBe Left(
-          NonEmptyChain.one(TtlTooLargeError(ttlRequest = ttlSeconds, ttlMax = ttlSeconds - 1))
+          NonEmptyChain.one(
+            TtlTooLargeError(ttlRequest = ttlMinutes, ttlMax = FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
+          )
         )
       }
     }
@@ -180,7 +185,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
 
       "both scopes and ttl validation fail" in {
         apiKeyConfig.allowedScopes returns Set.empty[String]
-        apiKeyConfig.ttlMax returns (ttlSeconds - 1)
+        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)
         val request = buildRequest(List(scopeRead_1))
 
         val result = requestValidator.validateRequest(request)
@@ -189,7 +194,7 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
         result.left.value.length shouldBe 2
         result.left.value.iterator.toSeq should contain theSameElementsAs Seq(
           NotAllowedScopesProvidedError(Set(scopeRead_1)),
-          TtlTooLargeError(ttlRequest = ttlSeconds, ttlMax = ttlSeconds - 1)
+          TtlTooLargeError(ttlRequest = ttlMinutes, ttlMax = FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
         )
       }
     }

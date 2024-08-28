@@ -2,13 +2,12 @@ package apikeysteward
 
 import apikeysteward.config.AppConfig
 import apikeysteward.generators._
-import apikeysteward.license.AlwaysValidLicenseValidator
 import apikeysteward.repositories._
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
-import apikeysteward.services.{ApiKeyValidationService, CreateApiKeyRequestValidator, LicenseService, ManagementService}
+import apikeysteward.services.{ApiKeyValidationService, CreateApiKeyRequestValidator, ManagementService}
 import apikeysteward.utils.Logging
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -86,18 +85,8 @@ object Application extends IOApp.Simple with Logging {
           )
           .orNotFound
 
-        licenseServiceConfig = LicenseService.Configuration(
-          initialDelay = 15.minutes,
-          validationPeriod = 24.hours,
-          licenseConfig = config.license
-        )
-        licenseValidator = new AlwaysValidLicenseValidator
-        licenseService = new LicenseService(licenseServiceConfig, licenseValidator)
-
         app = buildServerResource(httpApp, config)
-
-        _ <- IO.race(licenseService.periodicallyValidateLicense(), app.useForever)
-
+        _ <- app.useForever
         _ <- IO.blocking(transactor.kernel.close())
       } yield ()
     }

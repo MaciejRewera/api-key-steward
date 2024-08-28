@@ -3,6 +3,7 @@ package apikeysteward.base
 import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.util.Random
 
 object TestData extends TestData
@@ -39,7 +40,7 @@ trait TestData extends FixedClock {
   val userId_1 = "test-user-id-001"
   val userId_2 = "test-user-id-002"
   val userId_3 = "test-user-id-003"
-  val ttlSeconds = 60
+  val ttlMinutes = 60
 
   val scopeRead_1 = "read:scope-1"
   val scopeRead_2 = "read:scope-2"
@@ -57,7 +58,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     scopes = scopes_1
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
@@ -65,7 +66,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     scopes = scopes_2
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
@@ -73,7 +74,7 @@ trait TestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plusSeconds(ttlSeconds),
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     scopes = scopes_3
   )
 }

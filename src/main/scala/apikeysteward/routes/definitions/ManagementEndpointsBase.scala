@@ -20,12 +20,14 @@ private[definitions] object ManagementEndpointsBase {
     EndpointsBase.authenticatedEndpointBase.post
       .in(
         jsonBody[CreateApiKeyRequest]
-          .description("Details of the API key to create.")
+          .description(
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${CreateApiKeyRequest.ttlTimeUnit.toString.toLowerCase}."
+          )
           .example(
             CreateApiKeyRequest(
               name = "My API key",
               description = Some("A short description what this API key is for."),
-              ttl = 3600,
+              ttl = 60,
               scopes = List("read:myApi", "write:myApi")
             )
           )

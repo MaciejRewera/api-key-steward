@@ -1,11 +1,15 @@
 package apikeysteward.generators
 
+import apikeysteward.base.TestData.ttlMinutes
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.repositories.SecureHashGenerator.Algorithm.SHA3_256
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.Stream
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
 class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
@@ -15,7 +19,7 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
       randomSectionLength = 42,
       prefix = "prefix",
       allowedScopes = Set.empty,
-      ttlMax = 60,
+      ttlMax = FiniteDuration(ttlMinutes, TimeUnit.MINUTES),
       storageHashingAlgorithm = SHA3_256
     )
 
