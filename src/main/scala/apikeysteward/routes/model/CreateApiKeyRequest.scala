@@ -27,7 +27,9 @@ object CreateApiKeyRequest {
       .modify(_.description)(_.validateOption(Validator.nonEmptyString and Validator.maxLength(250)))
       .modify(_.ttl)(
         _.validate(Validator.positiveOrZero)
-          .description("Time-to-live for the API Key in minutes. Has to be positive or zero.")
+          .description(
+            s"Time-to-live for the API Key in ${ttlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
+          )
       )
 
   private def trimStringFields(request: CreateApiKeyRequest): CreateApiKeyRequest =
