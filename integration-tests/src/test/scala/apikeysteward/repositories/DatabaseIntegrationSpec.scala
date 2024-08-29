@@ -9,8 +9,7 @@ import doobie.ConnectionIO
 import doobie.hikari.HikariTransactor
 import doobie.implicits._
 import doobie.util.transactor.Transactor
-import fly4s.core.Fly4s
-import fly4s.core.data.{Fly4sConfig, Locations, MigrateResult}
+import org.flywaydb.core.api.output.MigrateResult
 import org.scalatest.{AsyncTestSuite, BeforeAndAfterAll, BeforeAndAfterEach}
 import pureconfig.ConfigSource
 
@@ -52,21 +51,17 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
     resetDatabaseQuery.transact(transactor).void >> cleanAndMigrateDatabase.void
 
   private def cleanAndMigrateDatabase: IO[MigrateResult] =
-    Fly4s
-      .makeFor[IO](
-        acquireDataSource = IO(dataSource),
-        config = Fly4sConfig(
-          table = databaseConfig.migrationsTable,
-          locations = Locations(databaseConfig.migrationsLocations),
-          cleanDisabled = false
+    for {
+      flyway <- DatabaseMigrator
+        .buildFlywayConfigBase(dataSource, databaseConfig)
+        .map(
+          _.cleanDisabled(false)
+            .load()
         )
-      )
-      .use { fly4s =>
-        for {
-          _ <- fly4s.clean
-          res <- fly4s.migrate
-        } yield res
-      }
+
+      _ <- IO.blocking(flyway.clean())
+      res <- IO.blocking(flyway.migrate())
+    } yield res
 
   override def afterAll(): Unit =
     (

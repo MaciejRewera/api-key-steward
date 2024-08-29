@@ -1,3 +1,5 @@
+version: '3'
+
 services:
 
   db:
@@ -5,12 +7,33 @@ services:
     container_name: api-key-steward-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: example
+      - POSTGRES_PASSWORD=example
     ports:
       - 5432:5432
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - db-network
+
+  api-key-steward:
+    image: api-key-steward:latest
+    container_name: api-key-steward
+    environment:
+      - AUTH_JWKS_URL=${AUTH_JWKS_URL}
+      - AUTH_JWT_ALLOWED_ISSUER=${AUTH_JWT_ALLOWED_ISSUER}
+      - AUTH_JWT_AUDIENCE=${AUTH_JWT_AUDIENCE}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=example
+    ports:
+          - 8080:8080
+    networks:
+      - db-network
 
 volumes:
   pgdata:
 
+networks:
+  db-network:
+    driver: bridge
