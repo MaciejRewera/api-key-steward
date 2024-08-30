@@ -6,7 +6,7 @@ COPY . /app
 RUN sbt assembly
 
 
-FROM openjdk:11-jre-slim
+FROM openjdk:17-slim
 
 COPY --from=builder /app/target/scala-2.13/api-key-steward.jar /api-key-steward.jar
 
