@@ -9,7 +9,6 @@ import doobie.ConnectionIO
 import doobie.hikari.HikariTransactor
 import doobie.implicits._
 import doobie.util.transactor.Transactor
-import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
 import org.scalatest.{AsyncTestSuite, BeforeAndAfterAll, BeforeAndAfterEach}
 import pureconfig.ConfigSource
@@ -53,15 +52,12 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
 
   private def cleanAndMigrateDatabase: IO[MigrateResult] =
     for {
-      flyway <- IO.blocking(
-        Flyway
-          .configure()
-          .dataSource(dataSource)
-          .table(databaseConfig.migrationsTable)
-          .locations(databaseConfig.migrationsLocations: _*)
-          .cleanDisabled(false)
-          .load()
-      )
+      flyway <- DatabaseMigrator
+        .buildFlywayConfigBase(dataSource, databaseConfig)
+        .map(
+          _.cleanDisabled(false)
+            .load()
+        )
 
       _ <- IO.blocking(flyway.clean())
       res <- IO.blocking(flyway.migrate())
