@@ -71,7 +71,14 @@ lazy val root = (project in file("."))
   .settings(
     name := "api-key-steward",
     scalafmtOnCompile := true,
-    assembly / assemblyJarName := "api-key-steward.jar"
+    assembly / assemblyJarName := "api-key-steward.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("module-info.class") => MergeStrategy.last
+      case path if path.endsWith("/module-info.class") => MergeStrategy.last
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
   )
 
 lazy val it = (project in file("integration-tests"))
@@ -85,10 +92,3 @@ lazy val it = (project in file("integration-tests"))
     )
   )
 
-assembly / assemblyMergeStrategy := {
-  case PathList("module-info.class") => MergeStrategy.last
-  case path if path.endsWith("/module-info.class") => MergeStrategy.last
-  case x =>
-    val oldStrategy = (assembly / assemblyMergeStrategy).value
-    oldStrategy(x)
-}
