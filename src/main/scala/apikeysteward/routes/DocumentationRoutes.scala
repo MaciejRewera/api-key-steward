@@ -5,7 +5,6 @@ import cats.effect.IO
 import cats.implicits._
 import org.http4s.HttpRoutes
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
 class DocumentationRoutes {
 
@@ -21,9 +20,6 @@ class DocumentationRoutes {
         .serverLogic(_ => Documentation.allYamlDocs.asRight[Unit].pure[IO])
     )
 
-  private val swaggerViewRoute: HttpRoutes[IO] =
-    new SwaggerHttp4s(yaml = Documentation.allYamlDocs).routes
-
-  val allRoutes: HttpRoutes[IO] = jsonDocsRoute <+> yamlDocsRoute <+> swaggerViewRoute
+  val allRoutes: HttpRoutes[IO] = jsonDocsRoute <+> yamlDocsRoute
 
 }
