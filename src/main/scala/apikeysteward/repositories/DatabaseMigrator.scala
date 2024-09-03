@@ -3,24 +3,31 @@ package apikeysteward.repositories
 import apikeysteward.config.DatabaseConfig
 import cats.effect.IO
 import com.zaxxer.hikari.HikariDataSource
-import fly4s.core.Fly4s
-import fly4s.core.data.{Fly4sConfig, Locations, MigrateResult}
+import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.configuration.FluentConfiguration
+import org.flywaydb.core.api.output.MigrateResult
 
 object DatabaseMigrator {
 
+  def buildFlywayConfigBase(dataSource: HikariDataSource, databaseConfig: DatabaseConfig): IO[FluentConfiguration] =
+    IO.blocking {
+      Flyway
+        .configure()
+        .dataSource(dataSource)
+        .table(databaseConfig.migrationsTable)
+        .locations(databaseConfig.migrationsLocations: _*)
+    }
+
   def migrateDatabase(dataSource: HikariDataSource, databaseConfig: DatabaseConfig): IO[MigrateResult] =
-    Fly4s
-      .makeFor[IO](
-        acquireDataSource = IO(dataSource),
-        config = Fly4sConfig(
-          table = databaseConfig.migrationsTable,
-          locations = Locations(databaseConfig.migrationsLocations),
-          cleanDisabled = true
+    for {
+      flyway <- buildFlywayConfigBase(dataSource, databaseConfig)
+        .map(
+          _.cleanDisabled(true)
+            .validateMigrationNaming(true)
+            .load()
         )
-      )
-      .use { fly4s =>
-        for {
-          res <- fly4s.migrate
-        } yield res
-      }
+
+      res <- IO.blocking(flyway.migrate())
+    } yield res
+
 }

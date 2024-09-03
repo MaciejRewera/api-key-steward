@@ -44,7 +44,7 @@ libraryDependencies ++= Seq(
   "com.zaxxer" % "HikariCP" % "5.0.1",
   "org.postgresql" % "postgresql" % "42.6.0",
   "org.apache.commons" % "commons-lang3" % "3.13.0",
-  "com.github.geirolz" %% "fly4s-core" % "0.0.19",
+  "org.flywaydb" % "flyway-database-postgresql" % "10.14.0",
 
   // Config
   "com.github.pureconfig" %% "pureconfig" % pureConfigVersion,
@@ -61,7 +61,6 @@ libraryDependencies ++= Seq(
   // Caching
   "com.github.blemale" %% "scaffeine" % "5.2.1",
 
-
   // Test
   "org.scalatest" %% "scalatest" % "3.2.16" % Test,
   "org.mockito" %% "mockito-scala-scalatest" % "1.17.29" % Test,
@@ -72,7 +71,14 @@ lazy val root = (project in file("."))
   .settings(
     name := "api-key-steward",
     scalafmtOnCompile := true,
-    assembly / assemblyJarName := "api-key-steward.jar"
+    assembly / assemblyJarName := "api-key-steward.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("module-info.class") => MergeStrategy.last
+      case path if path.endsWith("/module-info.class") => MergeStrategy.last
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
   )
 
 lazy val it = (project in file("integration-tests"))
@@ -86,10 +92,3 @@ lazy val it = (project in file("integration-tests"))
     )
   )
 
-assembly / assemblyMergeStrategy := {
-  case PathList("module-info.class") => MergeStrategy.discard
-  case PathList("META-INF", _*)      => MergeStrategy.discard
-  case x =>
-    val oldStrategy = (assembly / assemblyMergeStrategy).value
-    oldStrategy(x)
-}
