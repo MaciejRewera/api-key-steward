@@ -19,13 +19,15 @@ services:
     image: api-key-steward:latest
     container_name: api-key-steward
     environment:
-      - AUTH_JWKS_URL=https://dev-hx1i28xxvaqf6we3.uk.auth0.com/well-known/jwks.json
-      - AUTH_JWT_ALLOWED_ISSUER=https://dev-hx1i28xxvaqf6we3.uk.auth0.com
-      - AUTH_JWT_AUDIENCE=https://api-key-steward.web-app.example.com
+      - AUTH_JWKS_URL=${AUTH_JWKS_URL}
+      - AUTH_JWT_ALLOWED_ISSUER=${AUTH_JWT_ALLOWED_ISSUER}
+      - AUTH_JWT_AUDIENCE=${AUTH_JWT_AUDIENCE}
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
       - DATABASE_USERNAME=postgres
       - DATABASE_PASSWORD=example
+    ports:
+          - 8080:8080
     networks:
       - db-network
 
