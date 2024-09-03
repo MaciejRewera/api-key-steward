@@ -1,5 +1,6 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.12"
+javacOptions ++= Seq("-source", "22", "-target", "22")
 
 name := "api-key-steward"
 
