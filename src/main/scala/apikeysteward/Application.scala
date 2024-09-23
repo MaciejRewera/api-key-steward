@@ -1,6 +1,6 @@
 package apikeysteward
 
-import apikeysteward.config.AppConfig
+import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
 import apikeysteward.repositories._
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
@@ -23,6 +23,7 @@ import org.http4s.server.middleware.CORS
 import pureconfig.ConfigSource
 
 import java.time.Clock
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 
 object Application extends IOApp.Simple with Logging {
@@ -39,7 +40,7 @@ object Application extends IOApp.Simple with Logging {
         })
 
       dataSource: HikariDataSource = DataSourceBuilder.buildDataSource(config.database)
-      jdbcConnectionEC <- ExecutionContexts.fixedThreadPool[IO](16)
+      jdbcConnectionEC <- buildDatabaseConnectionEC(config.database.executionContext)
       transactor = HikariTransactor[IO](dataSource, jdbcConnectionEC)
 
       httpClient <- BlazeClientBuilder[IO].withConnectTimeout(1.minute).withIdleTimeout(5.minutes).resource
@@ -90,6 +91,17 @@ object Application extends IOApp.Simple with Logging {
         _ <- IO.blocking(transactor.kernel.close())
       } yield ()
     }
+  }
+
+  private def buildDatabaseConnectionEC(
+      configOpt: Option[DatabaseConnectionExecutionContextConfig]
+  ): Resource[IO, ExecutionContext] = {
+    val threadPoolSize = configOpt match {
+      case Some(DatabaseConnectionExecutionContextConfig(poolSize)) => IO.pure(poolSize)
+      case None                                                     => IO.blocking(Runtime.getRuntime.availableProcessors).map(_ + 2)
+    }
+
+    Resource.eval(threadPoolSize).flatMap(ExecutionContexts.fixedThreadPool[IO])
   }
 
   private def buildApiKeyRepository(config: AppConfig, transactor: HikariTransactor[IO]) = {
