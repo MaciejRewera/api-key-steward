@@ -7,6 +7,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
+import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
@@ -38,6 +39,33 @@ private[definitions] object ManagementEndpointsBase {
         jsonBody[CreateApiKeyResponse].example(
           CreateApiKeyResponse(
             apiKey = EndpointsBase.ApiKeyExample.value,
+            apiKeyData = EndpointsBase.ApiKeyDataExample
+          )
+        )
+      )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val updateApiKeyEndpointBase
+      : Endpoint[AccessToken, UpdateApiKeyRequest, ErrorInfo, (StatusCode, UpdateApiKeyResponse), Any] =
+    EndpointsBase.authenticatedEndpointBase.put
+      .in(
+        jsonBody[UpdateApiKeyRequest]
+          .description(
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase}."
+          )
+          .example(
+            UpdateApiKeyRequest(
+              name = "My API key",
+              description = Some("A short description what this API key is for."),
+              ttl = 60,
+              scopes = List("read:myApi", "write:myApi")
+            )
+          )
+      )
+      .out(statusCode.description(StatusCode.Ok, "API key created"))
+      .out(
+        jsonBody[UpdateApiKeyResponse].example(
+          UpdateApiKeyResponse(
             apiKeyData = EndpointsBase.ApiKeyDataExample
           )
         )

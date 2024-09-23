@@ -3,6 +3,7 @@ package apikeysteward.routes.definitions
 import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -31,6 +32,12 @@ object AdminEndpoints {
     ManagementEndpointsBase.createApiKeyEndpointBase
       .description("Create new API key for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys")
+
+  val updateApiKeyEndpoint
+      : Endpoint[AccessToken, (UpdateApiKeyRequest, String, UUID), ErrorInfo, (StatusCode, UpdateApiKeyResponse), Any] =
+    ManagementEndpointsBase.updateApiKeyEndpointBase
+      .description("Update API key for given user ID and key ID.")
+      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
     ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
