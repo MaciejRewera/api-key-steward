@@ -10,12 +10,12 @@ trait IntegrationTestData extends FixedClock {
 
   val ttlSeconds = 60
 
-  val publicKeyId_1 = UUID.randomUUID()
-  val publicKeyId_2 = UUID.randomUUID()
-  val publicKeyId_3 = UUID.randomUUID()
-  val publicKeyIdStr_1 = publicKeyId_1.toString
-  val publicKeyIdStr_2 = publicKeyId_2.toString
-  val publicKeyIdStr_3 = publicKeyId_3.toString
+  val publicKeyId_1: UUID = UUID.randomUUID()
+  val publicKeyId_2: UUID = UUID.randomUUID()
+  val publicKeyId_3: UUID = UUID.randomUUID()
+  val publicKeyIdStr_1: String = publicKeyId_1.toString
+  val publicKeyIdStr_2: String = publicKeyId_2.toString
+  val publicKeyIdStr_3: String = publicKeyId_3.toString
 
   val testUserId_1 = "test-user-001"
   val testUserId_2 = "test-user-002"

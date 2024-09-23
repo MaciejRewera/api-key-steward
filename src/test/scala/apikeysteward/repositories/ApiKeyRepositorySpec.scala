@@ -3,7 +3,7 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.model.{ApiKey, HashedApiKey}
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -935,7 +935,7 @@ class ApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
 

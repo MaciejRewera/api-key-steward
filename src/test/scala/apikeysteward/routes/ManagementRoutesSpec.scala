@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
@@ -11,7 +11,7 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService
-import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateUpdateError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -1100,7 +1100,7 @@ class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers 
 
         "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
           managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
-            Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+            Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
           )
 
           for {

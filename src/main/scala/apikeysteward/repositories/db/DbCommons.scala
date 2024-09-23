@@ -17,10 +17,20 @@ object DbCommons {
         extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
   }
 
+  // TODO: Update and Delete errors are not used in Db classes, so they should be moved to a different place.
+  sealed abstract class ApiKeyUpdateError(override val message: String) extends CustomError
+  object ApiKeyUpdateError {
+
+    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
+        extends ApiKeyUpdateError(
+          message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
+        )
+  }
+
   sealed abstract class ApiKeyDeletionError(override val message: String) extends CustomError
   object ApiKeyDeletionError {
 
-    case class ApiKeyDataNotFound(userId: String, publicKeyId: UUID)
+    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
         extends ApiKeyDeletionError(
           message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
         )

@@ -5,14 +5,14 @@ import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
-import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateUpdateError.{InsertionError, ValidationError}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -264,12 +264,12 @@ class ManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
         )
 
         managementService
           .deleteApiKey(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
   }
