@@ -8,6 +8,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantNotFound
 }
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
@@ -21,7 +22,7 @@ private[definitions] object ManagementEndpointsBase {
       .in(
         jsonBody[CreateApiKeyRequest]
           .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${CreateApiKeyRequest.ttlTimeUnit.toString.toLowerCase}."
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase}."
           )
           .example(
             CreateApiKeyRequest(

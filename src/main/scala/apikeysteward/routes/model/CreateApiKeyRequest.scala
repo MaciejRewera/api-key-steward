@@ -1,13 +1,12 @@
 package apikeysteward.routes.model
 
 import apikeysteward.routes.model.TapirCustomValidators.ValidateOption
+import apikeysteward.services.ApiKeyExpirationCalculator.ttlTimeUnit
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir._
 import sttp.tapir.generic.Derived
 import sttp.tapir.generic.auto._
-
-import java.util.concurrent.TimeUnit
 
 case class CreateApiKeyRequest(
     name: String,
@@ -17,8 +16,6 @@ case class CreateApiKeyRequest(
 )
 
 object CreateApiKeyRequest {
-
-  val ttlTimeUnit: TimeUnit = TimeUnit.MINUTES
 
   implicit val createApiKeyAdminRequestSchema: Schema[CreateApiKeyRequest] =
     implicitly[Derived[Schema[CreateApiKeyRequest]]].value
