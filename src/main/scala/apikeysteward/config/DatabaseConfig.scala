@@ -8,5 +8,6 @@ case class DatabaseConfig(
     username: Option[String],
     password: Option[String],
     migrationsTable: String,
-    migrationsLocations: List[String]
+    migrationsLocations: List[String],
+    executionContext: Option[DatabaseConnectionExecutionContextConfig]
 )
