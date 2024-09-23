@@ -6,7 +6,7 @@ import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
 import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
+import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError
 import apikeysteward.services.ManagementService.ApiKeyCreationError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException
@@ -19,7 +19,7 @@ import java.time.Clock
 import java.util.UUID
 
 class ManagementService(
-    createApiKeyRequestValidator: CreateApiKeyRequestValidator,
+    createApiKeyRequestValidator: CreateUpdateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
     apiKeyRepository: ApiKeyRepository
 )(implicit clock: Clock)
@@ -112,7 +112,7 @@ object ManagementService {
   sealed abstract class ApiKeyCreationError(override val message: String) extends CustomError
   object ApiKeyCreationError {
 
-    case class ValidationError(errors: Seq[CreateApiKeyRequestValidatorError])
+    case class ValidationError(errors: Seq[CreateUpdateApiKeyRequestValidatorError])
         extends ApiKeyCreationError(
           message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
         )

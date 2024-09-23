@@ -2,27 +2,27 @@ package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.CustomError
-import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
+import apikeysteward.routes.model.CreateUpdateApiKeyRequestBase
+import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError
+import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError._
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import cats.implicits.catsSyntaxTuple2Semigroupal
 
 import scala.concurrent.duration.FiniteDuration
 
-class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
+class CreateUpdateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
-  def validateRequest(
-      createApiKeyRequest: CreateApiKeyRequest
-  ): Either[NonEmptyChain[CreateApiKeyRequestValidatorError], CreateApiKeyRequest] =
+  def validateRequest[Request <: CreateUpdateApiKeyRequestBase](
+      createUpdateApiKeyRequest: Request
+  ): Either[NonEmptyChain[CreateUpdateApiKeyRequestValidatorError], Request] =
     (
-      validateScopes(createApiKeyRequest),
-      validateTimeToLive(createApiKeyRequest)
-    ).mapN((_, _) => createApiKeyRequest).toEither
+      validateScopes(createUpdateApiKeyRequest),
+      validateTimeToLive(createUpdateApiKeyRequest)
+    ).mapN((_, _) => createUpdateApiKeyRequest).toEither
 
   private def validateScopes(
-      createApiKeyRequest: CreateApiKeyRequest
-  ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] = {
+      createApiKeyRequest: CreateUpdateApiKeyRequestBase
+  ): ValidatedNec[CreateUpdateApiKeyRequestValidatorError, CreateUpdateApiKeyRequestBase] = {
     val notAllowedScopes = createApiKeyRequest.scopes.toSet.diff(apiKeyConfig.allowedScopes)
 
     Validated
@@ -34,8 +34,8 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   }
 
   private def validateTimeToLive(
-      createApiKeyRequest: CreateApiKeyRequest
-  ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
+      createApiKeyRequest: CreateUpdateApiKeyRequestBase
+  ): ValidatedNec[CreateUpdateApiKeyRequestValidatorError, CreateUpdateApiKeyRequestBase] =
     Validated
       .condNec(
         FiniteDuration(createApiKeyRequest.ttl, ApiKeyExpirationCalculator.ttlTimeUnit) <= apiKeyConfig.ttlMax,
@@ -44,18 +44,18 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
       )
 }
 
-object CreateApiKeyRequestValidator {
+object CreateUpdateApiKeyRequestValidator {
 
-  sealed abstract class CreateApiKeyRequestValidatorError(override val message: String) extends CustomError
-  object CreateApiKeyRequestValidatorError {
+  sealed abstract class CreateUpdateApiKeyRequestValidatorError(override val message: String) extends CustomError
+  object CreateUpdateApiKeyRequestValidatorError {
 
     case class NotAllowedScopesProvidedError(notAllowedScopes: Set[String])
-        extends CreateApiKeyRequestValidatorError(
+        extends CreateUpdateApiKeyRequestValidatorError(
           message = s"Provided request contains not allowed scopes: [${notAllowedScopes.mkString("'", "', '", "'")}]."
         )
 
     case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
-        extends CreateApiKeyRequestValidatorError(
+        extends CreateUpdateApiKeyRequestValidatorError(
           message =
             s"Provided request contains time-to-live (ttl) of: $ttlRequest ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
         )

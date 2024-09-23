@@ -11,7 +11,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
 import cats.data.NonEmptyChain
 import cats.effect.IO
@@ -34,7 +34,7 @@ class ManagementServiceSpec
     with FixedClock
     with BeforeAndAfterEach {
 
-  private val createApiKeyRequestValidator = mock[CreateApiKeyRequestValidator]
+  private val createApiKeyRequestValidator = mock[CreateUpdateApiKeyRequestValidator]
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 

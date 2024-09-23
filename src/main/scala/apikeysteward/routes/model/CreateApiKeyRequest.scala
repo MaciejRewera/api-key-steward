@@ -5,11 +5,11 @@ import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir._
 
 case class CreateApiKeyRequest(
-    name: String,
-    description: Option[String] = None,
-    ttl: Int,
-    scopes: List[String]
-)
+    override val name: String,
+    override val description: Option[String] = None,
+    override val ttl: Int,
+    override val scopes: List[String]
+) extends CreateUpdateApiKeyRequestBase
 
 object CreateApiKeyRequest {
   implicit val codec: Codec[CreateApiKeyRequest] = deriveCodec[CreateApiKeyRequest]
