@@ -39,7 +39,7 @@ class ManagementService(
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ValidationError, CreateApiKeyRequest] = EitherT.fromEither[IO](
     createApiKeyRequestValidator
-      .validateRequest(createApiKeyRequest)
+      .validateCreateRequest(createApiKeyRequest)
       .left
       .map(err => ValidationError(err.iterator.toSeq))
   )

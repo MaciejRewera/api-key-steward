@@ -2,7 +2,8 @@ package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.CustomError
-import apikeysteward.routes.model.CreateUpdateApiKeyRequestBase
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.{CreateApiKeyRequest, CreateUpdateApiKeyRequestBase}
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError._
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
@@ -12,17 +13,22 @@ import scala.concurrent.duration.FiniteDuration
 
 class CreateUpdateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
-  def validateRequest[Request <: CreateUpdateApiKeyRequestBase](
-      createUpdateApiKeyRequest: Request
-  ): Either[NonEmptyChain[CreateUpdateApiKeyRequestValidatorError], Request] =
+  def validateCreateRequest(
+      createApiKeyRequest: CreateApiKeyRequest
+  ): Either[NonEmptyChain[CreateUpdateApiKeyRequestValidatorError], CreateApiKeyRequest] =
     (
-      validateScopes(createUpdateApiKeyRequest),
-      validateTimeToLive(createUpdateApiKeyRequest)
-    ).mapN((_, _) => createUpdateApiKeyRequest).toEither
+      validateScopes(createApiKeyRequest),
+      validateTimeToLive(createApiKeyRequest)
+    ).mapN((_, _) => createApiKeyRequest).toEither
+
+  def validateUpdateRequest(
+      updateApiKeyRequest: UpdateApiKeyRequest
+  ): Either[NonEmptyChain[CreateUpdateApiKeyRequestValidatorError], UpdateApiKeyRequest] =
+    validateTimeToLive(updateApiKeyRequest).map(_ => updateApiKeyRequest).toEither
 
   private def validateScopes(
-      createApiKeyRequest: CreateUpdateApiKeyRequestBase
-  ): ValidatedNec[CreateUpdateApiKeyRequestValidatorError, CreateUpdateApiKeyRequestBase] = {
+      createApiKeyRequest: CreateApiKeyRequest
+  ): ValidatedNec[CreateUpdateApiKeyRequestValidatorError, CreateApiKeyRequest] = {
     val notAllowedScopes = createApiKeyRequest.scopes.toSet.diff(apiKeyConfig.allowedScopes)
 
     Validated

@@ -50,7 +50,7 @@ class ManagementServiceSpec
   override def beforeEach(): Unit = {
     reset(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
-    createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
+    createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
     apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
   }
@@ -65,7 +65,7 @@ class ManagementServiceSpec
         for {
           _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
 
-          _ = verify(createApiKeyRequestValidator).validateRequest(eqTo(createApiKeyRequest))
+          _ = verify(createApiKeyRequestValidator).validateCreateRequest(eqTo(createApiKeyRequest))
           _ = verify(apiKeyGenerator).generateApiKey
           _ = {
             val captor: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
@@ -86,7 +86,7 @@ class ManagementServiceSpec
     "CreateApiKeyRequestValidator returns Left" should {
 
       "NOT call ApiKeyGenerator or ApiKeyRepository" in {
-        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(
+        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
           NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2)))
         )
 
@@ -99,7 +99,9 @@ class ManagementServiceSpec
 
       "return successful IO containing Left with ValidationError" in {
         val error = NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
-        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(NonEmptyChain.one(error))
+        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
+          NonEmptyChain.one(error)
+        )
 
         managementService
           .createApiKey(userId_1, createApiKeyRequest)

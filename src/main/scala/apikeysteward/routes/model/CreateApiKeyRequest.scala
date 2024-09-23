@@ -8,7 +8,7 @@ case class CreateApiKeyRequest(
     override val name: String,
     override val description: Option[String] = None,
     override val ttl: Int,
-    override val scopes: List[String]
+    scopes: List[String]
 ) extends CreateUpdateApiKeyRequestBase
 
 object CreateApiKeyRequest {
