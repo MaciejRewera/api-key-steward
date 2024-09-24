@@ -60,19 +60,17 @@ class ApiKeyRepository(
 
   def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
     (for {
-      entityBeforeUpdateRead <- OptionT(apiKeyDataDb.getBy(apiKeyDataUpdate.userId, apiKeyDataUpdate.publicKeyId))
-      entityAfterUpdateWrite = ApiKeyDataEntity.Update.from(apiKeyDataUpdate)
-
       _ <- logInfoO(
         s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
       )
-      entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(entityAfterUpdateWrite))
+      entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
         .flatTap(_ =>
           logInfoO(
             s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
           )
         )
-      scopes <- OptionT.liftF(getScopes(entityBeforeUpdateRead.id))
+
+      scopes <- OptionT.liftF(getScopes(entityAfterUpdateRead.id))
 
       apiKeyData = ApiKeyData.from(entityAfterUpdateRead, scopes)
     } yield apiKeyData)
