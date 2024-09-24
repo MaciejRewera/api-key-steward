@@ -4,7 +4,6 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.IntegrationTestData._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.DbCommons.ApiKeyUpdateError
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -227,10 +226,8 @@ class ApiKeyDataDbSpec
 
     "there are no rows in the API Key Data table" should {
 
-      "return Left containing ApiKeyDataNotFoundError" in {
-        apiKeyDataDb.update(apiKeyDataEntityWrite_1).transact(transactor).asserting {
-          _ shouldBe Left(ApiKeyUpdateError.ApiKeyDataNotFoundError(testUserId_1, publicKeyId_1))
-        }
+      "return empty Option" in {
+        apiKeyDataDb.update(apiKeyDataEntityWrite_1).transact(transactor).asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -245,7 +242,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with different userId" should {
 
-      "return Left containing ApiKeyDataNotFoundError" in {
+      "return empty Option" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -253,7 +250,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.update(updatedEntityWrite.copy(userId = testUserId_2))
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyUpdateError.ApiKeyDataNotFoundError(testUserId_2, publicKeyId_1)))
+        result.asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -276,7 +273,7 @@ class ApiKeyDataDbSpec
 
     "there is a row in the API Key Data table with different publicKeyId" should {
 
-      "return Left containing ApiKeyDataNotFoundError" in {
+      "return empty Option" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
@@ -284,7 +281,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.update(updatedEntityWrite.copy(publicKeyId = publicKeyIdStr_2))
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyUpdateError.ApiKeyDataNotFoundError(testUserId_1, publicKeyId_2)))
+        result.asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
@@ -316,7 +313,7 @@ class ApiKeyDataDbSpec
         } yield res).transact(transactor)
 
         result.asserting { res =>
-          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, apiKeyId = res.value.apiKeyId))
+          res shouldBe Some(updatedEntityRead.copy(id = res.get.id, apiKeyId = res.get.apiKeyId))
         }
       }
 
@@ -353,7 +350,7 @@ class ApiKeyDataDbSpec
         } yield res).transact(transactor)
 
         result.asserting { res =>
-          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, apiKeyId = res.value.apiKeyId))
+          res shouldBe Some(updatedEntityRead.copy(id = res.get.id, apiKeyId = res.get.apiKeyId))
         }
       }
 

@@ -1,11 +1,12 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyIdAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.repositories.db.DbCommons.{ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import cats.implicits.catsSyntaxApplicativeId
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream
@@ -50,20 +51,14 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
     }
 
-  def update(
-      apiKeyDataEntity: ApiKeyDataEntity.Write
-  ): doobie.ConnectionIO[Either[ApiKeyUpdateError, ApiKeyDataEntity.Read]] = {
+  def update(apiKeyDataEntity: ApiKeyDataEntity.Write): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] = {
     val now = Instant.now(clock)
     for {
-      _ <- Queries.update(apiKeyDataEntity, now).run
-      updateResult <- getBy(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+      updateCount <- Queries.update(apiKeyDataEntity, now).run
 
-      res = updateResult.toRight(
-        ApiKeyUpdateError.ApiKeyDataNotFoundError(
-          apiKeyDataEntity.userId,
-          UUID.fromString(apiKeyDataEntity.publicKeyId)
-        )
-      )
+      res <-
+        if (updateCount > 0) getBy(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+        else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
     } yield res
   }
 

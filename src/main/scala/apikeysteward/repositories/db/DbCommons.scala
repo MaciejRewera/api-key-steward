@@ -21,6 +21,9 @@ object DbCommons {
   sealed abstract class ApiKeyUpdateError(override val message: String) extends CustomError
   object ApiKeyUpdateError {
 
+    def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyUpdateError =
+      ApiKeyDataNotFoundError(userId, publicKeyId)
+
     case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
         extends ApiKeyUpdateError(
           message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"

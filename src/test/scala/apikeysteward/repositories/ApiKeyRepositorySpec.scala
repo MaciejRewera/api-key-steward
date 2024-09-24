@@ -4,11 +4,10 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
+import apikeysteward.repositories.db.DbCommons.{ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
-import apikeysteward.routes.model.CreateApiKeyRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -91,10 +90,6 @@ class ApiKeyRepositorySpec
       .asLeft[ApiKeyDataEntity.Read]
       .pure[doobie.ConnectionIO]
 
-  private val apiKeyEntityReadWrapped = apiKeyEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
-  private val apiKeyDataEntityReadWrapped =
-    apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
-
   private val scopeEntitiesReadWrapped: Stream[doobie.ConnectionIO, ScopeEntity.Read] =
     Stream.emits(scopeEntities_1).covary[doobie.ConnectionIO]
 
@@ -102,11 +97,270 @@ class ApiKeyRepositorySpec
 
   private val testException = new RuntimeException("Test Exception")
 
+  "ApiKeyRepository on update" when {
+
+    val apiKeyDataEntityReadWrapped = Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+    val apiKeyDataEntityReadWrappedUpdated = Option(
+      apiKeyDataEntityRead_1.copy(
+        name = "Updated name",
+        description = Some("Updated description"),
+        expiresAt = nowInstant.plusSeconds(42),
+        updatedAt = nowInstant
+      )
+    ).pure[doobie.ConnectionIO]
+
+    val apiKeyDataScopesStream = Stream
+      .emits(
+        Seq(
+          ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+          ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
+        )
+      )
+      .covary[doobie.ConnectionIO]
+
+    val scopesStream = Stream
+      .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+      .covary[doobie.ConnectionIO]
+
+    val apiKeyDataUpdated = apiKeyData_1.copy(
+      name = "Updated name",
+      description = Some("Updated description"),
+      expiresAt = nowInstant.plusSeconds(42),
+      scopes = List.empty
+    )
+
+    "everything works correctly" when {
+
+      "ApiKeyData under update has scopes" should {
+
+        "call ApiKeyDataDb, ApiKeyDataScopesDb and ScopeDb, providing correct entities" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+          apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns apiKeyDataScopesStream
+          scopeDb.getByIds(any[List[Long]]) returns scopesStream
+
+          val expectedApiKeyDataEntityWrite = ApiKeyDataEntity.Write(
+            apiKeyId = apiKeyDataEntityRead_1.apiKeyId,
+            publicKeyId = publicKeyId_1.toString,
+            name = "Updated name",
+            description = Some("Updated description"),
+            userId = userId_1,
+            expiresAt = nowInstant.plusSeconds(42)
+          )
+
+          for {
+            _ <- apiKeyRepository.update(apiKeyDataUpdated)
+
+            _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataDb).update(eqTo(expectedApiKeyDataEntityWrite))
+            _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
+            _ = verify(scopeDb).getByIds(eqTo(List(101L, 102L)))
+          } yield ()
+        }
+
+        "return Right containing ApiKeyData" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+          apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns apiKeyDataScopesStream
+          scopeDb.getByIds(any[List[Long]]) returns scopesStream
+
+          val expectedApiKeyDataUpdated = apiKeyData_1.copy(
+            name = "Updated name",
+            description = Some("Updated description"),
+            expiresAt = nowInstant.plusSeconds(42)
+          )
+
+          apiKeyRepository.update(apiKeyDataUpdated).asserting(_ shouldBe Right(expectedApiKeyDataUpdated))
+        }
+      }
+
+      "ApiKeyData under update has NO scopes" should {
+
+        "call ApiKeyDataDb, ApiKeyDataScopesDb and ScopeDb, providing correct entities" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+          apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          val expectedApiKeyDataEntityWrite = ApiKeyDataEntity.Write(
+            apiKeyId = apiKeyDataEntityRead_1.apiKeyId,
+            publicKeyId = publicKeyId_1.toString,
+            name = "Updated name",
+            description = Some("Updated description"),
+            userId = userId_1,
+            expiresAt = nowInstant.plusSeconds(42)
+          )
+
+          for {
+            _ <- apiKeyRepository.update(apiKeyDataUpdated)
+
+            _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataDb).update(eqTo(expectedApiKeyDataEntityWrite))
+            _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
+            _ = verify(scopeDb).getByIds(eqTo(List.empty[Long]))
+          } yield ()
+        }
+
+        "return Right containing ApiKeyData" in {
+          apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+          apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          val expectedApiKeyDataUpdated = apiKeyDataUpdated
+
+          apiKeyRepository.update(apiKeyDataUpdated).asserting(_ shouldBe Right(expectedApiKeyDataUpdated))
+        }
+      }
+    }
+
+    "ApiKeyDataDb.getBy returns empty Option" should {
+
+      "NOT call ApiKeyDataScopesDb, ScopeDb or ApiKeyDataDb again" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.update(apiKeyDataUpdated)
+
+          _ = verify(apiKeyDataDb, times(0)).update(any[ApiKeyDataEntity.Write])
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyDataNotFoundError" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository
+          .update(apiKeyDataUpdated)
+          .asserting(
+            _ shouldBe Left(
+              ApiKeyUpdateError.ApiKeyDataNotFoundError(apiKeyDataUpdated.userId, apiKeyDataUpdated.publicKeyId)
+            )
+          )
+      }
+    }
+
+    "ApiKeyDataDb.getBy returns exception" should {
+
+      "NOT call ApiKeyDataScopesDb, ScopeDb or ApiKeyDataDb again" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+
+        for {
+          _ <- apiKeyRepository.update(apiKeyDataUpdated).attempt
+
+          _ = verify(apiKeyDataDb, times(0)).update(any[ApiKeyDataEntity.Write])
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+
+        apiKeyRepository.update(apiKeyDataUpdated).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "ApiKeyDataDb.update returns empty Option" should {
+
+      "NOT call ApiKeyDataScopesDb or ScopeDb" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.update(apiKeyDataUpdated)
+
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyDataNotFoundError" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository
+          .update(apiKeyDataUpdated)
+          .asserting(
+            _ shouldBe Left(
+              ApiKeyUpdateError.ApiKeyDataNotFoundError(apiKeyDataUpdated.userId, apiKeyDataUpdated.publicKeyId)
+            )
+          )
+      }
+    }
+
+    "ApiKeyDataDb.update returns exception" should {
+
+      "NOT call ApiKeyDataScopesDb or ScopeDb" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+
+        for {
+          _ <- apiKeyRepository.update(apiKeyDataUpdated).attempt
+
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+
+        apiKeyRepository.update(apiKeyDataUpdated).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "ApiKeyDataScopesDb returns exception" should {
+
+      "NOT call ScopeDb" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns apiKeyDataScopesStream ++ Stream
+          .raiseError[doobie.ConnectionIO](testException)
+
+        for {
+          _ <- apiKeyRepository.update(apiKeyDataUpdated).attempt
+
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns apiKeyDataScopesStream ++ Stream
+          .raiseError[doobie.ConnectionIO](testException)
+
+        apiKeyRepository.update(apiKeyDataUpdated).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "ScopeDb returns exception" should {
+      "return failed IO containing the same exception" in {
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrappedUpdated
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns apiKeyDataScopesStream
+        scopeDb.getByIds(any[List[Long]]) returns scopesStream ++ Stream.raiseError[doobie.ConnectionIO](testException)
+
+        apiKeyRepository.update(apiKeyDataUpdated).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
   "ApiKeyRepository on insert" when {
+
+    val apiKeyEntityReadWrapped = apiKeyEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
+    val apiKeyDataEntityReadWrapped = apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {
 
-      "call ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb once, providing correct entities" in {
+      "call SecureHashGenerator, ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb once, providing correct entities" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
@@ -117,7 +371,7 @@ class ApiKeyRepositorySpec
 
         val expectedEntityWrite = ApiKeyEntity.Write(hashedApiKey_1.value)
         val expectedDataEntityWrite = ApiKeyDataEntity.Write(
-          apiKeyId = 13L,
+          apiKeyId = apiKeyEntityRead.id,
           publicKeyId = publicKeyId_1.toString,
           name = name,
           description = description,
@@ -162,6 +416,7 @@ class ApiKeyRepositorySpec
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+
           _ = verifyZeroInteractions(apiKeyDb)
           _ = verifyZeroInteractions(apiKeyDataDb)
           _ = verifyZeroInteractions(scopeDb)
@@ -184,6 +439,7 @@ class ApiKeyRepositorySpec
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
+
           _ = verifyZeroInteractions(apiKeyDataDb)
           _ = verifyZeroInteractions(scopeDb)
           _ = verifyZeroInteractions(apiKeyDataScopesDb)
@@ -210,6 +466,7 @@ class ApiKeyRepositorySpec
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+
           _ = verifyZeroInteractions(apiKeyDataDb)
           _ = verifyZeroInteractions(scopeDb)
           _ = verifyZeroInteractions(apiKeyDataScopesDb)
@@ -242,6 +499,7 @@ class ApiKeyRepositorySpec
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
+
             _ = verifyZeroInteractions(scopeDb)
             _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
@@ -264,6 +522,7 @@ class ApiKeyRepositorySpec
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
+
             _ = verifyZeroInteractions(scopeDb)
             _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
@@ -287,6 +546,7 @@ class ApiKeyRepositorySpec
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+
             _ = verifyZeroInteractions(scopeDb)
             _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
@@ -317,6 +577,7 @@ class ApiKeyRepositorySpec
 
           for {
             _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+
             _ = verifyZeroInteractions(apiKeyDataScopesDb)
           } yield ()
         }

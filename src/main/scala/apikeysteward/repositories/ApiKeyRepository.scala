@@ -58,7 +58,27 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, insertedScopes)
     } yield apiKeyData).value.transact(transactor)
 
-  def update(apiKeyData: ApiKeyData): IO[Either[ApiKeyUpdateError, ApiKeyData]] = ???
+  def update(apiKeyData: ApiKeyData): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+    (for {
+      entityBeforeUpdateRead <- OptionT(apiKeyDataDb.getBy(apiKeyData.userId, apiKeyData.publicKeyId))
+      entityAfterUpdateWrite = ApiKeyDataEntity.Write.from(entityBeforeUpdateRead.apiKeyId, apiKeyData)
+
+      _ <- logInfoO(
+        s"Updating API Key Data for userId: [${apiKeyData.userId}], publicKeyId: [${apiKeyData.publicKeyId}]..."
+      )
+      entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(entityAfterUpdateWrite))
+        .flatTap(_ =>
+          logInfoO(
+            s"Updated API Key Data for userId: [${apiKeyData.userId}], publicKeyId: [${apiKeyData.publicKeyId}]."
+          )
+        )
+      scopes <- OptionT.liftF(getScopes(entityBeforeUpdateRead.id))
+
+      apiKeyData = ApiKeyData.from(entityAfterUpdateRead, scopes)
+    } yield apiKeyData)
+      .toRight(ApiKeyUpdateError.apiKeyDataNotFoundError(apiKeyData.userId, apiKeyData.publicKeyId))
+      .value
+      .transact(transactor)
 
   private def insertScopes(
       scopes: List[ScopeEntity.Write],
@@ -215,6 +235,7 @@ class ApiKeyRepository(
       )
     } yield Option(apiKeyData))
 
-  private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] =
-    EitherT(logger.info(message).map(Right(_)))
+  private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] = EitherT.right(logger.info(message))
+
+  private def logInfoO(message: String): OptionT[doobie.ConnectionIO, Unit] = OptionT.liftF(logger.info(message))
 }

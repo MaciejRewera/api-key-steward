@@ -89,6 +89,13 @@ class ManagementService(
       res = insertionResult.left.map(InsertionError)
     } yield res
 
+  def updateApiKey(
+      userId: String,
+      publicKeyId: UUID,
+      updateApiKeyRequest: UpdateApiKeyRequest
+  ): IO[Either[ApiKeyCreateUpdateError, ApiKeyData]] =
+    ???
+
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
     for {
       resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
