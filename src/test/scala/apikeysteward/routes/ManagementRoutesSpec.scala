@@ -11,7 +11,7 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService
-import apikeysteward.services.ManagementService.ApiKeyCreateUpdateError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId

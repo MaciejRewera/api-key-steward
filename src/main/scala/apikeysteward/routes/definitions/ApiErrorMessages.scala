@@ -11,6 +11,7 @@ private[routes] object ApiErrorMessages {
   }
 
   object Admin {
+    val UpdateApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
     val DeleteApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
     val GetSingleApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
   }

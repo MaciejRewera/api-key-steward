@@ -7,7 +7,7 @@ import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ManagementEndpoints}
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
-import apikeysteward.services.ManagementService.ApiKeyCreateUpdateError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps, toTraverseOps}
 import org.http4s.HttpRoutes
