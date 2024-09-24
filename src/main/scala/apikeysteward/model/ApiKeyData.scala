@@ -2,6 +2,7 @@ package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ScopeEntity}
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -41,5 +42,17 @@ object ApiKeyData {
       userId = userId,
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(createApiKeyRequest.ttl),
       scopes = createApiKeyRequest.scopes
+    )
+
+  def from(publicKeyId: UUID, userId: String, updateApiKeyRequest: UpdateApiKeyRequest)(
+      implicit clock: Clock
+  ): ApiKeyData =
+    ApiKeyData(
+      publicKeyId = publicKeyId,
+      name = updateApiKeyRequest.name,
+      description = updateApiKeyRequest.description,
+      userId = userId,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(updateApiKeyRequest.ttl),
+      scopes = List.empty
     )
 }

@@ -4,7 +4,7 @@ import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.{ApiKey, ApiKeyData, CustomError}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
+import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError
@@ -93,14 +93,17 @@ class ManagementService(
       userId: String,
       publicKeyId: UUID,
       updateApiKeyRequest: UpdateApiKeyRequest
-  ): IO[Either[ApiKeyCreateUpdateError, ApiKeyData]] =
-    ???
+  ): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+    apiKeyRepository.update(ApiKeyData.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
+      case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
+      case Left(e)  => logger.info(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
+    }
 
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
     for {
       resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
         case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
-        case Left(e)  => logger.warn(s"Could not delete API Key because: ${e.message}")
+        case Left(e)  => logger.warn(s"Could not delete API Key with publicKeyId: [$publicKeyId] because: ${e.message}")
       }
     } yield resE
 

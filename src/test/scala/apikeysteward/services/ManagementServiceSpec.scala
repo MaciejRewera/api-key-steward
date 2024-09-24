@@ -10,7 +10,9 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
+import apikeysteward.repositories.db.DbCommons.ApiKeyUpdateError
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService.ApiKeyCreateUpdateError.{InsertionError, ValidationError}
 import cats.data.NonEmptyChain
@@ -245,6 +247,74 @@ class ManagementServiceSpec
     }
   }
 
+  "ManagementService on updateApiKey" should {
+
+    val updateApiKeyRequest =
+      UpdateApiKeyRequest(name = "Updated name", description = Some("Updated description."), ttl = 42)
+
+    val inputApiKeyData = ApiKeyData(
+      publicKeyId = publicKeyId_1,
+      name = "Updated name",
+      description = Some("Updated description."),
+      userId = userId_1,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42),
+      scopes = List.empty
+    )
+    val outputApiKeyData = ApiKeyData(
+      publicKeyId = publicKeyId_1,
+      name = "Updated name",
+      description = Some("Updated description."),
+      userId = userId_1,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42),
+      scopes = apiKeyData_1.scopes
+    )
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.update(any[ApiKeyData]) returns IO.pure(Right(outputApiKeyData))
+
+      for {
+        _ <- managementService.updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+        _ = verify(apiKeyRepository).update(eqTo(inputApiKeyData))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns Right" in {
+        apiKeyRepository.update(any[ApiKeyData]) returns IO.pure(Right(outputApiKeyData))
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .asserting(
+            _ shouldBe Right(outputApiKeyData)
+          )
+      }
+
+      "ApiKeyRepository returns Left" in {
+        apiKeyRepository.update(any[ApiKeyData]) returns IO.pure(
+          Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+        )
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .asserting(
+            _ shouldBe Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          )
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.update(any[ApiKeyData]) returns IO.raiseError(testException)
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
   "ManagementService on deleteApiKey" should {
 
     "call ApiKeyRepository" in {
@@ -272,6 +342,17 @@ class ManagementServiceSpec
         managementService
           .deleteApiKey(userId_1, publicKeyId_1)
           .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.delete(any[String], any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .deleteApiKey(userId_1, publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }
