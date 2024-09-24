@@ -32,11 +32,11 @@ trait IntegrationTestData extends FixedClock {
   val scopeWrite_2 = "write:scope-2"
   val scopeWrite_3 = "write:scope-3"
 
-  val apiKeyEntityWrite_1 = ApiKeyEntity.Write(testApiKey_1)
-  val apiKeyEntityWrite_2 = ApiKeyEntity.Write(testApiKey_2)
-  val apiKeyEntityWrite_3 = ApiKeyEntity.Write(testApiKey_3)
+  val apiKeyEntityWrite_1: ApiKeyEntity.Write = ApiKeyEntity.Write(testApiKey_1)
+  val apiKeyEntityWrite_2: ApiKeyEntity.Write = ApiKeyEntity.Write(testApiKey_2)
+  val apiKeyEntityWrite_3: ApiKeyEntity.Write = ApiKeyEntity.Write(testApiKey_3)
 
-  val apiKeyDataEntityWrite_1 = ApiKeyDataEntity.Write(
+  val apiKeyDataEntityWrite_1: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     apiKeyId = 1L,
     publicKeyId = publicKeyIdStr_1,
     name = "Test API Key name no. 1",
@@ -44,7 +44,7 @@ trait IntegrationTestData extends FixedClock {
     userId = testUserId_1,
     expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
-  val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
+  val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = 1L,
     apiKeyId = 1L,
     publicKeyId = publicKeyIdStr_1,
@@ -56,7 +56,7 @@ trait IntegrationTestData extends FixedClock {
     updatedAt = nowInstant
   )
 
-  val apiKeyDataEntityWrite_2 = ApiKeyDataEntity.Write(
+  val apiKeyDataEntityWrite_2: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     apiKeyId = 2L,
     publicKeyId = publicKeyIdStr_2,
     name = "Test API Key name no. 2",
@@ -64,7 +64,7 @@ trait IntegrationTestData extends FixedClock {
     userId = testUserId_2,
     expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
-  val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
+  val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = 2L,
     apiKeyId = 2L,
     publicKeyId = publicKeyIdStr_2,
@@ -76,7 +76,7 @@ trait IntegrationTestData extends FixedClock {
     updatedAt = nowInstant
   )
 
-  val apiKeyDataEntityWrite_3 = ApiKeyDataEntity.Write(
+  val apiKeyDataEntityWrite_3: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     apiKeyId = 3L,
     publicKeyId = publicKeyIdStr_3,
     name = "Test API Key name no. 3",
@@ -84,7 +84,7 @@ trait IntegrationTestData extends FixedClock {
     userId = testUserId_3,
     expiresAt = nowInstant.plusSeconds(ttlSeconds)
   )
-  val apiKeyDataEntityRead_3 = ApiKeyDataEntity.Read(
+  val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = 3L,
     apiKeyId = 3L,
     publicKeyId = publicKeyIdStr_3,
@@ -96,4 +96,10 @@ trait IntegrationTestData extends FixedClock {
     updatedAt = nowInstant
   )
 
+  val apiKeyDataEntityUpdate_1: ApiKeyDataEntity.Update = ApiKeyDataEntity.Update(
+    publicKeyId = publicKeyIdStr_1,
+    name = TestData.nameUpdated,
+    description = TestData.descriptionUpdated,
+    userId = testUserId_1
+  )
 }

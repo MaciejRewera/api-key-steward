@@ -11,7 +11,7 @@ import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ManagementService
 import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -55,339 +55,6 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       AuthTestData.jwtWithMockedSignature.asRight
     )
   }.flatMap(_ => test)
-
-  "AdminRoutes on PUT /admin/users/{userId}/api-keys/{publicKeyId}" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
-    val requestBody = UpdateApiKeyRequest(
-      name = name,
-      description = description,
-      ttl = ttlMinutes
-    )
-
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
-
-    "the JWT is NOT provided" should {
-
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- adminRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtAuthorizer or ManagementService" in {
-        for {
-          _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided should call JwtAuthorizer providing access token" in {
-      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-        ErrorInfo.unauthorizedErrorInfo().asLeft
-      )
-
-      for {
-        _ <- adminRoutes.run(request)
-        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
-      } yield ()
-    }
-
-    "JwtAuthorizer returns Left containing error" should {
-
-      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
-        } yield ()
-      }
-
-      "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns failed IO" should {
-
-      "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
-
-      "request body is provided with empty name" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = ""))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ManagementService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(managementService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with name containing only white characters" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = "  \n   \n\n "))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ManagementService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(managementService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with name longer than 250 characters" should {
-
-        val nameThatIsTooLong = List.fill(251)("A").mkString
-        val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(
-            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
-          )
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithLongName)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ManagementService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(managementService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with description containing only white characters" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ManagementService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(managementService)
-          } yield ()
-        }
-
-        "request body is provided with description longer than 250 characters" should {
-
-          val descriptionThatIsTooLong = List.fill(251)("A").mkString
-          val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
-          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-            Some(
-              s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
-            )
-          )
-
-          "return Bad Request" in authorizedFixture {
-            for {
-              response <- adminRoutes.run(requestWithLongName)
-              _ = response.status shouldBe Status.BadRequest
-              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-            } yield ()
-          }
-
-          "NOT call ManagementService" in authorizedFixture {
-            for {
-              _ <- adminRoutes.run(requestWithLongName)
-              _ = verifyZeroInteractions(managementService)
-            } yield ()
-          }
-        }
-
-        "request body is provided with negative ttl value" should {
-
-          val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
-          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-            Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
-          )
-
-          "return Bad Request" in authorizedFixture {
-            for {
-              response <- adminRoutes.run(requestWithNegativeTtl)
-              _ = response.status shouldBe Status.BadRequest
-              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-            } yield ()
-          }
-
-          "NOT call ManagementService" in authorizedFixture {
-            for {
-              _ <- adminRoutes.run(requestWithNegativeTtl)
-              _ = verifyZeroInteractions(managementService)
-            } yield ()
-          }
-        }
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
-
-      "call ManagementService" in authorizedFixture {
-        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
-          apiKeyData_1.asRight
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(managementService).updateApiKey(eqTo(userId_1), eqTo(publicKeyId_1), eqTo(requestBody))
-        } yield ()
-      }
-
-      "return successful value returned by ManagementService" when {
-
-        "provided with description" in authorizedFixture {
-          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
-            apiKeyData_1.asRight
-          )
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response
-              .as[UpdateApiKeyResponse]
-              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyData_1))
-          } yield ()
-        }
-
-        "provided with NO description" in authorizedFixture {
-          val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
-            apiKeyDataWithoutDescription.asRight
-          )
-
-          val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
-
-          for {
-            response <- adminRoutes.run(requestWithoutDescription)
-            _ = response.status shouldBe Status.Ok
-            _ <- response
-              .as[UpdateApiKeyResponse]
-              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyDataWithoutDescription))
-          } yield ()
-        }
-      }
-
-      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
-
-        for {
-          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
-        } yield ()
-      }
-
-      "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        val error = ApiKeyUpdateError.ApiKeyDataNotFoundError(userId_1, publicKeyId_1)
-        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.UpdateApiKeyNotFound)))
-        } yield ()
-      }
-
-      "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
 
   "AdminRoutes on POST /admin/users/{userId}/api-keys" when {
 
@@ -705,6 +372,312 @@ class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
+        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminRoutes on PUT /admin/users/{userId}/api-keys/{publicKeyId}" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
+    val requestBody = UpdateApiKeyRequest(name = name, description = description)
+
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      .withEntity(requestBody.asJson)
+
+    "the JWT is NOT provided" should {
+
+      val requestWithoutJwt = request.withHeaders(Headers.empty)
+
+      "return Unauthorized" in {
+        for {
+          response <- adminRoutes.run(requestWithoutJwt)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
+            )
+        } yield ()
+      }
+
+      "NOT call either JwtAuthorizer or ManagementService" in {
+        for {
+          _ <- adminRoutes.run(requestWithoutJwt)
+          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
+        } yield ()
+      }
+    }
+
+    "the JWT is provided should call JwtAuthorizer providing access token" in {
+      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+        ErrorInfo.unauthorizedErrorInfo().asLeft
+      )
+
+      for {
+        _ <- adminRoutes.run(request)
+        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(Set(JwtPermissions.WriteAdmin)))(eqTo(tokenString))
+      } yield ()
+    }
+
+    "JwtAuthorizer returns Left containing error" should {
+
+      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
+
+      "return Unauthorized" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Unauthorized
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
+        } yield ()
+      }
+
+      "NOT call ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
+          jwtValidatorError.asLeft
+        )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verifyZeroInteractions(managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns failed IO" should {
+
+      "return Internal Server Error" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "NOT call ManagementService" in {
+        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
+          testException
+        )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verifyZeroInteractions(managementService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+
+      "request body is provided with empty name" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = ""))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with name containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = "  \n   \n\n "))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with name longer than 250 characters" should {
+
+        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+
+        "request body is provided with description longer than 250 characters" should {
+
+          val descriptionThatIsTooLong = List.fill(251)("A").mkString
+          val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+            Some(
+              s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
+            )
+          )
+
+          "return Bad Request" in authorizedFixture {
+            for {
+              response <- adminRoutes.run(requestWithLongName)
+              _ = response.status shouldBe Status.BadRequest
+              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+            } yield ()
+          }
+
+          "NOT call ManagementService" in authorizedFixture {
+            for {
+              _ <- adminRoutes.run(requestWithLongName)
+              _ = verifyZeroInteractions(managementService)
+            } yield ()
+          }
+        }
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+
+      "call ManagementService" in authorizedFixture {
+        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+          apiKeyData_1.asRight
+        )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(managementService).updateApiKey(eqTo(userId_1), eqTo(publicKeyId_1), eqTo(requestBody))
+        } yield ()
+      }
+
+      "return successful value returned by ManagementService" when {
+
+        "provided with description" in authorizedFixture {
+          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+            apiKeyData_1.asRight
+          )
+
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[UpdateApiKeyResponse]
+              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyData_1))
+          } yield ()
+        }
+
+        "provided with NO description" in authorizedFixture {
+          val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
+          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+            apiKeyDataWithoutDescription.asRight
+          )
+
+          val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
+
+          for {
+            response <- adminRoutes.run(requestWithoutDescription)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[UpdateApiKeyResponse]
+              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyDataWithoutDescription))
+          } yield ()
+        }
+      }
+
+      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
+        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
+
+        for {
+          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+
+      "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
+        val error = ApiKeyUpdateError.ApiKeyDataNotFoundError(userId_1, publicKeyId_1)
+        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.UpdateApiKeyNotFound)))
         } yield ()
       }
 

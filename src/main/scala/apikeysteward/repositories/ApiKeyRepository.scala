@@ -1,6 +1,6 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
@@ -58,25 +58,25 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, insertedScopes)
     } yield apiKeyData).value.transact(transactor)
 
-  def update(apiKeyData: ApiKeyData): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+  def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
     (for {
-      entityBeforeUpdateRead <- OptionT(apiKeyDataDb.getBy(apiKeyData.userId, apiKeyData.publicKeyId))
-      entityAfterUpdateWrite = ApiKeyDataEntity.Write.from(entityBeforeUpdateRead.apiKeyId, apiKeyData)
+      entityBeforeUpdateRead <- OptionT(apiKeyDataDb.getBy(apiKeyDataUpdate.userId, apiKeyDataUpdate.publicKeyId))
+      entityAfterUpdateWrite = ApiKeyDataEntity.Update.from(apiKeyDataUpdate)
 
       _ <- logInfoO(
-        s"Updating API Key Data for userId: [${apiKeyData.userId}], publicKeyId: [${apiKeyData.publicKeyId}]..."
+        s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
       )
       entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(entityAfterUpdateWrite))
         .flatTap(_ =>
           logInfoO(
-            s"Updated API Key Data for userId: [${apiKeyData.userId}], publicKeyId: [${apiKeyData.publicKeyId}]."
+            s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
           )
         )
       scopes <- OptionT.liftF(getScopes(entityBeforeUpdateRead.id))
 
       apiKeyData = ApiKeyData.from(entityAfterUpdateRead, scopes)
     } yield apiKeyData)
-      .toRight(ApiKeyUpdateError.apiKeyDataNotFoundError(apiKeyData.userId, apiKeyData.publicKeyId))
+      .toRight(ApiKeyUpdateError.apiKeyDataNotFoundError(apiKeyDataUpdate.userId, apiKeyDataUpdate.publicKeyId))
       .value
       .transact(transactor)
 

@@ -56,8 +56,7 @@ private[definitions] object ManagementEndpointsBase {
           .example(
             UpdateApiKeyRequest(
               name = "My API key",
-              description = Some("A short description what this API key is for."),
-              ttl = 60
+              description = Some("A short description what this API key is for.")
             )
           )
       )

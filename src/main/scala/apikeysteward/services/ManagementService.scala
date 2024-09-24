@@ -1,13 +1,13 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData, CustomError}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, CustomError}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.repositories.db.DbCommons
 import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
-import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.ManagementService.ApiKeyCreateError
 import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException
@@ -20,7 +20,7 @@ import java.time.Clock
 import java.util.UUID
 
 class ManagementService(
-    createApiKeyRequestValidator: CreateUpdateApiKeyRequestValidator,
+    createApiKeyRequestValidator: CreateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
     apiKeyRepository: ApiKeyRepository
 )(implicit clock: Clock)
@@ -94,7 +94,7 @@ class ManagementService(
       publicKeyId: UUID,
       updateApiKeyRequest: UpdateApiKeyRequest
   ): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
-    apiKeyRepository.update(ApiKeyData.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
+    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.info(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
@@ -123,7 +123,7 @@ object ManagementService {
   sealed abstract class ApiKeyCreateError(override val message: String) extends CustomError
   object ApiKeyCreateError {
 
-    case class ValidationError(errors: Seq[CreateUpdateApiKeyRequestValidatorError])
+    case class ValidationError(errors: Seq[CreateApiKeyRequestValidatorError])
         extends ApiKeyCreateError(
           message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
         )

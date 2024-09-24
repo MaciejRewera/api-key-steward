@@ -7,8 +7,7 @@ import sttp.tapir.Schema
 
 case class UpdateApiKeyRequest(
     override val name: String,
-    override val description: Option[String] = None,
-    override val ttl: Int
+    override val description: Option[String] = None
 ) extends CreateUpdateApiKeyRequestBase
 
 object UpdateApiKeyRequest {

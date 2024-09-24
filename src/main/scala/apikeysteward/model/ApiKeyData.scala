@@ -43,16 +43,4 @@ object ApiKeyData {
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(createApiKeyRequest.ttl),
       scopes = createApiKeyRequest.scopes
     )
-
-  def from(publicKeyId: UUID, userId: String, updateApiKeyRequest: UpdateApiKeyRequest)(
-      implicit clock: Clock
-  ): ApiKeyData =
-    ApiKeyData(
-      publicKeyId = publicKeyId,
-      name = updateApiKeyRequest.name,
-      description = updateApiKeyRequest.description,
-      userId = userId,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(updateApiKeyRequest.ttl),
-      scopes = List.empty
-    )
 }

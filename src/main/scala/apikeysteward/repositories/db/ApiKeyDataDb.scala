@@ -51,7 +51,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
     }
 
-  def update(apiKeyDataEntity: ApiKeyDataEntity.Write): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] = {
+  def update(apiKeyDataEntity: ApiKeyDataEntity.Update): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] = {
     val now = Instant.now(clock)
     for {
       updateCount <- Queries.update(apiKeyDataEntity, now).run
@@ -104,13 +104,12 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             $now
          )""".stripMargin).update
 
-    def update(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
+    def update(apiKeyDataEntityUpdate: ApiKeyDataEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE api_key_data
-            SET name = ${apiKeyDataEntityWrite.name},
-                description = ${apiKeyDataEntityWrite.description},
-                expires_at = ${apiKeyDataEntityWrite.expiresAt},
+            SET name = ${apiKeyDataEntityUpdate.name},
+                description = ${apiKeyDataEntityUpdate.description},
                 updated_at = $now
-            WHERE api_key_data.user_id = ${apiKeyDataEntityWrite.userId} AND api_key_data.public_key_id = ${apiKeyDataEntityWrite.publicKeyId}
+            WHERE api_key_data.user_id = ${apiKeyDataEntityUpdate.userId} AND api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
            """.stripMargin.update
 
     def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =

@@ -21,7 +21,6 @@ object TapirCustomSchemas {
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateName)
       .modify(_.description)(validateDescription)
-      .modify(_.ttl)(validateTtl)
 
   private def trimStringFields(request: CreateApiKeyRequest): CreateApiKeyRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))

@@ -3,8 +3,7 @@ package apikeysteward.services
 import apikeysteward.base.TestData._
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
-import apikeysteward.services.CreateUpdateApiKeyRequestValidator.CreateUpdateApiKeyRequestValidatorError._
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
 import cats.data.NonEmptyChain
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset}
@@ -15,15 +14,11 @@ import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
-class CreateUpdateApiKeyRequestValidatorSpec
-    extends AnyWordSpec
-    with Matchers
-    with BeforeAndAfterEach
-    with EitherValues {
+class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach with EitherValues {
 
   private val apiKeyConfig = mock[ApiKeyConfig]
 
-  private val requestValidator = new CreateUpdateApiKeyRequestValidator(apiKeyConfig)
+  private val requestValidator = new CreateApiKeyRequestValidator(apiKeyConfig)
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
@@ -39,12 +34,6 @@ class CreateUpdateApiKeyRequestValidatorSpec
       ttl = ttlMinutes,
       scopes = scopes
     )
-
-  private val updateRequest: UpdateApiKeyRequest = UpdateApiKeyRequest(
-    name = name,
-    description = description,
-    ttl = ttlMinutes
-  )
 
   "CreateApiKeyRequestValidator on validateCreateRequest" when {
 
@@ -207,37 +196,6 @@ class CreateUpdateApiKeyRequestValidatorSpec
         result.left.value.iterator.toSeq should contain theSameElementsAs Seq(
           NotAllowedScopesProvidedError(Set(scopeRead_1)),
           TtlTooLargeError(ttlRequest = ttlMinutes, ttlMax = FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
-        )
-      }
-    }
-  }
-
-  "CreateApiKeyRequestValidator on validateUpdateRequest" when {
-
-    "return Right containing CreateApiKeyRequest" when {
-
-      "the request contains ttl value smaller then ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes + 1, TimeUnit.MINUTES)
-
-        requestValidator.validateUpdateRequest(updateRequest) shouldBe Right(updateRequest)
-      }
-
-      "the request contains ttl value equal to ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes, TimeUnit.MINUTES)
-
-        requestValidator.validateUpdateRequest(updateRequest) shouldBe Right(updateRequest)
-      }
-    }
-
-    "return Left containing CreateUpdateApiKeyRequestValidatorError" when {
-
-      "the request contains ttl value bigger than ApiKeyConfig.ttlMax" in {
-        apiKeyConfig.ttlMax returns FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)
-
-        requestValidator.validateUpdateRequest(updateRequest) shouldBe Left(
-          NonEmptyChain.one(
-            TtlTooLargeError(ttlRequest = ttlMinutes, ttlMax = FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
-          )
         )
       }
     }

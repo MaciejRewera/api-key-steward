@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -35,8 +35,12 @@ trait TestData extends FixedClock {
   val publicKeyId_1 = UUID.randomUUID()
   val publicKeyId_2 = UUID.randomUUID()
   val publicKeyId_3 = UUID.randomUUID()
+
   val name = "Test API Key Name"
+  val nameUpdated = "Updated Test APi Key Name"
   val description = Some("Test key description")
+  val descriptionUpdated = Some("Updated test key description")
+
   val userId_1 = "test-user-id-001"
   val userId_2 = "test-user-id-002"
   val userId_3 = "test-user-id-003"
@@ -76,5 +80,12 @@ trait TestData extends FixedClock {
     userId = userId_1,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     scopes = scopes_3
+  )
+
+  val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
+    publicKeyId = publicKeyId_1,
+    name = nameUpdated,
+    description = descriptionUpdated,
+    userId = userId_1
   )
 }
