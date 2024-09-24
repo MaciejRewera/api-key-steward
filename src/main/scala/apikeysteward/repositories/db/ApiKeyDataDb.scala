@@ -6,6 +6,7 @@ import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   PublicKeyIdAlreadyExistsError
 }
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import cats.implicits.catsSyntaxApplicativeId
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream
@@ -50,6 +51,17 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
     }
 
+  def update(apiKeyDataEntity: ApiKeyDataEntity.Update): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] = {
+    val now = Instant.now(clock)
+    for {
+      updateCount <- Queries.update(apiKeyDataEntity, now).run
+
+      res <-
+        if (updateCount > 0) getBy(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+        else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+    } yield res
+  }
+
   def getByApiKeyId(apiKeyId: Long): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getByApiKeyId(apiKeyId).option
 
@@ -57,7 +69,10 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     Queries.getByUserId(userId).stream
 
   def getBy(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getBy(userId, publicKeyId.toString).option
+    getBy(userId, publicKeyId.toString)
+
+  private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    Queries.getBy(userId, publicKeyId).option
 
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
@@ -88,6 +103,14 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             $now,
             $now
          )""".stripMargin).update
+
+    def update(apiKeyDataEntityUpdate: ApiKeyDataEntity.Update, now: Instant): doobie.Update0 =
+      sql"""UPDATE api_key_data
+            SET name = ${apiKeyDataEntityUpdate.name},
+                description = ${apiKeyDataEntityUpdate.description},
+                updated_at = $now
+            WHERE api_key_data.user_id = ${apiKeyDataEntityUpdate.userId} AND api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
+           """.stripMargin.update
 
     def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++

@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -32,14 +32,22 @@ trait TestData extends FixedClock {
   val hashedApiKey_3: HashedApiKey = HashedApiKey("test-hashed-api-key-3")
   val hashedApiKey_4: HashedApiKey = HashedApiKey("test-hashed-api-key-4")
 
-  val publicKeyId_1 = UUID.randomUUID()
-  val publicKeyId_2 = UUID.randomUUID()
-  val publicKeyId_3 = UUID.randomUUID()
+  val publicKeyId_1: UUID = UUID.randomUUID()
+  val publicKeyId_2: UUID = UUID.randomUUID()
+  val publicKeyId_3: UUID = UUID.randomUUID()
+  val publicKeyIdStr_1: String = publicKeyId_1.toString
+  val publicKeyIdStr_2: String = publicKeyId_2.toString
+  val publicKeyIdStr_3: String = publicKeyId_3.toString
+
   val name = "Test API Key Name"
-  val description = Some("Test key description")
+  val nameUpdated = "Updated Test APi Key Name"
+  val description: Option[String] = Some("Test key description")
+  val descriptionUpdated: Option[String] = Some("Updated test key description")
+
   val userId_1 = "test-user-id-001"
   val userId_2 = "test-user-id-002"
   val userId_3 = "test-user-id-003"
+
   val ttlMinutes = 60
 
   val scopeRead_1 = "read:scope-1"
@@ -49,9 +57,9 @@ trait TestData extends FixedClock {
   val scopeWrite_2 = "write:scope-2"
   val scopeWrite_3 = "write:scope-3"
 
-  val scopes_1 = List(scopeRead_1, scopeWrite_1)
-  val scopes_2 = List(scopeRead_2, scopeWrite_2)
-  val scopes_3 = List(scopeRead_3, scopeWrite_3)
+  val scopes_1: List[String] = List(scopeRead_1, scopeWrite_1)
+  val scopes_2: List[String] = List(scopeRead_2, scopeWrite_2)
+  val scopes_3: List[String] = List(scopeRead_3, scopeWrite_3)
 
   val apiKeyData_1: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,
@@ -76,5 +84,12 @@ trait TestData extends FixedClock {
     userId = userId_1,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     scopes = scopes_3
+  )
+
+  val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
+    publicKeyId = publicKeyId_1,
+    name = nameUpdated,
+    description = descriptionUpdated,
+    userId = userId_1
   )
 }

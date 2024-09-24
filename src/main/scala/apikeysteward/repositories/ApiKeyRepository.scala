@@ -1,8 +1,8 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.{ApiKey, ApiKeyData, HashedApiKey}
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFound, GenericApiKeyDeletionError}
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
+import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.data.{EitherT, OptionT}
@@ -57,6 +57,26 @@ class ApiKeyRepository(
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, insertedScopes)
     } yield apiKeyData).value.transact(transactor)
+
+  def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+    (for {
+      _ <- logInfoO(
+        s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
+      )
+      entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
+        .flatTap(_ =>
+          logInfoO(
+            s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
+          )
+        )
+
+      scopes <- OptionT.liftF(getScopes(entityAfterUpdateRead.id))
+
+      apiKeyData = ApiKeyData.from(entityAfterUpdateRead, scopes)
+    } yield apiKeyData)
+      .toRight(ApiKeyUpdateError.apiKeyDataNotFoundError(apiKeyDataUpdate.userId, apiKeyDataUpdate.publicKeyId))
+      .value
+      .transact(transactor)
 
   private def insertScopes(
       scopes: List[ScopeEntity.Write],
@@ -116,7 +136,7 @@ class ApiKeyRepository(
     for {
       apiKeyDataToDeleteE <- apiKeyDataDb
         .getBy(userId, publicKeyIdToDelete)
-        .map(_.toRight(ApiKeyDataNotFound(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
+        .map(_.toRight(ApiKeyDataNotFoundError(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
 
       apiKeyDataScopesToDeleteE <- apiKeyDataToDeleteE
         .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id).compile.toList)
@@ -213,6 +233,7 @@ class ApiKeyRepository(
       )
     } yield Option(apiKeyData))
 
-  private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] =
-    EitherT(logger.info(message).map(Right(_)))
+  private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] = EitherT.right(logger.info(message))
+
+  private def logInfoO(message: String): OptionT[doobie.ConnectionIO, Unit] = OptionT.liftF(logger.info(message))
 }

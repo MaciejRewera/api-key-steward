@@ -2,7 +2,8 @@ package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.CustomError
-import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.{CreateApiKeyRequest, CreateUpdateApiKeyRequestBase}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
@@ -12,7 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 
 class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
-  def validateRequest(
+  def validateCreateRequest(
       createApiKeyRequest: CreateApiKeyRequest
   ): Either[NonEmptyChain[CreateApiKeyRequestValidatorError], CreateApiKeyRequest] =
     (
@@ -38,7 +39,7 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
     Validated
       .condNec(
-        FiniteDuration(createApiKeyRequest.ttl, CreateApiKeyRequest.ttlTimeUnit) <= apiKeyConfig.ttlMax,
+        FiniteDuration(createApiKeyRequest.ttl, ApiKeyExpirationCalculator.ttlTimeUnit) <= apiKeyConfig.ttlMax,
         createApiKeyRequest,
         TtlTooLargeError(createApiKeyRequest.ttl, apiKeyConfig.ttlMax)
       )
@@ -57,7 +58,7 @@ object CreateApiKeyRequestValidator {
     case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
         extends CreateApiKeyRequestValidatorError(
           message =
-            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${CreateApiKeyRequest.ttlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
+            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
         )
   }
 

@@ -1,6 +1,6 @@
 package apikeysteward.repositories.db.entity
 
-import apikeysteward.model.ApiKeyData
+import apikeysteward.model.{ApiKeyData, ApiKeyDataUpdate}
 
 import java.time.Instant
 
@@ -36,6 +36,23 @@ object ApiKeyDataEntity {
         description = apiKeyData.description,
         userId = apiKeyData.userId,
         expiresAt = apiKeyData.expiresAt
+      )
+  }
+
+  case class Update(
+      publicKeyId: String,
+      name: String,
+      description: Option[String] = None,
+      userId: String
+  )
+
+  object Update {
+    def from(apiKeyDataUpdate: ApiKeyDataUpdate): ApiKeyDataEntity.Update =
+      ApiKeyDataEntity.Update(
+        publicKeyId = apiKeyDataUpdate.publicKeyId.toString,
+        name = apiKeyDataUpdate.name,
+        description = apiKeyDataUpdate.description,
+        userId = apiKeyDataUpdate.userId
       )
   }
 }

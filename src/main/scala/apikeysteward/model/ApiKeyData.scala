@@ -2,6 +2,8 @@ package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ScopeEntity}
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.services.ApiKeyExpirationCalculator
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -38,7 +40,7 @@ object ApiKeyData {
       name = createApiKeyRequest.name,
       description = createApiKeyRequest.description,
       userId = userId,
-      expiresAt = Instant.now(clock).plus(createApiKeyRequest.ttl, CreateApiKeyRequest.ttlTimeUnit.toChronoUnit),
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(createApiKeyRequest.ttl),
       scopes = createApiKeyRequest.scopes
     )
 }

@@ -1,13 +1,13 @@
 package apikeysteward.routes
 
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
+import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
+import apikeysteward.routes.model.admin.UpdateApiKeyResponse
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ManagementService
-import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -38,6 +38,23 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementSer
             }
           }
       )
+
+  private val updateApiKeyRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminEndpoints.updateApiKeyEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+        .serverLogic { _ => input =>
+          val (updateApiKeyRequest, userId, publicKeyId) = input
+          managementService.updateApiKey(userId, publicKeyId, updateApiKeyRequest).map {
+
+            case Right(apiKeyData) =>
+              (StatusCode.Ok, UpdateApiKeyResponse(apiKeyData)).asRight
+
+            case Left(_: ApiKeyUpdateError.ApiKeyDataNotFoundError) =>
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.UpdateApiKeyNotFound)).asLeft
+          }
+        }
+    )
 
   private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
     serverInterpreter
@@ -90,7 +107,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementSer
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
-              case Left(_: ApiKeyDataNotFound) =>
+              case Left(_: ApiKeyDeletionError.ApiKeyDataNotFoundError) =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
               case Left(_: ApiKeyDeletionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
@@ -99,5 +116,10 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ManagementSer
       )
 
   val allRoutes: HttpRoutes[IO] =
-    createApiKeyRoutes <+> getAllApiKeysForUserRoutes <+> getApiKeyForUserRoutes <+> getAllUserIdsRoutes <+> deleteApiKeyRoutes
+    createApiKeyRoutes <+>
+      updateApiKeyRoutes <+>
+      getAllApiKeysForUserRoutes <+>
+      getApiKeyForUserRoutes <+>
+      getAllUserIdsRoutes <+>
+      deleteApiKeyRoutes
 }

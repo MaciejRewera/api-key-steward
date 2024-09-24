@@ -3,16 +3,18 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFound
+import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
+import apikeysteward.repositories.db.DbCommons.ApiKeyUpdateError
 import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
-import apikeysteward.services.ManagementService.ApiKeyCreationError.{InsertionError, ValidationError}
+import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -50,7 +52,7 @@ class ManagementServiceSpec
   override def beforeEach(): Unit = {
     reset(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
-    createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
+    createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
     apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
   }
@@ -65,7 +67,7 @@ class ManagementServiceSpec
         for {
           _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
 
-          _ = verify(createApiKeyRequestValidator).validateRequest(eqTo(createApiKeyRequest))
+          _ = verify(createApiKeyRequestValidator).validateCreateRequest(eqTo(createApiKeyRequest))
           _ = verify(apiKeyGenerator).generateApiKey
           _ = {
             val captor: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
@@ -86,7 +88,7 @@ class ManagementServiceSpec
     "CreateApiKeyRequestValidator returns Left" should {
 
       "NOT call ApiKeyGenerator or ApiKeyRepository" in {
-        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(
+        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
           NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2)))
         )
 
@@ -99,7 +101,9 @@ class ManagementServiceSpec
 
       "return successful IO containing Left with ValidationError" in {
         val error = NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
-        createApiKeyRequestValidator.validateRequest(any[CreateApiKeyRequest]) returns Left(NonEmptyChain.one(error))
+        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
+          NonEmptyChain.one(error)
+        )
 
         managementService
           .createApiKey(userId_1, createApiKeyRequest)
@@ -243,6 +247,65 @@ class ManagementServiceSpec
     }
   }
 
+  "ManagementService on updateApiKey" should {
+
+    val updateApiKeyRequest = UpdateApiKeyRequest(name = nameUpdated, description = descriptionUpdated)
+
+    val outputApiKeyData = ApiKeyData(
+      publicKeyId = publicKeyId_1,
+      name = nameUpdated,
+      description = descriptionUpdated,
+      userId = userId_1,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42),
+      scopes = apiKeyData_1.scopes
+    )
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
+
+      for {
+        _ <- managementService.updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+        _ = verify(apiKeyRepository).update(eqTo(apiKeyDataUpdate_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns Right" in {
+        apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .asserting(
+            _ shouldBe Right(outputApiKeyData)
+          )
+      }
+
+      "ApiKeyRepository returns Left" in {
+        apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(
+          Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+        )
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .asserting(
+            _ shouldBe Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          )
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.raiseError(testException)
+
+        managementService
+          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
   "ManagementService on deleteApiKey" should {
 
     "call ApiKeyRepository" in {
@@ -264,12 +327,23 @@ class ManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFound(userId_1, publicKeyId_1))
+          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
         )
 
         managementService
           .deleteApiKey(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFound(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.delete(any[String], any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .deleteApiKey(userId_1, publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

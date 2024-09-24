@@ -7,7 +7,9 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
+import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
@@ -21,7 +23,7 @@ private[definitions] object ManagementEndpointsBase {
       .in(
         jsonBody[CreateApiKeyRequest]
           .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${CreateApiKeyRequest.ttlTimeUnit.toString.toLowerCase}."
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase}."
           )
           .example(
             CreateApiKeyRequest(
@@ -41,6 +43,30 @@ private[definitions] object ManagementEndpointsBase {
           )
         )
       )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val updateApiKeyEndpointBase
+      : Endpoint[AccessToken, UpdateApiKeyRequest, ErrorInfo, (StatusCode, UpdateApiKeyResponse), Any] =
+    EndpointsBase.authenticatedEndpointBase.put
+      .in(
+        jsonBody[UpdateApiKeyRequest]
+          .description(s"Details of the API key to update.")
+          .example(
+            UpdateApiKeyRequest(
+              name = "My API key",
+              description = Some("A short description what this API key is for.")
+            )
+          )
+      )
+      .out(statusCode.description(StatusCode.Ok, "API key updated"))
+      .out(
+        jsonBody[UpdateApiKeyResponse].example(
+          UpdateApiKeyResponse(
+            apiKeyData = EndpointsBase.ApiKeyDataExample
+          )
+        )
+      )
+      .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysForUserEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
