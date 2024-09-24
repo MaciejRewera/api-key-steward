@@ -1,6 +1,7 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.base.IntegrationTestData.{apiKeyDataEntityUpdate_1, _}
+import apikeysteward.base.IntegrationTestData._
+import apikeysteward.base.TestData._
 import apikeysteward.base.{FixedClock, TestData}
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
@@ -241,7 +242,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.update(apiKeyDataEntityUpdate_1.copy(userId = testUserId_2))
+          res <- apiKeyDataDb.update(apiKeyDataEntityUpdate_1.copy(userId = userId_2))
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -252,7 +253,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.update(apiKeyDataEntityUpdate_1.copy(userId = testUserId_2))
+          _ <- apiKeyDataDb.update(apiKeyDataEntityUpdate_1.copy(userId = userId_2))
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -421,7 +422,7 @@ class ApiKeyDataDbSpec
 
     "there are no rows in the DB" should {
       "return empty Stream" in {
-        val result = apiKeyDataDb.getByUserId(testUserId_1).compile.toList.transact(transactor)
+        val result = apiKeyDataDb.getByUserId(userId_1).compile.toList.transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
       }
@@ -433,7 +434,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getByUserId(testUserId_2).compile.toList
+          res <- apiKeyDataDb.getByUserId(userId_2).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
@@ -446,7 +447,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
+          res <- apiKeyDataDb.getByUserId(userId_1).compile.toList
         } yield (res, apiKeyId)).transact(transactor)
 
         result.asserting { case (res, apiKeyId) =>
@@ -463,18 +464,18 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
 
           apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = userId_1))
 
           apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
 
-          res <- apiKeyDataDb.getByUserId(testUserId_1).compile.toList
+          res <- apiKeyDataDb.getByUserId(userId_1).compile.toList
         } yield (res, apiKeyId_1, apiKeyId_2)).transact(transactor)
 
         result.asserting { case (res, apiKeyId_1, apiKeyId_2) =>
           res.size shouldBe 2
           res.head shouldBe apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = apiKeyId_1)
-          res(1) shouldBe apiKeyDataEntityRead_2.copy(id = res(1).id, apiKeyId = apiKeyId_2, userId = testUserId_1)
+          res(1) shouldBe apiKeyDataEntityRead_2.copy(id = res(1).id, apiKeyId = apiKeyId_2, userId = userId_1)
         }
       }
     }
@@ -484,7 +485,7 @@ class ApiKeyDataDbSpec
 
     "there are no rows in the DB" should {
       "return empty Option" in {
-        val result = apiKeyDataDb.getBy(testUserId_1, publicKeyId_1).transact(transactor)
+        val result = apiKeyDataDb.getBy(userId_1, publicKeyId_1).transact(transactor)
 
         result.asserting(_ shouldBe None)
       }
@@ -496,7 +497,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getBy(testUserId_2, publicKeyId_2)
+          res <- apiKeyDataDb.getBy(userId_2, publicKeyId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -509,7 +510,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getBy(testUserId_1, publicKeyId_2)
+          res <- apiKeyDataDb.getBy(userId_1, publicKeyId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -522,7 +523,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getBy(testUserId_2, publicKeyId_1)
+          res <- apiKeyDataDb.getBy(userId_2, publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -535,7 +536,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getBy(testUserId_1, publicKeyId_1)
+          res <- apiKeyDataDb.getBy(userId_1, publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -567,7 +568,7 @@ class ApiKeyDataDbSpec
 
         result.asserting { result =>
           result.size shouldBe 1
-          result.head shouldBe testUserId_1
+          result.head shouldBe userId_1
         }
       }
     }
@@ -579,17 +580,17 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
 
           apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = testUserId_1))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2, userId = userId_1))
 
           apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = userId_1))
 
           res <- apiKeyDataDb.getAllUserIds.compile.toList
         } yield res).transact(transactor)
 
         result.asserting { result =>
           result.size shouldBe 1
-          result.head shouldBe testUserId_1
+          result.head shouldBe userId_1
         }
       }
     }
@@ -604,14 +605,14 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2))
 
           apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = testUserId_1))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3, userId = userId_1))
 
           res <- apiKeyDataDb.getAllUserIds.compile.toList
         } yield res).transact(transactor)
 
         result.asserting { result =>
           result.size shouldBe 2
-          result should contain theSameElementsAs List(testUserId_1, testUserId_2)
+          result should contain theSameElementsAs List(userId_1, userId_2)
         }
       }
     }
@@ -622,12 +623,12 @@ class ApiKeyDataDbSpec
     "there are no rows in the API Key Data table" should {
 
       "return empty Option" in {
-        apiKeyDataDb.delete(testUserId_1, publicKeyId_1).transact(transactor).asserting(_ shouldBe None)
+        apiKeyDataDb.delete(userId_1, publicKeyId_1).transact(transactor).asserting(_ shouldBe None)
       }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -642,7 +643,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(testUserId_2, publicKeyId_1)
+          res <- apiKeyDataDb.delete(userId_2, publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -653,7 +654,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.delete(testUserId_2, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(userId_2, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -673,7 +674,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_2)
+          res <- apiKeyDataDb.delete(userId_1, publicKeyId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)
@@ -684,7 +685,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_2)
+          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_2)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -703,7 +704,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
+          res <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -717,7 +718,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -738,7 +739,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
+          res <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -758,7 +759,7 @@ class ApiKeyDataDbSpec
           apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           entityRead_3 <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
 
-          _ <- apiKeyDataDb.delete(testUserId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
