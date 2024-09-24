@@ -50,9 +50,7 @@ private[definitions] object ManagementEndpointsBase {
     EndpointsBase.authenticatedEndpointBase.put
       .in(
         jsonBody[UpdateApiKeyRequest]
-          .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase}."
-          )
+          .description(s"Details of the API key to update.")
           .example(
             UpdateApiKeyRequest(
               name = "My API key",
@@ -60,7 +58,7 @@ private[definitions] object ManagementEndpointsBase {
             )
           )
       )
-      .out(statusCode.description(StatusCode.Ok, "API key created"))
+      .out(statusCode.description(StatusCode.Ok, "API key updated"))
       .out(
         jsonBody[UpdateApiKeyResponse].example(
           UpdateApiKeyResponse(
