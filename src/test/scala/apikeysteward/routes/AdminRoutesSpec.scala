@@ -2,9 +2,9 @@ package apikeysteward.routes
 
 import apikeysteward.base.TestData._
 import apikeysteward.model.ApiKeyData
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
-import apikeysteward.repositories.db.DbCommons.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}

@@ -1,10 +1,9 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, CustomError}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, CustomError, RepositoryErrors}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
+import RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
@@ -128,6 +127,6 @@ object ManagementService {
           message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
         )
 
-    case class InsertionError(cause: DbCommons.ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
+    case class InsertionError(cause: RepositoryErrors.ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
   }
 }

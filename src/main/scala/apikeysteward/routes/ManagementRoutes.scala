@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.ApiKeyDataNotFoundError
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ManagementEndpoints}

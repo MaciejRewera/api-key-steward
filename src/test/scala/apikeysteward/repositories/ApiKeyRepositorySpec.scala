@@ -3,9 +3,9 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.model.{ApiKey, HashedApiKey}
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError._
-import apikeysteward.repositories.db.DbCommons.{ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.{ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.effect.IO

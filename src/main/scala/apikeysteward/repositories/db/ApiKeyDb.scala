@@ -1,8 +1,8 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.HashedApiKey
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.ApiKeyAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import doobie.SqlState
 import doobie.implicits._

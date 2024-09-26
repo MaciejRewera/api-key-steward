@@ -1,8 +1,8 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.RepositoryErrors.TenantDbError
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError
 import apikeysteward.model.Tenant
-import apikeysteward.repositories.db.DbCommons.TenantDbError
-import apikeysteward.repositories.db.DbCommons.TenantDbError.TenantInsertionError
 import cats.effect.IO
 
 import java.util.UUID

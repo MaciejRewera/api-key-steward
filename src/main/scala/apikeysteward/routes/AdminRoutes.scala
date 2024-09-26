@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}

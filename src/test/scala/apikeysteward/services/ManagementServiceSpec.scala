@@ -5,12 +5,12 @@ import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.ApiKeyDataNotFoundError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.repositories.db.DbCommons.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError

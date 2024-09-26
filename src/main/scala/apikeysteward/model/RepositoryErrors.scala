@@ -1,10 +1,8 @@
-package apikeysteward.repositories.db
-
-import apikeysteward.model.CustomError
+package apikeysteward.model
 
 import java.util.UUID
 
-object DbCommons {
+object RepositoryErrors {
 
   sealed abstract class ApiKeyInsertionError(override val message: String) extends CustomError
   object ApiKeyInsertionError {
@@ -17,7 +15,6 @@ object DbCommons {
         extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
   }
 
-  // TODO: Update and Delete errors are not used in Db classes, so they should be moved to a different place.
   sealed abstract class ApiKeyUpdateError(override val message: String) extends CustomError
   object ApiKeyUpdateError {
 
