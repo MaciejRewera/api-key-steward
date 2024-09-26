@@ -31,7 +31,7 @@ class ManagementService(
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
       validatedRequest <- validateRequest(createApiKeyRequest)
-      result <- createApiKeyActionWithRetry(userId, validatedRequest)
+      result <- createApiKeyWithRetry(userId, validatedRequest)
     } yield result).value
 
   private def validateRequest(
@@ -43,7 +43,7 @@ class ManagementService(
       .map(err => ValidationError(err.iterator.toSeq))
   )
 
-  private def createApiKeyActionWithRetry(
+  private def createApiKeyWithRetry(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ApiKeyCreateError, (ApiKey, ApiKeyData)] = {
@@ -55,13 +55,13 @@ class ManagementService(
 
     EitherT {
       Retry
-        .retry(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, createApiKeyRequest))
+        .retry(maxRetries = 3, isWorthRetrying)(buildCreateApiKeyAction(userId, createApiKeyRequest))
         .map(_.asRight)
         .recover { case exc: RetryException[ApiKeyCreateError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
     }
   }
 
-  private def createApiKeyAction(
+  private def buildCreateApiKeyAction(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =

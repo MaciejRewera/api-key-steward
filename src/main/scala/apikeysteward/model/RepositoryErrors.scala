@@ -44,14 +44,37 @@ object RepositoryErrors {
   sealed abstract class TenantDbError(override val message: String) extends CustomError
   object TenantDbError {
 
-    case class TenantNotFoundError(publicId: UUID)
-      extends TenantDbError(message = s"Could not find Tenant with publicId = ${publicId.toString}")
+    def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
+
+    def tenantNotDisabledError(publicTenantId: UUID): TenantDbError = TenantNotDisabledError(publicTenantId)
+
+    case class TenantNotFoundError(publicTenantId: String)
+        extends TenantDbError(message = s"Could not find Tenant with publicTenantId = $publicTenantId")
 
     sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
     object TenantInsertionError {
-      case class TenantAlreadyExistsError(publicId: UUID)
-        extends TenantInsertionError(message = s"Tenant with publicId = ${publicId.toString} already exists.")
+
+      case class TenantAlreadyExistsError(publicTenantId: String)
+          extends TenantInsertionError(
+            message = s"Tenant with publicTenantId = $publicTenantId already exists."
+          )
     }
+
+    case class GenericTenantUpdateError(publicTenantId: String)
+        extends TenantDbError(
+          message = s"Could not update Tenant with publicTenantId = $publicTenantId"
+        )
+
+    case class GenericTenantDeletionError(publicTenantId: String)
+        extends TenantDbError(
+          message = s"Could not delete Tenant with publicTenantId = $publicTenantId"
+        )
+
+    case class TenantNotDisabledError(publicTenantId: UUID)
+        extends TenantDbError(
+          message =
+            s"Could not delete Tenant with publicTenantId = ${publicTenantId.toString} because it is not disabled."
+        )
 
   }
 }

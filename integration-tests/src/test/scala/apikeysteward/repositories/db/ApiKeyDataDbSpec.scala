@@ -29,7 +29,6 @@ class ApiKeyDataDbSpec
   private val apiKeyDataDb = new ApiKeyDataDb
 
   private object Queries {
-
     import doobie.postgres._
     import doobie.postgres.implicits._
 
@@ -49,8 +48,7 @@ class ApiKeyDataDbSpec
         } yield res).transact(transactor)
 
         result.asserting { res =>
-          res.isRight shouldBe true
-          res.value shouldBe apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = 1L)
+          res shouldBe Right(apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = 1L))
         }
       }
 
@@ -74,7 +72,7 @@ class ApiKeyDataDbSpec
       }
     }
 
-    "there is a row in the DB with the same data, but different apiKeyId and publicKeyId" should {
+    "there is a row in the DB with the same data, but different both apiKeyId and publicKeyId" should {
 
       "return inserted entity" in {
         val result = (for {
@@ -151,7 +149,6 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDataDb
             .insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId, publicKeyId = publicKeyIdStr_2))
             .transact(transactor)
-            .attempt
 
           resApiKeysData <- Queries.getAllApiKeysData.transact(transactor)
         } yield resApiKeysData
@@ -193,7 +190,7 @@ class ApiKeyDataDbSpec
           apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id).transact(transactor)
 
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1)).transact(transactor)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2)).transact(transactor).attempt
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2)).transact(transactor)
 
           resApiKeysData <- Queries.getAllApiKeysData.transact(transactor)
         } yield resApiKeysData
@@ -260,8 +257,8 @@ class ApiKeyDataDbSpec
         result.asserting { res =>
           res.size shouldBe 1
 
-          val expectedEntity = apiKeyDataEntityRead_1
-          res.head shouldBe expectedEntity.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          val expectedEntity = apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          res.head shouldBe expectedEntity
         }
       }
     }
@@ -411,8 +408,7 @@ class ApiKeyDataDbSpec
         } yield (res, apiKeyId)).transact(transactor)
 
         result.asserting { case (res, apiKeyId) =>
-          res shouldBe defined
-          res.get shouldBe apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = apiKeyId)
+          res shouldBe Some(apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = apiKeyId))
         }
       }
     }
@@ -550,7 +546,7 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getAllUserIds" when {
 
     "there are no rows in the DB" should {
-      "return empty List" in {
+      "return empty Stream" in {
         val result = apiKeyDataDb.getAllUserIds.compile.toList.transact(transactor)
 
         result.asserting(_ shouldBe List.empty[String])
