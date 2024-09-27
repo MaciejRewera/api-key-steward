@@ -40,7 +40,8 @@ class ApiKeyManagementServiceSpec
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 
-  private val managementService = new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
+  private val managementService =
+    new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,
@@ -221,7 +222,7 @@ class ApiKeyManagementServiceSpec
           } yield ()
         }
 
-        "return successful IO containing Left with MaxNumberOfRetriesExceeded" in {
+        "return successful IO containing Left with InsertionError" in {
           apiKeyGenerator.generateApiKey returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )

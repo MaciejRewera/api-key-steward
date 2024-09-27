@@ -2,7 +2,7 @@ package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError, tenantNotDisabledError, tenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._

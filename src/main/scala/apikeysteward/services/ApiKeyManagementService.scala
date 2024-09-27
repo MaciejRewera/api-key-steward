@@ -1,14 +1,14 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, CustomError, RepositoryErrors}
+import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
@@ -48,6 +48,7 @@ class ApiKeyManagementService(
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ApiKeyCreateError, (ApiKey, ApiKeyData)] = {
 
+    val createApiKeyMaxRetries = 3
     def isWorthRetrying(err: ApiKeyCreateError): Boolean = err match {
       case InsertionError(_) => true
       case _                 => false
@@ -55,7 +56,9 @@ class ApiKeyManagementService(
 
     EitherT {
       Retry
-        .retry(maxRetries = 3, isWorthRetrying)(buildCreateApiKeyAction(userId, createApiKeyRequest))
+        .retry(maxRetries = createApiKeyMaxRetries, isWorthRetrying)(
+          buildCreateApiKeyAction(userId, createApiKeyRequest)
+        )
         .map(_.asRight)
         .recover { case exc: RetryException[ApiKeyCreateError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
     }
@@ -70,7 +73,7 @@ class ApiKeyManagementService(
       newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
 
       _ <- logInfoF("Generating public key ID...")
-      publicKeyId <- EitherT.right(IO(UUID.randomUUID()).flatTap(_ => logger.info("Generated public key ID.")))
+      publicKeyId <- EitherT.right(generatePublicKeyId.flatTap(_ => logger.info("Generated public key ID.")))
 
       apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
@@ -79,11 +82,13 @@ class ApiKeyManagementService(
 
     } yield newApiKey -> insertionResult).value
 
+  private def generatePublicKeyId: IO[UUID] = IO(UUID.randomUUID())
+
   private def insertNewApiKey(newApiKey: ApiKey, apiKeyData: ApiKeyData): IO[Either[InsertionError, ApiKeyData]] =
     for {
       insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
         case Right(_) => logger.info(s"Inserted API Key with publicKeyId: [${apiKeyData.publicKeyId}] into database.")
-        case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
+        case Left(e)  => logger.warn(s"Could not insert API Key into database because: ${e.message}")
       }
       res = insertionResult.left.map(InsertionError)
     } yield res
@@ -95,7 +100,7 @@ class ApiKeyManagementService(
   ): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
     apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
-      case Left(e)  => logger.info(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
+      case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =

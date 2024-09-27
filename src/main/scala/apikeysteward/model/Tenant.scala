@@ -1,6 +1,7 @@
 package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.TenantEntity
+import apikeysteward.routes.model.admin.tenant.CreateTenantRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -19,5 +20,11 @@ object Tenant {
     tenantId = UUID.fromString(tenantEntityRead.publicTenantId),
     name = tenantEntityRead.name,
     enabled = tenantEntityRead.disabledAt.isEmpty
+  )
+
+  def from(tenantId: UUID, createTenantRequest: CreateTenantRequest): Tenant = Tenant(
+    tenantId = tenantId,
+    name = createTenantRequest.name,
+    enabled = true
   )
 }

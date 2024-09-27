@@ -14,6 +14,5 @@ case class CreateApiKeyRequest(
 object CreateApiKeyRequest {
   implicit val codec: Codec[CreateApiKeyRequest] = deriveCodec[CreateApiKeyRequest]
 
-  implicit val createApiKeyAdminRequestSchema: Schema[CreateApiKeyRequest] =
-    TapirCustomSchemas.createApiKeyAdminRequestSchema
+  implicit val createApiKeyRequestSchema: Schema[CreateApiKeyRequest] = TapirCustomSchemas.createApiKeyRequestSchema
 }
