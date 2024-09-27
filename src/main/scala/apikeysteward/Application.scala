@@ -7,7 +7,12 @@ import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
 import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
-import apikeysteward.services.{ApiKeyValidationService, CreateApiKeyRequestValidator, ApiKeyManagementService}
+import apikeysteward.services.{
+  ApiKeyManagementService,
+  ApiKeyValidationService,
+  CreateApiKeyRequestValidator,
+  UuidGenerator
+}
 import apikeysteward.utils.Logging
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -68,15 +73,21 @@ object Application extends IOApp.Simple with Logging {
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
+        uuidGenerator = new UuidGenerator
         createApiKeyRequestValidator = new CreateApiKeyRequestValidator(config.apiKey)
-        managementService = new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
+        apiKeyManagementService = new ApiKeyManagementService(
+          createApiKeyRequestValidator,
+          apiKeyGenerator,
+          uuidGenerator,
+          apiKeyRepository
+        )
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
-        managementRoutes = new ManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes
-        adminRoutes = new AdminRoutes(jwtAuthorizer, managementService).allRoutes
+        managementRoutes = new ManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
+        adminRoutes = new AdminRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 

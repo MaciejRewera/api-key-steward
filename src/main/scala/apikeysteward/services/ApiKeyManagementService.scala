@@ -21,6 +21,7 @@ import java.util.UUID
 class ApiKeyManagementService(
     createApiKeyRequestValidator: CreateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
+    uuidGenerator: UuidGenerator,
     apiKeyRepository: ApiKeyRepository
 )(implicit clock: Clock)
     extends Logging {
@@ -73,7 +74,7 @@ class ApiKeyManagementService(
       newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
 
       _ <- logInfoF("Generating public key ID...")
-      publicKeyId <- EitherT.right(generatePublicKeyId.flatTap(_ => logger.info("Generated public key ID.")))
+      publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
 
       apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
@@ -81,8 +82,6 @@ class ApiKeyManagementService(
       insertionResult <- EitherT(insertNewApiKey(newApiKey, apiKeyData))
 
     } yield newApiKey -> insertionResult).value
-
-  private def generatePublicKeyId: IO[UUID] = IO(UUID.randomUUID())
 
   private def insertNewApiKey(newApiKey: ApiKey, apiKeyData: ApiKeyData): IO[Either[InsertionError, ApiKeyData]] =
     for {
