@@ -41,7 +41,7 @@ class TenantRepositorySpec
     name = tenantName_1,
     createdAt = nowInstant,
     updatedAt = nowInstant,
-    disabledAt = None
+    deactivatedAt = None
   )
   private val tenantEntityRead_2: TenantEntity.Read = tenantEntityRead_1.copy(
     id = 2L,
@@ -229,10 +229,11 @@ class TenantRepositorySpec
     }
   }
 
-  "TenantRepository on enable" when {
+  "TenantRepository on activate" when {
 
-    val enabledTenantEntityRead = tenantEntityRead_1.copy(disabledAt = None)
-    val enabledTenantEntityReadWrapped = enabledTenantEntityRead.asRight[TenantNotFoundError].pure[doobie.ConnectionIO]
+    val activatedTenantEntityRead = tenantEntityRead_1.copy(deactivatedAt = None)
+    val activatedTenantEntityReadWrapped =
+      activatedTenantEntityRead.asRight[TenantNotFoundError].pure[doobie.ConnectionIO]
 
     val tenantNotFoundError = TenantNotFoundError(publicTenantIdStr_1)
     val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
@@ -240,45 +241,45 @@ class TenantRepositorySpec
     "everything works correctly" should {
 
       "call TenantDb" in {
-        tenantDb.enable(any[UUID]) returns enabledTenantEntityReadWrapped
+        tenantDb.activate(any[UUID]) returns activatedTenantEntityReadWrapped
 
         for {
-          _ <- tenantRepository.enable(publicTenantId_1)
+          _ <- tenantRepository.activate(publicTenantId_1)
 
-          _ = verify(tenantDb).enable(eqTo(publicTenantId_1))
+          _ = verify(tenantDb).activate(eqTo(publicTenantId_1))
         } yield ()
       }
 
-      "return Right containing enabled Tenant" in {
-        tenantDb.enable(any[UUID]) returns enabledTenantEntityReadWrapped
-        val expectedEnabledTenant = tenant_1.copy(enabled = true)
+      "return Right containing activated Tenant" in {
+        tenantDb.activate(any[UUID]) returns activatedTenantEntityReadWrapped
+        val expectedActivatedTenant = tenant_1.copy(isActive = true)
 
-        tenantRepository.enable(publicTenantId_1).asserting(_ shouldBe Right(expectedEnabledTenant))
+        tenantRepository.activate(publicTenantId_1).asserting(_ shouldBe Right(expectedActivatedTenant))
       }
     }
 
     "TenantDb returns Left containing TenantNotFoundError" should {
       "return Left containing this error" in {
-        tenantDb.enable(any[UUID]) returns tenantNotFoundErrorWrapped
+        tenantDb.activate(any[UUID]) returns tenantNotFoundErrorWrapped
 
-        tenantRepository.enable(publicTenantId_1).asserting(_ shouldBe Left(tenantNotFoundError))
+        tenantRepository.activate(publicTenantId_1).asserting(_ shouldBe Left(tenantNotFoundError))
       }
     }
 
     "TenantDb returns different exception" should {
       "return failed IO containing this exception" in {
-        tenantDb.enable(any[UUID]) returns testExceptionWrappedE[TenantNotFoundError]
+        tenantDb.activate(any[UUID]) returns testExceptionWrappedE[TenantNotFoundError]
 
-        tenantRepository.enable(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+        tenantRepository.activate(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }
 
-  "TenantRepository on disable" when {
+  "TenantRepository on deactivate" when {
 
-    val disabledTenantEntityRead = tenantEntityRead_1.copy(disabledAt = Some(nowInstant))
-    val disabledTenantEntityReadWrapped =
-      disabledTenantEntityRead.asRight[TenantNotFoundError].pure[doobie.ConnectionIO]
+    val deactivatedTenantEntityRead = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
+    val deactivatedTenantEntityReadWrapped =
+      deactivatedTenantEntityRead.asRight[TenantNotFoundError].pure[doobie.ConnectionIO]
 
     val tenantNotFoundError = TenantNotFoundError(publicTenantIdStr_1)
     val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
@@ -286,66 +287,66 @@ class TenantRepositorySpec
     "everything works correctly" should {
 
       "call TenantDb" in {
-        tenantDb.disable(any[UUID]) returns disabledTenantEntityReadWrapped
+        tenantDb.deactivate(any[UUID]) returns deactivatedTenantEntityReadWrapped
 
         for {
-          _ <- tenantRepository.disable(publicTenantId_1)
+          _ <- tenantRepository.deactivate(publicTenantId_1)
 
-          _ = verify(tenantDb).disable(eqTo(publicTenantId_1))
+          _ = verify(tenantDb).deactivate(eqTo(publicTenantId_1))
         } yield ()
       }
 
-      "return Right containing disabled Tenant" in {
-        tenantDb.disable(any[UUID]) returns disabledTenantEntityReadWrapped
-        val expectedDisabledTenant = tenant_1.copy(enabled = false)
+      "return Right containing deactivated Tenant" in {
+        tenantDb.deactivate(any[UUID]) returns deactivatedTenantEntityReadWrapped
+        val expectedDeactivatedTenant = tenant_1.copy(isActive = false)
 
-        tenantRepository.disable(publicTenantId_1).asserting(_ shouldBe Right(expectedDisabledTenant))
+        tenantRepository.deactivate(publicTenantId_1).asserting(_ shouldBe Right(expectedDeactivatedTenant))
       }
     }
 
     "TenantDb returns Left containing TenantNotFoundError" should {
       "return Left containing this error" in {
-        tenantDb.disable(any[UUID]) returns tenantNotFoundErrorWrapped
+        tenantDb.deactivate(any[UUID]) returns tenantNotFoundErrorWrapped
 
-        tenantRepository.disable(publicTenantId_1).asserting(_ shouldBe Left(tenantNotFoundError))
+        tenantRepository.deactivate(publicTenantId_1).asserting(_ shouldBe Left(tenantNotFoundError))
       }
     }
 
     "TenantDb returns different exception" should {
       "return failed IO containing this exception" in {
-        tenantDb.disable(any[UUID]) returns testExceptionWrappedE[TenantNotFoundError]
+        tenantDb.deactivate(any[UUID]) returns testExceptionWrappedE[TenantNotFoundError]
 
-        tenantRepository.disable(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+        tenantRepository.deactivate(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }
 
   "TenantRepository on delete" when {
 
-    val deletedTenantEntityRead = tenantEntityRead_1.copy(disabledAt = Some(nowInstant))
+    val deletedTenantEntityRead = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
     val deletedTenantEntityReadWrapped = deletedTenantEntityRead.asRight[TenantDbError].pure[doobie.ConnectionIO]
 
     val tenantNotFoundError = TenantDbError.tenantNotFoundError(publicTenantIdStr_1)
     val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
-    val tenantNotDisabledError = TenantDbError.tenantNotDisabledError(publicTenantId_1)
-    val tenantNotDisabledErrorWrapped = tenantNotDisabledError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
+    val tenantIsActiveError = TenantDbError.tenantIsActiveError(publicTenantId_1)
+    val tenantIsActiveErrorWrapped = tenantIsActiveError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {
 
       "call TenantDb" in {
-        tenantDb.deleteDisabled(any[UUID]) returns deletedTenantEntityReadWrapped
+        tenantDb.deleteDeactivated(any[UUID]) returns deletedTenantEntityReadWrapped
 
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
-          _ = verify(tenantDb).deleteDisabled(eqTo(publicTenantId_1))
+          _ = verify(tenantDb).deleteDeactivated(eqTo(publicTenantId_1))
         } yield ()
       }
 
       "return Right containing deleted Tenant" in {
-        tenantDb.deleteDisabled(any[UUID]) returns deletedTenantEntityReadWrapped
-        val expectedDeletedTenant = tenant_1.copy(enabled = false)
+        tenantDb.deleteDeactivated(any[UUID]) returns deletedTenantEntityReadWrapped
+        val expectedDeletedTenant = tenant_1.copy(isActive = false)
 
         tenantRepository.delete(publicTenantId_1).asserting(_ shouldBe Right(expectedDeletedTenant))
       }
@@ -353,23 +354,23 @@ class TenantRepositorySpec
 
     "TenantDb returns Left containing TenantNotFoundError" should {
       "return Left containing this error" in {
-        tenantDb.deleteDisabled(any[UUID]) returns tenantNotFoundErrorWrapped
+        tenantDb.deleteDeactivated(any[UUID]) returns tenantNotFoundErrorWrapped
 
         tenantRepository.delete(publicTenantId_1).asserting(_ shouldBe Left(tenantNotFoundError))
       }
     }
 
-    "TenantDb returns Left containing TenantNotDisabledError" should {
+    "TenantDb returns Left containing TenantNotdeactivatedError" should {
       "return Left containing this error" in {
-        tenantDb.deleteDisabled(any[UUID]) returns tenantNotDisabledErrorWrapped
+        tenantDb.deleteDeactivated(any[UUID]) returns tenantIsActiveErrorWrapped
 
-        tenantRepository.delete(publicTenantId_1).asserting(_ shouldBe Left(tenantNotDisabledError))
+        tenantRepository.delete(publicTenantId_1).asserting(_ shouldBe Left(tenantIsActiveError))
       }
     }
 
     "TenantDb returns different exception" should {
       "return failed IO containing this exception" in {
-        tenantDb.deleteDisabled(any[UUID]) returns testExceptionWrappedE[TenantDbError]
+        tenantDb.deleteDeactivated(any[UUID]) returns testExceptionWrappedE[TenantDbError]
 
         tenantRepository.delete(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }

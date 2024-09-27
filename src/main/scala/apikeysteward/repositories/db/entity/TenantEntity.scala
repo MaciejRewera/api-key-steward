@@ -12,7 +12,7 @@ object TenantEntity {
       name: String,
       createdAt: Instant,
       updatedAt: Instant,
-      disabledAt: Option[Instant]
+      deactivatedAt: Option[Instant]
   )
 
   case class Write(

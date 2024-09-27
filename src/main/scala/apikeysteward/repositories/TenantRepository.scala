@@ -38,21 +38,21 @@ class TenantRepository(tenantDb: TenantDb)(transactor: Transactor[IO]) {
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).compile.toList.transact(transactor)
 
-  def enable(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def activate(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
     (for {
-      tenantEntityRead <- EitherT(tenantDb.enable(tenantId))
+      tenantEntityRead <- EitherT(tenantDb.activate(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
-  def disable(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def deactivate(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
     (for {
-      tenantEntityRead <- EitherT(tenantDb.disable(tenantId))
+      tenantEntityRead <- EitherT(tenantDb.deactivate(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
   def delete(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
     (for {
-      tenantEntityRead <- EitherT(tenantDb.deleteDisabled(tenantId))
+      tenantEntityRead <- EitherT(tenantDb.deleteDeactivated(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 

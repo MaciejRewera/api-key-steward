@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.IntegrationTestData._
 import apikeysteward.base.TestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantNotDisabledError, TenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsActiveError, TenantNotFoundError}
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -319,22 +319,22 @@ class TenantDbSpec
     }
   }
 
-  "TenantDb on enable" when {
+  "TenantDb on activate" when {
 
-    val enabledEntityRead = tenantEntityRead_1.copy(disabledAt = None)
+    val activatedEntityRead = tenantEntityRead_1.copy(deactivatedAt = None)
 
     "there are NO rows in the Tenant table" should {
 
       "return Left containing TenantNotFoundError" in {
         tenantDb
-          .enable(publicTenantId_1)
+          .activate(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.enable(publicTenantId_1)
+          _ <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -342,14 +342,14 @@ class TenantDbSpec
       }
     }
 
-    "there is a disabled row in the Tenant table with different publicTenantId" should {
+    "there is a deactivated row in the Tenant table with different publicTenantId" should {
 
       "return Left containing TenantNotFoundError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          res <- tenantDb.enable(publicTenantId_2)
+          res <- tenantDb.activate(publicTenantId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_2)))
@@ -358,104 +358,104 @@ class TenantDbSpec
       "make NO changes to the DB" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.enable(publicTenantId_2)
+          _ <- tenantDb.activate(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
         result.asserting { res =>
           res.size shouldBe 1
 
-          val expectedEntity = tenantEntityRead_1.copy(id = res.head.id, disabledAt = Some(nowInstant))
+          val expectedEntity = tenantEntityRead_1.copy(id = res.head.id, deactivatedAt = Some(nowInstant))
           res.head shouldBe expectedEntity
         }
       }
     }
 
-    "there is a disabled row in the Tenant table with given publicTenantId" should {
+    "there is a deactivated row in the Tenant table with given publicTenantId" should {
 
-      "return enabled entity" in {
+      "return activated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          res <- tenantDb.enable(publicTenantId_1)
+          res <- tenantDb.activate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(enabledEntityRead.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(activatedEntityRead.copy(id = res.value.id)))
       }
 
-      "enable this row" in {
+      "activate this row" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.enable(publicTenantId_1)
+          _ <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe enabledEntityRead.copy(id = res.head.id)
+          res.head shouldBe activatedEntityRead.copy(id = res.head.id)
         }
       }
     }
 
-    "there is an enabled row in the Tenant table with given publicTenantId" should {
+    "there is an activated row in the Tenant table with given publicTenantId" should {
 
-      "return enabled entity" in {
+      "return activated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- tenantDb.enable(publicTenantId_1)
+          res <- tenantDb.activate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(enabledEntityRead.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(activatedEntityRead.copy(id = res.value.id)))
       }
 
       "make NO changes to the DB" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.enable(publicTenantId_1)
+          _ <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe enabledEntityRead.copy(id = res.head.id)
+          res.head shouldBe activatedEntityRead.copy(id = res.head.id)
         }
       }
     }
 
-    "there are several disabled rows in the Tenant table but only one with given publicTenantId" should {
+    "there are several deactivated rows in the Tenant table but only one with given publicTenantId" should {
 
-      "return enabled entity" in {
+      "return activated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- tenantDb.insert(tenantEntityWrite_3)
-          _ <- tenantDb.disable(publicTenantId_1)
-          _ <- tenantDb.disable(publicTenantId_2)
-          _ <- tenantDb.disable(publicTenantId_3)
+          _ <- tenantDb.deactivate(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_2)
+          _ <- tenantDb.deactivate(publicTenantId_3)
 
-          res <- tenantDb.enable(publicTenantId_1)
+          res <- tenantDb.activate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(enabledEntityRead.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(activatedEntityRead.copy(id = res.value.id)))
       }
 
-      "enable only this row and leave others unchanged" in {
+      "activate only this row and leave others unchanged" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- tenantDb.insert(tenantEntityWrite_3)
-          entityRead_1 <- tenantDb.disable(publicTenantId_1)
-          entityRead_2 <- tenantDb.disable(publicTenantId_2)
-          entityRead_3 <- tenantDb.disable(publicTenantId_3)
+          entityRead_1 <- tenantDb.deactivate(publicTenantId_1)
+          entityRead_2 <- tenantDb.deactivate(publicTenantId_2)
+          entityRead_3 <- tenantDb.deactivate(publicTenantId_3)
 
-          _ <- tenantDb.enable(publicTenantId_1)
+          _ <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -463,7 +463,7 @@ class TenantDbSpec
           res.size shouldBe 3
 
           val expectedEntities = Seq(
-            enabledEntityRead.copy(id = entityRead_1.id),
+            activatedEntityRead.copy(id = entityRead_1.id),
             entityRead_2,
             entityRead_3
           )
@@ -473,20 +473,20 @@ class TenantDbSpec
     }
   }
 
-  "TenantDb on disable" when {
+  "TenantDb on deactivate" when {
 
     "there are NO rows in the Tenant table" should {
 
       "return Left containing TenantNotFoundError" in {
         tenantDb
-          .disable(publicTenantId_1)
+          .deactivate(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -494,13 +494,13 @@ class TenantDbSpec
       }
     }
 
-    "there is an enabled row in the Tenant table with different publicTenantId" should {
+    "there is an activated row in the Tenant table with different publicTenantId" should {
 
       "return Left containing TenantNotFoundError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- tenantDb.disable(publicTenantId_2)
+          res <- tenantDb.deactivate(publicTenantId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_2)))
@@ -510,7 +510,7 @@ class TenantDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.disable(publicTenantId_2)
+          _ <- tenantDb.deactivate(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -523,83 +523,83 @@ class TenantDbSpec
       }
     }
 
-    "there is an enabled row in the Tenant table with given publicTenantId" should {
+    "there is an activated row in the Tenant table with given publicTenantId" should {
 
-      "return disabled entity" in {
+      "return deactivated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- tenantDb.disable(publicTenantId_1)
+          res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(disabledEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
       }
 
-      "disable this row" in {
+      "deactivate this row" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe disabledEntityRead_1.copy(id = res.head.id)
+          res.head shouldBe deactivatedEntityRead_1.copy(id = res.head.id)
         }
       }
     }
 
-    "there is a disabled row in the Tenant table with given publicTenantId" should {
+    "there is a deactivated row in the Tenant table with given publicTenantId" should {
 
-      "return disabled entity" in {
+      "return deactivated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          res <- tenantDb.disable(publicTenantId_1)
+          res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(disabledEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
       }
 
       "make NO changes to the DB" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe disabledEntityRead_1.copy(id = res.head.id)
+          res.head shouldBe deactivatedEntityRead_1.copy(id = res.head.id)
         }
       }
     }
 
-    "there are several enabled rows in the Tenant table but only one with given publicTenantId" should {
+    "there are several activated rows in the Tenant table but only one with given publicTenantId" should {
 
-      "return disabled entity" in {
+      "return deactivated entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- tenantDb.insert(tenantEntityWrite_3)
 
-          res <- tenantDb.disable(publicTenantId_1)
+          res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(disabledEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
       }
 
-      "disable only this row and leave others unchanged" in {
+      "deactivate only this row and leave others unchanged" in {
         val result = (for {
           entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
           entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
           entityRead_3 <- tenantDb.insert(tenantEntityWrite_3)
 
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -607,7 +607,7 @@ class TenantDbSpec
           res.size shouldBe 3
 
           val expectedEntities = Seq(
-            disabledEntityRead_1.copy(id = entityRead_1.id),
+            deactivatedEntityRead_1.copy(id = entityRead_1.id),
             entityRead_2,
             entityRead_3
           )
@@ -617,20 +617,20 @@ class TenantDbSpec
     }
   }
 
-  "TenantDb on deleteDisabled" when {
+  "TenantDb on deletedeactivated" when {
 
     "there are no rows in the Tenant table" should {
 
       "return Left containing TenantNotFoundError" in {
         tenantDb
-          .deleteDisabled(publicTenantId_1)
+          .deleteDeactivated(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.deleteDisabled(publicTenantId_1)
+          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -638,14 +638,14 @@ class TenantDbSpec
       }
     }
 
-    "there is a disabled row in the Tenant table with different publicTenantId" should {
+    "there is a deactivated row in the Tenant table with different publicTenantId" should {
 
       "return Left containing TenantNotFoundError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          res <- tenantDb.deleteDisabled(publicTenantId_2)
+          res <- tenantDb.deleteDeactivated(publicTenantId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_2)))
@@ -654,33 +654,33 @@ class TenantDbSpec
       "make no changes to the DB" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.deleteDisabled(publicTenantId_2)
+          _ <- tenantDb.deleteDeactivated(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe List(disabledEntityRead_1.copy(id = res.head.id)))
+        result.asserting(res => res shouldBe List(deactivatedEntityRead_1.copy(id = res.head.id)))
       }
     }
 
-    "there is an enabled row in the Tenant table with given publicTenantId" should {
+    "there is an activated row in the Tenant table with given publicTenantId" should {
 
-      "return Left containing TenantNotDisabledError" in {
+      "return Left containing TenantIsActiveError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- tenantDb.deleteDisabled(publicTenantId_1)
+          res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(TenantNotDisabledError(publicTenantId_1)))
+        result.asserting(res => res shouldBe Left(TenantIsActiveError(publicTenantId_1)))
       }
 
       "make no changes to the DB" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.deleteDisabled(publicTenantId_1)
+          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -688,25 +688,25 @@ class TenantDbSpec
       }
     }
 
-    "there is a disabled row in the Tenant table with given publicTenantId" should {
+    "there is a deactivated row in the Tenant table with given publicTenantId" should {
 
       "return deleted entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          res <- tenantDb.deleteDisabled(publicTenantId_1)
+          res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(disabledEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
       }
 
       "delete this row from the Tenant table" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.disable(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.deleteDisabled(publicTenantId_1)
+          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -714,21 +714,21 @@ class TenantDbSpec
       }
     }
 
-    "there are several disabled rows in the Tenant table but only one with given publicTenantId" should {
+    "there are several deactivated rows in the Tenant table but only one with given publicTenantId" should {
 
       "return deleted entity" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- tenantDb.insert(tenantEntityWrite_3)
-          _ <- tenantDb.disable(publicTenantId_1)
-          _ <- tenantDb.disable(publicTenantId_2)
-          _ <- tenantDb.disable(publicTenantId_3)
+          _ <- tenantDb.deactivate(publicTenantId_1)
+          _ <- tenantDb.deactivate(publicTenantId_2)
+          _ <- tenantDb.deactivate(publicTenantId_3)
 
-          res <- tenantDb.deleteDisabled(publicTenantId_1)
+          res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(disabledEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
       }
 
       "delete this row from the Tenant table and leave others intact" in {
@@ -736,11 +736,11 @@ class TenantDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- tenantDb.insert(tenantEntityWrite_3)
-          _ <- tenantDb.disable(publicTenantId_1)
-          entityRead_2 <- tenantDb.disable(publicTenantId_2)
-          entityRead_3 <- tenantDb.disable(publicTenantId_3)
+          _ <- tenantDb.deactivate(publicTenantId_1)
+          entityRead_2 <- tenantDb.deactivate(publicTenantId_2)
+          entityRead_3 <- tenantDb.deactivate(publicTenantId_3)
 
-          _ <- tenantDb.deleteDisabled(publicTenantId_1)
+          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 

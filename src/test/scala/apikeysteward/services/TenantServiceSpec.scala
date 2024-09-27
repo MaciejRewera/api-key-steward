@@ -186,78 +186,78 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     }
   }
 
-  "TenantService on enableTenant" should {
+  "TenantService on activateTenant" should {
 
     "call TenantRepository" in {
-      tenantRepository.enable(any[UUID]) returns IO.pure(Right(tenant_1))
+      tenantRepository.activate(any[UUID]) returns IO.pure(Right(tenant_1))
 
       for {
-        _ <- tenantService.enableTenant(publicTenantId_1)
+        _ <- tenantService.activateTenant(publicTenantId_1)
 
-        _ = verify(tenantRepository).enable(eqTo(publicTenantId_1))
+        _ = verify(tenantRepository).activate(eqTo(publicTenantId_1))
       } yield ()
     }
 
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.enable(any[UUID]) returns IO.pure(Right(tenant_1))
+        tenantRepository.activate(any[UUID]) returns IO.pure(Right(tenant_1))
 
-        tenantService.enableTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
+        tenantService.activateTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.enable(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.activate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
 
         tenantService
-          .enableTenant(publicTenantId_1)
+          .activateTenant(publicTenantId_1)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.enable(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.activate(any[UUID]) returns IO.raiseError(testException)
 
-        tenantService.enableTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+        tenantService.activateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }
 
-  "TenantService on disableTenant" should {
+  "TenantService on deactivateTenant" should {
 
     "call TenantRepository" in {
-      tenantRepository.disable(any[UUID]) returns IO.pure(Right(tenant_1))
+      tenantRepository.deactivate(any[UUID]) returns IO.pure(Right(tenant_1))
 
       for {
-        _ <- tenantService.disableTenant(publicTenantId_1)
+        _ <- tenantService.deactivateTenant(publicTenantId_1)
 
-        _ = verify(tenantRepository).disable(eqTo(publicTenantId_1))
+        _ = verify(tenantRepository).deactivate(eqTo(publicTenantId_1))
       } yield ()
     }
 
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.disable(any[UUID]) returns IO.pure(Right(tenant_1))
+        tenantRepository.deactivate(any[UUID]) returns IO.pure(Right(tenant_1))
 
-        tenantService.disableTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
+        tenantService.deactivateTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.disable(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.deactivate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
 
         tenantService
-          .disableTenant(publicTenantId_1)
+          .deactivateTenant(publicTenantId_1)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.disable(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.deactivate(any[UUID]) returns IO.raiseError(testException)
 
-        tenantService.disableTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+        tenantService.deactivateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }

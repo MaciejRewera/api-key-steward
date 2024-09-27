@@ -89,7 +89,7 @@ trait IntegrationTestData extends FixedClock {
     name = tenantName_1,
     createdAt = nowInstant,
     updatedAt = nowInstant,
-    disabledAt = None
+    deactivatedAt = None
   )
 
   val tenantEntityWrite_2: TenantEntity.Write =
@@ -100,7 +100,7 @@ trait IntegrationTestData extends FixedClock {
     name = tenantName_2,
     createdAt = nowInstant,
     updatedAt = nowInstant,
-    disabledAt = None
+    deactivatedAt = None
   )
 
   val tenantEntityWrite_3: TenantEntity.Write =
@@ -111,7 +111,7 @@ trait IntegrationTestData extends FixedClock {
     name = tenantName_3,
     createdAt = nowInstant,
     updatedAt = nowInstant,
-    disabledAt = None
+    deactivatedAt = None
   )
 
   val tenantEntityUpdate_1: TenantEntity.Update = TenantEntity.Update(
@@ -119,7 +119,6 @@ trait IntegrationTestData extends FixedClock {
     name = tenantNameUpdated
   )
 
-  val disabledEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(disabledAt = Some(nowInstant))
-
+  val deactivatedEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
 
 }

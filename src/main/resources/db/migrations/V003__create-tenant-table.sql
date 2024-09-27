@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS tenant
 
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    disabled_at      TIMESTAMPTZ,
+    deactivated_at   TIMESTAMPTZ,
     UNIQUE (public_tenant_id)
 );

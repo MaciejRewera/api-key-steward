@@ -29,7 +29,7 @@ class TenantDb()(implicit clock: Clock) {
           "name",
           "created_at",
           "updated_at",
-          "disabled_at"
+          "deactivated_at"
         )
         .attemptSql
 
@@ -64,27 +64,27 @@ class TenantDb()(implicit clock: Clock) {
   def getAll: Stream[doobie.ConnectionIO, TenantEntity.Read] =
     Queries.getAll.stream
 
-  def enable(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
+  def activate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
     for {
-      disabledCount <- Queries.enable(publicTenantId.toString).run
+      activatedCount <- Queries.activate(publicTenantId.toString).run
 
       resOpt <-
-        if (disabledCount > 0) getByPublicTenantId(publicTenantId)
+        if (activatedCount > 0) getByPublicTenantId(publicTenantId)
         else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(TenantNotFoundError(publicTenantId.toString))
 
-  def disable(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
+  def deactivate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
     for {
-      disabledCount <- Queries.disable(publicTenantId.toString, now).run
+      deactivatedCount <- Queries.deactivate(publicTenantId.toString, now).run
 
       resOpt <-
-        if (disabledCount > 0) getByPublicTenantId(publicTenantId)
+        if (deactivatedCount > 0) getByPublicTenantId(publicTenantId)
         else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(TenantNotFoundError(publicTenantId.toString))
   }
 
-  def deleteDisabled(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantDbError, TenantEntity.Read]] =
+  def deleteDeactivated(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantDbError, TenantEntity.Read]] =
     for {
       tenantToDeleteE <- getByPublicTenantId(publicTenantId).map(
         _.toRight(tenantNotFoundError(publicTenantId.toString))
@@ -93,9 +93,9 @@ class TenantDb()(implicit clock: Clock) {
       resultE <- tenantToDeleteE.flatTraverse { result =>
         Either
           .cond(
-            result.disabledAt.isDefined,
-            Queries.deleteDisabled(publicTenantId.toString).run.map(_ => result),
-            tenantNotDisabledError(publicTenantId)
+            result.deactivatedAt.isDefined,
+            Queries.deleteDeactivated(publicTenantId.toString).run.map(_ => result),
+            tenantIsActiveError(publicTenantId)
           )
           .sequence
       }
@@ -104,7 +104,7 @@ class TenantDb()(implicit clock: Clock) {
   private object Queries {
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, public_tenant_id, name, created_at, updated_at, disabled_at"
+      fr"SELECT id, public_tenant_id, name, created_at, updated_at, deactivated_at"
 
     def insert(tenantEntity: TenantEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO tenant(public_tenant_id, name, created_at, updated_at)
@@ -131,21 +131,21 @@ class TenantDb()(implicit clock: Clock) {
       (columnNamesSelectFragment ++
         sql"FROM tenant").query[TenantEntity.Read]
 
-    def enable(publicTenantId: String): doobie.Update0 =
+    def activate(publicTenantId: String): doobie.Update0 =
       sql"""UPDATE tenant
-            SET disabled_at = NULL
+            SET deactivated_at = NULL
             WHERE tenant.public_tenant_id = $publicTenantId
            """.stripMargin.update
 
-    def disable(publicTenantId: String, now: Instant): doobie.Update0 =
+    def deactivate(publicTenantId: String, now: Instant): doobie.Update0 =
       sql"""UPDATE tenant
-            SET disabled_at = $now
+            SET deactivated_at = $now
             WHERE tenant.public_tenant_id = $publicTenantId
            """.stripMargin.update
 
-    def deleteDisabled(publicTenantId: String): doobie.Update0 =
+    def deleteDeactivated(publicTenantId: String): doobie.Update0 =
       sql"""DELETE FROM tenant
-           WHERE tenant.public_tenant_id = $publicTenantId AND tenant.disabled_at IS NOT NULL
+           WHERE tenant.public_tenant_id = $publicTenantId AND tenant.deactivated_at IS NOT NULL
            """.stripMargin.update
   }
 }
