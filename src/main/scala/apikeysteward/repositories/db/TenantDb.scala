@@ -46,43 +46,32 @@ class TenantDb()(implicit clock: Clock) {
 
   def update(tenantEntity: TenantEntity.Update): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
-    for {
-      updateCount <- Queries.update(tenantEntity, now).run
-
-      resOpt <-
-        if (updateCount > 0) getByPublicTenantId(tenantEntity.publicTenantId)
-        else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
-    } yield resOpt.toRight(TenantNotFoundError(tenantEntity.publicTenantId))
+    performUpdate(tenantEntity.publicTenantId)(Queries.update(tenantEntity, now).run)
   }
 
-  def getByPublicTenantId(publicTenantId: UUID): doobie.ConnectionIO[Option[TenantEntity.Read]] =
-    getByPublicTenantId(publicTenantId.toString)
-
-  private def getByPublicTenantId(publicTenantId: String): doobie.ConnectionIO[Option[TenantEntity.Read]] =
-    Queries.getBy(publicTenantId).option
-
-  def getAll: Stream[doobie.ConnectionIO, TenantEntity.Read] =
-    Queries.getAll.stream
-
   def activate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
-    for {
-      activatedCount <- Queries.activate(publicTenantId.toString).run
-
-      resOpt <-
-        if (activatedCount > 0) getByPublicTenantId(publicTenantId)
-        else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
-    } yield resOpt.toRight(TenantNotFoundError(publicTenantId.toString))
+    performUpdate(publicTenantId)(Queries.activate(publicTenantId.toString).run)
 
   def deactivate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
+    performUpdate(publicTenantId)(Queries.deactivate(publicTenantId.toString, now).run)
+  }
+
+  private def performUpdate(publicTenantId: UUID)(
+      updateAction: => doobie.ConnectionIO[Int]
+  ): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
+    performUpdate(publicTenantId.toString)(updateAction)
+
+  private def performUpdate(publicTenantId: String)(
+      updateAction: => doobie.ConnectionIO[Int]
+  ): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
     for {
-      deactivatedCount <- Queries.deactivate(publicTenantId.toString, now).run
+      updateCount <- updateAction
 
       resOpt <-
-        if (deactivatedCount > 0) getByPublicTenantId(publicTenantId)
+        if (updateCount > 0) getByPublicTenantId(publicTenantId)
         else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
-    } yield resOpt.toRight(TenantNotFoundError(publicTenantId.toString))
-  }
+    } yield resOpt.toRight(TenantNotFoundError(publicTenantId))
 
   def deleteDeactivated(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantDbError, TenantEntity.Read]] =
     for {
@@ -100,6 +89,15 @@ class TenantDb()(implicit clock: Clock) {
           .sequence
       }
     } yield resultE
+
+  def getByPublicTenantId(publicTenantId: UUID): doobie.ConnectionIO[Option[TenantEntity.Read]] =
+    getByPublicTenantId(publicTenantId.toString)
+
+  private def getByPublicTenantId(publicTenantId: String): doobie.ConnectionIO[Option[TenantEntity.Read]] =
+    Queries.getBy(publicTenantId).option
+
+  def getAll: Stream[doobie.ConnectionIO, TenantEntity.Read] =
+    Queries.getAll.stream
 
   private object Queries {
 
@@ -123,14 +121,6 @@ class TenantDb()(implicit clock: Clock) {
             WHERE tenant.public_tenant_id = ${tenantEntity.publicTenantId}
            """.stripMargin.update
 
-    def getBy(publicTenantId: String): doobie.Query0[TenantEntity.Read] =
-      (columnNamesSelectFragment ++
-        sql"FROM tenant WHERE public_tenant_id = $publicTenantId").query[TenantEntity.Read]
-
-    val getAll: doobie.Query0[TenantEntity.Read] =
-      (columnNamesSelectFragment ++
-        sql"FROM tenant").query[TenantEntity.Read]
-
     def activate(publicTenantId: String): doobie.Update0 =
       sql"""UPDATE tenant
             SET deactivated_at = NULL
@@ -147,5 +137,14 @@ class TenantDb()(implicit clock: Clock) {
       sql"""DELETE FROM tenant
            WHERE tenant.public_tenant_id = $publicTenantId AND tenant.deactivated_at IS NOT NULL
            """.stripMargin.update
+
+    def getBy(publicTenantId: String): doobie.Query0[TenantEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"FROM tenant WHERE public_tenant_id = $publicTenantId").query[TenantEntity.Read]
+
+    val getAll: doobie.Query0[TenantEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"FROM tenant").query[TenantEntity.Read]
+
   }
 }

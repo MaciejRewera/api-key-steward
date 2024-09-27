@@ -244,81 +244,6 @@ class TenantDbSpec
     }
   }
 
-  "TenantDb on getByPublicTenantId" when {
-
-    "there are no rows in the DB" should {
-      "return empty Option" in {
-        tenantDb.getByPublicTenantId(publicTenantId_1).transact(transactor).asserting(_ shouldBe None)
-      }
-    }
-
-    "there is a row in the DB with different publicTenantId" should {
-      "return empty Option" in {
-        val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
-
-          res <- tenantDb.getByPublicTenantId(publicTenantId_2)
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe None)
-      }
-    }
-
-    "there is a row in the DB with the same publicTenantId" should {
-      "return this entity" in {
-        val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
-
-          res <- tenantDb.getByPublicTenantId(publicTenantId_1)
-        } yield res).transact(transactor)
-
-        result.asserting(res => res shouldBe Some(tenantEntityRead_1.copy(id = res.get.id)))
-      }
-    }
-  }
-
-  "TenantDb on getAll" when {
-
-    "there are no rows in the DB" should {
-      "return empty Stream" in {
-        tenantDb.getAll.compile.toList.transact(transactor).asserting(_ shouldBe List.empty[TenantEntity.Read])
-      }
-    }
-
-    "there is a single row in the DB" should {
-      "return this single row" in {
-        val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
-
-          res <- tenantDb.getAll.compile.toList
-        } yield res).transact(transactor)
-
-        result.asserting { res =>
-          res.size shouldBe 1
-          res shouldBe List(tenantEntityRead_1.copy(id = res.head.id))
-        }
-      }
-    }
-
-    "there are several rows in the DB" should {
-      "return all rows" in {
-        val result = (for {
-          entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
-          entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
-          entityRead_3 <- tenantDb.insert(tenantEntityWrite_3)
-          expectedEntities = Seq(entityRead_1, entityRead_2, entityRead_3).map(_.value)
-
-          res <- tenantDb.getAll.compile.toList
-        } yield (res, expectedEntities)).transact(transactor)
-
-        result.asserting { case (res, expectedEntities) =>
-          res.size shouldBe 3
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-    }
-  }
-
   "TenantDb on activate" when {
 
     val activatedEntityRead = tenantEntityRead_1.copy(deactivatedAt = None)
@@ -751,6 +676,81 @@ class TenantDbSpec
             entityRead_2,
             entityRead_3
           )
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+  }
+
+  "TenantDb on getByPublicTenantId" when {
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        tenantDb.getByPublicTenantId(publicTenantId_1).transact(transactor).asserting(_ shouldBe None)
+      }
+    }
+
+    "there is a row in the DB with different publicTenantId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- tenantDb.getByPublicTenantId(publicTenantId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe None)
+      }
+    }
+
+    "there is a row in the DB with the same publicTenantId" should {
+      "return this entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- tenantDb.getByPublicTenantId(publicTenantId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(res => res shouldBe Some(tenantEntityRead_1.copy(id = res.get.id)))
+      }
+    }
+  }
+
+  "TenantDb on getAll" when {
+
+    "there are no rows in the DB" should {
+      "return empty Stream" in {
+        tenantDb.getAll.compile.toList.transact(transactor).asserting(_ shouldBe List.empty[TenantEntity.Read])
+      }
+    }
+
+    "there is a single row in the DB" should {
+      "return this single row" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- tenantDb.getAll.compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res.size shouldBe 1
+          res shouldBe List(tenantEntityRead_1.copy(id = res.head.id))
+        }
+      }
+    }
+
+    "there are several rows in the DB" should {
+      "return all rows" in {
+        val result = (for {
+          entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
+          entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
+          entityRead_3 <- tenantDb.insert(tenantEntityWrite_3)
+          expectedEntities = Seq(entityRead_1, entityRead_2, entityRead_3).map(_.value)
+
+          res <- tenantDb.getAll.compile.toList
+        } yield (res, expectedEntities)).transact(transactor)
+
+        result.asserting { case (res, expectedEntities) =>
+          res.size shouldBe 3
           res should contain theSameElementsAs expectedEntities
         }
       }

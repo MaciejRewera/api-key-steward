@@ -55,7 +55,7 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
         logger.warn(s"Could not update Tenant with tenantId: [${updateTenantRequest.tenantId}] because: ${e.message}")
     }
 
-  def activateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def reactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.activate(tenantId).flatTap {
       case Right(_) => logger.info(s"Enabled Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not enable Tenant with tenantId: [$tenantId] because: ${e.message}")
@@ -72,15 +72,6 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
       case Right(_) => logger.info(s"Deleted Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not delete Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
-
-  def deleteTenant(tenantId: UUID, isHardDelete: Boolean): IO[Either[TenantDbError, Tenant]] =
-    for {
-      deactivatedTenant <- deactivateTenant(tenantId)
-
-      result <-
-        if (isHardDelete) deleteTenant(tenantId)
-        else IO.pure(deactivatedTenant)
-    } yield result
 
   def getBy(tenantId: UUID): IO[Option[Tenant]] =
     tenantRepository.getBy(tenantId)

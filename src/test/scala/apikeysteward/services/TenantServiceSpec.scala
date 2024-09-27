@@ -186,13 +186,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     }
   }
 
-  "TenantService on activateTenant" should {
+  "TenantService on reactivateTenant" should {
 
     "call TenantRepository" in {
       tenantRepository.activate(any[UUID]) returns IO.pure(Right(tenant_1))
 
       for {
-        _ <- tenantService.activateTenant(publicTenantId_1)
+        _ <- tenantService.reactivateTenant(publicTenantId_1)
 
         _ = verify(tenantRepository).activate(eqTo(publicTenantId_1))
       } yield ()
@@ -203,14 +203,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       "TenantRepository returns Right" in {
         tenantRepository.activate(any[UUID]) returns IO.pure(Right(tenant_1))
 
-        tenantService.activateTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
+        tenantService.reactivateTenant(publicTenantId_1).asserting(_ shouldBe Right(tenant_1))
       }
 
       "TenantRepository returns Left" in {
         tenantRepository.activate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
 
         tenantService
-          .activateTenant(publicTenantId_1)
+          .reactivateTenant(publicTenantId_1)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
       }
     }
@@ -219,7 +219,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       "TenantRepository returns failed IO" in {
         tenantRepository.activate(any[UUID]) returns IO.raiseError(testException)
 
-        tenantService.activateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+        tenantService.reactivateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }
