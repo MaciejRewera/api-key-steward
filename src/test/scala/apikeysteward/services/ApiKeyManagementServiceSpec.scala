@@ -14,7 +14,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
-import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -29,7 +29,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class ManagementServiceSpec
+class ApiKeyManagementServiceSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -40,7 +40,7 @@ class ManagementServiceSpec
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
 
-  private val managementService = new ManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
+  private val managementService = new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, apiKeyRepository)
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,

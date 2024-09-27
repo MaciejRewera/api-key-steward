@@ -7,8 +7,8 @@ import RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
-import apikeysteward.services.ManagementService.ApiKeyCreateError
-import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
@@ -18,7 +18,7 @@ import cats.implicits.catsSyntaxEitherId
 import java.time.Clock
 import java.util.UUID
 
-class ManagementService(
+class ApiKeyManagementService(
     createApiKeyRequestValidator: CreateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
     apiKeyRepository: ApiKeyRepository
@@ -117,7 +117,7 @@ class ManagementService(
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
 }
 
-object ManagementService {
+object ApiKeyManagementService {
 
   sealed abstract class ApiKeyCreateError(override val message: String) extends CustomError
   object ApiKeyCreateError {

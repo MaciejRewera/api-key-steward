@@ -12,8 +12,8 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
-import apikeysteward.services.ManagementService
-import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.ApiKeyManagementService
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -35,7 +35,7 @@ import java.util.UUID
 class AdminRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
-  private val managementService = mock[ManagementService]
+  private val managementService = mock[ApiKeyManagementService]
 
   private val adminRoutes: HttpApp[IO] = new AdminRoutes(jwtAuthorizer, managementService).allRoutes.orNotFound
 
