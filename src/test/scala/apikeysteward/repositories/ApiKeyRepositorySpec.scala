@@ -2,10 +2,10 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
-import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError._
 import apikeysteward.model.RepositoryErrors.{ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.effect.IO
@@ -75,9 +75,6 @@ class ApiKeyRepositorySpec
 
   private val scopeEntities_1 = scopes_1.zipWithIndex.map { case (scope, idx) => ScopeEntity.Read(idx, scope) }
 
-  private val apiKeyAlreadyExistsErrorWrapped =
-    ApiKeyAlreadyExistsError.asInstanceOf[ApiKeyInsertionError].asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
-
   private val apiKeyIdAlreadyExistsErrorWrapped =
     ApiKeyIdAlreadyExistsError
       .asInstanceOf[ApiKeyInsertionError]
@@ -101,6 +98,9 @@ class ApiKeyRepositorySpec
 
     val apiKeyEntityReadWrapped = apiKeyEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
     val apiKeyDataEntityReadWrapped = apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
+
+    val apiKeyAlreadyExistsErrorWrapped =
+      ApiKeyAlreadyExistsError.asInstanceOf[ApiKeyInsertionError].asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {
 
@@ -146,10 +146,7 @@ class ApiKeyRepositorySpec
           any[List[ApiKeyDataScopesEntity.Write]]
         ) returns apiKeyDataScopesInsertResultWrapped
 
-        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
-          result.isRight shouldBe true
-          result.value shouldBe apiKeyData_1
-        }
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting(_ shouldBe Right(apiKeyData_1))
       }
     }
 
@@ -194,10 +191,7 @@ class ApiKeyRepositorySpec
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
-        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
-          result.isLeft shouldBe true
-          result.left.value shouldBe ApiKeyAlreadyExistsError
-        }
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting(_ shouldBe Left(ApiKeyAlreadyExistsError))
       }
     }
 
@@ -222,10 +216,7 @@ class ApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
-        apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting { result =>
-          result.isLeft shouldBe true
-          result.left.value shouldBe testException
-        }
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
 
@@ -252,10 +243,7 @@ class ApiKeyRepositorySpec
         "return Left containing ApiKeyIdAlreadyExistsError" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
-          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe ApiKeyIdAlreadyExistsError
-          }
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting(_ shouldBe Left(ApiKeyIdAlreadyExistsError))
         }
       }
 
@@ -275,10 +263,7 @@ class ApiKeyRepositorySpec
         "return Left containing PublicKeyIdAlreadyExistsError" in fixture {
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
-          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe PublicKeyIdAlreadyExistsError
-          }
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting(_ shouldBe Left(PublicKeyIdAlreadyExistsError))
         }
       }
 
@@ -300,10 +285,7 @@ class ApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns testException
             .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
-          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe testException
-          }
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
         }
       }
 
@@ -330,10 +312,7 @@ class ApiKeyRepositorySpec
           scopeDb.insertMany(any[List[ScopeEntity.Write]]) returns scopeEntitiesReadWrapped ++ Stream
             .raiseError[doobie.ConnectionIO](testException)
 
-          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe testException
-          }
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
         }
       }
 
@@ -346,10 +325,7 @@ class ApiKeyRepositorySpec
           apiKeyDataScopesDb.insertMany(any[List[ApiKeyDataScopesEntity.Write]]) returns testException
             .raiseError[doobie.ConnectionIO, Int]
 
-          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting { result =>
-            result.isLeft shouldBe true
-            result.left.value shouldBe testException
-          }
+          apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
         }
       }
     }

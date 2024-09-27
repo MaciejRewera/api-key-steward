@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
+import apikeysteward.model._
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -104,4 +104,10 @@ trait TestData extends FixedClock {
   val tenantName_2 = "Tenant Name 2"
   val tenantName_3 = "Tenant Name 3"
   val tenantNameUpdated = "Updated Tenant Name"
+
+  val tenant_1: Tenant = Tenant(tenantId = publicTenantId_1, name = tenantName_1, enabled = true)
+  val tenant_2: Tenant = Tenant(tenantId = publicTenantId_2, name = tenantName_2, enabled = true)
+  val tenant_3: Tenant = Tenant(tenantId = publicTenantId_3, name = tenantName_3, enabled = true)
+
+  val tenantUpdate_1: TenantUpdate = TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated)
 }

@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity
@@ -20,17 +20,40 @@ class TenantRepository(tenantDb: TenantDb)(transactor: Transactor[IO]) {
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
-  def update(tenant: TenantUpdate): IO[Either[TenantDbError, Tenant]] = ???
-//    (for {
-//      tenantEntityRead <- OptionT(tenantDb.update(TenantEntity.Update.from(tenant)))
-//      resultTenant = Tenant.from(tenantEntityRead)
-//    } yield resultTenant)
-//      .toRight(TenantNotFoundError(tenant.tenantId))
-//      .value
-//      .transact(transactor)
+  def update(tenantUpdate: TenantUpdate): IO[Either[TenantDbError, Tenant]] =
+    (for {
+      tenantEntityRead <- EitherT(tenantDb.update(TenantEntity.Update.from(tenantUpdate)))
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).value.transact(transactor)
 
-  def getBy(publicId: UUID): IO[Option[Tenant]] = ???
+  def getBy(tenantId: UUID): IO[Option[Tenant]] =
+    (for {
+      tenantEntityRead <- OptionT(tenantDb.getByPublicTenantId(tenantId))
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).value.transact(transactor)
 
-  def delete(publicId: UUID): IO[Either[TenantDbError, Tenant]] = ???
+  def getAll: IO[List[Tenant]] =
+    (for {
+      tenantEntityRead <- tenantDb.getAll
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).compile.toList.transact(transactor)
+
+  def enable(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
+    (for {
+      tenantEntityRead <- EitherT(tenantDb.enable(tenantId))
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).value.transact(transactor)
+
+  def disable(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
+    (for {
+      tenantEntityRead <- EitherT(tenantDb.disable(tenantId))
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).value.transact(transactor)
+
+  def delete(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
+    (for {
+      tenantEntityRead <- EitherT(tenantDb.deleteDisabled(tenantId))
+      resultTenant = Tenant.from(tenantEntityRead)
+    } yield resultTenant).value.transact(transactor)
 
 }

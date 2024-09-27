@@ -54,6 +54,9 @@ object RepositoryErrors {
     sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
     object TenantInsertionError {
 
+      def tenantAlreadyExistsError(publicTenantId: String): TenantInsertionError =
+        TenantAlreadyExistsError(publicTenantId)
+
       case class TenantAlreadyExistsError(publicTenantId: String)
           extends TenantInsertionError(
             message = s"Tenant with publicTenantId = $publicTenantId already exists."
