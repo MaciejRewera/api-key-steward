@@ -14,8 +14,8 @@ case class TenantUpdate(
 object TenantUpdate {
   implicit val codec: Codec[TenantUpdate] = deriveCodec[TenantUpdate]
 
-  def from(updateTenantRequest: UpdateTenantRequest): TenantUpdate = TenantUpdate(
-    tenantId = updateTenantRequest.tenantId,
+  def from(tenantId: UUID, updateTenantRequest: UpdateTenantRequest): TenantUpdate = TenantUpdate(
+    tenantId = tenantId,
     name = updateTenantRequest.name
   )
 }

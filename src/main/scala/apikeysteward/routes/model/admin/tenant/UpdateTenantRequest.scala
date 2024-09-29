@@ -5,10 +5,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.Schema
 
-import java.util.UUID
-
 case class UpdateTenantRequest(
-    tenantId: UUID,
     name: String
 )
 

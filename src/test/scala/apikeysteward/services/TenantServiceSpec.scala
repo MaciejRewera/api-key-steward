@@ -147,13 +147,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
   "TenantService on updateTenant" should {
 
-    val updateTenantRequest = UpdateTenantRequest(tenantId = publicTenantId_1, name = tenantNameUpdated)
+    val updateTenantRequest = UpdateTenantRequest(name = tenantNameUpdated)
 
     "call TenantRepository" in {
       tenantRepository.update(any[TenantUpdate]) returns IO.pure(Right(tenant_1))
 
       for {
-        _ <- tenantService.updateTenant(updateTenantRequest)
+        _ <- tenantService.updateTenant(publicTenantId_1, updateTenantRequest)
 
         expectedTenantUpdate = TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated)
         _ = verify(tenantRepository).update(eqTo(expectedTenantUpdate))
@@ -165,15 +165,15 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       "TenantRepository returns Right" in {
         tenantRepository.update(any[TenantUpdate]) returns IO.pure(Right(tenant_1))
 
-        tenantService.updateTenant(updateTenantRequest).asserting(_ shouldBe Right(tenant_1))
+        tenantService.updateTenant(publicTenantId_1, updateTenantRequest).asserting(_ shouldBe Right(tenant_1))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.update(any[TenantUpdate]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.update(any[TenantUpdate]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
 
         tenantService
-          .updateTenant(updateTenantRequest)
-          .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
+          .updateTenant(publicTenantId_1, updateTenantRequest)
+          .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
     }
 
@@ -181,7 +181,10 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       "TenantRepository returns failed IO" in {
         tenantRepository.update(any[TenantUpdate]) returns IO.raiseError(testException)
 
-        tenantService.updateTenant(updateTenantRequest).attempt.asserting(_ shouldBe Left(testException))
+        tenantService
+          .updateTenant(publicTenantId_1, updateTenantRequest)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

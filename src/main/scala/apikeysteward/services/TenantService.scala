@@ -48,11 +48,10 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
       .recover { case exc: RetryException[TenantInsertionError] => exc.error.asLeft[Tenant] }
   }
 
-  def updateTenant(updateTenantRequest: UpdateTenantRequest): IO[Either[TenantNotFoundError, Tenant]] =
-    tenantRepository.update(TenantUpdate.from(updateTenantRequest)).flatTap {
-      case Right(_) => logger.info(s"Updated Tenant with tenantId: [${updateTenantRequest.tenantId}].")
-      case Left(e) =>
-        logger.warn(s"Could not update Tenant with tenantId: [${updateTenantRequest.tenantId}] because: ${e.message}")
+  def updateTenant(tenantId: UUID, updateTenantRequest: UpdateTenantRequest): IO[Either[TenantNotFoundError, Tenant]] =
+    tenantRepository.update(TenantUpdate.from(tenantId, updateTenantRequest)).flatTap {
+      case Right(_) => logger.info(s"Updated Tenant with tenantId: [$tenantId].")
+      case Left(e)  => logger.warn(s"Could not update Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
   def reactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =

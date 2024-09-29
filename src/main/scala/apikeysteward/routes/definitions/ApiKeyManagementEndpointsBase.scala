@@ -36,12 +36,13 @@ private[definitions] object ApiKeyManagementEndpointsBase {
       )
       .out(statusCode.description(StatusCode.Created, "API key created"))
       .out(
-        jsonBody[CreateApiKeyResponse].example(
-          CreateApiKeyResponse(
-            apiKey = EndpointsBase.ApiKeyExample.value,
-            apiKeyData = EndpointsBase.ApiKeyDataExample
+        jsonBody[CreateApiKeyResponse]
+          .example(
+            CreateApiKeyResponse(
+              apiKey = EndpointsBase.ApiKeyExample.value,
+              apiKeyData = EndpointsBase.ApiKeyDataExample
+            )
           )
-        )
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
@@ -50,7 +51,10 @@ private[definitions] object ApiKeyManagementEndpointsBase {
     EndpointsBase.authenticatedEndpointBase.put
       .in(
         jsonBody[UpdateApiKeyRequest]
-          .description(s"Details of the API key to update.")
+          .description(
+            """Details of the API key to update. You have to specify all of the fields of the API key data.
+              |This API replaces the existing API key's data with your new data.""".stripMargin
+          )
           .example(
             UpdateApiKeyRequest(
               name = "My API key",
