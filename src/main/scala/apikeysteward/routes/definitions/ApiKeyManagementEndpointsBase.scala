@@ -15,7 +15,7 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-private[definitions] object ManagementEndpointsBase {
+private[definitions] object ApiKeyManagementEndpointsBase {
 
   val createApiKeyEndpointBase
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =

@@ -3,7 +3,7 @@ package apikeysteward.routes
 import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.definitions.{AdminEndpoints, ApiErrorMessages}
+import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.UpdateApiKeyResponse
 import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
 import apikeysteward.services.ApiKeyManagementService
@@ -22,7 +22,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
   private val createApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminEndpoints.createApiKeyEndpoint
+        AdminApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (request, userId) = input
@@ -41,7 +41,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
 
   private val updateApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
-      AdminEndpoints.updateApiKeyEndpoint
+      AdminApiKeyManagementEndpoints.updateApiKeyEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
           val (updateApiKeyRequest, userId, publicKeyId) = input
@@ -59,7 +59,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
   private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminEndpoints.getAllApiKeysForUserEndpoint
+        AdminApiKeyManagementEndpoints.getAllApiKeysForUserEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => userId =>
             for {
@@ -73,7 +73,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
   private val getApiKeyForUserRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminEndpoints.getSingleApiKeyForUserEndpoint
+        AdminApiKeyManagementEndpoints.getSingleApiKeyForUserEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => input =>
             val (userId, publicKeyId) = input
@@ -88,7 +88,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
   private val getAllUserIdsRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminEndpoints.getAllUserIdsEndpoint
+        AdminApiKeyManagementEndpoints.getAllUserIdsEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => _ =>
             managementService.getAllUserIds
@@ -99,7 +99,7 @@ class AdminRoutes(jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagem
   private val deleteApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminEndpoints.deleteApiKeyEndpoint
+        AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (userId, publicKeyId) = input
