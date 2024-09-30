@@ -29,14 +29,14 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class ManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val jwtOps = mock[JwtOps]
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val managementService = mock[ApiKeyManagementService]
 
   private val managementRoutes: HttpApp[IO] =
-    new ManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes.orNotFound
+    new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes.orNotFound
 
   private val tokenString: AccessToken = "TOKEN"
   private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))

@@ -14,7 +14,7 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagementService) {
+class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagementService) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)

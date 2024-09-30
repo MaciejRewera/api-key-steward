@@ -6,7 +6,12 @@ import apikeysteward.repositories._
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
-import apikeysteward.routes.{AdminRoutes, ApiKeyValidationRoutes, DocumentationRoutes, ManagementRoutes}
+import apikeysteward.routes.{
+  AdminApiKeyManagementRoutes,
+  ApiKeyValidationRoutes,
+  DocumentationRoutes,
+  ApiKeyManagementRoutes
+}
 import apikeysteward.services.{
   ApiKeyManagementService,
   ApiKeyValidationService,
@@ -86,8 +91,8 @@ object Application extends IOApp.Simple with Logging {
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
-        managementRoutes = new ManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
-        adminRoutes = new AdminRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
+        managementRoutes = new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
+        adminRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
