@@ -608,7 +608,7 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
         } yield ()
       }
 
-      "return Bad Request when TenantService returns successful IO with Left containing TenantIsActiveError" in authorizedFixture {
+      "return Bad Request when TenantService returns successful IO with Left containing TenantIsNotDeactivatedError" in authorizedFixture {
         tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantIsNotDeactivatedError(publicTenantId_1)))
 
         for {

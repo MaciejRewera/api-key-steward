@@ -542,7 +542,7 @@ class TenantDbSpec
     }
   }
 
-  "TenantDb on deletedeactivated" when {
+  "TenantDb on deleteDeactivated" when {
 
     "there are no rows in the Tenant table" should {
 
@@ -591,7 +591,7 @@ class TenantDbSpec
 
     "there is an activated row in the Tenant table with given publicTenantId" should {
 
-      "return Left containing TenantIsActiveError" in {
+      "return Left containing TenantIsNotDeactivatedError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 

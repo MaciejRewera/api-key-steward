@@ -2,6 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
+import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.TenantRepository
@@ -286,7 +287,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.delete(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.delete(any[UUID]) returns IO.pure(Left(TenantDbError.tenantNotFoundError(publicKeyIdStr_1)))
 
         tenantService
           .deleteTenant(publicTenantId_1)

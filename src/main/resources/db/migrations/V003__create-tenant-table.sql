@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS tenant_deleted
     public_tenant_id VARCHAR(128) NOT NULL,
     name             VARCHAR(256) NOT NULL,
 
-    created_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at       TIMESTAMPTZ  NOT NULL,
+    updated_at       TIMESTAMPTZ  NOT NULL,
     deactivated_at   TIMESTAMPTZ,
     UNIQUE (public_tenant_id)
 );
