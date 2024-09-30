@@ -9,28 +9,28 @@ import sttp.tapir._
 
 import java.util.UUID
 
-object ManagementEndpoints {
+object ApiKeyManagementEndpoints {
 
   private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
-    ManagementEndpointsBase.createApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.createApiKeyEndpointBase
       .description("Create new API key.")
       .in("api-keys")
 
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
-    ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
+    ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .description("Get all API keys data.")
       .in("api-keys")
 
   val getSingleApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, ApiKeyData), Any] =
-    ManagementEndpointsBase.getSingleApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given key ID.")
       .in("api-keys" / keyIdPathParameter)
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
-    ManagementEndpointsBase.deleteApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase
       .description("Delete API key with given key ID.")
       .in("api-keys" / keyIdPathParameter)
 

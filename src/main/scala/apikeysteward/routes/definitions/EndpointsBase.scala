@@ -1,6 +1,6 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.{ApiKey, ApiKeyData}
+import apikeysteward.model.{ApiKey, ApiKeyData, Tenant}
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
@@ -57,15 +57,9 @@ private[routes] object EndpointsBase {
       oneOfVariantValueMatcher(
         StatusCode.NotFound,
         jsonBody[ErrorInfo]
-          .description(ApiErrorMessages.Admin.DeleteApiKeyNotFound)
-          .example(notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)))
+          .description(ApiErrorMessages.General.NotFound)
+          .example(notFoundErrorInfo(Some(ApiErrorMessages.General.NotFound)))
       ) { case errorInfo: ErrorInfo => errorInfo.error == Errors.NotFound }
-  }
-
-  object Tags {
-    val Admin = "Admin"
-    val Management = "Management"
-    val Public = "Public"
   }
 
   val ApiKeyDataExample: ApiKeyData = ApiKeyData(
@@ -78,6 +72,12 @@ private[routes] object EndpointsBase {
   )
 
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
+
+  val TenantExample: Tenant = Tenant(
+    tenantId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My new Tenant",
+    isActive = true
+  )
 
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
     endpoint

@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError
-import apikeysteward.repositories.db.DbCommons.ApiKeyInsertionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
   ApiKeyIdAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }

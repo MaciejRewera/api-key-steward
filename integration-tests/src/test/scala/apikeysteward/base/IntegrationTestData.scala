@@ -1,7 +1,8 @@
 package apikeysteward.base
 
+import apikeysteward.base.IntegrationTestData.tenantEntityRead_1
 import apikeysteward.base.TestData._
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, TenantEntity}
 
 import java.util.concurrent.TimeUnit
 
@@ -79,4 +80,45 @@ trait IntegrationTestData extends FixedClock {
     description = TestData.descriptionUpdated,
     userId = userId_1
   )
+
+  val tenantEntityWrite_1: TenantEntity.Write =
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1)
+  val tenantEntityRead_1: TenantEntity.Read = TenantEntity.Read(
+    id = 1L,
+    publicTenantId = publicTenantIdStr_1,
+    name = tenantName_1,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val tenantEntityWrite_2: TenantEntity.Write =
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_2, name = tenantName_2)
+  val tenantEntityRead_2: TenantEntity.Read = TenantEntity.Read(
+    id = 2L,
+    publicTenantId = publicTenantIdStr_2,
+    name = tenantName_2,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val tenantEntityWrite_3: TenantEntity.Write =
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_3, name = tenantName_3)
+  val tenantEntityRead_3: TenantEntity.Read = TenantEntity.Read(
+    id = 2L,
+    publicTenantId = publicTenantIdStr_3,
+    name = tenantName_3,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val tenantEntityUpdate_1: TenantEntity.Update = TenantEntity.Update(
+    publicTenantId = publicTenantIdStr_1,
+    name = tenantNameUpdated
+  )
+
+  val deactivatedEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
+
 }

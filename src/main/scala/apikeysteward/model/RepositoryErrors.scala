@@ -1,10 +1,8 @@
-package apikeysteward.repositories.db
-
-import apikeysteward.model.CustomError
+package apikeysteward.model
 
 import java.util.UUID
 
-object DbCommons {
+object RepositoryErrors {
 
   sealed abstract class ApiKeyInsertionError(override val message: String) extends CustomError
   object ApiKeyInsertionError {
@@ -17,7 +15,6 @@ object DbCommons {
         extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
   }
 
-  // TODO: Update and Delete errors are not used in Db classes, so they should be moved to a different place.
   sealed abstract class ApiKeyUpdateError(override val message: String) extends CustomError
   object ApiKeyUpdateError {
 
@@ -44,4 +41,33 @@ object DbCommons {
         )
   }
 
+  sealed abstract class TenantDbError(override val message: String) extends CustomError
+  object TenantDbError {
+
+    def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
+
+    def tenantIsNotDeactivatedError(publicTenantId: UUID): TenantDbError = TenantIsNotDeactivatedError(publicTenantId)
+
+    sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
+    object TenantInsertionError {
+
+      def tenantAlreadyExistsError(publicTenantId: String): TenantInsertionError =
+        TenantAlreadyExistsError(publicTenantId)
+
+      case class TenantAlreadyExistsError(publicTenantId: String)
+          extends TenantInsertionError(
+            message = s"Tenant with publicTenantId = $publicTenantId already exists."
+          )
+    }
+
+    case class TenantNotFoundError(publicTenantId: String)
+        extends TenantDbError(message = s"Could not find Tenant with publicTenantId = $publicTenantId")
+
+    case class TenantIsNotDeactivatedError(publicTenantId: UUID)
+        extends TenantDbError(
+          message =
+            s"Could not delete Tenant with publicTenantId = ${publicTenantId.toString} because it is not deactivated."
+        )
+
+  }
 }

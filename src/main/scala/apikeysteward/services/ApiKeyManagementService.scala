@@ -1,15 +1,14 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, CustomError}
+import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.repositories.db.DbCommons
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
-import apikeysteward.services.ManagementService.ApiKeyCreateError
-import apikeysteward.services.ManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
@@ -19,9 +18,10 @@ import cats.implicits.catsSyntaxEitherId
 import java.time.Clock
 import java.util.UUID
 
-class ManagementService(
+class ApiKeyManagementService(
     createApiKeyRequestValidator: CreateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
+    uuidGenerator: UuidGenerator,
     apiKeyRepository: ApiKeyRepository
 )(implicit clock: Clock)
     extends Logging {
@@ -32,7 +32,7 @@ class ManagementService(
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
       validatedRequest <- validateRequest(createApiKeyRequest)
-      result <- createApiKeyActionWithRetry(userId, validatedRequest)
+      result <- createApiKeyWithRetry(userId, validatedRequest)
     } yield result).value
 
   private def validateRequest(
@@ -44,11 +44,12 @@ class ManagementService(
       .map(err => ValidationError(err.iterator.toSeq))
   )
 
-  private def createApiKeyActionWithRetry(
+  private def createApiKeyWithRetry(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ApiKeyCreateError, (ApiKey, ApiKeyData)] = {
 
+    val createApiKeyMaxRetries = 3
     def isWorthRetrying(err: ApiKeyCreateError): Boolean = err match {
       case InsertionError(_) => true
       case _                 => false
@@ -56,13 +57,15 @@ class ManagementService(
 
     EitherT {
       Retry
-        .retry(maxRetries = 3, isWorthRetrying)(createApiKeyAction(userId, createApiKeyRequest))
+        .retry(maxRetries = createApiKeyMaxRetries, isWorthRetrying)(
+          buildCreateApiKeyAction(userId, createApiKeyRequest)
+        )
         .map(_.asRight)
         .recover { case exc: RetryException[ApiKeyCreateError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
     }
   }
 
-  private def createApiKeyAction(
+  private def buildCreateApiKeyAction(
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
@@ -71,7 +74,7 @@ class ManagementService(
       newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
 
       _ <- logInfoF("Generating public key ID...")
-      publicKeyId <- EitherT.right(IO(UUID.randomUUID()).flatTap(_ => logger.info("Generated public key ID.")))
+      publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
 
       apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
@@ -84,7 +87,7 @@ class ManagementService(
     for {
       insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
         case Right(_) => logger.info(s"Inserted API Key with publicKeyId: [${apiKeyData.publicKeyId}] into database.")
-        case Left(e)  => logger.warn(s"Could not insert API Key because: ${e.message}")
+        case Left(e)  => logger.warn(s"Could not insert API Key into database because: ${e.message}")
       }
       res = insertionResult.left.map(InsertionError)
     } yield res
@@ -96,7 +99,7 @@ class ManagementService(
   ): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
     apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
-      case Left(e)  => logger.info(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
+      case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
   def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
@@ -118,7 +121,7 @@ class ManagementService(
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
 }
 
-object ManagementService {
+object ApiKeyManagementService {
 
   sealed abstract class ApiKeyCreateError(override val message: String) extends CustomError
   object ApiKeyCreateError {
@@ -128,6 +131,6 @@ object ManagementService {
           message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
         )
 
-    case class InsertionError(cause: DbCommons.ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
+    case class InsertionError(cause: RepositoryErrors.ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
   }
 }

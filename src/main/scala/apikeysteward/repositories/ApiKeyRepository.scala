@@ -1,8 +1,8 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
-import apikeysteward.repositories.db.DbCommons.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.repositories.db.DbCommons.{ApiKeyDeletionError, ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
+import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.data.{EitherT, OptionT}

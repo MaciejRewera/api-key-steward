@@ -1,6 +1,6 @@
 package apikeysteward.routes.model.admin
 
-import apikeysteward.routes.model.{TapirCustomSchemas, CreateUpdateApiKeyRequestBase}
+import apikeysteward.routes.model.{CreateUpdateApiKeyRequestBase, TapirCustomSchemas}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.Schema
@@ -13,6 +13,5 @@ case class UpdateApiKeyRequest(
 object UpdateApiKeyRequest {
   implicit val codec: Codec[UpdateApiKeyRequest] = deriveCodec[UpdateApiKeyRequest]
 
-  implicit val updateApiKeyAdminRequestSchema: Schema[UpdateApiKeyRequest] =
-    TapirCustomSchemas.updateApiKeyAdminRequestSchema
+  implicit val updateApiKeyRequestSchema: Schema[UpdateApiKeyRequest] = TapirCustomSchemas.updateApiKeyRequestSchema
 }

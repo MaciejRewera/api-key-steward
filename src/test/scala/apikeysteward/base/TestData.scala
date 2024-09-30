@@ -1,6 +1,6 @@
 package apikeysteward.base
 
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
+import apikeysteward.model._
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -35,9 +35,11 @@ trait TestData extends FixedClock {
   val publicKeyId_1: UUID = UUID.randomUUID()
   val publicKeyId_2: UUID = UUID.randomUUID()
   val publicKeyId_3: UUID = UUID.randomUUID()
+  val publicKeyId_4: UUID = UUID.randomUUID()
   val publicKeyIdStr_1: String = publicKeyId_1.toString
   val publicKeyIdStr_2: String = publicKeyId_2.toString
   val publicKeyIdStr_3: String = publicKeyId_3.toString
+  val publicKeyIdStr_4: String = publicKeyId_4.toString
 
   val name = "Test API Key Name"
   val nameUpdated = "Updated Test APi Key Name"
@@ -92,4 +94,24 @@ trait TestData extends FixedClock {
     description = descriptionUpdated,
     userId = userId_1
   )
+
+  val publicTenantId_1: UUID = UUID.randomUUID()
+  val publicTenantId_2: UUID = UUID.randomUUID()
+  val publicTenantId_3: UUID = UUID.randomUUID()
+  val publicTenantId_4: UUID = UUID.randomUUID()
+  val publicTenantIdStr_1: String = publicTenantId_1.toString
+  val publicTenantIdStr_2: String = publicTenantId_2.toString
+  val publicTenantIdStr_3: String = publicTenantId_3.toString
+  val publicTenantIdStr_4: String = publicTenantId_4.toString
+
+  val tenantName_1 = "Tenant Name 1"
+  val tenantName_2 = "Tenant Name 2"
+  val tenantName_3 = "Tenant Name 3"
+  val tenantNameUpdated = "Updated Tenant Name"
+
+  val tenant_1: Tenant = Tenant(tenantId = publicTenantId_1, name = tenantName_1, isActive = true)
+  val tenant_2: Tenant = Tenant(tenantId = publicTenantId_2, name = tenantName_2, isActive = true)
+  val tenant_3: Tenant = Tenant(tenantId = publicTenantId_3, name = tenantName_3, isActive = true)
+
+  val tenantUpdate_1: TenantUpdate = TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated)
 }

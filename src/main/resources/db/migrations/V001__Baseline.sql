@@ -1,5 +1,5 @@
-
-CREATE TABLE IF NOT EXISTS api_key (
+CREATE TABLE IF NOT EXISTS api_key
+(
     id INTEGER PRIMARY key generated always as identity,
     api_key VARCHAR(256) NOT NULL,
 
@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS api_key (
     UNIQUE (api_key)
 );
 
-CREATE TABLE IF NOT EXISTS api_key_data (
+CREATE TABLE IF NOT EXISTS api_key_data
+(
     id INTEGER primary key generated always as identity,
     api_key_id INTEGER NOT NULL,
     public_key_id VARCHAR(128) NOT NULL,
@@ -26,7 +27,8 @@ CREATE TABLE IF NOT EXISTS api_key_data (
 
 CREATE INDEX idx_api_key_data_user_id ON api_key_data (user_id);
 
-CREATE TABLE IF NOT EXISTS api_key_data_deleted (
+CREATE TABLE IF NOT EXISTS api_key_data_deleted
+(
     id INTEGER primary key generated always as identity,
     deleted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     api_key_data_id INTEGER NOT NULL,

@@ -11,7 +11,7 @@ import sttp.tapir.json.circe.jsonBody
 
 import java.util.UUID
 
-object AdminEndpoints {
+object AdminApiKeyManagementEndpoints {
 
   private val userIdPathParameter = path[String]("userId").description("ID of the user.")
 
@@ -29,28 +29,28 @@ object AdminEndpoints {
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, (CreateApiKeyRequest, String), ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
-    ManagementEndpointsBase.createApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.createApiKeyEndpointBase
       .description("Create new API key for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys")
 
   val updateApiKeyEndpoint
       : Endpoint[AccessToken, (UpdateApiKeyRequest, String, UUID), ErrorInfo, (StatusCode, UpdateApiKeyResponse), Any] =
-    ManagementEndpointsBase.updateApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.updateApiKeyEndpointBase
       .description("Update API key for given user ID and key ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
   val getAllApiKeysForUserEndpoint: Endpoint[AccessToken, String, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
-    ManagementEndpointsBase.getAllApiKeysForUserEndpointBase
+    ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .description("Get all API keys data for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys")
 
   val getSingleApiKeyForUserEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, ApiKeyData), Any] =
-    ManagementEndpointsBase.getSingleApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given user ID and key ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
-    ManagementEndpointsBase.deleteApiKeyEndpointBase
+    ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase
       .description("Delete API key for given user ID and key ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
