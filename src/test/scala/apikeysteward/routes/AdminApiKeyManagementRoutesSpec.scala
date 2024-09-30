@@ -1,14 +1,17 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.{
+  ApiKeyDataNotFoundError,
+  GenericApiKeyDeletionError
+}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyUpdateError
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.admin.{GetMultipleUserIdsResponse, UpdateApiKeyRequest, UpdateApiKeyResponse}
+import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -20,7 +23,6 @@ import io.circe.syntax.EncoderOps
 import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.headers.Authorization
-import org.http4s.implicits.http4sLiteralsSyntax
 import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps

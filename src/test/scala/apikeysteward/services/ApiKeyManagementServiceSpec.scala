@@ -3,12 +3,12 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyUpdateError
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest

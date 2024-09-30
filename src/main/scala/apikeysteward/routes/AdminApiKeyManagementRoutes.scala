@@ -1,10 +1,10 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
-import apikeysteward.routes.model.admin.{GetMultipleUserIdsResponse, UpdateApiKeyResponse}
+import apikeysteward.routes.model.admin.UpdateApiKeyResponse
 import apikeysteward.routes.model.apikey.{
   CreateApiKeyResponse,
   DeleteApiKeyResponse,

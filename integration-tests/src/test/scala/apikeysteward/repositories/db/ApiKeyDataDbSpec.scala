@@ -3,8 +3,8 @@ package apikeysteward.repositories.db
 import apikeysteward.base.IntegrationTestData._
 import apikeysteward.base.TestData._
 import apikeysteward.base.{FixedClock, TestData}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError._
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO

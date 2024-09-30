@@ -2,8 +2,8 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.{hashedApiKey_1, hashedApiKey_2}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO

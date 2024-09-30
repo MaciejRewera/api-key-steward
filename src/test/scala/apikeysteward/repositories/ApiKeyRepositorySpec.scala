@@ -2,9 +2,12 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError._
-import apikeysteward.model.RepositoryErrors.{ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.{
+  ApiKeyDataNotFoundError,
+  GenericApiKeyDeletionError
+}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyInsertionError, ApiKeyUpdateError}
 import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
