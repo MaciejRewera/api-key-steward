@@ -51,7 +51,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
               (StatusCode.Ok, UpdateApiKeyResponse(apiKeyData)).asRight
 
             case Left(_: ApiKeyUpdateError.ApiKeyDataNotFoundError) =>
-              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.UpdateApiKeyNotFound)).asLeft
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
           }
         }
     )
@@ -80,7 +80,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
             managementService.getApiKey(userId, publicKeyId).map {
               case Some(apiKeyData) => (StatusCode.Ok -> apiKeyData).asRight
               case None =>
-                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.GetSingleApiKeyNotFound)).asLeft
+                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
             }
           }
       )
@@ -108,7 +108,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
               case Left(_: ApiKeyDeletionError.ApiKeyDataNotFoundError) =>
-                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)).asLeft
+                ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
               case Left(_: ApiKeyDeletionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }

@@ -84,7 +84,7 @@ class TenantDb()(implicit clock: Clock) {
           .cond(
             result.deactivatedAt.isDefined,
             Queries.deleteDeactivated(publicTenantId.toString).run.map(_ => result),
-            tenantIsActiveError(publicTenantId)
+            tenantIsNotDeactivatedError(publicTenantId)
           )
           .sequence
       }

@@ -329,7 +329,7 @@ class TenantRepositorySpec
     val tenantNotFoundError = TenantDbError.tenantNotFoundError(publicTenantIdStr_1)
     val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
-    val tenantIsActiveError = TenantDbError.tenantIsActiveError(publicTenantId_1)
+    val tenantIsActiveError = TenantDbError.tenantIsNotDeactivatedError(publicTenantId_1)
     val tenantIsActiveErrorWrapped = tenantIsActiveError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {

@@ -11,9 +11,9 @@ import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -47,7 +47,6 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-
     reset(managementService, jwtAuthorizer)
   }
 
@@ -149,7 +148,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminRoutes on POST /admin/users/{userId}/api-keys" when {
+  "AdminApiKeyRoutes on POST /admin/users/{userId}/api-keys" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys")
     val requestBody = CreateApiKeyRequest(
@@ -393,7 +392,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminRoutes on PUT /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on PUT /admin/users/{userId}/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
     val requestBody = UpdateApiKeyRequest(name = name, description = description)
@@ -596,7 +595,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.UpdateApiKeyNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)))
         } yield ()
       }
 
@@ -612,7 +611,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminRoutes on GET /admin/users/{userId}/api-keys" when {
+  "AdminApiKeyRoutes on GET /admin/users/{userId}/api-keys" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
@@ -662,7 +661,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminRoutes on GET /admin/users" when {
+  "AdminApiKeyRoutes on GET /admin/users" when {
 
     val uri = uri"/admin/users"
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
@@ -682,7 +681,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
       "return the value returned by ManagementService" when {
 
-        "it is an empty List" in authorizedFixture {
+        "ManagementService returns an empty List" in authorizedFixture {
           managementService.getAllUserIds returns IO.pure(List.empty)
 
           for {
@@ -692,7 +691,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           } yield ()
         }
 
-        "it is a List with several elements" in authorizedFixture {
+        "ManagementService returns a List with several elements" in authorizedFixture {
           managementService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
 
           for {
@@ -715,7 +714,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminRoutes on GET /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on GET /admin/users/{userId}/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
@@ -751,7 +750,9 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.GetSingleApiKeyNotFound)))
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound))
+            )
         } yield ()
       }
 
@@ -781,7 +782,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
   }
 
-  "AdminRoutes on DELETE /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on DELETE /admin/users/{userId}/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
@@ -819,7 +820,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)))
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)))
         } yield ()
       }
 

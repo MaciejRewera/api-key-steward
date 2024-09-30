@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.IntegrationTestData._
 import apikeysteward.base.TestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsActiveError, TenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -598,7 +598,7 @@ class TenantDbSpec
           res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(TenantIsActiveError(publicTenantId_1)))
+        result.asserting(res => res shouldBe Left(TenantIsNotDeactivatedError(publicTenantId_1)))
       }
 
       "make no changes to the DB" in {

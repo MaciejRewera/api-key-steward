@@ -86,7 +86,9 @@ object AdminTenantEndpoints {
 
   val deleteTenantEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
-      .description("Delete an inactive Tenant. The Tenant has to be inactive before using this API.")
+      .description(
+        "Delete an inactive Tenant. The Tenant has to be inactive before using this API. This operation is permanent. Proceed with caution."
+      )
       .in("admin" / "tenants" / tenantIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Tenant deleted"))
       .out(
@@ -115,7 +117,7 @@ object AdminTenantEndpoints {
       .out(statusCode.description(StatusCode.Ok, "Tenants found"))
       .out(
         jsonBody[GetMultipleTenantsResponse]
-          .example(GetMultipleTenantsResponse(tenants = List(EndpointsBase.TenantExample), total = 1))
+          .example(GetMultipleTenantsResponse(tenants = List(EndpointsBase.TenantExample)))
       )
 
 }

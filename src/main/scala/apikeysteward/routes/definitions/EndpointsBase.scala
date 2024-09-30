@@ -57,8 +57,8 @@ private[routes] object EndpointsBase {
       oneOfVariantValueMatcher(
         StatusCode.NotFound,
         jsonBody[ErrorInfo]
-          .description(ApiErrorMessages.Admin.DeleteApiKeyNotFound)
-          .example(notFoundErrorInfo(Some(ApiErrorMessages.Admin.DeleteApiKeyNotFound)))
+          .description(ApiErrorMessages.General.NotFound)
+          .example(notFoundErrorInfo(Some(ApiErrorMessages.General.NotFound)))
       ) { case errorInfo: ErrorInfo => errorInfo.error == Errors.NotFound }
   }
 
