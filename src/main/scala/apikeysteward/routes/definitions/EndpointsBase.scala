@@ -62,12 +62,6 @@ private[routes] object EndpointsBase {
       ) { case errorInfo: ErrorInfo => errorInfo.error == Errors.NotFound }
   }
 
-  object Tags {
-    val Admin = "Admin"
-    val Management = "Management"
-    val Public = "Public"
-  }
-
   val ApiKeyDataExample: ApiKeyData = ApiKeyData(
     publicKeyId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
     name = "My API key",

@@ -13,7 +13,9 @@ object ApiKeyValidationEndpoints {
   val validateApiKeyEndpoint
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     endpoint.post
-      .description("Validate API key.")
+      .description(
+        "Validate API key. This API is public - it does not require either authentication nor authorization."
+      )
       .in("api-keys" / "validation")
       .in(
         jsonBody[ValidateApiKeyRequest]
@@ -23,6 +25,7 @@ object ApiKeyValidationEndpoints {
       .out(statusCode.description(StatusCode.Ok, "API key is valid."))
       .out(
         jsonBody[ValidateApiKeyResponse]
+          .description("All data related to provided API key.")
           .example(ValidateApiKeyResponse(EndpointsBase.ApiKeyDataExample))
       )
       .errorOut(

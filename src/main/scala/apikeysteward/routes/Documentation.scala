@@ -1,8 +1,8 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.EndpointsBase.Tags
 import apikeysteward.routes.definitions.{
   AdminApiKeyManagementEndpoints,
+  AdminTenantEndpoints,
   ApiKeyManagementEndpoints,
   ApiKeyValidationEndpoints
 }
@@ -14,26 +14,40 @@ import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
 object Documentation extends OpenAPIDocsInterpreter {
 
-  private val adminEndpoints = List(
+  private val adminApiKeyManagementEndpoints = List(
     AdminApiKeyManagementEndpoints.createApiKeyEndpoint,
     AdminApiKeyManagementEndpoints.getAllApiKeysForUserEndpoint,
     AdminApiKeyManagementEndpoints.getSingleApiKeyForUserEndpoint,
     AdminApiKeyManagementEndpoints.getAllUserIdsEndpoint,
     AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
-  ).map(_.withTag(Tags.Admin))
+  ).map(_.withTag(Tags.AdminApiKeys))
+
+  private val adminTenantEndpoints = List(
+    AdminTenantEndpoints.createTenantEndpoint,
+    AdminTenantEndpoints.updateTenantEndpoint,
+    AdminTenantEndpoints.reactivateTenantEndpoint,
+    AdminTenantEndpoints.deactivateTenantEndpoint,
+    AdminTenantEndpoints.deleteTenantEndpoint,
+    AdminTenantEndpoints.getSingleTenantEndpoint,
+    AdminTenantEndpoints.getAllTenantsEndpoint
+  ).map(_.withTag(Tags.AdminTenants))
 
   private val managementEndpoints = List(
     ApiKeyManagementEndpoints.createApiKeyEndpoint,
     ApiKeyManagementEndpoints.getAllApiKeysEndpoint,
     ApiKeyManagementEndpoints.getSingleApiKeyEndpoint,
     ApiKeyManagementEndpoints.deleteApiKeyEndpoint
-  ).map(_.withTag(Tags.Management))
+  ).map(_.withTag(Tags.UserApiKeys))
 
   private val validateApiKeyEndpoints =
     List(ApiKeyValidationEndpoints.validateApiKeyEndpoint)
       .map(_.withTag(Tags.Public))
 
-  private val allEndpoints = adminEndpoints ++ managementEndpoints ++ validateApiKeyEndpoints
+  private val allEndpoints =
+    adminApiKeyManagementEndpoints ++
+      adminTenantEndpoints ++
+      managementEndpoints ++
+      validateApiKeyEndpoints
 
   private val allOpenApiDocs: OpenAPI = toOpenAPI(
     allEndpoints,
@@ -43,4 +57,13 @@ object Documentation extends OpenAPIDocsInterpreter {
 
   val allJsonDocs: String = allOpenApiDocs.asJson.deepDropNullValues.toString
   val allYamlDocs: String = allOpenApiDocs.toYaml
+
+  object Tags {
+    val AdminApiKeys = "API keys"
+    val AdminTenants = "Tenants"
+
+    val UserApiKeys = "User - API keys"
+    val Public = "Public"
+  }
+
 }
