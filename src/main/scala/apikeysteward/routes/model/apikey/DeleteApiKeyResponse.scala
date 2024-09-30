@@ -1,11 +1,11 @@
-package apikeysteward.routes.model
+package apikeysteward.routes.model.apikey
 
 import apikeysteward.model.ApiKeyData
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 case class DeleteApiKeyResponse(
-    deletedApiKeyData: ApiKeyData
+    apiKeyData: ApiKeyData
 )
 
 object DeleteApiKeyResponse {

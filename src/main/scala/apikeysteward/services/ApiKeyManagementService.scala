@@ -4,8 +4,8 @@ import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
 import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError

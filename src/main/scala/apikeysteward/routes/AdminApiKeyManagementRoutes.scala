@@ -4,8 +4,13 @@ import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateEr
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
-import apikeysteward.routes.model.admin.UpdateApiKeyResponse
-import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.routes.model.admin.{GetMultipleUserIdsResponse, UpdateApiKeyResponse}
+import apikeysteward.routes.model.apikey.{
+  CreateApiKeyResponse,
+  DeleteApiKeyResponse,
+  GetMultipleApiKeysResponse,
+  GetSingleApiKeyResponse
+}
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -65,7 +70,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
             for {
               allApiKeyData <- managementService.getAllApiKeysFor(userId)
 
-              result = (StatusCode.Ok -> allApiKeyData).asRight
+              result = (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
             } yield result
           }
       )
@@ -78,7 +83,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           .serverLogic { _ => input =>
             val (userId, publicKeyId) = input
             managementService.getApiKey(userId, publicKeyId).map {
-              case Some(apiKeyData) => (StatusCode.Ok -> apiKeyData).asRight
+              case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
               case None =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
             }
@@ -92,7 +97,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => _ =>
             managementService.getAllUserIds
-              .map(allUserIds => (StatusCode.Ok -> allUserIds).asRight)
+              .map(allUserIds => (StatusCode.Ok -> GetMultipleUserIdsResponse(allUserIds)).asRight)
           }
       )
 

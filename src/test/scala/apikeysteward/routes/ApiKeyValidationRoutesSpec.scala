@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.{apiKeyData_1, apiKey_1}
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.{ValidateApiKeyRequest, ValidateApiKeyResponse}
+import apikeysteward.routes.model.apikey.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import apikeysteward.services.ApiKeyValidationService
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.effect.IO

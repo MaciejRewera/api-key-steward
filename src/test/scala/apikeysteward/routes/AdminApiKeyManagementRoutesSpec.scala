@@ -1,7 +1,6 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData._
-import apikeysteward.model.ApiKeyData
 import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
 import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
@@ -9,8 +8,8 @@ import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.routes.model.admin.{GetMultipleUserIdsResponse, UpdateApiKeyRequest, UpdateApiKeyResponse}
+import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
@@ -631,24 +630,31 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Ok and an empty List when ManagementService returns empty List" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+      "return successful value returned by ManagementService" when {
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List.empty[ApiKeyData])
-        } yield ()
-      }
+        "ManagementService returns empty List" in authorizedFixture {
+          managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
-      "return Ok and all ApiKeyData when ManagementService returns non-empty List" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response.as[GetMultipleApiKeysResponse].asserting(_ shouldBe GetMultipleApiKeysResponse(List.empty))
+          } yield ()
+        }
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-        } yield ()
+        "ManagementService returns a List with several elements" in authorizedFixture {
+          managementService.getAllApiKeysFor(any[String]) returns IO.pure(
+            List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
+          )
+
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[GetMultipleApiKeysResponse]
+              .asserting(_ shouldBe GetMultipleApiKeysResponse(List(apiKeyData_1, apiKeyData_2, apiKeyData_3)))
+          } yield ()
+        }
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
@@ -689,7 +695,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List.empty[String])
+            _ <- response.as[GetMultipleUserIdsResponse].asserting(_ shouldBe GetMultipleUserIdsResponse(List.empty))
           } yield ()
         }
 
@@ -699,7 +705,9 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List(userId_1, userId_2, userId_3))
+            _ <- response
+              .as[GetMultipleUserIdsResponse]
+              .asserting(_ shouldBe GetMultipleUserIdsResponse(List(userId_1, userId_2, userId_3)))
           } yield ()
         }
       }
@@ -749,13 +757,13 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+      "return successful value returned by ManagementService" in authorizedFixture {
         managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.Ok
-          _ <- response.as[ApiKeyData].asserting(_ shouldBe apiKeyData_1)
+          _ <- response.as[GetSingleApiKeyResponse].asserting(_ shouldBe GetSingleApiKeyResponse(apiKeyData_1))
         } yield ()
       }
 

@@ -1,8 +1,9 @@
 package apikeysteward.routes.model
 
 import apikeysteward.routes.model.TapirCustomValidators.ValidateOption
-import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, CreateTenantResponse, UpdateTenantRequest}
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator.ttlTimeUnit
 import sttp.tapir.generic.Derived
 import sttp.tapir.generic.auto.schemaForCaseClass

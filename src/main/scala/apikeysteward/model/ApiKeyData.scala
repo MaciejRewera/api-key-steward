@@ -1,8 +1,7 @@
 package apikeysteward.model
 
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ScopeEntity}
-import apikeysteward.routes.model.CreateApiKeyRequest
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec

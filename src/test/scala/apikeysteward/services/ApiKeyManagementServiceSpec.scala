@@ -11,8 +11,8 @@ import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
 import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import cats.data.NonEmptyChain

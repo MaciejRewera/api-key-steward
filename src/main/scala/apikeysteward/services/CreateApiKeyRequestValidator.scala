@@ -2,8 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.CustomError
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateUpdateApiKeyRequestBase}
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
