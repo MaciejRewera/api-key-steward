@@ -90,17 +90,6 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           }
       )
 
-  private val getAllUserIdsRoutes: HttpRoutes[IO] =
-    serverInterpreter
-      .toRoutes(
-        AdminApiKeyManagementEndpoints.getAllUserIdsEndpoint
-          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
-          .serverLogic { _ => _ =>
-            managementService.getAllUserIds
-              .map(allUserIds => (StatusCode.Ok -> GetMultipleUserIdsResponse(allUserIds)).asRight)
-          }
-      )
-
   private val deleteApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
@@ -125,6 +114,5 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       updateApiKeyRoutes <+>
       getAllApiKeysForUserRoutes <+>
       getApiKeyForUserRoutes <+>
-      getAllUserIdsRoutes <+>
       deleteApiKeyRoutes
 }

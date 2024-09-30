@@ -88,6 +88,7 @@ object Application extends IOApp.Simple with Logging {
         adminApiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
+        userRoutes = new AdminUserRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
@@ -97,6 +98,7 @@ object Application extends IOApp.Simple with Logging {
               apiKeyManagementRoutes <+>
               adminApiKeyManagementRoutes <+>
               tenantRoutes <+>
+              userRoutes <+>
               documentationRoutes
           )
           .orNotFound

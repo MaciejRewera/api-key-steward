@@ -1,11 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.routes.definitions.{
-  AdminApiKeyManagementEndpoints,
-  AdminTenantEndpoints,
-  ApiKeyManagementEndpoints,
-  ApiKeyValidationEndpoints
-}
+import apikeysteward.routes.definitions._
 import io.circe.syntax._
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe._
@@ -18,7 +13,6 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminApiKeyManagementEndpoints.createApiKeyEndpoint,
     AdminApiKeyManagementEndpoints.getAllApiKeysForUserEndpoint,
     AdminApiKeyManagementEndpoints.getSingleApiKeyForUserEndpoint,
-    AdminApiKeyManagementEndpoints.getAllUserIdsEndpoint,
     AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
   ).map(_.withTag(Tags.AdminApiKeys))
 
@@ -31,6 +25,10 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminTenantEndpoints.getSingleTenantEndpoint,
     AdminTenantEndpoints.getAllTenantsEndpoint
   ).map(_.withTag(Tags.AdminTenants))
+
+  private val adminUserEndpoints = List(
+    AdminUserEndpoints.getAllUserIdsEndpoint
+  ).map(_.withTag(Tags.AdminUsers))
 
   private val managementEndpoints = List(
     ApiKeyManagementEndpoints.createApiKeyEndpoint,
@@ -46,6 +44,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val allEndpoints =
     adminApiKeyManagementEndpoints ++
       adminTenantEndpoints ++
+      adminUserEndpoints ++
       managementEndpoints ++
       validateApiKeyEndpoints
 
@@ -58,9 +57,10 @@ object Documentation extends OpenAPIDocsInterpreter {
   val allJsonDocs: String = allOpenApiDocs.asJson.deepDropNullValues.toString
   val allYamlDocs: String = allOpenApiDocs.toYaml
 
-  object Tags {
+  private object Tags {
     val AdminApiKeys = "API keys"
     val AdminTenants = "Tenants"
+    val AdminUsers = "Users"
 
     val UserApiKeys = "User - API keys"
     val Public = "Public"

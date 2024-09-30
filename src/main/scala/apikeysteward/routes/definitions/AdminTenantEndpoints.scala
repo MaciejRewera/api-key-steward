@@ -14,7 +14,7 @@ import sttp.tapir.json.circe.jsonBody
 
 import java.util.UUID
 
-object AdminTenantEndpoints {
+private[routes] object AdminTenantEndpoints {
 
   private val tenantIdPathParameter = path[UUID]("tenantId").description("ID of the Tenant.")
 

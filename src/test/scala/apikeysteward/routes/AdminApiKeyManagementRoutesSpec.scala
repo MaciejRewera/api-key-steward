@@ -46,7 +46,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(managementService, jwtAuthorizer)
+    reset(jwtAuthorizer, managementService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
@@ -659,61 +659,6 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
         managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApiKeyRoutes on GET /admin/users" when {
-
-    val uri = uri"/admin/users"
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ManagementService" in authorizedFixture {
-        managementService.getAllUserIds returns IO.pure(List.empty)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(managementService).getAllUserIds
-        } yield ()
-      }
-
-      "return the value returned by ManagementService" when {
-
-        "ManagementService returns an empty List" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List.empty)
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[GetMultipleUserIdsResponse].asserting(_ shouldBe GetMultipleUserIdsResponse(List.empty))
-          } yield ()
-        }
-
-        "ManagementService returns a List with several elements" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response
-              .as[GetMultipleUserIdsResponse]
-              .asserting(_ shouldBe GetMultipleUserIdsResponse(List(userId_1, userId_2, userId_3)))
-          } yield ()
-        }
-      }
-
-      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllUserIds returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

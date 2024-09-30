@@ -8,7 +8,7 @@ import sttp.tapir._
 
 import java.util.UUID
 
-object ApiKeyManagementEndpoints {
+private[routes] object ApiKeyManagementEndpoints {
 
   private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
 

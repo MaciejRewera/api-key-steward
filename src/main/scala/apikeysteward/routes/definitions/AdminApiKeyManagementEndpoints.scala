@@ -2,30 +2,18 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.model.admin.{GetMultipleUserIdsResponse, UpdateApiKeyRequest, UpdateApiKeyResponse}
+import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
 import apikeysteward.routes.model.apikey._
 import sttp.model.StatusCode
 import sttp.tapir._
-import sttp.tapir.generic.auto._
-import sttp.tapir.json.circe.jsonBody
 
 import java.util.UUID
 
-object AdminApiKeyManagementEndpoints {
+private[routes] object AdminApiKeyManagementEndpoints {
 
   private val userIdPathParameter = path[String]("userId").description("ID of the user.")
 
   private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
-
-  val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleUserIdsResponse), Any] =
-    EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all user IDs that have at least one API key.")
-      .in("admin" / "users")
-      .out(statusCode.description(StatusCode.Ok, "All user IDs found"))
-      .out(
-        jsonBody[GetMultipleUserIdsResponse]
-          .example(GetMultipleUserIdsResponse(List("user-1234567", "user-1234568", "user-1234569")))
-      )
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, (CreateApiKeyRequest, String), ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
