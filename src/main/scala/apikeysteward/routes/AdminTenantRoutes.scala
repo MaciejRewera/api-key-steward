@@ -1,11 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{
-  TenantInsertionError,
-  TenantIsNotDeactivatedError,
-  TenantNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminTenantEndpoints, ApiErrorMessages}

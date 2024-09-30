@@ -3,21 +3,11 @@ package apikeysteward
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
 import apikeysteward.repositories._
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
+import apikeysteward.repositories.db._
+import apikeysteward.routes._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
-import apikeysteward.routes.{
-  AdminApiKeyManagementRoutes,
-  ApiKeyValidationRoutes,
-  DocumentationRoutes,
-  ApiKeyManagementRoutes
-}
-import apikeysteward.services.{
-  ApiKeyManagementService,
-  ApiKeyValidationService,
-  CreateApiKeyRequestValidator,
-  UuidGenerator
-}
+import apikeysteward.services._
 import apikeysteward.utils.Logging
 import cats.effect.{IO, IOApp, Resource}
 import cats.implicits._
@@ -76,6 +66,7 @@ object Application extends IOApp.Simple with Logging {
         )
 
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
+        tenantRepository: TenantRepository = buildTenantRepository(transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
@@ -87,18 +78,26 @@ object Application extends IOApp.Simple with Logging {
           apiKeyRepository
         )
 
+        tenantService = new TenantService(uuidGenerator, tenantRepository)
+
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
-        managementRoutes = new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
-        adminRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
+        apiKeyManagementRoutes = new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
+        adminApiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
+
+        tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
         httpApp = CORS.policy
           .withAllowOriginAll(
-            validateRoutes <+> managementRoutes <+> adminRoutes <+> documentationRoutes
+            validateRoutes <+>
+              apiKeyManagementRoutes <+>
+              adminApiKeyManagementRoutes <+>
+              tenantRoutes <+>
+              documentationRoutes
           )
           .orNotFound
 
@@ -135,6 +134,12 @@ object Application extends IOApp.Simple with Logging {
       apiKeyDataScopesDb,
       secureHashGenerator
     )(transactor)
+  }
+
+  private def buildTenantRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
+
+    new TenantRepository(tenantDb)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {
