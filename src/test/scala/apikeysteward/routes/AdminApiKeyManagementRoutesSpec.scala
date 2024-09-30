@@ -402,6 +402,21 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
+    "provided with publicKeyId which is not an UUID" should {
+      "return Bad Request" in {
+        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
+
+        for {
+          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+    }
+
     "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
 
       "request body is provided with empty name" should {
@@ -573,19 +588,6 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         }
       }
 
-      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
-
-        for {
-          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
-        } yield ()
-      }
-
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         val error = ApiKeyUpdateError.ApiKeyDataNotFoundError(userId_1, publicKeyId_1)
         managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
@@ -721,6 +723,21 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
 
+    "provided with publicKeyId which is not an UUID" should {
+      "return Bad Request" in {
+        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+
+        for {
+          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+    }
+
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
@@ -756,19 +773,6 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
-
-        for {
-          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
-        } yield ()
-      }
-
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
         managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
 
@@ -788,6 +792,21 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+
+    "provided with publicKeyId which is not an UUID" should {
+      "return Bad Request" in {
+        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
+
+        for {
+          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+    }
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
@@ -835,19 +854,6 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
-
-        for {
-          response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
         } yield ()
       }
 
