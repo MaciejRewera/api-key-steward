@@ -1,11 +1,12 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{
   ApiKeyDataNotFoundError,
-  GenericApiKeyDeletionError
+  ApiKeyInsertionError,
+  ApiKeyNotFoundError
 }
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDeletionError, ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
 import cats.data.{EitherT, OptionT}
@@ -61,24 +62,22 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, insertedScopes)
     } yield apiKeyData).value.transact(transactor)
 
-  def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+  def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
     (for {
-      _ <- logInfoO(
+      _ <- logInfoE[ApiKeyDataNotFoundError](
         s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
       )
-      entityAfterUpdateRead <- OptionT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
+      entityAfterUpdateRead <- EitherT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
         .flatTap(_ =>
-          logInfoO(
+          logInfoE[ApiKeyDataNotFoundError](
             s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
           )
         )
 
-      scopes <- OptionT.liftF(getScopes(entityAfterUpdateRead.id))
+      scopes <- EitherT.right[ApiKeyDataNotFoundError](getScopes(entityAfterUpdateRead.id))
 
       apiKeyData = ApiKeyData.from(entityAfterUpdateRead, scopes)
-    } yield apiKeyData)
-      .toRight(ApiKeyUpdateError.apiKeyDataNotFoundError(apiKeyDataUpdate.userId, apiKeyDataUpdate.publicKeyId))
-      .value
+    } yield apiKeyData).value
       .transact(transactor)
 
   private def insertScopes(
@@ -135,11 +134,11 @@ class ApiKeyRepository(
   def getAllUserIds: IO[List[String]] =
     apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
 
-  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] = {
+  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] = {
     for {
       apiKeyDataToDeleteE <- apiKeyDataDb
         .getBy(userId, publicKeyIdToDelete)
-        .map(_.toRight(ApiKeyDataNotFoundError(userId, publicKeyIdToDelete).asInstanceOf[ApiKeyDeletionError]))
+        .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(userId, publicKeyIdToDelete)))
 
       apiKeyDataScopesToDeleteE <- apiKeyDataToDeleteE
         .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id).compile.toList)
@@ -159,7 +158,7 @@ class ApiKeyRepository(
   private def delete(
       apiKeyDataToDelete: ApiKeyDataEntity.Read,
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
-  ): doobie.ConnectionIO[Either[ApiKeyDeletionError, ApiKeyData]] = {
+  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyData]] = {
 
     val userId = apiKeyDataToDelete.userId
     val publicKeyIdToDelete = UUID.fromString(apiKeyDataToDelete.publicKeyId)
@@ -171,40 +170,37 @@ class ApiKeyRepository(
 
       res <- buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete)
     } yield res).value
-      .map(_.toRight(GenericApiKeyDeletionError(userId, publicKeyIdToDelete)))
   }
 
   private def deleteApiKeyDataScopes(
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read],
       userId: String,
       publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, List[ApiKeyDataScopesEntity.Read]] = {
+  ): EitherT[doobie.ConnectionIO, ApiKeyDbError, List[ApiKeyDataScopesEntity.Read]] = {
     val apiKeyDataIds = apiKeyDataScopesToDelete.map(_.apiKeyDataId).distinct
 
     val result = if (apiKeyDataIds.nonEmpty) {
       for {
         _ <- logger.info(s"Deleting ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
 
-        res <- apiKeyDataIds.flatTraverse(apiKeyDataScopesDb.delete(_).compile.toList).map(Option(_)).handleErrorWith {
-          err =>
-            logger.warn(s"An exception occurred while deleting ApiKeyDataScopes: ${err.getMessage}") >>
-              Option.empty[List[ApiKeyDataScopesEntity.Read]].pure[doobie.ConnectionIO]
-        }
+        res <- apiKeyDataIds
+          .flatTraverse(apiKeyDataScopesDb.delete(_).compile.toList)
+          .map(_.asRight[ApiKeyDbError])
 
         _ <- logger.info(s"Deleted ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
       } yield res
     } else {
-      Option(List.empty[ApiKeyDataScopesEntity.Read]).pure[doobie.ConnectionIO]
+      List.empty[ApiKeyDataScopesEntity.Read].asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
     }
 
-    OptionT(result)
+    EitherT(result)
   }
 
   private def deleteApiKeyData(
       userId: String,
       publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
-    OptionT(for {
+  ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyDataEntity.Read] =
+    EitherT(for {
       _ <- logger.info(s"Deleting ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
       res <- apiKeyDataDb.delete(userId, publicKeyIdToDelete)
       _ <- logger.info(s"Deleted ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
@@ -214,8 +210,8 @@ class ApiKeyRepository(
       apiKeyId: Long,
       userId: String,
       publicKeyIdToDelete: UUID
-  ): OptionT[doobie.ConnectionIO, ApiKeyEntity.Read] =
-    OptionT(for {
+  ): EitherT[doobie.ConnectionIO, ApiKeyNotFoundError.type, ApiKeyEntity.Read] =
+    EitherT(for {
       _ <- logger.info(s"Deleting ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
       res <- apiKeyDb.delete(apiKeyId)
       _ <- logger.info(s"Deleted ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
@@ -224,19 +220,19 @@ class ApiKeyRepository(
   private def buildResult(
       apiKeyDataToDelete: ApiKeyDataEntity.Read,
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
-  ): OptionT[doobie.ConnectionIO, ApiKeyData] =
-    OptionT(for {
-      _ <- logger.info(
-        s"Building deleted ApiKeyData to return for userId: [${apiKeyDataToDelete.userId}], publicKeyId: [${apiKeyDataToDelete.publicKeyId}]..."
-      )
-      scopes <- scopeDb.getByIds(apiKeyDataScopesToDelete.map(_.scopeId)).compile.toList
-      apiKeyData = ApiKeyData.from(apiKeyDataToDelete, scopes)
-      _ <- logger.info(
-        s"Built deleted ApiKeyData to return for userId: [${apiKeyDataToDelete.userId}], publicKeyId: [${apiKeyDataToDelete.publicKeyId}]."
-      )
-    } yield Option(apiKeyData))
+  ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyData] =
+    EitherT {
+      for {
+        _ <- logger.info(
+          s"Building deleted ApiKeyData to return for userId: [${apiKeyDataToDelete.userId}], publicKeyId: [${apiKeyDataToDelete.publicKeyId}]..."
+        )
+        scopes <- scopeDb.getByIds(apiKeyDataScopesToDelete.map(_.scopeId)).compile.toList
+        apiKeyData = ApiKeyData.from(apiKeyDataToDelete, scopes)
+        _ <- logger.info(
+          s"Built deleted ApiKeyData to return for userId: [${apiKeyDataToDelete.userId}], publicKeyId: [${apiKeyDataToDelete.publicKeyId}]."
+        )
+      } yield Right(apiKeyData)
+    }
 
   private def logInfoE[E](message: String): EitherT[doobie.ConnectionIO, E, Unit] = EitherT.right(logger.info(message))
-
-  private def logInfoO(message: String): OptionT[doobie.ConnectionIO, Unit] = OptionT.liftF(logger.info(message))
 }

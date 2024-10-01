@@ -3,6 +3,7 @@ package apikeysteward.repositories.db
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.{hashedApiKey_1, hashedApiKey_2}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -178,8 +179,8 @@ class ApiKeyDbSpec
 
     "there are no API Keys in the DB" should {
 
-      "return empty Option" in {
-        apiKeyDb.delete(1L).transact(transactor).asserting(_ shouldBe None)
+      "return Left containing ApiKeyNotFound" in {
+        apiKeyDb.delete(1L).transact(transactor).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
 
       "make no changes to the DB" in {
@@ -194,7 +195,7 @@ class ApiKeyDbSpec
 
     "there is an API Key in the DB with different ID" should {
 
-      "return empty Option" in {
+      "return Left containing ApiKeyNotFound" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
@@ -202,7 +203,7 @@ class ApiKeyDbSpec
           res <- apiKeyDb.delete(existingId + 1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe None)
+        result.asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
 
       "make no changes to the DB" in {
@@ -225,7 +226,7 @@ class ApiKeyDbSpec
 
     "there is an API Key in the DB with the given ID" should {
 
-      "return deleted entity" in {
+      "return Right containing deleted entity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
@@ -234,8 +235,7 @@ class ApiKeyDbSpec
         } yield (existingId, res)).transact(transactor)
 
         result.asserting { case (existingId, res) =>
-          res shouldBe defined
-          res.get shouldBe ApiKeyEntity.Read(existingId, nowInstant, nowInstant)
+          res shouldBe Right(ApiKeyEntity.Read(existingId, nowInstant, nowInstant))
         }
       }
 
@@ -254,7 +254,7 @@ class ApiKeyDbSpec
 
     "there are several API Keys in the DB but only one with the given publicKeyId" should {
 
-      "return deleted entity" in {
+      "return Right containing deleted entity" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_2)
@@ -264,8 +264,7 @@ class ApiKeyDbSpec
         } yield (existingId, res)).transact(transactor)
 
         result.asserting { case (existingId, res) =>
-          res shouldBe defined
-          res.get shouldBe ApiKeyEntity.Read(existingId, nowInstant, nowInstant)
+          res shouldBe Right(ApiKeyEntity.Read(existingId, nowInstant, nowInstant))
         }
       }
 

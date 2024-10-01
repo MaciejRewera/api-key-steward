@@ -12,7 +12,7 @@ private[routes] object AdminUserEndpoints {
 
   val getAllUserIdsEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleUserIdsResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all user IDs that have at least one API key.")
+      .description("Get all user IDs.")
       .in("admin" / "users")
       .out(statusCode.description(StatusCode.Ok, "All user IDs found"))
       .out(

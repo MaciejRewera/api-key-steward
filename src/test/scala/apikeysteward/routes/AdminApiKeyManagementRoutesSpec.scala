@@ -1,12 +1,9 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.{
-  ApiKeyDataNotFoundError,
-  GenericApiKeyDeletionError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
@@ -590,7 +587,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        val error = ApiKeyUpdateError.ApiKeyDataNotFoundError(userId_1, publicKeyId_1)
+        val error = ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
         managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
 
         for {
@@ -798,10 +795,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Internal Server Error when ManagementService returns Left containing GenericApiKeyDeletionError" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
-          Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1))
-        )
+      "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
 
         for {
           response <- adminRoutes.run(request)

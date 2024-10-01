@@ -1,6 +1,7 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
@@ -55,7 +56,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
             case Right(apiKeyData) =>
               (StatusCode.Ok, UpdateApiKeyResponse(apiKeyData)).asRight
 
-            case Left(_: ApiKeyUpdateError.ApiKeyDataNotFoundError) =>
+            case Left(_: ApiKeyDbError.ApiKeyDataNotFoundError) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
           }
         }
@@ -101,9 +102,9 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
-              case Left(_: ApiKeyDeletionError.ApiKeyDataNotFoundError) =>
+              case Left(_: ApiKeyDataNotFoundError) =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
-              case Left(_: ApiKeyDeletionError) =>
+              case Left(_: ApiKeyDbError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }
           }

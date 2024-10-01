@@ -2,12 +2,9 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDeletionError.{
-  ApiKeyDataNotFoundError,
-  GenericApiKeyDeletionError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyInsertionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
@@ -337,13 +334,14 @@ class ApiKeyRepositorySpec
   "ApiKeyRepository on update" when {
 
     val apiKeyDataEntityReadWrapped = Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-    val apiKeyDataEntityReadWrappedUpdated = Option(
-      apiKeyDataEntityRead_1.copy(
+    val apiKeyDataEntityReadWrappedUpdated = apiKeyDataEntityRead_1
+      .copy(
         name = nameUpdated,
         description = descriptionUpdated,
         updatedAt = nowInstant
       )
-    ).pure[doobie.ConnectionIO]
+      .asRight[ApiKeyDataNotFoundError]
+      .pure[doobie.ConnectionIO]
 
     val apiKeyDataScopesStream = Stream
       .emits(
@@ -436,11 +434,13 @@ class ApiKeyRepositorySpec
       }
     }
 
-    "ApiKeyDataDb.update returns empty Option" should {
+    "ApiKeyDataDb.update returns Left containing ApiKeyDataNotFoundError" should {
 
       "NOT call ApiKeyDataScopesDb or ScopeDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
 
         for {
           _ <- apiKeyRepository.update(apiKeyDataUpdate_1)
@@ -451,14 +451,14 @@ class ApiKeyRepositorySpec
 
       "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
 
         apiKeyRepository
           .update(apiKeyDataUpdate_1)
           .asserting(
-            _ shouldBe Left(
-              ApiKeyUpdateError.ApiKeyDataNotFoundError(apiKeyDataUpdate_1.userId, apiKeyDataUpdate_1.publicKeyId)
-            )
+            _ shouldBe Left(ApiKeyDataNotFoundError(apiKeyDataUpdate_1.userId, apiKeyDataUpdate_1.publicKeyId.toString))
           )
       }
     }
@@ -468,7 +468,7 @@ class ApiKeyRepositorySpec
       "NOT call ApiKeyDataScopesDb or ScopeDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
         apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+          .raiseError[doobie.ConnectionIO, Either[ApiKeyDataNotFoundError, ApiKeyDataEntity.Read]]
 
         for {
           _ <- apiKeyRepository.update(apiKeyDataUpdate_1).attempt
@@ -480,7 +480,7 @@ class ApiKeyRepositorySpec
       "return failed IO containing the same exception" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
         apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyDataEntity.Read]]
+          .raiseError[doobie.ConnectionIO, Either[ApiKeyDataNotFoundError, ApiKeyDataEntity.Read]]
 
         apiKeyRepository.update(apiKeyDataUpdate_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -1009,8 +1009,7 @@ class ApiKeyRepositorySpec
     "everything works correctly" when {
 
       def initMocks(): Unit = {
-        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns (
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO],
@@ -1023,8 +1022,11 @@ class ApiKeyRepositorySpec
 
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[Long]) returns Option(apiKeyEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb
+          .delete(any[Long]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
       }
 
       "there are scopes for given ApiKeyData" should {
@@ -1112,7 +1114,7 @@ class ApiKeyRepositorySpec
       }
     }
 
-    "ApiKeyDataScopesDb.delete returns failure" should {
+    "ApiKeyDataScopesDb.delete returns failed Stream" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb or ScopeDb anymore" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -1121,7 +1123,7 @@ class ApiKeyRepositorySpec
         apiKeyDataScopesDb.delete(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
 
         for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1).attempt
 
           _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
           _ = verifyZeroInteractions(apiKeyDb)
@@ -1129,7 +1131,7 @@ class ApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing GenericApiKeyDeletionError" in {
+      "return failed IO containing this exception" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
@@ -1137,11 +1139,12 @@ class ApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
 
-    "ApiKeyDataDb.delete returns failure" should {
+    "ApiKeyDataDb.delete returns Left containing ApiKeyDataNotFoundError" should {
 
       "NOT call ApiKeyDb.delete or ScopeDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -1149,7 +1152,10 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[String], any[UUID]) returns ApiKeyDbError
+          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
 
         for {
           _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
@@ -1159,21 +1165,24 @@ class ApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing GenericApiKeyDeletionError" in {
+      "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[String], any[UUID]) returns ApiKeyDbError
+          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
 
         apiKeyRepository
           .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
 
-    "ApiKeyDb.delete returns failure" should {
+    "ApiKeyDb.delete returns Left containing ApiKeyNotFoundError" should {
 
       "NOT call ScopeDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
@@ -1181,8 +1190,10 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[Long]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         for {
           _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
@@ -1191,18 +1202,18 @@ class ApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Left containing GenericApiKeyDeletionError" in {
+      "return Left containing ApiKeyNotFoundError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataScopesDb
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[Long]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
-        apiKeyRepository
-          .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1)))
+        apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
     }
   }
