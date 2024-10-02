@@ -4,49 +4,43 @@ import java.util.UUID
 
 object RepositoryErrors {
 
-  sealed abstract class ApiKeyInsertionError(override val message: String) extends CustomError
-  object ApiKeyInsertionError {
+  sealed abstract class ApiKeyDbError(override val message: String) extends CustomError
+  object ApiKeyDbError {
 
-    case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
+    sealed abstract class ApiKeyInsertionError(override val message: String) extends ApiKeyDbError(message)
 
-    case object ApiKeyIdAlreadyExistsError
-        extends ApiKeyInsertionError(message = "API Key Data with the same apiKeyId already exists.")
-    case object PublicKeyIdAlreadyExistsError
-        extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
-  }
+    object ApiKeyInsertionError {
 
-  sealed abstract class ApiKeyUpdateError(override val message: String) extends CustomError
-  object ApiKeyUpdateError {
+      case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
 
-    def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyUpdateError =
+      case object ApiKeyIdAlreadyExistsError
+          extends ApiKeyInsertionError(message = "API Key Data with the same apiKeyId already exists.")
+
+      case object PublicKeyIdAlreadyExistsError
+          extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
+    }
+
+    def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =
+      apiKeyDataNotFoundError(userId, publicKeyId.toString)
+
+    def apiKeyDataNotFoundError(userId: String, publicKeyId: String): ApiKeyDbError =
       ApiKeyDataNotFoundError(userId, publicKeyId)
 
-    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
-        extends ApiKeyUpdateError(
+    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: String)
+        extends ApiKeyDbError(
           message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
         )
-  }
+    object ApiKeyDataNotFoundError {
+      def apply(userId: String, publicKeyId: UUID): ApiKeyDataNotFoundError =
+        ApiKeyDataNotFoundError(userId, publicKeyId.toString)
+    }
 
-  sealed abstract class ApiKeyDeletionError(override val message: String) extends CustomError
-  object ApiKeyDeletionError {
+    case object ApiKeyNotFoundError extends ApiKeyDbError(message = "Could not find API Key.")
 
-    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: UUID)
-        extends ApiKeyDeletionError(
-          message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
-        )
-
-    case class GenericApiKeyDeletionError(userId: String, publicKeyId: UUID)
-        extends ApiKeyDeletionError(
-          message = s"Could not delete API Key with userId = $userId and publicKeyId = $publicKeyId"
-        )
   }
 
   sealed abstract class TenantDbError(override val message: String) extends CustomError
   object TenantDbError {
-
-    def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
-
-    def tenantIsNotDeactivatedError(publicTenantId: UUID): TenantDbError = TenantIsNotDeactivatedError(publicTenantId)
 
     sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
     object TenantInsertionError {
@@ -60,8 +54,12 @@ object RepositoryErrors {
           )
     }
 
+    def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
+
     case class TenantNotFoundError(publicTenantId: String)
         extends TenantDbError(message = s"Could not find Tenant with publicTenantId = $publicTenantId")
+
+    def tenantIsNotDeactivatedError(publicTenantId: UUID): TenantDbError = TenantIsNotDeactivatedError(publicTenantId)
 
     case class TenantIsNotDeactivatedError(publicTenantId: UUID)
         extends TenantDbError(

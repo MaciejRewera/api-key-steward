@@ -1,9 +1,10 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.HashedApiKey
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyInsertionError, ApiKeyNotFoundError}
 import apikeysteward.repositories.db.entity.ApiKeyEntity
+import cats.implicits.toTraverseOps
 import doobie.SqlState
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
@@ -28,11 +29,11 @@ class ApiKeyDb()(implicit clock: Clock) {
   def getByApiKey(hashedApiKey: HashedApiKey): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
     Queries.getByApiKey(hashedApiKey.value).option
 
-  def delete(id: Long): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
+  def delete(id: Long): doobie.ConnectionIO[Either[ApiKeyNotFoundError.type, ApiKeyEntity.Read]] =
     for {
-      result <- Queries.getBy(id).option
-      n <- Queries.delete(id).run
-    } yield if (n > 0) result else None
+      apiKeyToDeleteE <- Queries.getBy(id).option.map(_.toRight(ApiKeyNotFoundError))
+      resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(id).run.map(_ => result))
+    } yield resultE
 
   private object Queries {
 

@@ -1,16 +1,15 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData._
-import apikeysteward.model.ApiKeyData
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
@@ -21,7 +20,6 @@ import io.circe.syntax.EncoderOps
 import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.headers.Authorization
-import org.http4s.implicits.http4sLiteralsSyntax
 import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -47,7 +45,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(managementService, jwtAuthorizer)
+    reset(jwtAuthorizer, managementService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
@@ -589,7 +587,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        val error = ApiKeyUpdateError.ApiKeyDataNotFoundError(userId_1, publicKeyId_1)
+        val error = ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
         managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
 
         for {
@@ -631,81 +629,35 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Ok and an empty List when ManagementService returns empty List" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+      "return successful value returned by ManagementService" when {
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List.empty[ApiKeyData])
-        } yield ()
-      }
-
-      "return Ok and all ApiKeyData when ManagementService returns non-empty List" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-        } yield ()
-      }
-
-      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApiKeyRoutes on GET /admin/users" when {
-
-    val uri = uri"/admin/users"
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ManagementService" in authorizedFixture {
-        managementService.getAllUserIds returns IO.pure(List.empty)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(managementService).getAllUserIds
-        } yield ()
-      }
-
-      "return the value returned by ManagementService" when {
-
-        "ManagementService returns an empty List" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List.empty)
+        "ManagementService returns empty List" in authorizedFixture {
+          managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List.empty[String])
+            _ <- response.as[GetMultipleApiKeysResponse].asserting(_ shouldBe GetMultipleApiKeysResponse(List.empty))
           } yield ()
         }
 
         "ManagementService returns a List with several elements" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
+          managementService.getAllApiKeysFor(any[String]) returns IO.pure(
+            List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
+          )
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[String]].asserting(_ shouldBe List(userId_1, userId_2, userId_3))
+            _ <- response
+              .as[GetMultipleApiKeysResponse]
+              .asserting(_ shouldBe GetMultipleApiKeysResponse(List(apiKeyData_1, apiKeyData_2, apiKeyData_3)))
           } yield ()
         }
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllUserIds returns IO.raiseError(testException)
+        managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -749,13 +701,13 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+      "return successful value returned by ManagementService" in authorizedFixture {
         managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.Ok
-          _ <- response.as[ApiKeyData].asserting(_ shouldBe apiKeyData_1)
+          _ <- response.as[GetSingleApiKeyResponse].asserting(_ shouldBe GetSingleApiKeyResponse(apiKeyData_1))
         } yield ()
       }
 
@@ -843,10 +795,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Internal Server Error when ManagementService returns Left containing GenericApiKeyDeletionError" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
-          Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1))
-        )
+      "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
+        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
 
         for {
           response <- adminRoutes.run(request)

@@ -1,6 +1,5 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.ApiKeyData
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
@@ -8,7 +7,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantNotFound
 }
 import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -73,20 +72,25 @@ private[definitions] object ApiKeyManagementEndpointsBase {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getAllApiKeysForUserEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, List[ApiKeyData]), Any] =
+  val getAllApiKeysForUserEndpointBase
+      : Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .out(statusCode.description(StatusCode.Ok, "API keys found"))
       .out(
-        jsonBody[List[ApiKeyData]]
-          .example(List(EndpointsBase.ApiKeyDataExample, EndpointsBase.ApiKeyDataExample))
+        jsonBody[GetMultipleApiKeysResponse]
+          .example(
+            GetMultipleApiKeysResponse(apiKeyData =
+              List(EndpointsBase.ApiKeyDataExample, EndpointsBase.ApiKeyDataExample)
+            )
+          )
       )
 
-  val getSingleApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, ApiKeyData), Any] =
+  val getSingleApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .out(statusCode.description(StatusCode.Ok, "API key found"))
       .out(
-        jsonBody[ApiKeyData]
-          .example(EndpointsBase.ApiKeyDataExample)
+        jsonBody[GetSingleApiKeyResponse]
+          .example(GetSingleApiKeyResponse(apiKeyData = EndpointsBase.ApiKeyDataExample))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)

@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyValidationEndpoints}
-import apikeysteward.routes.model.ValidateApiKeyResponse
+import apikeysteward.routes.model.apikey.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyValidationService
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.effect.IO

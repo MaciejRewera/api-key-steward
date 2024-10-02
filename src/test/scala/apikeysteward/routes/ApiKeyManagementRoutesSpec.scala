@@ -1,17 +1,16 @@
 package apikeysteward.routes
 
 import apikeysteward.base.TestData._
-import apikeysteward.model.ApiKeyData
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.{ApiKeyDataNotFoundError, GenericApiKeyDeletionError}
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.{CreateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse}
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -560,26 +559,33 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
           } yield ()
         }
 
-        "return Ok and an empty List when ManagementService returns empty List" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+        "return successful value returned by ManagementService" when {
 
-          for {
-            response <- managementRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List.empty[ApiKeyData])
-          } yield ()
-        }
+          "ManagementService returns empty List" in authorizedFixture {
+            managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
 
-        "return Ok and all ApiKeyData when ManagementService returns non-empty List" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.pure(
-            List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
-          )
+            for {
+              response <- managementRoutes.run(request)
+              _ = response.status shouldBe Status.Ok
+              _ <- response
+                .as[GetMultipleApiKeysResponse]
+                .asserting(_ shouldBe GetMultipleApiKeysResponse(List.empty))
+            } yield ()
+          }
 
-          for {
-            response <- managementRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[List[ApiKeyData]].asserting(_ shouldBe List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-          } yield ()
+          "ManagementService returns a List with several elements" in authorizedFixture {
+            managementService.getAllApiKeysFor(any[String]) returns IO.pure(
+              List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
+            )
+
+            for {
+              response <- managementRoutes.run(request)
+              _ = response.status shouldBe Status.Ok
+              _ <- response
+                .as[GetMultipleApiKeysResponse]
+                .asserting(_ shouldBe GetMultipleApiKeysResponse(List(apiKeyData_1, apiKeyData_2, apiKeyData_3)))
+            } yield ()
+          }
         }
 
         "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
@@ -601,6 +607,21 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
+
+    "provided with publicKeyId which is not an UUID" should {
+      "return Bad Request" in {
+        val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+
+        for {
+          response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+    }
 
     "JwtAuthorizer returns Right containing JsonWebToken" when {
 
@@ -687,13 +708,13 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
           } yield ()
         }
 
-        "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
+        "return successful value returned by ManagementService" in authorizedFixture {
           managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
           for {
             response <- managementRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[ApiKeyData].asserting(_ shouldBe apiKeyData_1)
+            _ <- response.as[GetSingleApiKeyResponse].asserting(_ shouldBe GetSingleApiKeyResponse(apiKeyData_1))
           } yield ()
         }
 
@@ -708,19 +729,6 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
               .asserting(
                 _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound))
               )
-          } yield ()
-        }
-
-        "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-          val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-          val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
-
-          for {
-            response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response
-              .as[ErrorInfo]
-              .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
           } yield ()
         }
 
@@ -743,6 +751,21 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteApiKey))
+
+    "provided with publicKeyId which is not an UUID" should {
+      "return Bad Request" in {
+        val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
+
+        for {
+          response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+    }
 
     "JwtAuthorizer returns Right containing JsonWebToken" when {
 
@@ -853,10 +876,8 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
           } yield ()
         }
 
-        "return Internal Server Error when ManagementService returns Left containing GenericApiKeyDeletionError" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
-            Left(GenericApiKeyDeletionError(userId_1, publicKeyId_1))
-          )
+        "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
+          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
 
           for {
             response <- managementRoutes.run(request)
@@ -864,19 +885,6 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
             _ <- response
               .as[ErrorInfo]
               .asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-          } yield ()
-        }
-
-        "return Bad Request when provided with publicKeyId which is not an UUID" in authorizedFixture {
-          val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-          val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
-
-          for {
-            response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response
-              .as[ErrorInfo]
-              .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
           } yield ()
         }
 

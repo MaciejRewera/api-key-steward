@@ -1,14 +1,14 @@
 package apikeysteward.routes.model.admin
 
-import apikeysteward.routes.model.{CreateUpdateApiKeyRequestBase, TapirCustomSchemas}
+import apikeysteward.routes.model.TapirCustomSchemas
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.Schema
 
 case class UpdateApiKeyRequest(
-    override val name: String,
-    override val description: Option[String] = None
-) extends CreateUpdateApiKeyRequestBase
+    name: String,
+    description: Option[String] = None
+)
 
 object UpdateApiKeyRequest {
   implicit val codec: Codec[UpdateApiKeyRequest] = deriveCodec[UpdateApiKeyRequest]

@@ -41,7 +41,7 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(tenantService, jwtAuthorizer)
+    reset(jwtAuthorizer, tenantService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {

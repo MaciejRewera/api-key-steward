@@ -2,7 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.base.TestData._
 import apikeysteward.config.ApiKeyConfig
-import apikeysteward.routes.model.CreateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._
 import cats.data.NonEmptyChain
 import org.mockito.IdiomaticMockito.StubbingOps

@@ -3,16 +3,16 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
   ApiKeyAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
-import apikeysteward.model.RepositoryErrors.ApiKeyUpdateError
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import cats.data.NonEmptyChain
@@ -328,13 +328,13 @@ class ApiKeyManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(
-          Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
         )
 
         managementService
           .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
           .asserting(
-            _ shouldBe Left(ApiKeyUpdateError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+            _ shouldBe Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
           )
       }
     }
@@ -372,7 +372,7 @@ class ApiKeyManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          Left(ApiKeyDbError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
         )
 
         managementService

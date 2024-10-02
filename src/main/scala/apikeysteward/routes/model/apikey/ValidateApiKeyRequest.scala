@@ -1,4 +1,4 @@
-package apikeysteward.routes.model
+package apikeysteward.routes.model.apikey
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec

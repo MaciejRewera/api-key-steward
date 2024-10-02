@@ -1,11 +1,12 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
-import apikeysteward.model.RepositoryErrors.{ApiKeyDeletionError, ApiKeyUpdateError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.CreateApiKeyRequest
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
@@ -96,13 +97,13 @@ class ApiKeyManagementService(
       userId: String,
       publicKeyId: UUID,
       updateApiKeyRequest: UpdateApiKeyRequest
-  ): IO[Either[ApiKeyUpdateError, ApiKeyData]] =
+  ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
     apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
-  def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDeletionError, ApiKeyData]] =
+  def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
     for {
       resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
         case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
@@ -131,6 +132,6 @@ object ApiKeyManagementService {
           message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
         )
 
-    case class InsertionError(cause: RepositoryErrors.ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
+    case class InsertionError(cause: ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
   }
 }

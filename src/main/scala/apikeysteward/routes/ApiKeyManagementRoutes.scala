@@ -1,11 +1,16 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError
-import apikeysteward.model.RepositoryErrors.ApiKeyDeletionError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyManagementEndpoints}
-import apikeysteward.routes.model.{CreateApiKeyResponse, DeleteApiKeyResponse}
+import apikeysteward.routes.model.apikey.{
+  CreateApiKeyResponse,
+  DeleteApiKeyResponse,
+  GetMultipleApiKeysResponse,
+  GetSingleApiKeyResponse
+}
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -51,7 +56,9 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
               userIdE <- IO(jwtOps.extractUserId(jwt))
               allApiKeyDataE <- userIdE.traverse(managementService.getAllApiKeysFor)
 
-              result = allApiKeyDataE.flatMap(allApiKeyData => (StatusCode.Ok -> allApiKeyData).asRight)
+              result = allApiKeyDataE.flatMap { allApiKeyData =>
+                (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
+              }
             } yield result
           }
       )
@@ -65,7 +72,7 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
               result <- userIdE.flatTraverse(managementService.getApiKey(_, publicKeyId).map {
-                case Some(apiKeyData) => (StatusCode.Ok -> apiKeyData).asRight
+                case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
                 case None =>
                   ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound)).asLeft
               })
@@ -88,7 +95,7 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
 
                 case Left(_: ApiKeyDataNotFoundError) =>
                   ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)).asLeft
-                case Left(_: ApiKeyDeletionError) =>
+                case Left(_: ApiKeyDbError) =>
                   ErrorInfo.internalServerErrorInfo().asLeft
               })
 

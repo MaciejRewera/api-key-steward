@@ -1,12 +1,13 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError
-import apikeysteward.model.RepositoryErrors.ApiKeyInsertionError.{
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
   ApiKeyIdAlreadyExistsError,
   PublicKeyIdAlreadyExistsError
 }
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
-import cats.implicits.catsSyntaxApplicativeId
+import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream
@@ -51,15 +52,19 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
     }
 
-  def update(apiKeyDataEntity: ApiKeyDataEntity.Update): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] = {
+  def update(
+      apiKeyDataEntity: ApiKeyDataEntity.Update
+  ): doobie.ConnectionIO[Either[ApiKeyDataNotFoundError, ApiKeyDataEntity.Read]] = {
     val now = Instant.now(clock)
     for {
       updateCount <- Queries.update(apiKeyDataEntity, now).run
 
-      res <-
+      resOpt <-
         if (updateCount > 0) getBy(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
         else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
-    } yield res
+    } yield resOpt.toRight(
+      ApiKeyDataNotFoundError(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+    )
   }
 
   def getByApiKeyId(apiKeyId: Long): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
@@ -77,11 +82,14 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
 
-  def delete(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+  def delete(
+      userId: String,
+      publicKeyId: UUID
+  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
-      result <- getBy(userId, publicKeyId)
-      n <- Queries.delete(userId, publicKeyId.toString).run
-    } yield if (n > 0) result else None
+      apiKeyToDeleteE <- getBy(userId, publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(userId, publicKeyId)))
+      resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(userId, publicKeyId.toString).run.map(_ => result))
+    } yield resultE
 
   private object Queries {
 
