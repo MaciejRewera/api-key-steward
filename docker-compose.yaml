@@ -20,7 +20,7 @@ services:
     container_name: api-key-steward
     environment:
       - AUTH_JWKS_URL=${AUTH_JWKS_URL}
-      - AUTH_JWT_ALLOWED_ISSUER=${AUTH_JWT_ALLOWED_ISSUER}
+      - AUTH_JWT_ISSUER=${AUTH_JWT_ISSUER}
       - AUTH_JWT_AUDIENCE=${AUTH_JWT_AUDIENCE}
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
