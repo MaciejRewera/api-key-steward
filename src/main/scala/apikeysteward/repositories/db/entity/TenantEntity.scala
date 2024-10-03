@@ -10,10 +10,10 @@ object TenantEntity {
       id: Long,
       publicTenantId: String,
       name: String,
-      createdAt: Instant,
-      updatedAt: Instant,
+      override val createdAt: Instant,
+      override val updatedAt: Instant,
       deactivatedAt: Option[Instant]
-  )
+  ) extends TimestampedEntity
 
   case class Write(
       publicTenantId: String,

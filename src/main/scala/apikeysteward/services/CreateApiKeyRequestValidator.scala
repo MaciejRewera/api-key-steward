@@ -38,7 +38,7 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
     Validated
       .condNec(
-        FiniteDuration(createApiKeyRequest.ttl, ApiKeyExpirationCalculator.ttlTimeUnit) <= apiKeyConfig.ttlMax,
+        FiniteDuration(createApiKeyRequest.ttl, ApiKeyExpirationCalculator.TtlTimeUnit) <= apiKeyConfig.ttlMax,
         createApiKeyRequest,
         TtlTooLargeError(createApiKeyRequest.ttl, apiKeyConfig.ttlMax)
       )
@@ -57,7 +57,7 @@ object CreateApiKeyRequestValidator {
     case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
         extends CreateApiKeyRequestValidatorError(
           message =
-            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
+            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
         )
   }
 

@@ -49,8 +49,10 @@ class TenantDb()(implicit clock: Clock) {
     performUpdate(tenantEntity.publicTenantId)(Queries.update(tenantEntity, now).run)
   }
 
-  def activate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
-    performUpdate(publicTenantId)(Queries.activate(publicTenantId.toString).run)
+  def activate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
+    val now = Instant.now(clock)
+    performUpdate(publicTenantId)(Queries.activate(publicTenantId.toString, now).run)
+  }
 
   def deactivate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
@@ -121,15 +123,17 @@ class TenantDb()(implicit clock: Clock) {
             WHERE tenant.public_tenant_id = ${tenantEntity.publicTenantId}
            """.stripMargin.update
 
-    def activate(publicTenantId: String): doobie.Update0 =
+    def activate(publicTenantId: String, now: Instant): doobie.Update0 =
       sql"""UPDATE tenant
-            SET deactivated_at = NULL
+            SET deactivated_at = NULL,
+                updated_at = $now
             WHERE tenant.public_tenant_id = $publicTenantId
            """.stripMargin.update
 
     def deactivate(publicTenantId: String, now: Instant): doobie.Update0 =
       sql"""UPDATE tenant
-            SET deactivated_at = $now
+            SET deactivated_at = $now,
+                updated_at = $now
             WHERE tenant.public_tenant_id = $publicTenantId
            """.stripMargin.update
 

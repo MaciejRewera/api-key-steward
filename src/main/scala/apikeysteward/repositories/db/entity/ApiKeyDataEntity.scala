@@ -14,9 +14,9 @@ object ApiKeyDataEntity {
       description: Option[String] = None,
       userId: String,
       expiresAt: Instant,
-      createdAt: Instant,
-      updatedAt: Instant
-  )
+      override val createdAt: Instant,
+      override val updatedAt: Instant
+  ) extends TimestampedEntity
 
   case class Write(
       apiKeyId: Long,

@@ -22,7 +22,7 @@ private[definitions] object ApiKeyManagementEndpointsBase {
       .in(
         jsonBody[CreateApiKeyRequest]
           .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.ttlTimeUnit.toString.toLowerCase}."
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase}."
           )
           .example(
             CreateApiKeyRequest(

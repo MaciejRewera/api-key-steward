@@ -6,9 +6,9 @@ object ApiKeyEntity {
 
   case class Read(
       id: Long,
-      createdAt: Instant,
-      updatedAt: Instant
-  )
+      override val createdAt: Instant,
+      override val updatedAt: Instant
+  ) extends TimestampedEntity
 
   case class Write(
       apiKey: String

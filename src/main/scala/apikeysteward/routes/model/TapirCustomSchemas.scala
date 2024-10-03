@@ -4,7 +4,7 @@ import apikeysteward.routes.model.TapirCustomValidators.ValidateOption
 import apikeysteward.routes.model.admin.UpdateApiKeyRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
-import apikeysteward.services.ApiKeyExpirationCalculator.ttlTimeUnit
+import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
 import sttp.tapir.generic.Derived
 import sttp.tapir.generic.auto.schemaForCaseClass
 import sttp.tapir.{Schema, Validator}
@@ -56,7 +56,7 @@ object TapirCustomSchemas {
     schema
       .validate(Validator.positiveOrZero)
       .description(
-        s"Time-to-live for the API Key in ${ttlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
+        s"Time-to-live for the API Key in ${TtlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
       )
 
 }
