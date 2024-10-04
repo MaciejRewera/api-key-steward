@@ -65,12 +65,12 @@ class ApiKeyRepository(
   def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
     (for {
       _ <- logInfoE[ApiKeyDataNotFoundError](
-        s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
+        s"Updating API Key Data for key with publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
       )
       entityAfterUpdateRead <- EitherT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
         .flatTap(_ =>
           logInfoE[ApiKeyDataNotFoundError](
-            s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
+            s"Updated API Key Data for key with publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
           )
         )
 

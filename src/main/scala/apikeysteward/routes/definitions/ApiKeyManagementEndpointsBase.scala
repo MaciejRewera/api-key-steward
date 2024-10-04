@@ -6,7 +6,6 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.model.admin.apikey.{UpdateApiKeyAdminRequest, UpdateApiKeyAdminResponse}
 import apikeysteward.routes.model.apikey._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -14,11 +13,6 @@ import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
 private[definitions] object ApiKeyManagementEndpointsBase {
-
-  val createApiKeyEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, StatusCode, Any] =
-    EndpointsBase.authenticatedEndpointBase.post
-      .out(statusCode.description(StatusCode.Created, "API key created"))
-      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysForUserEndpointBase
       : Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =

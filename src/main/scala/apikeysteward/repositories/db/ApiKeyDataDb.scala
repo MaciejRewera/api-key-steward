@@ -60,10 +60,10 @@ class ApiKeyDataDb()(implicit clock: Clock) {
       updateCount <- Queries.update(apiKeyDataEntity, now).run
 
       resOpt <-
-        if (updateCount > 0) getBy(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+        if (updateCount > 0) getByPublicKeyId(apiKeyDataEntity.publicKeyId)
         else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(
-      ApiKeyDataNotFoundError(apiKeyDataEntity.userId, apiKeyDataEntity.publicKeyId)
+      ApiKeyDataNotFoundError(apiKeyDataEntity.publicKeyId)
     )
   }
 
@@ -78,6 +78,11 @@ class ApiKeyDataDb()(implicit clock: Clock) {
 
   private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getBy(userId, publicKeyId).option
+
+  private def getByPublicKeyId(publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    getByPublicKeyId(publicKeyId.toString)
+  private def getByPublicKeyId(publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    Queries.getByPublicKeyId(publicKeyId).option
 
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
@@ -117,7 +122,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             SET name = ${apiKeyDataEntityUpdate.name},
                 description = ${apiKeyDataEntityUpdate.description},
                 updated_at = $now
-            WHERE api_key_data.user_id = ${apiKeyDataEntityUpdate.userId} AND api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
+            WHERE api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
            """.stripMargin.update
 
     def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =
@@ -127,6 +132,10 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     def getByUserId(userId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM api_key_data WHERE user_id = $userId").query[ApiKeyDataEntity.Read]
+
+    def getByPublicKeyId(publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"FROM api_key_data WHERE public_key_id = $publicKeyId").query[ApiKeyDataEntity.Read]
 
     def getBy(userId: String, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++

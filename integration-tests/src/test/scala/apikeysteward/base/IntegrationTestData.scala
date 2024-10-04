@@ -1,6 +1,5 @@
 package apikeysteward.base
 
-import apikeysteward.base.IntegrationTestData.tenantEntityRead_1
 import apikeysteward.base.TestData._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, TenantEntity}
 
@@ -77,8 +76,7 @@ trait IntegrationTestData extends FixedClock {
   val apiKeyDataEntityUpdate_1: ApiKeyDataEntity.Update = ApiKeyDataEntity.Update(
     publicKeyId = publicKeyIdStr_1,
     name = TestData.nameUpdated,
-    description = TestData.descriptionUpdated,
-    userId = userId_1
+    description = TestData.descriptionUpdated
   )
 
   val tenantEntityWrite_1: TenantEntity.Write =

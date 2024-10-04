@@ -2,6 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.errorOutVariantBadRequest
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
@@ -17,7 +18,8 @@ private[routes] object ApiKeyManagementEndpoints {
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
-    ApiKeyManagementEndpointsBase.createApiKeyEndpointBase
+    EndpointsBase.authenticatedEndpointBase.post
+      .out(statusCode.description(StatusCode.Created, "API key created"))
       .description("Create new API key.")
       .in("api-keys")
       .in(
@@ -43,6 +45,7 @@ private[routes] object ApiKeyManagementEndpoints {
             )
           )
       )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
     ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase

@@ -309,7 +309,7 @@ class ApiKeyManagementServiceSpec
       apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
 
       for {
-        _ <- managementService.updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+        _ <- managementService.updateApiKey(publicKeyId_1, updateApiKeyRequest)
         _ = verify(apiKeyRepository).update(eqTo(apiKeyDataUpdate_1))
       } yield ()
     }
@@ -320,7 +320,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .asserting(
             _ shouldBe Right(outputApiKeyData)
           )
@@ -332,7 +332,7 @@ class ApiKeyManagementServiceSpec
         )
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .asserting(
             _ shouldBe Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
           )
@@ -344,7 +344,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.raiseError(testException)
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

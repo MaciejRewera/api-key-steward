@@ -45,8 +45,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       AdminApiKeyManagementEndpoints.updateApiKeyEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (userId, publicKeyId, updateApiKeyRequest) = input
-          managementService.updateApiKey(userId, publicKeyId, updateApiKeyRequest).map {
+          val (publicKeyId, updateApiKeyRequest) = input
+          managementService.updateApiKey(publicKeyId, updateApiKeyRequest).map {
 
             case Right(apiKeyData) =>
               (StatusCode.Ok, UpdateApiKeyAdminResponse(apiKeyData)).asRight

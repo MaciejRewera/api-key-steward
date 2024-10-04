@@ -94,11 +94,10 @@ class ApiKeyManagementService(
     } yield res
 
   def updateApiKey(
-      userId: String,
       publicKeyId: UUID,
       updateApiKeyRequest: UpdateApiKeyAdminRequest
   ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
-    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
+    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }

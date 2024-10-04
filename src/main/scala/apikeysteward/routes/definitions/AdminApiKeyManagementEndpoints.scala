@@ -29,7 +29,8 @@ private[routes] object AdminApiKeyManagementEndpoints {
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyAdminRequest, ErrorInfo, (StatusCode, CreateApiKeyAdminResponse), Any] =
-    ApiKeyManagementEndpointsBase.createApiKeyEndpointBase
+    EndpointsBase.authenticatedEndpointBase.post
+      .out(statusCode.description(StatusCode.Created, "API key created"))
       .description("Create new API key for a user.")
       .in("admin" / "api-keys")
       .in(
@@ -56,17 +57,18 @@ private[routes] object AdminApiKeyManagementEndpoints {
             )
           )
       )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val updateApiKeyEndpoint: Endpoint[
     AccessToken,
-    (String, UUID, UpdateApiKeyAdminRequest),
+    (UUID, UpdateApiKeyAdminRequest),
     ErrorInfo,
     (StatusCode, UpdateApiKeyAdminResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.put
       .description("Update API key for given user ID and key ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
+      .in("admin" / "api-keys" / keyIdPathParameter)
       .in(
         jsonBody[UpdateApiKeyAdminRequest]
           .description(

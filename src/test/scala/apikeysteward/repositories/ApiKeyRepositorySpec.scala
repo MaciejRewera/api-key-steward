@@ -368,8 +368,7 @@ class ApiKeyRepositorySpec
           val expectedApiKeyDataEntityUpdate = ApiKeyDataEntity.Update(
             publicKeyId = publicKeyId_1.toString,
             name = nameUpdated,
-            description = descriptionUpdated,
-            userId = userId_1
+            description = descriptionUpdated
           )
 
           for {
@@ -405,8 +404,7 @@ class ApiKeyRepositorySpec
           val expectedApiKeyDataEntityUpdate = ApiKeyDataEntity.Update(
             publicKeyId = publicKeyId_1.toString,
             name = nameUpdated,
-            description = descriptionUpdated,
-            userId = userId_1
+            description = descriptionUpdated
           )
 
           for {
@@ -438,7 +436,7 @@ class ApiKeyRepositorySpec
 
       "NOT call ApiKeyDataScopesDb or ScopeDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
@@ -451,14 +449,14 @@ class ApiKeyRepositorySpec
 
       "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+        apiKeyDataDb.update(any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyRepository
           .update(apiKeyDataUpdate_1)
           .asserting(
-            _ shouldBe Left(ApiKeyDataNotFoundError(apiKeyDataUpdate_1.userId, apiKeyDataUpdate_1.publicKeyId.toString))
+            _ shouldBe Left(ApiKeyDataNotFoundError(apiKeyDataUpdate_1.publicKeyId))
           )
       }
     }
