@@ -11,7 +11,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
 }
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
@@ -294,7 +294,7 @@ class ApiKeyManagementServiceSpec
 
   "ManagementService on updateApiKey" should {
 
-    val updateApiKeyRequest = UpdateApiKeyRequest(name = nameUpdated, description = descriptionUpdated)
+    val updateApiKeyRequest = UpdateApiKeyAdminRequest(name = nameUpdated, description = descriptionUpdated)
 
     val outputApiKeyData = ApiKeyData(
       publicKeyId = publicKeyId_1,

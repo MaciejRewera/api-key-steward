@@ -5,7 +5,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -96,7 +96,7 @@ class ApiKeyManagementService(
   def updateApiKey(
       userId: String,
       publicKeyId: UUID,
-      updateApiKeyRequest: UpdateApiKeyRequest
+      updateApiKeyRequest: UpdateApiKeyAdminRequest
   ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
     apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")

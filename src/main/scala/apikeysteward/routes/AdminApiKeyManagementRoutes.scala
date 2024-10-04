@@ -5,13 +5,8 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundErro
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
-import apikeysteward.routes.model.admin.UpdateApiKeyResponse
-import apikeysteward.routes.model.apikey.{
-  CreateApiKeyResponse,
-  DeleteApiKeyResponse,
-  GetMultipleApiKeysResponse,
-  GetSingleApiKeyResponse
-}
+import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminResponse, UpdateApiKeyAdminResponse}
+import apikeysteward.routes.model.apikey.{DeleteApiKeyResponse, GetMultipleApiKeysResponse, GetSingleApiKeyResponse}
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -30,12 +25,12 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       .toRoutes(
         AdminApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-          .serverLogic { _ => input =>
-            val (request, userId) = input
+          .serverLogic { _ => adminRequest =>
+            val (userId, request) = adminRequest.toUserRequest
             managementService.createApiKey(userId, request).map {
 
               case Right((newApiKey, apiKeyData)) =>
-                (StatusCode.Created, CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
+                (StatusCode.Created, CreateApiKeyAdminResponse(newApiKey.value, apiKeyData)).asRight
 
               case Left(validationError: ValidationError) =>
                 ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
@@ -50,11 +45,11 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       AdminApiKeyManagementEndpoints.updateApiKeyEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (updateApiKeyRequest, userId, publicKeyId) = input
+          val (userId, publicKeyId, updateApiKeyRequest) = input
           managementService.updateApiKey(userId, publicKeyId, updateApiKeyRequest).map {
 
             case Right(apiKeyData) =>
-              (StatusCode.Ok, UpdateApiKeyResponse(apiKeyData)).asRight
+              (StatusCode.Ok, UpdateApiKeyAdminResponse(apiKeyData)).asRight
 
             case Left(_: ApiKeyDbError.ApiKeyDataNotFoundError) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
