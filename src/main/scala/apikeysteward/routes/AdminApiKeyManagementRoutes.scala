@@ -91,9 +91,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       .toRoutes(
         AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-          .serverLogic { _ => input =>
-            val (userId, publicKeyId) = input
-            managementService.deleteApiKey(userId, publicKeyId).map {
+          .serverLogic { _ => publicKeyId =>
+            managementService.deleteApiKey(publicKeyId).map {
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 

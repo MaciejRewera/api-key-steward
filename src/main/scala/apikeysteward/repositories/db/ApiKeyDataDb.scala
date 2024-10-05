@@ -73,27 +73,25 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getByUserId(userId: String): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
     Queries.getByUserId(userId).stream
 
+  def getByPublicKeyId(publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    getByPublicKeyId(publicKeyId.toString)
+
+  private def getByPublicKeyId(publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    Queries.getByPublicKeyId(publicKeyId).option
+
   def getBy(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     getBy(userId, publicKeyId.toString)
 
   private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getBy(userId, publicKeyId).option
 
-  private def getByPublicKeyId(publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    getByPublicKeyId(publicKeyId.toString)
-  private def getByPublicKeyId(publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getByPublicKeyId(publicKeyId).option
-
   def getAllUserIds: Stream[doobie.ConnectionIO, String] =
     Queries.getAllUserIds.stream
 
-  def delete(
-      userId: String,
-      publicKeyId: UUID
-  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
+  def delete(publicKeyId: UUID): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
-      apiKeyToDeleteE <- getBy(userId, publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(userId, publicKeyId)))
-      resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(userId, publicKeyId.toString).run.map(_ => result))
+      apiKeyToDeleteE <- getByPublicKeyId(publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(publicKeyId)))
+      resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(publicKeyId.toString).run.map(_ => result))
     } yield resultE
 
   private object Queries {
@@ -144,9 +142,9 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     val getAllUserIds: doobie.Query0[String] =
       sql"SELECT DISTINCT user_id FROM api_key_data".query[String]
 
-    def delete(userId: String, publicKeyId: String): doobie.Update0 =
+    def delete(publicKeyId: String): doobie.Update0 =
       sql"""DELETE FROM api_key_data
-            WHERE api_key_data.user_id = $userId AND api_key_data.public_key_id = $publicKeyId
+            WHERE api_key_data.public_key_id = $publicKeyId
            """.stripMargin.update
 
   }

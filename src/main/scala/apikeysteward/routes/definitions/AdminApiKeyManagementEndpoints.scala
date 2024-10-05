@@ -6,12 +6,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.model.admin.apikey.{
-  CreateApiKeyAdminRequest,
-  CreateApiKeyAdminResponse,
-  UpdateApiKeyAdminRequest,
-  UpdateApiKeyAdminResponse
-}
+import apikeysteward.routes.model.admin.apikey._
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
@@ -105,9 +100,9 @@ private[routes] object AdminApiKeyManagementEndpoints {
       .description("Get API key data for given user ID and key ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
 
-  val deleteApiKeyEndpoint: Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
+  val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase
-      .description("Delete API key for given user ID and key ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
+      .description("Delete API key for given key ID.")
+      .in("admin" / "api-keys" / keyIdPathParameter)
 
 }

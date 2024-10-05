@@ -1008,8 +1008,7 @@ class ApiKeyRepositorySpec
 
       def initMocks(): Unit = {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeyDataScopesDb
-          .getByApiKeyDataId(any[Long]) returns (
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns (
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO],
           Stream.empty
         )
@@ -1020,7 +1019,7 @@ class ApiKeyRepositorySpec
 
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
           .asRight[ApiKeyDbError]
           .pure[doobie.ConnectionIO]
         apiKeyDb
@@ -1040,7 +1039,7 @@ class ApiKeyRepositorySpec
             _ = verify(scopeDb).getByIds(eqTo(List(scopeId_1, scopeId_2)))
 
             _ = verify(apiKeyDataScopesDb).delete(eqTo(apiKeyDataEntityRead_1.id))
-            _ = verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataDb).delete(eqTo(publicKeyId_1))
             _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
 
           } yield ()
@@ -1069,7 +1068,7 @@ class ApiKeyRepositorySpec
             _ = verify(scopeDb).getByIds(eqTo(List.empty[Long]))
 
             _ = verify(apiKeyDataScopesDb, never).delete(any[Long])
-            _ = verify(apiKeyDataDb).delete(eqTo(userId_1), eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataDb).delete(eqTo(publicKeyId_1))
             _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
 
           } yield ()
@@ -1096,7 +1095,7 @@ class ApiKeyRepositorySpec
         for {
           _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
 
-          _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
+          _ = verify(apiKeyDataDb, never).delete(any[UUID])
           _ = verifyZeroInteractions(apiKeyDb)
           _ = verifyZeroInteractions(scopeDb)
           _ = verifyZeroInteractions(apiKeyDataScopesDb)
@@ -1123,7 +1122,7 @@ class ApiKeyRepositorySpec
         for {
           _ <- apiKeyRepository.delete(userId_1, publicKeyId_1).attempt
 
-          _ = verify(apiKeyDataDb, never).delete(any[String], any[UUID])
+          _ = verify(apiKeyDataDb, never).delete(any[UUID])
           _ = verifyZeroInteractions(apiKeyDb)
           _ = verifyZeroInteractions(scopeDb)
         } yield ()
@@ -1150,7 +1149,7 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns ApiKeyDbError
+        apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
           .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
@@ -1169,7 +1168,7 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns ApiKeyDbError
+        apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
           .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
@@ -1188,7 +1187,7 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
           .asRight[ApiKeyDbError]
           .pure[doobie.ConnectionIO]
         apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
@@ -1206,12 +1205,234 @@ class ApiKeyRepositorySpec
           .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
         apiKeyDataScopesDb.delete(any[Long]) returns
           Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[String], any[UUID]) returns apiKeyDataEntityRead_1
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
           .asRight[ApiKeyDbError]
           .pure[doobie.ConnectionIO]
         apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
+      }
+    }
+  }
+
+  "ApiKeyRepository on delete(:publicKeyId)" when {
+
+    val scopeId_1 = 101L
+    val scopeId_2 = 102L
+
+    val apiKeyEntityRead_1 = ApiKeyEntity.Read(1L, nowInstant, nowInstant)
+
+    val apiKeyDataScopesEntitiesRead = Seq(
+      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_1, nowInstant, nowInstant),
+      ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, scopeId_2, nowInstant, nowInstant)
+    )
+
+    "everything works correctly" when {
+
+      def initMocks(): Unit = {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns (
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO],
+          Stream.empty
+        )
+        scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+        scopeDb.getByIds(eqTo(List(scopeId_1, scopeId_2))) returns Stream
+          .emits(Seq(ScopeEntity.Read(scopeId_1, scopeRead_1), ScopeEntity.Read(scopeId_2, scopeWrite_1)))
+          .covary[doobie.ConnectionIO]
+
+        apiKeyDataScopesDb.delete(any[Long]) returns
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb
+          .delete(any[Long]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+      }
+
+      "there are scopes for given ApiKeyData" should {
+
+        "call ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb" in {
+          initMocks()
+
+          for {
+            _ <- apiKeyRepository.delete(publicKeyId_1)
+
+            _ = verify(apiKeyDataDb).getByPublicKeyId(eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(apiKeyDataEntityRead_1.id)
+            _ = verify(scopeDb).getByIds(eqTo(List(scopeId_1, scopeId_2)))
+
+            _ = verify(apiKeyDataScopesDb).delete(eqTo(apiKeyDataEntityRead_1.id))
+            _ = verify(apiKeyDataDb).delete(eqTo(publicKeyId_1))
+            _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
+
+          } yield ()
+        }
+
+        "return Right containing deleted ApiKeyData" in {
+          initMocks()
+
+          apiKeyRepository.delete(publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+        }
+      }
+
+      "there are NO scopes for given ApiKeyData" should {
+
+        "call ApiKeyDb, ApiKeyDataDb, ScopeDb and ApiKeyDataScopesDb" in {
+          initMocks()
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          apiKeyDataScopesDb.delete(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          for {
+            _ <- apiKeyRepository.delete(publicKeyId_1)
+
+            _ = verify(apiKeyDataDb).getByPublicKeyId(eqTo(publicKeyId_1))
+            _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(apiKeyDataEntityRead_1.id)
+            _ = verify(scopeDb).getByIds(eqTo(List.empty[Long]))
+
+            _ = verify(apiKeyDataScopesDb, never).delete(any[Long])
+            _ = verify(apiKeyDataDb).delete(eqTo(publicKeyId_1))
+            _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
+
+          } yield ()
+        }
+
+        "return Right containing deleted ApiKeyData" in {
+          initMocks()
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          apiKeyDataScopesDb.delete(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          apiKeyRepository
+            .delete(publicKeyId_1)
+            .asserting(_ shouldBe Right(apiKeyData_1.copy(scopes = List.empty)))
+        }
+      }
+    }
+
+    "ApiKeyDataDb.getByPublicKeyId returns empty Option" should {
+
+      "NOT call ApiKeyDb, ApiKeyDataDb, ScopeDb or ApiKeyDataScopesDb" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.delete(publicKeyId_1)
+
+          _ = verify(apiKeyDataDb, never).delete(any[UUID])
+          _ = verifyZeroInteractions(apiKeyDb)
+          _ = verifyZeroInteractions(scopeDb)
+          _ = verifyZeroInteractions(apiKeyDataScopesDb)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyDataNotFound" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository
+          .delete(publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+      }
+    }
+
+    "ApiKeyDataScopesDb.delete returns failed Stream" should {
+
+      "NOT call ApiKeyDb, ApiKeyDataDb or ScopeDb anymore" in {
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+
+        for {
+          _ <- apiKeyRepository.delete(publicKeyId_1).attempt
+
+          _ = verify(apiKeyDataDb, never).delete(any[UUID])
+          _ = verifyZeroInteractions(apiKeyDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+
+        apiKeyRepository
+          .delete(publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "ApiKeyDataDb.delete returns Left containing ApiKeyDataNotFoundError" should {
+
+      "NOT call ApiKeyDb.delete or ScopeDb" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
+          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.delete(publicKeyId_1)
+
+          _ = verifyZeroInteractions(apiKeyDb)
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyDataNotFoundError" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
+          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .asLeft[ApiKeyDataEntity.Read]
+          .pure[doobie.ConnectionIO]
+
+        apiKeyRepository
+          .delete(publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+      }
+    }
+
+    "ApiKeyDb.delete returns Left containing ApiKeyNotFoundError" should {
+
+      "NOT call ScopeDb" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.delete(publicKeyId_1)
+
+          _ = verifyZeroInteractions(scopeDb)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyNotFoundError" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb
+          .getByApiKeyDataId(any[Long]) returns Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataScopesDb.delete(any[Long]) returns
+          Stream.emits(apiKeyDataScopesEntitiesRead).covary[doobie.ConnectionIO]
+        apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
+          .asRight[ApiKeyDbError]
+          .pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository.delete(publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
     }
   }

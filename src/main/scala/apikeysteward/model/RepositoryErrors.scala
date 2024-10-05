@@ -26,6 +26,9 @@ object RepositoryErrors {
     def apiKeyDataNotFoundError(userId: String, publicKeyId: String): ApiKeyDbError =
       ApiKeyDataNotFoundError(userId, publicKeyId)
 
+    def apiKeyDataNotFoundError(publicKeyId: UUID): ApiKeyDbError =
+      ApiKeyDataNotFoundError(publicKeyId)
+
     trait ApiKeyDataNotFoundError extends ApiKeyDbError { val errorMessage: String }
     object ApiKeyDataNotFoundError {
 

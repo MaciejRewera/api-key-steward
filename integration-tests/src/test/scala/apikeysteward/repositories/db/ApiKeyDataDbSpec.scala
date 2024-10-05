@@ -8,6 +8,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.none
 import doobie.ConnectionIO
 import doobie.implicits._
 import org.scalatest.EitherValues
@@ -448,6 +449,66 @@ class ApiKeyDataDbSpec
     }
   }
 
+  "ApiKeyDataDb on getByPublicKeyId" when {
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = apiKeyDataDb.getByPublicKeyId(publicKeyId_1).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicKeyId" should {
+      "return empty Option" in {
+        val result = (for {
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByPublicKeyId(publicKeyId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same publicKeyId" should {
+      "return Option containing ApiKeyDataEntity" in {
+        val result = (for {
+          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
+
+          res <- apiKeyDataDb.getByPublicKeyId(publicKeyId_1)
+        } yield (res, apiKeyId)).transact(transactor)
+
+        result.asserting { case (res, apiKeyId) =>
+          res shouldBe Some(apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = apiKeyId))
+        }
+      }
+    }
+
+    "there are several rows in the DB" should {
+      "return Option containing ApiKeyDataEntity with the same publicKeyId" in {
+        val result = (for {
+          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
+
+          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyId_2))
+
+          apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
+
+          res <- apiKeyDataDb.getByPublicKeyId(publicKeyId_1)
+        } yield (res, apiKeyId_1)).transact(transactor)
+
+        result.asserting { case (res, apiKeyId_1) =>
+          res shouldBe Some(apiKeyDataEntityRead_1.copy(id = res.get.id, apiKeyId = apiKeyId_1))
+        }
+      }
+    }
+  }
+
   "ApiKeyDataDb on getBy(:userId, :publicKeyId)" when {
 
     "there are no rows in the DB" should {
@@ -585,55 +646,24 @@ class ApiKeyDataDbSpec
     }
   }
 
-  "ApiKeyDataDb on delete" when {
+  "ApiKeyDataDb on delete(:publicKeyId)" when {
 
     "there are no rows in the API Key Data table" should {
 
       "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb
-          .delete(userId_1, publicKeyId_1)
+          .delete(publicKeyId_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
-      }
-    }
-
-    "there is a row in the API Key Data table with different userId" should {
-
-      "return Left containing ApiKeyDataNotFoundError" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          res <- apiKeyDataDb.delete(userId_2, publicKeyId_1)
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_2, publicKeyId_1)))
-      }
-
-      "make no changes to the DB" in {
-        val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-
-          _ <- apiKeyDataDb.delete(userId_2, publicKeyId_1)
-          res <- Queries.getAllApiKeysData
-        } yield res).transact(transactor)
-
-        result.asserting { res =>
-          res.size shouldBe 1
-
-          val expectedEntity = apiKeyDataEntityRead_1
-          res.head shouldBe expectedEntity.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
-        }
       }
     }
 
@@ -644,10 +674,10 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(userId_1, publicKeyId_2)
+          res <- apiKeyDataDb.delete(publicKeyId_2)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_2)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_2)))
       }
 
       "make no changes to the DB" in {
@@ -655,7 +685,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_2)
+          _ <- apiKeyDataDb.delete(publicKeyId_2)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -667,14 +697,14 @@ class ApiKeyDataDbSpec
       }
     }
 
-    "there is a row in the API Key Data table with given userId and publicKeyId" should {
+    "there is a row in the API Key Data table with given publicKeyId" should {
 
       "return Right containing deleted entity" in {
         val result = (for {
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
+          res <- apiKeyDataDb.delete(publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -687,7 +717,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -695,7 +725,7 @@ class ApiKeyDataDbSpec
       }
     }
 
-    "there are several rows in the API Key Data table but only one with given userId and publicKeyId" should {
+    "there are several rows in the API Key Data table but only one with given publicKeyId" should {
 
       "return Right containing deleted entity" in {
         val result = (for {
@@ -708,7 +738,7 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
+          res <- apiKeyDataDb.delete(publicKeyId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -727,7 +757,7 @@ class ApiKeyDataDbSpec
           apiKeyId_3 <- apiKeyDb.insert(apiKeyEntityWrite_3).map(_.value.id)
           entityRead_3 <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3.copy(apiKeyId = apiKeyId_3))
 
-          _ <- apiKeyDataDb.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyDataDb.delete(publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 

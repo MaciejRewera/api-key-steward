@@ -5,10 +5,7 @@ import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
-  ApiKeyAlreadyExistsError,
-  PublicKeyIdAlreadyExistsError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
@@ -351,13 +348,13 @@ class ApiKeyManagementServiceSpec
     }
   }
 
-  "ManagementService on deleteApiKey" should {
+  "ManagementService on deleteApiKeyBelongingToUserWith" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
-        _ <- managementService.deleteApiKey(userId_1, publicKeyId_1)
+        _ <- managementService.deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
         _ = verify(apiKeyRepository).delete(eqTo(userId_1), eqTo(publicKeyId_1))
       } yield ()
     }
@@ -367,7 +364,9 @@ class ApiKeyManagementServiceSpec
       "ApiKeyRepository returns Right" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
-        managementService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+        managementService
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .asserting(_ shouldBe Right(apiKeyData_1))
       }
 
       "ApiKeyRepository returns Left" in {
@@ -376,7 +375,7 @@ class ApiKeyManagementServiceSpec
         )
 
         managementService
-          .deleteApiKey(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
           .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
@@ -386,7 +385,49 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.raiseError(testException)
 
         managementService
-          .deleteApiKey(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ManagementService on deleteApiKey" should {
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyData_1))
+
+      for {
+        _ <- managementService.deleteApiKey(publicKeyId_1)
+        _ = verify(apiKeyRepository).delete(eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns Right" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyData_1))
+
+        managementService.deleteApiKey(publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+      }
+
+      "ApiKeyRepository returns Left" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.pure(
+          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyId_1))
+        )
+
+        managementService
+          .deleteApiKey(publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .deleteApiKey(publicKeyId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
