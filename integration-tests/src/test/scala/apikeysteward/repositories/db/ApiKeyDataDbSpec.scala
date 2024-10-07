@@ -262,8 +262,8 @@ class ApiKeyDataDbSpec
         result.asserting { res =>
           res.size shouldBe 1
 
-          val expectedEntity = apiKeyDataEntityRead_1
-          res.head shouldBe expectedEntity.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          val expectedEntity = apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          res.head shouldBe expectedEntity
         }
       }
     }

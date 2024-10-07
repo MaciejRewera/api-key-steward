@@ -83,4 +83,34 @@ object RepositoryErrors {
         )
 
   }
+
+  sealed abstract class ApplicationDbError(override val message: String) extends CustomError
+  object ApplicationDbError {
+
+    def applicationAlreadyExistsError(publicApplicationId: String): ApplicationDbError =
+      ApplicationAlreadyExistsError(publicApplicationId)
+
+    case class ApplicationAlreadyExistsError(publicApplicationId: String)
+        extends ApplicationDbError(
+          message = s"Application with publicApplicationId = $publicApplicationId already exists."
+        )
+
+    def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
+      ApplicationNotFoundError(publicApplicationId)
+
+    case class ApplicationNotFoundError(publicApplicationId: String)
+        extends ApplicationDbError(
+          message = s"Could not find Application with publicApplicationId = $publicApplicationId"
+        )
+
+    def applicationIsNotDeactivatedError(publicApplicationId: UUID): ApplicationDbError =
+      ApplicationIsNotDeactivatedError(publicApplicationId)
+
+    case class ApplicationIsNotDeactivatedError(publicApplicationId: UUID)
+        extends ApplicationDbError(
+          message =
+            s"Could not delete Application with publicApplicationId = ${publicApplicationId.toString} because it is not deactivated."
+        )
+
+  }
 }

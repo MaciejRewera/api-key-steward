@@ -122,4 +122,24 @@ trait TestData extends FixedClock {
 
   val tenantUpdate_1: TenantUpdate =
     TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated, description = tenantDescriptionUpdated)
+
+  val publicApplicationId_1: UUID = UUID.randomUUID()
+  val publicApplicationId_2: UUID = UUID.randomUUID()
+  val publicApplicationId_3: UUID = UUID.randomUUID()
+  val publicApplicationId_4: UUID = UUID.randomUUID()
+  val publicApplicationIdStr_1: String = publicApplicationId_1.toString
+  val publicApplicationIdStr_2: String = publicApplicationId_2.toString
+  val publicApplicationIdStr_3: String = publicApplicationId_3.toString
+  val publicApplicationIdStr_4: String = publicApplicationId_4.toString
+
+  val applicationName_1 = "Application Name 1"
+  val applicationName_2 = "Application Name 2"
+  val applicationName_3 = "Application Name 3"
+  val applicationNameUpdated = "Updated Application Name"
+
+  val applicationDescription_1: Option[String] = Some("Test Application description no. 1.")
+  val applicationDescription_2: Option[String] = Some("Test Application description no. 2.")
+  val applicationDescription_3: Option[String] = Some("Test Application description no. 3.")
+  val applicationDescriptionUpdated: Option[String] = Some("Test Updated Application description.")
+
 }
