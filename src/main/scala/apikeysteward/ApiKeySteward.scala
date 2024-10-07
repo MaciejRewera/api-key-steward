@@ -26,7 +26,7 @@ import java.time.Clock
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 
-object Application extends IOApp.Simple with Logging {
+object ApiKeySteward extends IOApp.Simple with Logging {
 
   private implicit val clock: Clock = Clock.systemUTC
 
