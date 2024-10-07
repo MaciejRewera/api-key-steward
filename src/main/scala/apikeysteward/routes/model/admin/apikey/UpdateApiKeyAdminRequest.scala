@@ -7,7 +7,7 @@ import sttp.tapir.Schema
 
 case class UpdateApiKeyAdminRequest(
     name: String,
-    description: Option[String] = None
+    description: Option[String]
 )
 
 object UpdateApiKeyAdminRequest {

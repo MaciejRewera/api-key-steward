@@ -10,6 +10,7 @@ import java.util.UUID
 case class Tenant(
     tenantId: UUID,
     name: String,
+    description: Option[String],
     isActive: Boolean
 )
 
@@ -19,12 +20,14 @@ object Tenant {
   def from(tenantEntityRead: TenantEntity.Read): Tenant = Tenant(
     tenantId = UUID.fromString(tenantEntityRead.publicTenantId),
     name = tenantEntityRead.name,
+    description = tenantEntityRead.description,
     isActive = tenantEntityRead.deactivatedAt.isEmpty
   )
 
   def from(tenantId: UUID, createTenantRequest: CreateTenantRequest): Tenant = Tenant(
     tenantId = tenantId,
     name = createTenantRequest.name,
+    description = createTenantRequest.description,
     isActive = true
   )
 }

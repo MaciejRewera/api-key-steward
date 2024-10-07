@@ -108,9 +108,18 @@ trait TestData extends FixedClock {
   val tenantName_3 = "Tenant Name 3"
   val tenantNameUpdated = "Updated Tenant Name"
 
-  val tenant_1: Tenant = Tenant(tenantId = publicTenantId_1, name = tenantName_1, isActive = true)
-  val tenant_2: Tenant = Tenant(tenantId = publicTenantId_2, name = tenantName_2, isActive = true)
-  val tenant_3: Tenant = Tenant(tenantId = publicTenantId_3, name = tenantName_3, isActive = true)
+  val tenantDescription_1: Option[String] = Some("Test Tenant description no. 1.")
+  val tenantDescription_2: Option[String] = Some("Test Tenant description no. 2.")
+  val tenantDescription_3: Option[String] = Some("Test Tenant description no. 3.")
+  val tenantDescriptionUpdated: Option[String] = Some("Test Updated Tenant description.")
 
-  val tenantUpdate_1: TenantUpdate = TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated)
+  val tenant_1: Tenant =
+    Tenant(tenantId = publicTenantId_1, name = tenantName_1, description = tenantDescription_1, isActive = true)
+  val tenant_2: Tenant =
+    Tenant(tenantId = publicTenantId_2, name = tenantName_2, description = tenantDescription_2, isActive = true)
+  val tenant_3: Tenant =
+    Tenant(tenantId = publicTenantId_3, name = tenantName_3, description = tenantDescription_3, isActive = true)
+
+  val tenantUpdate_1: TenantUpdate =
+    TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated, description = tenantDescriptionUpdated)
 }

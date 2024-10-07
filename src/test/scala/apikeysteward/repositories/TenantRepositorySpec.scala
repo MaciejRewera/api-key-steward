@@ -39,6 +39,7 @@ class TenantRepositorySpec
     id = 1L,
     publicTenantId = publicTenantIdStr_1,
     name = tenantName_1,
+    description = tenantDescription_1,
     createdAt = nowInstant,
     updatedAt = nowInstant,
     deactivatedAt = None
@@ -46,12 +47,14 @@ class TenantRepositorySpec
   private val tenantEntityRead_2: TenantEntity.Read = tenantEntityRead_1.copy(
     id = 2L,
     publicTenantId = publicTenantIdStr_2,
-    name = tenantName_2
+    name = tenantName_2,
+    description = tenantDescription_2
   )
   private val tenantEntityRead_3: TenantEntity.Read = tenantEntityRead_1.copy(
     id = 3L,
     publicTenantId = publicTenantIdStr_3,
-    name = tenantName_3
+    name = tenantName_3,
+    description = tenantDescription_3
   )
 
   private val tenantNotFoundError = TenantNotFoundError(publicTenantIdStr_1)
@@ -80,7 +83,11 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.insert(tenant_1)
 
-          expectedTenantEntityWrite = TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1)
+          expectedTenantEntityWrite = TenantEntity.Write(
+            publicTenantId = publicTenantIdStr_1,
+            name = tenantName_1,
+            description = tenantDescription_1
+          )
           _ = verify(tenantDb).insert(eqTo(expectedTenantEntityWrite))
         } yield ()
       }
@@ -124,7 +131,8 @@ class TenantRepositorySpec
 
           expectedTenantEntityUpdate = TenantEntity.Update(
             publicTenantId = publicTenantIdStr_1,
-            name = tenantNameUpdated
+            name = tenantNameUpdated,
+            description = tenantDescriptionUpdated
           )
           _ = verify(tenantDb).update(eqTo(expectedTenantEntityUpdate))
         } yield ()

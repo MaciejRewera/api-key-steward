@@ -80,33 +80,36 @@ trait IntegrationTestData extends FixedClock {
   )
 
   val tenantEntityWrite_1: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1)
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1, description = tenantDescription_1)
   val tenantEntityRead_1: TenantEntity.Read = TenantEntity.Read(
     id = 1L,
     publicTenantId = publicTenantIdStr_1,
     name = tenantName_1,
+    description = tenantDescription_1,
     createdAt = nowInstant,
     updatedAt = nowInstant,
     deactivatedAt = None
   )
 
   val tenantEntityWrite_2: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_2, name = tenantName_2)
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_2, name = tenantName_2, description = tenantDescription_2)
   val tenantEntityRead_2: TenantEntity.Read = TenantEntity.Read(
     id = 2L,
     publicTenantId = publicTenantIdStr_2,
     name = tenantName_2,
+    description = tenantDescription_2,
     createdAt = nowInstant,
     updatedAt = nowInstant,
     deactivatedAt = None
   )
 
   val tenantEntityWrite_3: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_3, name = tenantName_3)
+    TenantEntity.Write(publicTenantId = publicTenantIdStr_3, name = tenantName_3, description = tenantDescription_3)
   val tenantEntityRead_3: TenantEntity.Read = TenantEntity.Read(
     id = 2L,
     publicTenantId = publicTenantIdStr_3,
     name = tenantName_3,
+    description = tenantDescription_3,
     createdAt = nowInstant,
     updatedAt = nowInstant,
     deactivatedAt = None
@@ -114,7 +117,8 @@ trait IntegrationTestData extends FixedClock {
 
   val tenantEntityUpdate_1: TenantEntity.Update = TenantEntity.Update(
     publicTenantId = publicTenantIdStr_1,
-    name = tenantNameUpdated
+    name = tenantNameUpdated,
+    description = tenantDescriptionUpdated
   )
 
   val deactivatedEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))

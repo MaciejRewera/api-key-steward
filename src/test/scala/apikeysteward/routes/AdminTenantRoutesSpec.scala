@@ -8,6 +8,7 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.tenant._
+import apikeysteward.routes.model.apikey.{CreateApiKeyRequest, CreateApiKeyResponse}
 import apikeysteward.services.TenantService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -147,7 +148,7 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
   "AdminTenantRoutes on POST /admin/tenants" when {
 
     val uri = Uri.unsafeFromString("/admin/tenants")
-    val requestBody = CreateTenantRequest(name = name)
+    val requestBody = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)
@@ -227,6 +228,55 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
           } yield ()
         }
       }
+
+      "request body is provided with description containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call TenantService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(tenantService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description longer than 250 characters" should {
+
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call TenantService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(tenantService)
+          } yield ()
+        }
+      }
     }
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
@@ -240,16 +290,34 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
         } yield ()
       }
 
-      "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenant_1.asRight)
+      "return successful value returned by TenantService" when {
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Created
-          _ <- response
-            .as[CreateTenantResponse]
-            .asserting(_ shouldBe CreateTenantResponse(tenant_1))
-        } yield ()
+        "provided with description" in authorizedFixture {
+          tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenant_1.asRight)
+
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Created
+            _ <- response
+              .as[CreateTenantResponse]
+              .asserting(_ shouldBe CreateTenantResponse(tenant_1))
+          } yield ()
+        }
+
+        "provided with NO description" in authorizedFixture {
+          val tenantWithoutDescription = tenant_1.copy(description = None)
+          tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenantWithoutDescription.asRight)
+
+          val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
+
+          for {
+            response <- adminRoutes.run(requestWithoutDescription)
+            _ = response.status shouldBe Status.Created
+            _ <- response
+              .as[CreateTenantResponse]
+              .asserting(_ shouldBe CreateTenantResponse(tenantWithoutDescription))
+          } yield ()
+        }
       }
 
       "return Internal Server Error when TenantService returns successful IO with Left containing TenantInsertionError" in authorizedFixture {
@@ -279,7 +347,7 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
   "AdminTenantRoutes on PUT /admin/tenants/{tenantId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
-    val requestBody = UpdateTenantRequest(name = name)
+    val requestBody = UpdateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)

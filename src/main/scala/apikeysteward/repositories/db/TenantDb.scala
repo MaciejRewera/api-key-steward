@@ -27,6 +27,7 @@ class TenantDb()(implicit clock: Clock) {
           "id",
           "public_tenant_id",
           "name",
+          "description",
           "created_at",
           "updated_at",
           "deactivated_at"
@@ -104,13 +105,14 @@ class TenantDb()(implicit clock: Clock) {
   private object Queries {
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, public_tenant_id, name, created_at, updated_at, deactivated_at"
+      fr"SELECT id, public_tenant_id, name, description, created_at, updated_at, deactivated_at"
 
     def insert(tenantEntity: TenantEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO tenant(public_tenant_id, name, created_at, updated_at)
+      sql"""INSERT INTO tenant(public_tenant_id, name, description, created_at, updated_at)
             VALUES (
               ${tenantEntity.publicTenantId},
               ${tenantEntity.name},
+              ${tenantEntity.description},
               $now,
               $now
             )
@@ -119,6 +121,7 @@ class TenantDb()(implicit clock: Clock) {
     def update(tenantEntity: TenantEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE tenant
             SET name = ${tenantEntity.name},
+                description = ${tenantEntity.description},
                 updated_at = $now
             WHERE tenant.public_tenant_id = ${tenantEntity.publicTenantId}
            """.stripMargin.update

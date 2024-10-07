@@ -60,6 +60,21 @@ class TenantDbSpec
           resultTenant shouldBe tenantEntityRead_1.copy(id = resultTenant.id)
         }
       }
+
+      "insert entity with empty description into DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1.copy(description = None))
+
+          res <- Queries.getAllTenants
+        } yield res).transact(transactor)
+
+        result.asserting { allTenants =>
+          allTenants.size shouldBe 1
+
+          val resultTenant = allTenants.head
+          resultTenant shouldBe tenantEntityRead_1.copy(id = resultTenant.id, description = None)
+        }
+      }
     }
 
     "there is a row in the DB with a different tenantId" should {
@@ -88,6 +103,25 @@ class TenantDbSpec
           val expectedTenants = Seq(
             tenantEntityRead_1.copy(id = entityRead_1.id),
             tenantEntityRead_2.copy(id = entityRead_2.id)
+          )
+          allTenants should contain theSameElementsAs expectedTenants
+        }
+      }
+
+      "insert entity with empty description into DB" in {
+        val result = (for {
+          entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
+
+          entityRead_2 <- tenantDb.insert(tenantEntityWrite_2.copy(description = None))
+          res <- Queries.getAllTenants
+        } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
+
+        result.asserting { case (allTenants, entityRead_1, entityRead_2) =>
+          allTenants.size shouldBe 2
+
+          val expectedTenants = Seq(
+            tenantEntityRead_1.copy(id = entityRead_1.id),
+            tenantEntityRead_2.copy(id = entityRead_2.id, description = None)
           )
           allTenants should contain theSameElementsAs expectedTenants
         }
@@ -129,7 +163,7 @@ class TenantDbSpec
 
   "TenantDb on update" when {
 
-    val updatedEntityRead = tenantEntityRead_1.copy(name = tenantNameUpdated)
+    val updatedEntityRead = tenantEntityRead_1.copy(name = tenantNameUpdated, description = tenantDescriptionUpdated)
 
     "there are NO rows in the Tenant table" should {
 

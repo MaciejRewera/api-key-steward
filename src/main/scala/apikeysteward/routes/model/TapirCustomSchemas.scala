@@ -36,11 +36,13 @@ object TapirCustomSchemas {
     implicitly[Derived[Schema[CreateTenantRequest]]].value
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateName)
+      .modify(_.description)(validateDescription)
 
   val updateTenantRequestSchema: Schema[UpdateTenantRequest] =
     implicitly[Derived[Schema[UpdateTenantRequest]]].value
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateName)
+      .modify(_.description)(validateDescription)
 
   private def trimStringFields(request: CreateApiKeyRequest): CreateApiKeyRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
@@ -52,10 +54,10 @@ object TapirCustomSchemas {
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def trimStringFields(request: CreateTenantRequest): CreateTenantRequest =
-    request.copy(name = request.name.trim)
+    request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def trimStringFields(request: UpdateTenantRequest): UpdateTenantRequest =
-    request.copy(name = request.name.trim)
+    request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def validateName(schema: Schema[String]): Schema[String] =
     schema.validate(Validator.nonEmptyString and Validator.maxLength(250))

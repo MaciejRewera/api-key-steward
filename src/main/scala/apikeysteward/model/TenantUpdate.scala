@@ -8,7 +8,8 @@ import java.util.UUID
 
 case class TenantUpdate(
     tenantId: UUID,
-    name: String
+    name: String,
+    description: Option[String]
 )
 
 object TenantUpdate {
@@ -16,6 +17,7 @@ object TenantUpdate {
 
   def from(tenantId: UUID, updateTenantRequest: UpdateTenantRequest): TenantUpdate = TenantUpdate(
     tenantId = tenantId,
-    name = updateTenantRequest.name
+    name = updateTenantRequest.name,
+    description = updateTenantRequest.description
   )
 }
