@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS tenant
     id               INTEGER PRIMARY key generated always as identity,
     public_tenant_id VARCHAR(128) NOT NULL,
     name             VARCHAR(256) NOT NULL,
+    description      VARCHAR(256),
 
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -18,9 +19,9 @@ CREATE TABLE IF NOT EXISTS tenant_deleted
     tenant_id        INTEGER      NOT NULL,
     public_tenant_id VARCHAR(128) NOT NULL,
     name             VARCHAR(256) NOT NULL,
+    description      VARCHAR(256),
 
     created_at       TIMESTAMPTZ  NOT NULL,
     updated_at       TIMESTAMPTZ  NOT NULL,
-    deactivated_at   TIMESTAMPTZ,
-    UNIQUE (public_tenant_id)
+    deactivated_at   TIMESTAMPTZ
 );

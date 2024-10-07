@@ -6,7 +6,8 @@ import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.Schema
 
 case class CreateTenantRequest(
-    name: String
+    name: String,
+    description: Option[String] = None
 )
 
 object CreateTenantRequest {

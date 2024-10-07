@@ -227,6 +227,55 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
           } yield ()
         }
       }
+
+      "request body is provided with description containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call TenantService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(tenantService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description longer than 250 characters" should {
+
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call TenantService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(tenantService)
+          } yield ()
+        }
+      }
     }
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {

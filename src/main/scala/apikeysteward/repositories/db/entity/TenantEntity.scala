@@ -10,6 +10,7 @@ object TenantEntity {
       id: Long,
       publicTenantId: String,
       name: String,
+      description: Option[String] = None,
       override val createdAt: Instant,
       override val updatedAt: Instant,
       deactivatedAt: Option[Instant]
@@ -17,7 +18,8 @@ object TenantEntity {
 
   case class Write(
       publicTenantId: String,
-      name: String
+      name: String,
+      description: Option[String] = None
   )
 
   object Write {
@@ -29,7 +31,8 @@ object TenantEntity {
 
   case class Update(
       publicTenantId: String,
-      name: String
+      name: String,
+      description: Option[String] = None
   )
 
   object Update {

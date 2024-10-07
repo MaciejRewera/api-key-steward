@@ -261,54 +261,54 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
             _ = verifyZeroInteractions(managementService)
           } yield ()
         }
+      }
 
-        "request body is provided with description longer than 250 characters" should {
+      "request body is provided with description longer than 250 characters" should {
 
-          val descriptionThatIsTooLong = List.fill(251)("A").mkString
-          val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
-          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-            Some(
-              s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
-            )
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
           )
+        )
 
-          "return Bad Request" in authorizedFixture {
-            for {
-              response <- adminRoutes.run(requestWithLongName)
-              _ = response.status shouldBe Status.BadRequest
-              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-            } yield ()
-          }
-
-          "NOT call ManagementService" in authorizedFixture {
-            for {
-              _ <- adminRoutes.run(requestWithLongName)
-              _ = verifyZeroInteractions(managementService)
-            } yield ()
-          }
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
         }
 
-        "request body is provided with negative ttl value" should {
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
 
-          val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
-          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-            Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
-          )
+      "request body is provided with negative ttl value" should {
 
-          "return Bad Request" in authorizedFixture {
-            for {
-              response <- adminRoutes.run(requestWithNegativeTtl)
-              _ = response.status shouldBe Status.BadRequest
-              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-            } yield ()
-          }
+        val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
+        )
 
-          "NOT call ManagementService" in authorizedFixture {
-            for {
-              _ <- adminRoutes.run(requestWithNegativeTtl)
-              _ = verifyZeroInteractions(managementService)
-            } yield ()
-          }
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithNegativeTtl)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithNegativeTtl)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
         }
       }
     }

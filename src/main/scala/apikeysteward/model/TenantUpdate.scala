@@ -8,7 +8,8 @@ import java.util.UUID
 
 case class TenantUpdate(
     tenantId: UUID,
-    name: String
+    name: String,
+    description: Option[String] = None
 )
 
 object TenantUpdate {
