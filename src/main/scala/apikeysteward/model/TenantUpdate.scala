@@ -17,6 +17,7 @@ object TenantUpdate {
 
   def from(tenantId: UUID, updateTenantRequest: UpdateTenantRequest): TenantUpdate = TenantUpdate(
     tenantId = tenantId,
-    name = updateTenantRequest.name
+    name = updateTenantRequest.name,
+    description = updateTenantRequest.description
   )
 }
