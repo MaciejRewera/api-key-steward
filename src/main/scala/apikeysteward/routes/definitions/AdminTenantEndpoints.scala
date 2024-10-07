@@ -27,7 +27,7 @@ private[routes] object AdminTenantEndpoints {
         jsonBody[CreateTenantRequest]
           .description("Details of the Tenant to create.")
           .example(
-            CreateTenantRequest(name = "My new Tenant")
+            CreateTenantRequest(name = "My new Tenant", description = Some("A description what this Tenant is for."))
           )
       )
       .out(statusCode.description(StatusCode.Created, "Tenant created"))
@@ -49,7 +49,7 @@ private[routes] object AdminTenantEndpoints {
         jsonBody[UpdateTenantRequest]
           .description("Details of the Tenant to update.")
           .example(
-            UpdateTenantRequest(name = "My new Tenant")
+            UpdateTenantRequest(name = "My new Tenant", description = Some("A description what this Tenant is for."))
           )
       )
       .out(statusCode.description(StatusCode.Ok, "Tenant updated"))

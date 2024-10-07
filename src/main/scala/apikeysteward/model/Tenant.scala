@@ -10,7 +10,7 @@ import java.util.UUID
 case class Tenant(
     tenantId: UUID,
     name: String,
-    description: Option[String] = None,
+    description: Option[String],
     isActive: Boolean
 )
 

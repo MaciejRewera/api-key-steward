@@ -9,7 +9,7 @@ import java.util.UUID
 case class TenantUpdate(
     tenantId: UUID,
     name: String,
-    description: Option[String] = None
+    description: Option[String]
 )
 
 object TenantUpdate {

@@ -7,7 +7,7 @@ import java.util.UUID
 case class ApiKeyDataUpdate(
     publicKeyId: UUID,
     name: String,
-    description: Option[String] = None
+    description: Option[String]
 )
 
 object ApiKeyDataUpdate {

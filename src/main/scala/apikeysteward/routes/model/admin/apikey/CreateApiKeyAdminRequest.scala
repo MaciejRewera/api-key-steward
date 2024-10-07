@@ -9,7 +9,7 @@ import sttp.tapir.Schema
 case class CreateApiKeyAdminRequest(
     userId: String,
     name: String,
-    description: Option[String] = None,
+    description: Option[String],
     ttl: Int,
     scopes: List[String]
 ) {

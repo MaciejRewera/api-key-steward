@@ -12,7 +12,7 @@ import java.util.UUID
 case class ApiKeyData(
     publicKeyId: UUID,
     name: String,
-    description: Option[String] = None,
+    description: Option[String],
     userId: String,
     expiresAt: Instant,
     scopes: List[String]

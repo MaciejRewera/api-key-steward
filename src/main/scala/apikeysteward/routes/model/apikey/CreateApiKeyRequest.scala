@@ -7,7 +7,7 @@ import sttp.tapir._
 
 case class CreateApiKeyRequest(
     name: String,
-    description: Option[String] = None,
+    description: Option[String],
     ttl: Int,
     scopes: List[String]
 )

@@ -32,7 +32,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
   "TenantService on createTenant" when {
 
-    val createTenantRequest = CreateTenantRequest(name = tenantName_1)
+    val createTenantRequest = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val insertionError = TenantInsertionError.tenantAlreadyExistsError(publicKeyIdStr_1)
 
@@ -148,7 +148,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
   "TenantService on updateTenant" should {
 
-    val updateTenantRequest = UpdateTenantRequest(name = tenantNameUpdated)
+    val updateTenantRequest = UpdateTenantRequest(name = tenantNameUpdated, description = tenantDescriptionUpdated)
 
     "call TenantRepository" in {
       tenantRepository.update(any[TenantUpdate]) returns IO.pure(Right(tenant_1))
@@ -156,8 +156,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       for {
         _ <- tenantService.updateTenant(publicTenantId_1, updateTenantRequest)
 
-        expectedTenantUpdate = TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated)
-        _ = verify(tenantRepository).update(eqTo(expectedTenantUpdate))
+        _ = verify(tenantRepository).update(eqTo(tenantUpdate_1))
       } yield ()
     }
 

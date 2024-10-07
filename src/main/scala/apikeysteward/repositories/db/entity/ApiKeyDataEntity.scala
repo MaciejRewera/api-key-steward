@@ -11,7 +11,7 @@ object ApiKeyDataEntity {
       apiKeyId: Long,
       publicKeyId: String,
       name: String,
-      description: Option[String] = None,
+      description: Option[String],
       userId: String,
       expiresAt: Instant,
       override val createdAt: Instant,
@@ -22,7 +22,7 @@ object ApiKeyDataEntity {
       apiKeyId: Long,
       publicKeyId: String,
       name: String,
-      description: Option[String] = None,
+      description: Option[String],
       userId: String,
       expiresAt: Instant
   )
@@ -42,7 +42,7 @@ object ApiKeyDataEntity {
   case class Update(
       publicKeyId: String,
       name: String,
-      description: Option[String] = None
+      description: Option[String]
   )
 
   object Update {
