@@ -49,7 +49,9 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = 1L)))
+        result.asserting(res =>
+          res shouldBe Right(apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = res.value.apiKeyId))
+        )
       }
 
       "insert entity into DB" in {

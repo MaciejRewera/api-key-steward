@@ -1,7 +1,7 @@
 package apikeysteward.base
 
 import apikeysteward.base.TestData._
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, TenantEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ApplicationEntity, TenantEntity}
 
 import java.util.concurrent.TimeUnit
 
@@ -79,6 +79,9 @@ trait IntegrationTestData extends FixedClock {
     description = TestData.descriptionUpdated
   )
 
+  /** ***********************************************************************************************************
+    */
+
   val tenantEntityWrite_1: TenantEntity.Write =
     TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1, description = tenantDescription_1)
   val tenantEntityRead_1: TenantEntity.Read = TenantEntity.Read(
@@ -121,6 +124,69 @@ trait IntegrationTestData extends FixedClock {
     description = tenantDescriptionUpdated
   )
 
-  val deactivatedEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
+  val deactivatedTenantEntityRead_1: TenantEntity.Read = tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant))
+
+  /** ***********************************************************************************************************
+    */
+
+  val applicationEntityWrite_1: ApplicationEntity.Write = ApplicationEntity.Write(
+    tenantId = 1L,
+    publicApplicationId = publicApplicationIdStr_1,
+    name = applicationName_1,
+    description = applicationDescription_1
+  )
+  val applicationEntityRead_1: ApplicationEntity.Read = ApplicationEntity.Read(
+    id = 1L,
+    tenantId = 1L,
+    publicApplicationId = publicApplicationIdStr_1,
+    name = applicationName_1,
+    description = applicationDescription_1,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val applicationEntityWrite_2: ApplicationEntity.Write = ApplicationEntity.Write(
+    tenantId = 2L,
+    publicApplicationId = publicApplicationIdStr_2,
+    name = applicationName_2,
+    description = applicationDescription_2
+  )
+  val applicationEntityRead_2: ApplicationEntity.Read = ApplicationEntity.Read(
+    id = 2L,
+    tenantId = 2L,
+    publicApplicationId = publicApplicationIdStr_2,
+    name = applicationName_2,
+    description = applicationDescription_2,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val applicationEntityWrite_3: ApplicationEntity.Write = ApplicationEntity.Write(
+    tenantId = 3L,
+    publicApplicationId = publicApplicationIdStr_3,
+    name = applicationName_3,
+    description = applicationDescription_3
+  )
+  val applicationEntityRead_3: ApplicationEntity.Read = ApplicationEntity.Read(
+    id = 3L,
+    tenantId = 3L,
+    publicApplicationId = publicApplicationIdStr_3,
+    name = applicationName_3,
+    description = applicationDescription_3,
+    createdAt = nowInstant,
+    updatedAt = nowInstant,
+    deactivatedAt = None
+  )
+
+  val applicationEntityUpdate_1: ApplicationEntity.Update = ApplicationEntity.Update(
+    publicApplicationId = publicApplicationIdStr_1,
+    name = applicationNameUpdated,
+    description = applicationDescriptionUpdated
+  )
+
+  val deactivatedApplicationEntityRead_1: ApplicationEntity.Read =
+    applicationEntityRead_1.copy(deactivatedAt = Some(nowInstant))
 
 }

@@ -491,7 +491,7 @@ class TenantDbSpec
           res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedTenantEntityRead_1.copy(id = res.value.id)))
       }
 
       "deactivate this row" in {
@@ -504,7 +504,7 @@ class TenantDbSpec
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe deactivatedEntityRead_1.copy(id = res.head.id)
+          res.head shouldBe deactivatedTenantEntityRead_1.copy(id = res.head.id)
         }
       }
     }
@@ -519,7 +519,7 @@ class TenantDbSpec
           res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedTenantEntityRead_1.copy(id = res.value.id)))
       }
 
       "make NO changes to the DB" in {
@@ -533,7 +533,7 @@ class TenantDbSpec
 
         result.asserting { res =>
           res.size shouldBe 1
-          res.head shouldBe deactivatedEntityRead_1.copy(id = res.head.id)
+          res.head shouldBe deactivatedTenantEntityRead_1.copy(id = res.head.id)
         }
       }
     }
@@ -549,7 +549,7 @@ class TenantDbSpec
           res <- tenantDb.deactivate(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedTenantEntityRead_1.copy(id = res.value.id)))
       }
 
       "deactivate only this row and leave others unchanged" in {
@@ -566,7 +566,7 @@ class TenantDbSpec
           res.size shouldBe 3
 
           val expectedEntities = Seq(
-            deactivatedEntityRead_1.copy(id = entityRead_1.id),
+            deactivatedTenantEntityRead_1.copy(id = entityRead_1.id),
             entityRead_2,
             entityRead_3
           )
@@ -619,7 +619,7 @@ class TenantDbSpec
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe List(deactivatedEntityRead_1.copy(id = res.head.id)))
+        result.asserting(res => res shouldBe List(deactivatedTenantEntityRead_1.copy(id = res.head.id)))
       }
     }
 
@@ -657,7 +657,7 @@ class TenantDbSpec
           res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedTenantEntityRead_1.copy(id = res.value.id)))
       }
 
       "delete this row from the Tenant table" in {
@@ -687,7 +687,7 @@ class TenantDbSpec
           res <- tenantDb.deleteDeactivated(publicTenantId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(deactivatedEntityRead_1.copy(id = res.value.id)))
+        result.asserting(res => res shouldBe Right(deactivatedTenantEntityRead_1.copy(id = res.value.id)))
       }
 
       "delete this row from the Tenant table and leave others intact" in {
