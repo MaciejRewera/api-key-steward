@@ -289,6 +289,78 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         }
       }
 
+      "request body is provided with empty userId" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(userId = ""))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected userId to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with userId containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(userId = "  \n   \n\n "))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected userId to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with userId longer than 250 characters" should {
+
+        val userIdThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(userId = userIdThatIsTooLong))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected userId to have length less than or equal to 250, but got: "$userIdThatIsTooLong")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ManagementService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(managementService)
+          } yield ()
+        }
+      }
+
       "request body is provided with negative ttl value" should {
 
         val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
