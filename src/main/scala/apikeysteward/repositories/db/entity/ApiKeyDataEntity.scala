@@ -42,8 +42,7 @@ object ApiKeyDataEntity {
   case class Update(
       publicKeyId: String,
       name: String,
-      description: Option[String] = None,
-      userId: String
+      description: Option[String] = None
   )
 
   object Update {
@@ -51,8 +50,7 @@ object ApiKeyDataEntity {
       ApiKeyDataEntity.Update(
         publicKeyId = apiKeyDataUpdate.publicKeyId.toString,
         name = apiKeyDataUpdate.name,
-        description = apiKeyDataUpdate.description,
-        userId = apiKeyDataUpdate.userId
+        description = apiKeyDataUpdate.description
       )
   }
 }

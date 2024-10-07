@@ -12,7 +12,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val adminApiKeyManagementEndpoints = List(
     AdminApiKeyManagementEndpoints.createApiKeyEndpoint,
     AdminApiKeyManagementEndpoints.getAllApiKeysForUserEndpoint,
-    AdminApiKeyManagementEndpoints.getSingleApiKeyForUserEndpoint,
+    AdminApiKeyManagementEndpoints.getSingleApiKeyEndpoint,
     AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
   ).map(_.withTag(Tags.AdminApiKeys))
 

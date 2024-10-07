@@ -2,9 +2,13 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.errorOutVariantBadRequest
 import apikeysteward.routes.model.apikey._
+import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
 import sttp.tapir._
+import sttp.tapir.generic.auto.schemaForCaseClass
+import sttp.tapir.json.circe.jsonBody
 
 import java.util.UUID
 
@@ -14,9 +18,34 @@ private[routes] object ApiKeyManagementEndpoints {
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
-    ApiKeyManagementEndpointsBase.createApiKeyEndpointBase
+    EndpointsBase.authenticatedEndpointBase.post
+      .out(statusCode.description(StatusCode.Created, "API key created"))
       .description("Create new API key.")
       .in("api-keys")
+      .in(
+        jsonBody[CreateApiKeyRequest]
+          .description(
+            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase}."
+          )
+          .example(
+            CreateApiKeyRequest(
+              name = "My API key",
+              description = Some("A short description what this API key is for."),
+              ttl = 60,
+              scopes = List("read:myApi", "write:myApi")
+            )
+          )
+      )
+      .out(
+        jsonBody[CreateApiKeyResponse]
+          .example(
+            CreateApiKeyResponse(
+              apiKey = EndpointsBase.ApiKeyExample.value,
+              apiKeyData = EndpointsBase.ApiKeyDataExample
+            )
+          )
+      )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
     ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase

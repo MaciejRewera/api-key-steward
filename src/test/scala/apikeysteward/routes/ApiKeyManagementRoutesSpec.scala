@@ -843,17 +843,17 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
       "JwtOps returns Right containing user ID" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
-            _ = verify(managementService).deleteApiKey(eqTo(expectedUserId), eqTo(publicKeyId_1))
+            _ = verify(managementService).deleteApiKeyBelongingToUserWith(eqTo(expectedUserId), eqTo(publicKeyId_1))
           } yield ()
         }
 
         "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
           for {
             response <- managementRoutes.run(request)
@@ -863,7 +863,7 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         }
 
         "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
             Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
           )
 
@@ -877,7 +877,9 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         }
 
         "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
+          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
+            Left(ApiKeyNotFoundError)
+          )
 
           for {
             response <- managementRoutes.run(request)
@@ -889,7 +891,7 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         }
 
         "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-          managementService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.raiseError(testException)
 
           for {
             response <- managementRoutes.run(request)

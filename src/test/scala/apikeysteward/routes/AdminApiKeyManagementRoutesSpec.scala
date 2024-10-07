@@ -8,7 +8,11 @@ import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.admin.{UpdateApiKeyRequest, UpdateApiKeyResponse}
+import apikeysteward.routes.model.admin.apikey.{
+  CreateApiKeyAdminRequest,
+  UpdateApiKeyAdminRequest,
+  UpdateApiKeyAdminResponse
+}
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -146,10 +150,11 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminApiKeyRoutes on POST /admin/users/{userId}/api-keys" when {
+  "AdminApiKeyRoutes on POST /admin/api-keys" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys")
-    val requestBody = CreateApiKeyRequest(
+    val uri = Uri.unsafeFromString(s"/admin/api-keys")
+    val requestBody = CreateApiKeyAdminRequest(
+      userId = userId_1,
       name = name,
       description = description,
       ttl = ttlMinutes,
@@ -317,7 +322,14 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).createApiKey(eqTo(userId_1), eqTo(requestBody))
+
+          expectedRequest = CreateApiKeyRequest(
+            name = requestBody.name,
+            description = requestBody.description,
+            ttl = requestBody.ttl,
+            scopes = requestBody.scopes
+          )
+          _ = verify(managementService).createApiKey(eqTo(userId_1), eqTo(expectedRequest))
         } yield ()
       }
 
@@ -390,10 +402,10 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminApiKeyRoutes on PUT /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on PUT /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
-    val requestBody = UpdateApiKeyRequest(name = name, description = description)
+    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
+    val requestBody = UpdateApiKeyAdminRequest(name = name, description = description)
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)
@@ -402,7 +414,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
         val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
 
         for {
@@ -542,20 +554,20 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
           apiKeyData_1.asRight
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).updateApiKey(eqTo(userId_1), eqTo(publicKeyId_1), eqTo(requestBody))
+          _ = verify(managementService).updateApiKey(eqTo(publicKeyId_1), eqTo(requestBody))
         } yield ()
       }
 
       "return successful value returned by ManagementService" when {
 
         "provided with description" in authorizedFixture {
-          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+          managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
             apiKeyData_1.asRight
           )
 
@@ -563,14 +575,14 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
             _ <- response
-              .as[UpdateApiKeyResponse]
-              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyData_1))
+              .as[UpdateApiKeyAdminResponse]
+              .asserting(_ shouldBe UpdateApiKeyAdminResponse(apiKeyData_1))
           } yield ()
         }
 
         "provided with NO description" in authorizedFixture {
           val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(
+          managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
             apiKeyDataWithoutDescription.asRight
           )
 
@@ -580,15 +592,17 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
             response <- adminRoutes.run(requestWithoutDescription)
             _ = response.status shouldBe Status.Ok
             _ <- response
-              .as[UpdateApiKeyResponse]
-              .asserting(_ shouldBe UpdateApiKeyResponse(apiKeyDataWithoutDescription))
+              .as[UpdateApiKeyAdminResponse]
+              .asserting(_ shouldBe UpdateApiKeyAdminResponse(apiKeyDataWithoutDescription))
           } yield ()
         }
       }
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         val error = ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
-        managementService.updateApiKey(any[String], any[UUID], any[UpdateApiKeyRequest]) returns IO.pure(Left(error))
+        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
+          Left(error)
+        )
 
         for {
           response <- adminRoutes.run(request)
@@ -600,7 +614,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
+        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -668,16 +682,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminApiKeyRoutes on GET /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on GET /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
 
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
         val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
 
         for {
@@ -693,16 +707,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).getApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ = verify(managementService).getApiKey(eqTo(publicKeyId_1))
         } yield ()
       }
 
       "return successful value returned by ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
@@ -712,7 +726,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(None)
+        managementService.getApiKey(any[UUID]) returns IO.pure(None)
 
         for {
           response <- adminRoutes.run(request)
@@ -726,7 +740,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+        managementService.getApiKey(any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -738,16 +752,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
 
   }
 
-  "AdminApiKeyRoutes on DELETE /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on DELETE /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
         val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
 
         for {
@@ -763,16 +777,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+        managementService.deleteApiKey(any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).deleteApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ = verify(managementService).deleteApiKey(eqTo(publicKeyId_1))
         } yield ()
       }
 
       "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+        managementService.deleteApiKey(any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
@@ -781,8 +795,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
         } yield ()
       }
 
-      "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(
+      "return Not Found when ManagementService returns Left containing ApiKeyDataNotFoundError" in authorizedFixture {
+        managementService.deleteApiKey(any[UUID]) returns IO.pure(
           Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
         )
 
@@ -796,7 +810,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
+        managementService.deleteApiKey(any[UUID]) returns IO.pure(Left(ApiKeyNotFoundError))
 
         for {
           response <- adminRoutes.run(request)
@@ -808,7 +822,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.deleteApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+        managementService.deleteApiKey(any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

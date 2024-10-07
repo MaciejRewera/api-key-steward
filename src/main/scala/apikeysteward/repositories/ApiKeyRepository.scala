@@ -1,11 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{
-  ApiKeyDataNotFoundError,
-  ApiKeyInsertionError,
-  ApiKeyNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyDataScopesEntity, ApiKeyEntity, ScopeEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDataScopesDb, ApiKeyDb, ScopeDb}
@@ -65,12 +61,12 @@ class ApiKeyRepository(
   def update(apiKeyDataUpdate: ApiKeyDataUpdate): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
     (for {
       _ <- logInfoE[ApiKeyDataNotFoundError](
-        s"Updating API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
+        s"Updating API Key Data for key with publicKeyId: [${apiKeyDataUpdate.publicKeyId}]..."
       )
       entityAfterUpdateRead <- EitherT(apiKeyDataDb.update(ApiKeyDataEntity.Update.from(apiKeyDataUpdate)))
         .flatTap(_ =>
           logInfoE[ApiKeyDataNotFoundError](
-            s"Updated API Key Data for userId: [${apiKeyDataUpdate.userId}], publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
+            s"Updated API Key Data for key with publicKeyId: [${apiKeyDataUpdate.publicKeyId}]."
           )
         )
 
@@ -103,7 +99,6 @@ class ApiKeyRepository(
     (for {
       apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(hashedApiKey))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
-
       scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
@@ -125,6 +120,14 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
     } yield apiKeyData).value.transact(transactor)
 
+  def getByPublicKeyId(publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    (for {
+      apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByPublicKeyId(publicKeyId))
+      scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
+
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
+    } yield apiKeyData).value.transact(transactor)
+
   private def getScopes(apiKeyDataId: Long): doobie.ConnectionIO[List[ScopeEntity.Read]] =
     for {
       apiKeyDataScopesEntitiesRead <- apiKeyDataScopesDb.getByApiKeyDataId(apiKeyDataId).compile.toList
@@ -134,12 +137,28 @@ class ApiKeyRepository(
   def getAllUserIds: IO[List[String]] =
     apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
 
-  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] = {
-    for {
+  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    (for {
       apiKeyDataToDeleteE <- apiKeyDataDb
         .getBy(userId, publicKeyIdToDelete)
         .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(userId, publicKeyIdToDelete)))
 
+      deletionResult <- delete(apiKeyDataToDeleteE)
+    } yield deletionResult).transact(transactor)
+
+  def delete(publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    (for {
+      apiKeyDataToDeleteE <- apiKeyDataDb
+        .getByPublicKeyId(publicKeyIdToDelete)
+        .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyIdToDelete)))
+
+      deletionResult <- delete(apiKeyDataToDeleteE)
+    } yield deletionResult).transact(transactor)
+
+  private def delete(
+      apiKeyDataToDeleteE: Either[ApiKeyDbError, ApiKeyDataEntity.Read]
+  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyData]] =
+    for {
       apiKeyDataScopesToDeleteE <- apiKeyDataToDeleteE
         .traverse(apiKeyData => apiKeyDataScopesDb.getByApiKeyDataId(apiKeyData.id).compile.toList)
 
@@ -149,24 +168,22 @@ class ApiKeyRepository(
       } yield (apiKeyDataToDelete, apiKeyDataScopesToDelete)
 
       deletionResult <- apiKeyDataToDeleteCombinedE.flatTraverse {
-        case (apiKeyDataToDelete, apiKeyDataScopesToDelete) => delete(apiKeyDataToDelete, apiKeyDataScopesToDelete)
+        case (apiKeyDataToDelete, apiKeyDataScopesToDelete) =>
+          performDeletion(apiKeyDataToDelete, apiKeyDataScopesToDelete)
       }
-
     } yield deletionResult
-  }.transact(transactor)
 
-  private def delete(
+  private def performDeletion(
       apiKeyDataToDelete: ApiKeyDataEntity.Read,
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read]
   ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyData]] = {
 
-    val userId = apiKeyDataToDelete.userId
     val publicKeyIdToDelete = UUID.fromString(apiKeyDataToDelete.publicKeyId)
 
     (for {
-      _ <- deleteApiKeyDataScopes(apiKeyDataScopesToDelete, userId, publicKeyIdToDelete)
-      _ <- deleteApiKeyData(userId, publicKeyIdToDelete)
-      _ <- deleteApiKey(apiKeyDataToDelete.apiKeyId, userId, publicKeyIdToDelete)
+      _ <- deleteApiKeyDataScopes(apiKeyDataScopesToDelete, publicKeyIdToDelete)
+      _ <- deleteApiKeyData(publicKeyIdToDelete)
+      _ <- deleteApiKey(apiKeyDataToDelete.apiKeyId, publicKeyIdToDelete)
 
       res <- buildResult(apiKeyDataToDelete, apiKeyDataScopesToDelete)
     } yield res).value
@@ -174,20 +191,19 @@ class ApiKeyRepository(
 
   private def deleteApiKeyDataScopes(
       apiKeyDataScopesToDelete: List[ApiKeyDataScopesEntity.Read],
-      userId: String,
       publicKeyIdToDelete: UUID
   ): EitherT[doobie.ConnectionIO, ApiKeyDbError, List[ApiKeyDataScopesEntity.Read]] = {
     val apiKeyDataIds = apiKeyDataScopesToDelete.map(_.apiKeyDataId).distinct
 
     val result = if (apiKeyDataIds.nonEmpty) {
       for {
-        _ <- logger.info(s"Deleting ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
+        _ <- logger.info(s"Deleting ApiKeyDataScopes for key with publicKeyId: [$publicKeyIdToDelete]...")
 
         res <- apiKeyDataIds
           .flatTraverse(apiKeyDataScopesDb.delete(_).compile.toList)
           .map(_.asRight[ApiKeyDbError])
 
-        _ <- logger.info(s"Deleted ApiKeyDataScopes for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
+        _ <- logger.info(s"Deleted ApiKeyDataScopes for key with publicKeyId: [$publicKeyIdToDelete].")
       } yield res
     } else {
       List.empty[ApiKeyDataScopesEntity.Read].asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
@@ -197,24 +213,22 @@ class ApiKeyRepository(
   }
 
   private def deleteApiKeyData(
-      userId: String,
       publicKeyIdToDelete: UUID
   ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyDataEntity.Read] =
     EitherT(for {
-      _ <- logger.info(s"Deleting ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
-      res <- apiKeyDataDb.delete(userId, publicKeyIdToDelete)
-      _ <- logger.info(s"Deleted ApiKeyData for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
+      _ <- logger.info(s"Deleting ApiKeyData for key with publicKeyId: [$publicKeyIdToDelete]...")
+      res <- apiKeyDataDb.delete(publicKeyIdToDelete)
+      _ <- logger.info(s"Deleted ApiKeyData for key with publicKeyId: [$publicKeyIdToDelete].")
     } yield res)
 
   private def deleteApiKey(
       apiKeyId: Long,
-      userId: String,
       publicKeyIdToDelete: UUID
   ): EitherT[doobie.ConnectionIO, ApiKeyNotFoundError.type, ApiKeyEntity.Read] =
     EitherT(for {
-      _ <- logger.info(s"Deleting ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete]...")
+      _ <- logger.info(s"Deleting ApiKey for key with publicKeyId: [$publicKeyIdToDelete]...")
       res <- apiKeyDb.delete(apiKeyId)
-      _ <- logger.info(s"Deleted ApiKey for userId: [$userId], publicKeyId: [$publicKeyIdToDelete].")
+      _ <- logger.info(s"Deleted ApiKey for key with publicKeyId: [$publicKeyIdToDelete].")
     } yield res)
 
   private def buildResult(

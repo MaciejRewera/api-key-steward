@@ -89,7 +89,7 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
           .serverLogic { jwt => publicKeyId =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.deleteApiKey(_, publicKeyId).map {
+              result <- userIdE.flatTraverse(managementService.deleteApiKeyBelongingToUserWith(_, publicKeyId).map {
                 case Right(deletedApiKeyData) =>
                   (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 

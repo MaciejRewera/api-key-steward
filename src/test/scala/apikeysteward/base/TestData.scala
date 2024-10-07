@@ -91,8 +91,7 @@ trait TestData extends FixedClock {
   val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
     publicKeyId = publicKeyId_1,
     name = nameUpdated,
-    description = descriptionUpdated,
-    userId = userId_1
+    description = descriptionUpdated
   )
 
   val publicTenantId_1: UUID = UUID.randomUUID()

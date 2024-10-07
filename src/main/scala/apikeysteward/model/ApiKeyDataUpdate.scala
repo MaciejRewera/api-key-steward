@@ -1,23 +1,21 @@
 package apikeysteward.model
 
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 
 import java.util.UUID
 
 case class ApiKeyDataUpdate(
     publicKeyId: UUID,
     name: String,
-    description: Option[String] = None,
-    userId: String
+    description: Option[String] = None
 )
 
 object ApiKeyDataUpdate {
 
-  def from(publicKeyId: UUID, userId: String, updateApiKeyRequest: UpdateApiKeyRequest): ApiKeyDataUpdate =
+  def from(publicKeyId: UUID, updateApiKeyRequest: UpdateApiKeyAdminRequest): ApiKeyDataUpdate =
     ApiKeyDataUpdate(
       publicKeyId = publicKeyId,
       name = updateApiKeyRequest.name,
-      description = updateApiKeyRequest.description,
-      userId = userId
+      description = updateApiKeyRequest.description
     )
 }

@@ -26,13 +26,28 @@ object RepositoryErrors {
     def apiKeyDataNotFoundError(userId: String, publicKeyId: String): ApiKeyDbError =
       ApiKeyDataNotFoundError(userId, publicKeyId)
 
-    case class ApiKeyDataNotFoundError(userId: String, publicKeyId: String)
-        extends ApiKeyDbError(
-          message = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
-        )
+    def apiKeyDataNotFoundError(publicKeyId: UUID): ApiKeyDbError =
+      ApiKeyDataNotFoundError(publicKeyId)
+
+    trait ApiKeyDataNotFoundError extends ApiKeyDbError { val errorMessage: String }
     object ApiKeyDataNotFoundError {
+
+      private case class ApiKeyDataNotFoundErrorImpl(override val errorMessage: String)
+          extends ApiKeyDbError(errorMessage)
+          with ApiKeyDataNotFoundError
+
       def apply(userId: String, publicKeyId: UUID): ApiKeyDataNotFoundError =
-        ApiKeyDataNotFoundError(userId, publicKeyId.toString)
+        apply(userId, publicKeyId.toString)
+
+      def apply(userId: String, publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
+        errorMessage = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
+      )
+
+      def apply(publicKeyId: UUID): ApiKeyDataNotFoundError =
+        apply(publicKeyId.toString)
+      def apply(publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
+        errorMessage = s"Could not find API Key Data with publicKeyId = $publicKeyId"
+      )
     }
 
     case object ApiKeyNotFoundError extends ApiKeyDbError(message = "Could not find API Key.")

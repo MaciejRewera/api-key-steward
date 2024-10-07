@@ -5,19 +5,17 @@ import apikeysteward.base.TestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
-  ApiKeyAlreadyExistsError,
-  PublicKeyIdAlreadyExistsError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.none
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -294,7 +292,7 @@ class ApiKeyManagementServiceSpec
 
   "ManagementService on updateApiKey" should {
 
-    val updateApiKeyRequest = UpdateApiKeyRequest(name = nameUpdated, description = descriptionUpdated)
+    val updateApiKeyRequest = UpdateApiKeyAdminRequest(name = nameUpdated, description = descriptionUpdated)
 
     val outputApiKeyData = ApiKeyData(
       publicKeyId = publicKeyId_1,
@@ -309,7 +307,7 @@ class ApiKeyManagementServiceSpec
       apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
 
       for {
-        _ <- managementService.updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+        _ <- managementService.updateApiKey(publicKeyId_1, updateApiKeyRequest)
         _ = verify(apiKeyRepository).update(eqTo(apiKeyDataUpdate_1))
       } yield ()
     }
@@ -320,7 +318,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .asserting(
             _ shouldBe Right(outputApiKeyData)
           )
@@ -332,7 +330,7 @@ class ApiKeyManagementServiceSpec
         )
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .asserting(
             _ shouldBe Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
           )
@@ -344,20 +342,20 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.raiseError(testException)
 
         managementService
-          .updateApiKey(userId_1, publicKeyId_1, updateApiKeyRequest)
+          .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
     }
   }
 
-  "ManagementService on deleteApiKey" should {
+  "ManagementService on deleteApiKeyBelongingToUserWith" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
-        _ <- managementService.deleteApiKey(userId_1, publicKeyId_1)
+        _ <- managementService.deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
         _ = verify(apiKeyRepository).delete(eqTo(userId_1), eqTo(publicKeyId_1))
       } yield ()
     }
@@ -367,7 +365,9 @@ class ApiKeyManagementServiceSpec
       "ApiKeyRepository returns Right" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
-        managementService.deleteApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+        managementService
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .asserting(_ shouldBe Right(apiKeyData_1))
       }
 
       "ApiKeyRepository returns Left" in {
@@ -376,7 +376,7 @@ class ApiKeyManagementServiceSpec
         )
 
         managementService
-          .deleteApiKey(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
           .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
       }
     }
@@ -386,7 +386,49 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.raiseError(testException)
 
         managementService
-          .deleteApiKey(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ManagementService on deleteApiKey" should {
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyData_1))
+
+      for {
+        _ <- managementService.deleteApiKey(publicKeyId_1)
+        _ = verify(apiKeyRepository).delete(eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns Right" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyData_1))
+
+        managementService.deleteApiKey(publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+      }
+
+      "ApiKeyRepository returns Left" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.pure(
+          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyId_1))
+        )
+
+        managementService
+          .deleteApiKey(publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.delete(any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .deleteApiKey(publicKeyId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -404,14 +446,25 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      "ApiKeyRepository returns empty List" in {
+        apiKeyRepository.getAll(any[String]) returns IO.pure(List.empty)
+
+        managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List.empty[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns List with elements" in {
+        apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+
+        managementService
+          .getAllApiKeysFor(userId_1)
+          .asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      }
     }
   }
 
-  "ManagementService on getApiKey" should {
+  "ManagementService on getApiKey(:userId, :publicKeyId)" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
@@ -422,10 +475,46 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      "ApiKeyRepository returns empty Option" in {
+        apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(None)
+
+        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns Option containing ApiKeyData" in {
+        apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      }
+    }
+  }
+
+  "ManagementService on getApiKey(:publicKeyId)" should {
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+      for {
+        _ <- managementService.getApiKey(publicKeyId_1)
+        _ = verify(apiKeyRepository).getByPublicKeyId(eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns empty Option" in {
+        apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(None)
+
+        managementService.getApiKey(publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns Option containing ApiKeyData" in {
+        apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        managementService.getApiKey(publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      }
     }
   }
 
@@ -440,10 +529,19 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      "ApiKeyRepository returns empty List" in {
+        apiKeyRepository.getAllUserIds returns IO.pure(List.empty)
+
+        managementService.getAllUserIds.asserting(_ shouldBe List.empty[String])
+      }
+
+      "ApiKeyRepository returns List containing elements" in {
+        apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
+
+        managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      }
     }
   }
 }

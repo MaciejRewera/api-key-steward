@@ -5,7 +5,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.model._
 import apikeysteward.repositories.ApiKeyRepository
-import apikeysteward.routes.model.admin.UpdateApiKeyRequest
+import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -94,18 +94,25 @@ class ApiKeyManagementService(
     } yield res
 
   def updateApiKey(
-      userId: String,
       publicKeyId: UUID,
-      updateApiKeyRequest: UpdateApiKeyRequest
+      updateApiKeyRequest: UpdateApiKeyAdminRequest
   ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
-    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, userId, updateApiKeyRequest)).flatTap {
+    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
-  def deleteApiKey(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+  def deleteApiKeyBelongingToUserWith(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    delete(publicKeyId)(apiKeyRepository.delete(userId, publicKeyId))
+
+  def deleteApiKey(publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    delete(publicKeyId)(apiKeyRepository.delete(publicKeyId))
+
+  private def delete(
+      publicKeyId: UUID
+  )(deleteFunction: => IO[Either[ApiKeyDbError, ApiKeyData]]): IO[Either[ApiKeyDbError, ApiKeyData]] =
     for {
-      resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
+      resE <- deleteFunction.flatTap {
         case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
         case Left(e)  => logger.warn(s"Could not delete API Key with publicKeyId: [$publicKeyId] because: ${e.message}")
       }
@@ -116,6 +123,9 @@ class ApiKeyManagementService(
 
   def getApiKey(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
     apiKeyRepository.get(userId, publicKeyId)
+
+  def getApiKey(publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    apiKeyRepository.getByPublicKeyId(publicKeyId)
 
   def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
 
