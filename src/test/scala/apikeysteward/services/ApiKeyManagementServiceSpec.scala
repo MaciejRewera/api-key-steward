@@ -15,6 +15,7 @@ import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestVa
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.none
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -445,14 +446,25 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      "ApiKeyRepository returns empty List" in {
+        apiKeyRepository.getAll(any[String]) returns IO.pure(List.empty)
+
+        managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List.empty[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns List with elements" in {
+        apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+
+        managementService
+          .getAllApiKeysFor(userId_1)
+          .asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      }
     }
   }
 
-  "ManagementService on getApiKey" should {
+  "ManagementService on getApiKey(:userId, :publicKeyId)" should {
 
     "call ApiKeyRepository" in {
       apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
@@ -463,10 +475,46 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      "ApiKeyRepository returns empty Option" in {
+        apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(None)
+
+        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns Option containing ApiKeyData" in {
+        apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      }
+    }
+  }
+
+  "ManagementService on getApiKey(:publicKeyId)" should {
+
+    "call ApiKeyRepository" in {
+      apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+      for {
+        _ <- managementService.getApiKey(publicKeyId_1)
+        _ = verify(apiKeyRepository).getByPublicKeyId(eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "return the value returned by ApiKeyRepository" when {
+
+      "ApiKeyRepository returns empty Option" in {
+        apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(None)
+
+        managementService.getApiKey(publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
+      }
+
+      "ApiKeyRepository returns Option containing ApiKeyData" in {
+        apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+
+        managementService.getApiKey(publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      }
     }
   }
 
@@ -481,10 +529,19 @@ class ApiKeyManagementServiceSpec
       } yield ()
     }
 
-    "return the value returned by ApiKeyRepository" in {
-      apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
+    "return the value returned by ApiKeyRepository" when {
 
-      managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      "ApiKeyRepository returns empty List" in {
+        apiKeyRepository.getAllUserIds returns IO.pure(List.empty)
+
+        managementService.getAllUserIds.asserting(_ shouldBe List.empty[String])
+      }
+
+      "ApiKeyRepository returns List containing elements" in {
+        apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
+
+        managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      }
     }
   }
 }

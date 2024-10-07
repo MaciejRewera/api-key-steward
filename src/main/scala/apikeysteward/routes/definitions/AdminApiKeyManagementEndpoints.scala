@@ -94,11 +94,10 @@ private[routes] object AdminApiKeyManagementEndpoints {
       .description("Get all API keys data for given user ID.")
       .in("admin" / "users" / userIdPathParameter / "api-keys")
 
-  val getSingleApiKeyForUserEndpoint
-      : Endpoint[AccessToken, (String, UUID), ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
+  val getSingleApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
-      .description("Get API key data for given user ID and key ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-keys" / keyIdPathParameter)
+      .description("Get API key data for given key ID.")
+      .in("admin" / "api-keys" / keyIdPathParameter)
 
   val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase

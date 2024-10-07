@@ -835,6 +835,123 @@ class ApiKeyRepositorySpec
     }
   }
 
+  "ApiKeyRepository on getByPublicKeyId" when {
+
+    "should always call ApiKeyDataDb" in {
+      apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+      for {
+        _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+        _ = verify(apiKeyDataDb).getByPublicKeyId(eqTo(publicKeyId_1))
+      } yield ()
+    }
+
+    "should NOT call ApiKeyDb" in {
+      apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+      for {
+        _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+        _ = verifyZeroInteractions(apiKeyDb)
+      } yield ()
+    }
+
+    "ApiKeyDataDb returns empty Option" should {
+
+      "NOT call ScopeDb or ApiKeyDataScopesDb" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+          _ = verifyZeroInteractions(scopeDb, apiKeyDataScopesDb)
+        } yield ()
+      }
+
+      "return empty Option" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyRepository.getByPublicKeyId(publicKeyId_1).asserting(_ shouldBe Option.empty[ApiKeyDataEntity.Read])
+      }
+    }
+
+    "ApiKeyDataDb returns ApiKeyDataEntity" when {
+
+      "should always call ApiKeyDataScopesDb" in {
+        apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+        apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+        scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+        for {
+          _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+          _ = verify(apiKeyDataScopesDb).getByApiKeyDataId(eqTo(apiKeyDataEntityRead_1.id))
+        } yield ()
+      }
+
+      "ApiKeyDataScopesDb returns empty Stream" should {
+
+        "call ScopeDb providing empty List" in {
+          apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          for {
+            _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+            _ = verify(scopeDb).getByIds(eqTo(List.empty))
+          } yield ()
+        }
+
+        "return ApiKeyData with empty scopes fields" in {
+          apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream.empty
+          scopeDb.getByIds(any[List[Long]]) returns Stream.empty
+
+          apiKeyRepository
+            .getByPublicKeyId(publicKeyId_1)
+            .asserting(_ shouldBe Some(apiKeyData_1.copy(scopes = List.empty)))
+        }
+      }
+
+      "ApiKeyDataScopesDb returns non-empty Stream" should {
+
+        "call ScopeDb" in {
+          apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+            .emits(
+              Seq(
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
+              )
+            )
+            .covary[doobie.ConnectionIO]
+          scopeDb.getByIds(any[List[Long]]) returns Stream
+            .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+            .covary[doobie.ConnectionIO]
+
+          for {
+            _ <- apiKeyRepository.getByPublicKeyId(publicKeyId_1)
+            _ = verify(scopeDb).getByIds(eqTo(List(101L, 102L)))
+          } yield ()
+        }
+
+        "return ApiKeyData with scopes returned from ScopeDb" in {
+          apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataScopesDb.getByApiKeyDataId(any[Long]) returns Stream
+            .emits(
+              Seq(
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 101L, nowInstant, nowInstant),
+                ApiKeyDataScopesEntity.Read(apiKeyDataEntityRead_1.id, 102L, nowInstant, nowInstant)
+              )
+            )
+            .covary[doobie.ConnectionIO]
+          scopeDb.getByIds(any[List[Long]]) returns Stream
+            .emits(Seq(ScopeEntity.Read(101L, scopeRead_1), ScopeEntity.Read(102L, scopeWrite_1)))
+            .covary[doobie.ConnectionIO]
+
+          apiKeyRepository.getByPublicKeyId(publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+        }
+      }
+    }
+  }
+
   "ApiKeyRepository on getAll(:userId)" when {
 
     "should always call ApiKeyDataDb" in {

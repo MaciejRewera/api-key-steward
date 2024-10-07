@@ -71,14 +71,13 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           }
       )
 
-  private val getApiKeyForUserRoutes: HttpRoutes[IO] =
+  private val getApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
-        AdminApiKeyManagementEndpoints.getSingleApiKeyForUserEndpoint
+        AdminApiKeyManagementEndpoints.getSingleApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
-          .serverLogic { _ => input =>
-            val (userId, publicKeyId) = input
-            managementService.getApiKey(userId, publicKeyId).map {
+          .serverLogic { _ => publicKeyId =>
+            managementService.getApiKey(publicKeyId).map {
               case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
               case None =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
@@ -108,6 +107,6 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
     createApiKeyRoutes <+>
       updateApiKeyRoutes <+>
       getAllApiKeysForUserRoutes <+>
-      getApiKeyForUserRoutes <+>
+      getApiKeyRoutes <+>
       deleteApiKeyRoutes
 }

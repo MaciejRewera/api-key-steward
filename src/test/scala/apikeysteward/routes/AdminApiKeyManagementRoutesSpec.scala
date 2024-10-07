@@ -682,16 +682,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     }
   }
 
-  "AdminApiKeyRoutes on GET /admin/users/{userId}/api-keys/{publicKeyId}" when {
+  "AdminApiKeyRoutes on GET /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/$publicKeyId_1")
+    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
 
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
-        val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys/this-is-not-a-valid-uuid")
+        val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
         val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
 
         for {
@@ -707,16 +707,16 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).getApiKey(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ = verify(managementService).getApiKey(eqTo(publicKeyId_1))
         } yield ()
       }
 
       "return successful value returned by ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
@@ -726,7 +726,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.pure(None)
+        managementService.getApiKey(any[UUID]) returns IO.pure(None)
 
         for {
           response <- adminRoutes.run(request)
@@ -740,7 +740,7 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+        managementService.getApiKey(any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

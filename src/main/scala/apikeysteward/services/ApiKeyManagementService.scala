@@ -124,6 +124,9 @@ class ApiKeyManagementService(
   def getApiKey(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
     apiKeyRepository.get(userId, publicKeyId)
 
+  def getApiKey(publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    apiKeyRepository.getByPublicKeyId(publicKeyId)
+
   def getAllUserIds: IO[List[String]] = apiKeyRepository.getAllUserIds
 
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))

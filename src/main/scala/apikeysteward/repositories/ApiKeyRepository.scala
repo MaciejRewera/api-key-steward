@@ -99,7 +99,6 @@ class ApiKeyRepository(
     (for {
       apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(hashedApiKey))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
-
       scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
@@ -116,6 +115,14 @@ class ApiKeyRepository(
   def get(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getBy(userId, publicKeyId))
+      scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
+
+      apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
+    } yield apiKeyData).value.transact(transactor)
+
+  def getByPublicKeyId(publicKeyId: UUID): IO[Option[ApiKeyData]] =
+    (for {
+      apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByPublicKeyId(publicKeyId))
       scopes <- OptionT(getScopes(apiKeyDataEntityRead.id).some.sequence)
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead, scopes)
