@@ -103,16 +103,16 @@ class ApiKeyManagementService(
     }
 
   def deleteApiKeyBelongingToUserWith(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
-    for {
-      resE <- apiKeyRepository.delete(userId, publicKeyId).flatTap {
-        case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
-        case Left(e)  => logger.warn(s"Could not delete API Key with publicKeyId: [$publicKeyId] because: ${e.message}")
-      }
-    } yield resE
+    delete(publicKeyId)(apiKeyRepository.delete(userId, publicKeyId))
 
   def deleteApiKey(publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    delete(publicKeyId)(apiKeyRepository.delete(publicKeyId))
+
+  private def delete(
+      publicKeyId: UUID
+  )(deleteFunction: => IO[Either[ApiKeyDbError, ApiKeyData]]): IO[Either[ApiKeyDbError, ApiKeyData]] =
     for {
-      resE <- apiKeyRepository.delete(publicKeyId).flatTap {
+      resE <- deleteFunction.flatTap {
         case Right(_) => logger.info(s"Deleted API Key with publicKeyId: [$publicKeyId] from database.")
         case Left(e)  => logger.warn(s"Could not delete API Key with publicKeyId: [$publicKeyId] because: ${e.message}")
       }
