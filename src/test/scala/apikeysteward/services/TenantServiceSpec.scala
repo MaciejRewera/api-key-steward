@@ -3,6 +3,10 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.Tenants._
 import apikeysteward.model.RepositoryErrors.TenantDbError
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.{
+  TenantAlreadyExistsError,
+  TenantInsertionErrorImpl
+}
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.TenantRepository
@@ -16,6 +20,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
+import java.sql.SQLException
 import java.util.UUID
 
 class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock with BeforeAndAfterEach {
@@ -29,12 +34,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     reset(uuidGenerator, tenantRepository)
 
   private val testException = new RuntimeException("Test Exception")
+  private val testSqlException = new SQLException("Test SQL Exception")
 
   "TenantService on createTenant" when {
 
     val createTenantRequest = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
-    val insertionError = TenantInsertionError.tenantAlreadyExistsError(publicTenantIdStr_1)
+    val tenantAlreadyExistsError: TenantAlreadyExistsError = TenantAlreadyExistsError(publicTenantIdStr_1)
+    val insertionError: TenantInsertionError = TenantInsertionErrorImpl(testSqlException)
 
     "everything works correctly" should {
 
@@ -57,66 +64,6 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
     }
 
-    "TenantRepository returns Left containing TenantAlreadyExistsError on the first try" should {
-
-      "call UuidGenerator and TenantRepository again" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
-        val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
-        tenantRepository.insert(any[Tenant]) returns (
-          IO.pure(Left(insertionError)),
-          IO.pure(Right(insertedTenant))
-        )
-
-        for {
-          _ <- tenantService.createTenant(createTenantRequest)
-
-          _ = verify(uuidGenerator, times(2)).generateUuid
-          _ = verify(tenantRepository).insert(eqTo(tenant_1))
-          _ = verify(tenantRepository).insert(eqTo(insertedTenant))
-        } yield ()
-      }
-
-      "return the second created Tenant returned by TenantRepository" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
-        val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
-        tenantRepository.insert(any[Tenant]) returns (
-          IO.pure(Left(insertionError)),
-          IO.pure(Right(insertedTenant))
-        )
-
-        tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Right(insertedTenant))
-      }
-    }
-
-    "TenantRepository keeps returning Left containing TenantAlreadyExistsError on the first try" should {
-
-      "call UuidGenerator and TenantRepository again until reaching max retries amount" in {
-        uuidGenerator.generateUuid returns (
-          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
-        )
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(insertionError))
-
-        for {
-          _ <- tenantService.createTenant(createTenantRequest)
-
-          _ = verify(uuidGenerator, times(4)).generateUuid
-          _ = verify(tenantRepository).insert(eqTo(tenant_1))
-          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_2)))
-          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_3)))
-          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_4)))
-        } yield ()
-      }
-
-      "return successful IO containing Left with TenantInsertionError" in {
-        uuidGenerator.generateUuid returns (
-          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
-        )
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(insertionError))
-
-        tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Left(insertionError))
-      }
-    }
-
     "UuidGenerator returns failed IO" should {
 
       "NOT call TenantRepository" in {
@@ -133,6 +80,75 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         tenantService.createTenant(createTenantRequest).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "TenantRepository returns Left containing TenantAlreadyExistsError on the first try" should {
+
+      "call UuidGenerator and TenantRepository again" in {
+        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
+        val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
+        tenantRepository.insert(any[Tenant]) returns (
+          IO.pure(Left(tenantAlreadyExistsError)),
+          IO.pure(Right(insertedTenant))
+        )
+
+        for {
+          _ <- tenantService.createTenant(createTenantRequest)
+
+          _ = verify(uuidGenerator, times(2)).generateUuid
+          _ = verify(tenantRepository).insert(eqTo(tenant_1))
+          _ = verify(tenantRepository).insert(eqTo(insertedTenant))
+        } yield ()
+      }
+
+      "return the second created Tenant returned by TenantRepository" in {
+        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
+        val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
+        tenantRepository.insert(any[Tenant]) returns (
+          IO.pure(Left(tenantAlreadyExistsError)),
+          IO.pure(Right(insertedTenant))
+        )
+
+        tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Right(insertedTenant))
+      }
+    }
+
+    "TenantRepository keeps returning Left containing TenantAlreadyExistsError" should {
+
+      "call UuidGenerator and TenantRepository again until reaching max retries amount" in {
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
+        )
+        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(tenantAlreadyExistsError))
+
+        for {
+          _ <- tenantService.createTenant(createTenantRequest)
+
+          _ = verify(uuidGenerator, times(4)).generateUuid
+          _ = verify(tenantRepository).insert(eqTo(tenant_1))
+          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_2)))
+          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_3)))
+          _ = verify(tenantRepository).insert(eqTo(tenant_1.copy(tenantId = publicTenantId_4)))
+        } yield ()
+      }
+
+      "return successful IO containing Left with TenantAlreadyExistsError" in {
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
+        )
+        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(tenantAlreadyExistsError))
+
+        tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Left(tenantAlreadyExistsError))
+      }
+    }
+
+    "TenantRepository returns Left containing different TenantInsertionError" should {
+      "return failed IO containing this error" in {
+        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(insertionError))
+
+        tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Left(insertionError))
       }
     }
 
