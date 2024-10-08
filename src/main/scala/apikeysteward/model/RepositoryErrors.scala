@@ -9,7 +9,6 @@ object RepositoryErrors {
   object ApiKeyDbError {
 
     sealed abstract class ApiKeyInsertionError(override val message: String) extends ApiKeyDbError(message)
-
     object ApiKeyInsertionError {
 
       case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
@@ -19,6 +18,14 @@ object RepositoryErrors {
 
       case object PublicKeyIdAlreadyExistsError
           extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
+
+      case class ReferencedApiKeyDoesNotExistError(apiKeyId: Long)
+          extends ApiKeyInsertionError(message = s"ApiKey with id = [$apiKeyId] does not exist.")
+
+      case class ApiKeyInsertionErrorImpl(cause: SQLException)
+          extends ApiKeyInsertionError(
+            message = s"An error occurred when inserting ApiKey: $cause"
+          )
     }
 
     def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =
@@ -68,6 +75,11 @@ object RepositoryErrors {
           extends TenantInsertionError(
             message = s"Tenant with publicTenantId = $publicTenantId already exists."
           )
+
+      case class TenantInsertionErrorImpl(cause: SQLException)
+          extends TenantInsertionError(
+            message = s"An error occurred when inserting Tenant: $cause"
+          )
     }
 
     def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
@@ -102,9 +114,10 @@ object RepositoryErrors {
       case class ReferencedTenantDoesNotExistError(tenantId: Long)
           extends ApplicationInsertionError(message = s"Tenant with id = [$tenantId] does not exist.")
 
-      case class ApplicationInsertionErrorImpl(cause: SQLException) extends ApplicationInsertionError(
-        message = s"An error occurred when inserting Application: $cause"
-      )
+      case class ApplicationInsertionErrorImpl(cause: SQLException)
+          extends ApplicationInsertionError(
+            message = s"An error occurred when inserting Application: $cause"
+          )
     }
 
     def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =

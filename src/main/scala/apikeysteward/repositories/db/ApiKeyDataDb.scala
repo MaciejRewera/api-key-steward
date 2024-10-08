@@ -1,15 +1,12 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{
-  ApiKeyIdAlreadyExistsError,
-  PublicKeyIdAlreadyExistsError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{ApiKeyIdAlreadyExistsError, ApiKeyInsertionErrorImpl, PublicKeyIdAlreadyExistsError, ReferencedApiKeyDoesNotExistError}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
-import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
+import doobie.postgres.sqlstate.class23.{FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION}
 import fs2.Stream
 
 import java.sql.SQLException
@@ -41,15 +38,17 @@ class ApiKeyDataDb()(implicit clock: Clock) {
         )
         .attemptSql
 
-      res = eitherResult.left.map(recoverSqlException)
+      res = eitherResult.left.map(recoverSqlException(_, apiKeyDataEntity.apiKeyId))
 
     } yield res
   }
 
-  private def recoverSqlException(sqlException: SQLException): ApiKeyInsertionError =
+  private def recoverSqlException(sqlException: SQLException, apiKeyId: Long): ApiKeyInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key_id")    => ApiKeyIdAlreadyExistsError
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
+      case FOREIGN_KEY_VIOLATION.value                                                 => ReferencedApiKeyDoesNotExistError(apiKeyId)
+      case _                                                                           => ApiKeyInsertionErrorImpl(sqlException)
     }
 
   def update(

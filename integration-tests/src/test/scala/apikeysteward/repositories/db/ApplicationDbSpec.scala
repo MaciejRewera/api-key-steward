@@ -165,7 +165,7 @@ class ApplicationDbSpec
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(applicationEntityWrite_1.tenantId)))
       }
 
-      "NOT insert any Application into the DB" in {
+      "NOT insert any entity into the DB" in {
         val result = for {
           _ <- applicationDb.insert(applicationEntityWrite_1).transact(transactor)
           res <- Queries.getAllApplications.transact(transactor)

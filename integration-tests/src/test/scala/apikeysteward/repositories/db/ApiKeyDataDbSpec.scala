@@ -208,6 +208,25 @@ class ApiKeyDataDbSpec
         }
       }
     }
+
+    "there is no ApiKey with provided apiKeyId in the DB" should {
+
+      "return Left containing ReferencedApiKeyDoesNotExistError" in {
+        apiKeyDataDb
+          .insert(apiKeyDataEntityWrite_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ReferencedApiKeyDoesNotExistError(apiKeyDataEntityWrite_1.apiKeyId)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          res <- Queries.getAllApiKeysData.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+      }
+    }
   }
 
   "ApiKeyDataDb on update" when {

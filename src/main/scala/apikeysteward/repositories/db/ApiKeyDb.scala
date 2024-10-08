@@ -1,14 +1,14 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.HashedApiKey
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{ApiKeyAlreadyExistsError, ApiKeyInsertionErrorImpl}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyInsertionError, ApiKeyNotFoundError}
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.implicits.toTraverseOps
-import doobie.SqlState
 import doobie.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 
+import java.sql.SQLException
 import java.time.{Clock, Instant}
 
 class ApiKeyDb()(implicit clock: Clock) {
@@ -18,13 +18,22 @@ class ApiKeyDb()(implicit clock: Clock) {
 
   def insert(apiKeyEntity: ApiKeyEntity.Write): doobie.ConnectionIO[Either[ApiKeyInsertionError, ApiKeyEntity.Read]] = {
     val now = Instant.now(clock)
-    Queries
-      .insert(apiKeyEntity, now)
-      .withUniqueGeneratedKeys[ApiKeyEntity.Read]("id", "created_at", "updated_at")
-      .attemptSomeSqlState[ApiKeyInsertionError] {
-        case sqlState: SqlState if sqlState == UNIQUE_VIOLATION => ApiKeyAlreadyExistsError
-      }
+    for {
+      eitherResult <- Queries
+        .insert(apiKeyEntity, now)
+        .withUniqueGeneratedKeys[ApiKeyEntity.Read]("id", "created_at", "updated_at")
+        .attemptSql
+
+      res = eitherResult.left.map(recoverSqlException)
+
+    } yield res
   }
+
+  private def recoverSqlException(sqlException: SQLException): ApiKeyInsertionError =
+    sqlException.getSQLState match {
+      case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key") => ApiKeyAlreadyExistsError
+      case _                                                                     => ApiKeyInsertionErrorImpl(sqlException)
+    }
 
   def getByApiKey(hashedApiKey: HashedApiKey): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
     Queries.getByApiKey(hashedApiKey.value).option
