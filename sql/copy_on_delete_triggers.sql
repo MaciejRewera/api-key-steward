@@ -1,11 +1,33 @@
 CREATE OR REPLACE FUNCTION copy_tenant() RETURNS TRIGGER AS
 $BODY$
 BEGIN
-    INSERT INTO tenant_deleted (deleted_at, tenant_id, public_tenant_id, name, created_at, updated_at, deactivated_at)
+    INSERT INTO tenant_deleted (deleted_at, tenant_id, public_tenant_id, name, description, created_at, updated_at,
+                                deactivated_at)
     VALUES (now(),
             OLD.id,
             OLD.public_tenant_id,
             OLD.name,
+            OLD.description,
+            OLD.created_at,
+            OLD.updated_at,
+            OLD.deactivated_at);
+
+    RETURN OLD;
+END;
+$BODY$
+    LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION copy_application() RETURNS TRIGGER AS
+$BODY$
+BEGIN
+    INSERT INTO application_deleted (deleted_at, application_id, tenant_id, public_application_id, name, description,
+                                     created_at, updated_at, deactivated_at)
+    VALUES (now(),
+            OLD.id,
+            OLD.tenant_id,
+            OLD.public_application_id,
+            OLD.name,
+            OLD.description,
             OLD.created_at,
             OLD.updated_at,
             OLD.deactivated_at);
@@ -56,6 +78,12 @@ CREATE OR REPLACE TRIGGER copy_tenant_on_deletion
     ON tenant
     FOR EACH ROW
 EXECUTE PROCEDURE copy_tenant();
+
+CREATE OR REPLACE TRIGGER copy_application_on_deletion
+    BEFORE DELETE
+    ON application
+    FOR EACH ROW
+EXECUTE PROCEDURE copy_application();
 
 CREATE OR REPLACE TRIGGER copy_api_key_data_on_deletion
     BEFORE DELETE
