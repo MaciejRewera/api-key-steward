@@ -1,16 +1,12 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.IntegrationTestData.{applicationEntityUpdate_1, _}
-import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.{
-  ApplicationAlreadyExistsError,
-  ReferencedTenantDoesNotExistError
-}
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.{
-  ApplicationIsNotDeactivatedError,
-  ApplicationNotFoundError
-}
+import apikeysteward.base.IntegrationTestData.Applications._
+import apikeysteward.base.IntegrationTestData.Tenants._
+import apikeysteward.base.TestData.Applications._
+import apikeysteward.base.TestData.Tenants.{publicTenantId_1, publicTenantId_3}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
+import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ApplicationEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

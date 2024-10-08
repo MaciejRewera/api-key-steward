@@ -1,8 +1,8 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.HashedApiKey
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{ApiKeyAlreadyExistsError, ApiKeyInsertionErrorImpl}
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyInsertionError, ApiKeyNotFoundError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._

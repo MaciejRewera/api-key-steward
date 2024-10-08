@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData._
+import apikeysteward.base.TestData.Tenants._
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
 import apikeysteward.model.{Tenant, TenantUpdate}
@@ -34,7 +34,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     val createTenantRequest = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
-    val insertionError = TenantInsertionError.tenantAlreadyExistsError(publicKeyIdStr_1)
+    val insertionError = TenantInsertionError.tenantAlreadyExistsError(publicTenantIdStr_1)
 
     "everything works correctly" should {
 
@@ -210,11 +210,11 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.activate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.activate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
 
         tenantService
           .reactivateTenant(publicTenantId_1)
-          .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
+          .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
     }
 
@@ -248,11 +248,11 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.deactivate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.deactivate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
 
         tenantService
           .deactivateTenant(publicTenantId_1)
-          .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
+          .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
     }
 
@@ -286,11 +286,11 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.delete(any[UUID]) returns IO.pure(Left(TenantDbError.tenantNotFoundError(publicKeyIdStr_1)))
+        tenantRepository.delete(any[UUID]) returns IO.pure(Left(TenantDbError.tenantNotFoundError(publicTenantIdStr_1)))
 
         tenantService
           .deleteTenant(publicTenantId_1)
-          .asserting(_ shouldBe Left(TenantNotFoundError(publicKeyIdStr_1)))
+          .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
       }
     }
 

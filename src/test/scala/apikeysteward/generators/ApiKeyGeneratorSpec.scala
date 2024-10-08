@@ -1,6 +1,6 @@
 package apikeysteward.generators
 
-import apikeysteward.base.TestData._
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
 import apikeysteward.model.ApiKey
 import apikeysteward.utils.Retry.RetryException.MaxNumberOfRetriesExceeded

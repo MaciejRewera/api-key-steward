@@ -1,6 +1,6 @@
 package apikeysteward.services
 
-import apikeysteward.base.TestData._
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._

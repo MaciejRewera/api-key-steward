@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.{TenantAlreadyExistsError, TenantInsertionErrorImpl}
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError._
 import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}

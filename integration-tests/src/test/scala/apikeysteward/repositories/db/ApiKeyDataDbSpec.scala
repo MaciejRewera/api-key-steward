@@ -1,7 +1,8 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.base.IntegrationTestData._
-import apikeysteward.base.TestData._
+import apikeysteward.base.IntegrationTestData.ApiKeys._
+import apikeysteward.base.TestData.ApiKeys
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.base.{FixedClock, TestData}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
@@ -232,8 +233,8 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on update" when {
 
     val updatedEntityRead = apiKeyDataEntityRead_1.copy(
-      name = TestData.nameUpdated,
-      description = TestData.descriptionUpdated,
+      name = ApiKeys.nameUpdated,
+      description = ApiKeys.descriptionUpdated,
       updatedAt = nowInstant
     )
 

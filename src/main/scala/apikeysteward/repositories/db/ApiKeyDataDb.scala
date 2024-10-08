@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.{ApiKeyIdAlreadyExistsError, ApiKeyInsertionErrorImpl, PublicKeyIdAlreadyExistsError, ReferencedApiKeyDoesNotExistError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
