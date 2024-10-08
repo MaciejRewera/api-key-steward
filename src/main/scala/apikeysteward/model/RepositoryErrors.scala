@@ -1,5 +1,6 @@
 package apikeysteward.model
 
+import java.sql.SQLException
 import java.util.UUID
 
 object RepositoryErrors {
@@ -87,13 +88,24 @@ object RepositoryErrors {
   sealed abstract class ApplicationDbError(override val message: String) extends CustomError
   object ApplicationDbError {
 
-    def applicationAlreadyExistsError(publicApplicationId: String): ApplicationDbError =
-      ApplicationAlreadyExistsError(publicApplicationId)
+    sealed abstract class ApplicationInsertionError(override val message: String) extends ApplicationDbError(message)
+    object ApplicationInsertionError {
 
-    case class ApplicationAlreadyExistsError(publicApplicationId: String)
-        extends ApplicationDbError(
-          message = s"Application with publicApplicationId = $publicApplicationId already exists."
-        )
+      def applicationAlreadyExistsError(publicApplicationId: String): ApplicationDbError =
+        ApplicationAlreadyExistsError(publicApplicationId)
+
+      case class ApplicationAlreadyExistsError(publicApplicationId: String)
+          extends ApplicationInsertionError(
+            message = s"Application with publicApplicationId = $publicApplicationId already exists."
+          )
+
+      case class ReferencedTenantDoesNotExistError(tenantId: Long)
+          extends ApplicationInsertionError(message = s"Tenant with id = [$tenantId] does not exist.")
+
+      case class ApplicationInsertionErrorImpl(cause: SQLException) extends ApplicationInsertionError(
+        message = s"An error occurred when inserting Application: $cause"
+      )
+    }
 
     def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
       ApplicationNotFoundError(publicApplicationId)

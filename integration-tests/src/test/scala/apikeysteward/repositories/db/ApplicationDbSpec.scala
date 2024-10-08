@@ -3,8 +3,11 @@ package apikeysteward.repositories.db
 import apikeysteward.base.FixedClock
 import apikeysteward.base.IntegrationTestData.{applicationEntityUpdate_1, _}
 import apikeysteward.base.TestData._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.{
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.{
   ApplicationAlreadyExistsError,
+  ReferencedTenantDoesNotExistError
+}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.{
   ApplicationIsNotDeactivatedError,
   ApplicationNotFoundError
 }
@@ -52,9 +55,9 @@ class ApplicationDbSpec
           res <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId))
         } yield res).transact(transactor)
 
-        result.asserting(res =>
+        result.asserting { res =>
           res shouldBe Right(applicationEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId))
-        )
+        }
       }
 
       "insert entity into DB" in {
@@ -87,9 +90,9 @@ class ApplicationDbSpec
           res <- applicationDb.insert(applicationEntityWrite_2.copy(tenantId = tenantId))
         } yield res).transact(transactor)
 
-        result.asserting(res =>
+        result.asserting { res =>
           res shouldBe Right(applicationEntityRead_2.copy(id = res.value.id, tenantId = res.value.tenantId))
-        )
+        }
       }
 
       "insert entity into DB" in {
@@ -150,6 +153,25 @@ class ApplicationDbSpec
             tenantId = resultApplication.tenantId
           )
         }
+      }
+    }
+
+    "there is no Tenant with provided tenantId in the DB" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        applicationDb
+          .insert(applicationEntityWrite_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(applicationEntityWrite_1.tenantId)))
+      }
+
+      "NOT insert any Application into the DB" in {
+        val result = for {
+          _ <- applicationDb.insert(applicationEntityWrite_1).transact(transactor)
+          res <- Queries.getAllApplications.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
       }
     }
   }

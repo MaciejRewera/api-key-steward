@@ -1,16 +1,12 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.{
-  ApplicationAlreadyExistsError,
-  ApplicationNotFoundError,
-  applicationIsNotDeactivatedError,
-  applicationNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
+import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.repositories.db.entity.ApplicationEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
-import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
+import doobie.postgres.sqlstate.class23.{FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION}
 import fs2._
 
 import java.sql.SQLException
@@ -24,7 +20,7 @@ class ApplicationDb()(implicit clock: Clock) {
 
   def insert(
       applicationEntity: ApplicationEntity.Write
-  ): doobie.ConnectionIO[Either[ApplicationAlreadyExistsError, ApplicationEntity.Read]] = {
+  ): doobie.ConnectionIO[Either[ApplicationInsertionError, ApplicationEntity.Read]] = {
     val now = Instant.now(clock)
     for {
       eitherResult <- Queries
@@ -41,18 +37,25 @@ class ApplicationDb()(implicit clock: Clock) {
         )
         .attemptSql
 
-      res = eitherResult.left.map(recoverSqlException(_, applicationEntity.publicApplicationId))
+      res = eitherResult.left.map(
+        recoverSqlException(_, applicationEntity.publicApplicationId, applicationEntity.tenantId)
+      )
 
     } yield res
   }
 
   private def recoverSqlException(
       sqlException: SQLException,
-      publicApplicationId: String
-  ): ApplicationAlreadyExistsError =
+      publicApplicationId: String,
+      tenantId: Long
+  ): ApplicationInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_application_id") =>
         ApplicationAlreadyExistsError(publicApplicationId)
+
+      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError(tenantId)
+
+      case _ => ApplicationInsertionErrorImpl(sqlException)
     }
 
   def update(
