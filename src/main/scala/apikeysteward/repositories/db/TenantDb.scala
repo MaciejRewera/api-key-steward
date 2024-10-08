@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError._
 import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
@@ -43,6 +43,8 @@ class TenantDb()(implicit clock: Clock) {
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_tenant_id") =>
         TenantAlreadyExistsError(publicTenantId)
+
+      case _ => TenantInsertionErrorImpl(sqlException)
     }
 
   def update(tenantEntity: TenantEntity.Update): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {

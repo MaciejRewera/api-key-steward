@@ -1,8 +1,9 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData._
+import apikeysteward.base.TestData.Tenants._
 import apikeysteward.model.RepositoryErrors.TenantDbError
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantInsertionErrorImpl
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
 import apikeysteward.model.Tenant
 import apikeysteward.repositories.db.TenantDb
@@ -17,6 +18,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
+import java.sql.SQLException
 import java.util.UUID
 
 class TenantRepositorySpec
@@ -61,6 +63,7 @@ class TenantRepositorySpec
   private val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
   private val testException = new RuntimeException("Test Exception")
+  private val testSqlException = new SQLException("Test SQL Exception")
 
   private val testExceptionWrappedOpt: doobie.ConnectionIO[Option[TenantEntity.Read]] =
     testException.raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
@@ -72,7 +75,7 @@ class TenantRepositorySpec
 
     val tenantEntityReadWrapped = tenantEntityRead_1.asRight[TenantInsertionError].pure[doobie.ConnectionIO]
 
-    val tenantInsertionError = TenantInsertionError.tenantAlreadyExistsError(publicTenantIdStr_1)
+    val tenantInsertionError: TenantInsertionError = TenantInsertionErrorImpl(testSqlException)
     val tenantInsertionErrorWrapped = tenantInsertionError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {

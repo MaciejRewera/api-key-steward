@@ -1,8 +1,8 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.IntegrationTestData._
-import apikeysteward.base.TestData._
+import apikeysteward.base.IntegrationTestData.ApiKeys._
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity._
 import cats.effect.testing.scalatest.AsyncIOSpec

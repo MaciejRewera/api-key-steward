@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData._
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}

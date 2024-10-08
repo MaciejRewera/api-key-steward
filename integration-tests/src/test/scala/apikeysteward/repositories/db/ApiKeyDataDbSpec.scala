@@ -1,7 +1,8 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.base.IntegrationTestData._
-import apikeysteward.base.TestData._
+import apikeysteward.base.IntegrationTestData.ApiKeys._
+import apikeysteward.base.TestData.ApiKeys
+import apikeysteward.base.TestData.ApiKeys._
 import apikeysteward.base.{FixedClock, TestData}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
@@ -49,7 +50,9 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Right(apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = 1L)))
+        result.asserting(res =>
+          res shouldBe Right(apiKeyDataEntityRead_1.copy(id = res.value.id, apiKeyId = res.value.apiKeyId))
+        )
       }
 
       "insert entity into DB" in {
@@ -206,13 +209,32 @@ class ApiKeyDataDbSpec
         }
       }
     }
+
+    "there is no ApiKey with provided apiKeyId in the DB" should {
+
+      "return Left containing ReferencedApiKeyDoesNotExistError" in {
+        apiKeyDataDb
+          .insert(apiKeyDataEntityWrite_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ReferencedApiKeyDoesNotExistError(apiKeyDataEntityWrite_1.apiKeyId)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          res <- Queries.getAllApiKeysData.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+      }
+    }
   }
 
   "ApiKeyDataDb on update" when {
 
     val updatedEntityRead = apiKeyDataEntityRead_1.copy(
-      name = TestData.nameUpdated,
-      description = TestData.descriptionUpdated,
+      name = ApiKeys.nameUpdated,
+      description = ApiKeys.descriptionUpdated,
       updatedAt = nowInstant
     )
 
@@ -260,8 +282,8 @@ class ApiKeyDataDbSpec
         result.asserting { res =>
           res.size shouldBe 1
 
-          val expectedEntity = apiKeyDataEntityRead_1
-          res.head shouldBe expectedEntity.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          val expectedEntity = apiKeyDataEntityRead_1.copy(id = res.head.id, apiKeyId = res.head.apiKeyId)
+          res.head shouldBe expectedEntity
         }
       }
     }

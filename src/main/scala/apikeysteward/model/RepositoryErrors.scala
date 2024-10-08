@@ -1,5 +1,6 @@
 package apikeysteward.model
 
+import java.sql.SQLException
 import java.util.UUID
 
 object RepositoryErrors {
@@ -8,7 +9,6 @@ object RepositoryErrors {
   object ApiKeyDbError {
 
     sealed abstract class ApiKeyInsertionError(override val message: String) extends ApiKeyDbError(message)
-
     object ApiKeyInsertionError {
 
       case object ApiKeyAlreadyExistsError extends ApiKeyInsertionError(message = "API Key already exists.")
@@ -18,6 +18,14 @@ object RepositoryErrors {
 
       case object PublicKeyIdAlreadyExistsError
           extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
+
+      case class ReferencedApiKeyDoesNotExistError(apiKeyId: Long)
+          extends ApiKeyInsertionError(message = s"ApiKey with id = [$apiKeyId] does not exist.")
+
+      case class ApiKeyInsertionErrorImpl(cause: SQLException)
+          extends ApiKeyInsertionError(
+            message = s"An error occurred when inserting ApiKey: $cause"
+          )
     }
 
     def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =
@@ -60,12 +68,14 @@ object RepositoryErrors {
     sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
     object TenantInsertionError {
 
-      def tenantAlreadyExistsError(publicTenantId: String): TenantInsertionError =
-        TenantAlreadyExistsError(publicTenantId)
-
       case class TenantAlreadyExistsError(publicTenantId: String)
           extends TenantInsertionError(
             message = s"Tenant with publicTenantId = $publicTenantId already exists."
+          )
+
+      case class TenantInsertionErrorImpl(cause: SQLException)
+          extends TenantInsertionError(
+            message = s"An error occurred when inserting Tenant: $cause"
           )
     }
 
@@ -80,6 +90,48 @@ object RepositoryErrors {
         extends TenantDbError(
           message =
             s"Could not delete Tenant with publicTenantId = ${publicTenantId.toString} because it is not deactivated."
+        )
+
+  }
+
+  sealed abstract class ApplicationDbError(override val message: String) extends CustomError
+  object ApplicationDbError {
+
+    sealed abstract class ApplicationInsertionError(override val message: String) extends ApplicationDbError(message)
+    object ApplicationInsertionError {
+
+      def applicationAlreadyExistsError(publicApplicationId: String): ApplicationDbError =
+        ApplicationAlreadyExistsError(publicApplicationId)
+
+      case class ApplicationAlreadyExistsError(publicApplicationId: String)
+          extends ApplicationInsertionError(
+            message = s"Application with publicApplicationId = $publicApplicationId already exists."
+          )
+
+      case class ReferencedTenantDoesNotExistError(tenantId: Long)
+          extends ApplicationInsertionError(message = s"Tenant with id = [$tenantId] does not exist.")
+
+      case class ApplicationInsertionErrorImpl(cause: SQLException)
+          extends ApplicationInsertionError(
+            message = s"An error occurred when inserting Application: $cause"
+          )
+    }
+
+    def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
+      ApplicationNotFoundError(publicApplicationId)
+
+    case class ApplicationNotFoundError(publicApplicationId: String)
+        extends ApplicationDbError(
+          message = s"Could not find Application with publicApplicationId = $publicApplicationId"
+        )
+
+    def applicationIsNotDeactivatedError(publicApplicationId: UUID): ApplicationDbError =
+      ApplicationIsNotDeactivatedError(publicApplicationId)
+
+    case class ApplicationIsNotDeactivatedError(publicApplicationId: UUID)
+        extends ApplicationDbError(
+          message =
+            s"Could not delete Application with publicApplicationId = ${publicApplicationId.toString} because it is not deactivated."
         )
 
   }
