@@ -122,10 +122,6 @@ class ApplicationDb()(implicit clock: Clock) {
   ): doobie.ConnectionIO[Option[ApplicationEntity.Read]] =
     Queries.getBy(publicApplicationId).option
 
-  // TODO: This method can potentially be removed.
-  def getAll: Stream[doobie.ConnectionIO, ApplicationEntity.Read] =
-    Queries.getAll.stream
-
   def getAllForTenant(publicTenantId: UUID): Stream[doobie.ConnectionIO, ApplicationEntity.Read] =
     Queries.getAllForTenant(publicTenantId.toString).stream
 
@@ -176,10 +172,6 @@ class ApplicationDb()(implicit clock: Clock) {
     def getBy(publicApplicationId: String): doobie.Query0[ApplicationEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM application WHERE public_application_id = $publicApplicationId").query[ApplicationEntity.Read]
-
-    val getAll: doobie.Query0[ApplicationEntity.Read] =
-      (columnNamesSelectFragment ++
-        sql"FROM application").query[ApplicationEntity.Read]
 
     def getAllForTenant(publicTenantId: String): doobie.Query0[ApplicationEntity.Read] =
       sql"""SELECT

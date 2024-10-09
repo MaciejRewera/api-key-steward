@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.ApiKeys.{apiKeyData_1, apiKey_1}
+import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKey_1}
 import apikeysteward.model.ApiKey
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.apikey.{ValidateApiKeyRequest, ValidateApiKeyResponse}

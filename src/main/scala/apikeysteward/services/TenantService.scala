@@ -56,14 +56,14 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
 
   def reactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.activate(tenantId).flatTap {
-      case Right(_) => logger.info(s"Enabled Tenant with tenantId: [$tenantId].")
-      case Left(e)  => logger.warn(s"Could not enable Tenant with tenantId: [$tenantId] because: ${e.message}")
+      case Right(_) => logger.info(s"Activated Tenant with tenantId: [$tenantId].")
+      case Left(e)  => logger.warn(s"Could not activate Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
   def deactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.deactivate(tenantId).flatTap {
-      case Right(_) => logger.info(s"Disabled Tenant with tenantId: [$tenantId].")
-      case Left(e)  => logger.warn(s"Could not disable Tenant with tenantId: [$tenantId] because: ${e.message}")
+      case Right(_) => logger.info(s"Deactivated Tenant with tenantId: [$tenantId].")
+      case Left(e)  => logger.warn(s"Could not deactivate Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
   def deleteTenant(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
