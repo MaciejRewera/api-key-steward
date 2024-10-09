@@ -375,6 +375,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
         tenantService.getBy(publicTenantId_1).asserting(_ shouldBe Some(tenant_1))
       }
     }
+
+    "return failed IO" when {
+      "TenantRepository returns failed IO" in {
+        tenantRepository.getBy(any[UUID]) returns IO.raiseError(testException)
+
+        tenantService.getBy(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
   }
 
   "TenantService on getAll" should {
@@ -401,6 +409,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
         tenantRepository.getAll returns IO.pure(List(tenant_1, tenant_2, tenant_3))
 
         tenantService.getAll.asserting(_ shouldBe List(tenant_1, tenant_2, tenant_3))
+      }
+    }
+
+    "return failed IO" when {
+      "TenantRepository returns failed IO" in {
+        tenantRepository.getAll returns IO.raiseError(testException)
+
+        tenantService.getAll.attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }

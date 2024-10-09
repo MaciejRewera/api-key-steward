@@ -462,6 +462,17 @@ class ApiKeyManagementServiceSpec
           .asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
       }
     }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.getAll(any[String]) returns IO.raiseError(testException)
+
+        managementService
+          .getAllApiKeysFor(userId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
   }
 
   "ManagementService on getApiKey(:userId, :publicKeyId)" should {
@@ -487,6 +498,17 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
         managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.get(any[String], any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .getApiKey(userId_1, publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }
@@ -516,6 +538,17 @@ class ApiKeyManagementServiceSpec
         managementService.getApiKey(publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
     }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.getByPublicKeyId(any[UUID]) returns IO.raiseError(testException)
+
+        managementService
+          .getApiKey(publicKeyId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
   }
 
   "ManagementService on getAllUserIds" should {
@@ -541,6 +574,15 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
 
         managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
+      }
+    }
+
+    "return failed IO" when {
+      "ApiKeyRepository returns failed IO" in {
+        apiKeyRepository.getAllUserIds returns IO.raiseError(testException)
+
+        managementService.getAllUserIds.attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

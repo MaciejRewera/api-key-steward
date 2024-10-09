@@ -466,6 +466,14 @@ class ApplicationServiceSpec
         applicationService.getBy(publicApplicationId_1).asserting(_ shouldBe Some(application_1))
       }
     }
+
+    "return failed IO" when {
+      "ApplicationRepository returns failed IO" in {
+        applicationRepository.getBy(any[UUID]) returns IO.raiseError(testException)
+
+        applicationService.getBy(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
   }
 
   "ApplicationService on getAllForTenant" should {
@@ -496,6 +504,14 @@ class ApplicationServiceSpec
         applicationService
           .getAllForTenant(publicTenantId_1)
           .asserting(_ shouldBe List(application_1, application_2, application_3))
+      }
+    }
+
+    "return failed IO" when {
+      "ApplicationRepository returns failed IO" in {
+        applicationRepository.getAllForTenant(any[UUID]) returns IO.raiseError(testException)
+
+        applicationService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }
