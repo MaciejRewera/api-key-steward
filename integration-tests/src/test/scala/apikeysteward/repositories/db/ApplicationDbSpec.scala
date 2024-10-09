@@ -861,52 +861,6 @@ class ApplicationDbSpec
     }
   }
 
-  "ApplicationDb on getAll" when {
-
-    "there are no rows in the DB" should {
-      "return empty Stream" in {
-        applicationDb.getAll.compile.toList
-          .transact(transactor)
-          .asserting(_ shouldBe List.empty[ApplicationEntity.Read])
-      }
-    }
-
-    "there is a single row in the DB" should {
-      "return this single row" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-
-          res <- applicationDb.getAll.compile.toList
-        } yield res).transact(transactor)
-
-        result.asserting { res =>
-          res.size shouldBe 1
-          res shouldBe List(applicationEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
-        }
-      }
-    }
-
-    "there are several rows in the DB" should {
-      "return all rows" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          entityRead_1 <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-          entityRead_2 <- applicationDb.insert(applicationEntityWrite_2.copy(tenantId = tenantId))
-          entityRead_3 <- applicationDb.insert(applicationEntityWrite_3.copy(tenantId = tenantId))
-          expectedEntities = Seq(entityRead_1, entityRead_2, entityRead_3).map(_.value)
-
-          res <- applicationDb.getAll.compile.toList
-        } yield (res, expectedEntities)).transact(transactor)
-
-        result.asserting { case (res, expectedEntities) =>
-          res.size shouldBe 3
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-    }
-  }
-
   "ApplicationDb on getAllForTenant" when {
 
     "there are no Tenants in the DB" should {
