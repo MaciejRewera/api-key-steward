@@ -4,7 +4,11 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.TestData.Tenants._
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantInsertionErrorImpl
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError.{
+  TenantInsertionError,
+  TenantIsNotDeactivatedError,
+  TenantNotFoundError
+}
 import apikeysteward.model.Tenant
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity
@@ -36,28 +40,6 @@ class TenantRepositorySpec
 
   override def beforeEach(): Unit =
     reset(tenantDb)
-
-  private val tenantEntityRead_1: TenantEntity.Read = TenantEntity.Read(
-    id = 1L,
-    publicTenantId = publicTenantIdStr_1,
-    name = tenantName_1,
-    description = tenantDescription_1,
-    createdAt = nowInstant,
-    updatedAt = nowInstant,
-    deactivatedAt = None
-  )
-  private val tenantEntityRead_2: TenantEntity.Read = tenantEntityRead_1.copy(
-    id = 2L,
-    publicTenantId = publicTenantIdStr_2,
-    name = tenantName_2,
-    description = tenantDescription_2
-  )
-  private val tenantEntityRead_3: TenantEntity.Read = tenantEntityRead_1.copy(
-    id = 3L,
-    publicTenantId = publicTenantIdStr_3,
-    name = tenantName_3,
-    description = tenantDescription_3
-  )
 
   private val tenantNotFoundError = TenantNotFoundError(publicTenantIdStr_1)
   private val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
@@ -260,7 +242,7 @@ class TenantRepositorySpec
     val tenantNotFound = tenantNotFoundError.asInstanceOf[TenantDbError]
     val tenantNotFoundWrapped = tenantNotFound.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 
-    val tenantIsNotDeactivatedError = TenantDbError.tenantIsNotDeactivatedError(publicTenantId_1)
+    val tenantIsNotDeactivatedError: TenantDbError = TenantIsNotDeactivatedError(publicTenantId_1)
     val tenantIsNotDeactivatedErrorWrapped =
       tenantIsNotDeactivatedError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
 

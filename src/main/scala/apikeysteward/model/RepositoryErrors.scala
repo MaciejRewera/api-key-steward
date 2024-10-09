@@ -1,5 +1,7 @@
 package apikeysteward.model
 
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+
 import java.sql.SQLException
 import java.util.UUID
 
@@ -108,8 +110,20 @@ object RepositoryErrors {
             message = s"Application with publicApplicationId = $publicApplicationId already exists."
           )
 
-      case class ReferencedTenantDoesNotExistError(tenantId: Long)
-          extends ApplicationInsertionError(message = s"Tenant with id = [$tenantId] does not exist.")
+      trait ReferencedTenantDoesNotExistError extends ApplicationInsertionError { val errorMessage: String }
+      object ReferencedTenantDoesNotExistError {
+
+        private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApplicationInsertionError(errorMessage)
+            with ReferencedTenantDoesNotExistError
+
+        def apply(tenantId: Long): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
+          errorMessage = s"Tenant with id = [$tenantId] does not exist."
+        )
+        def apply(publicTenantId: UUID): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
+          errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
+        )
+      }
 
       case class ApplicationInsertionErrorImpl(cause: SQLException)
           extends ApplicationInsertionError(

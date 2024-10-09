@@ -1,10 +1,8 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.IntegrationTestData.Applications._
-import apikeysteward.base.IntegrationTestData.Tenants._
 import apikeysteward.base.TestData.Applications._
-import apikeysteward.base.TestData.Tenants.{publicTenantId_1, publicTenantId_3}
+import apikeysteward.base.TestData.Tenants._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.repositories.DatabaseIntegrationSpec

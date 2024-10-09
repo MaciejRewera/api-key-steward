@@ -1,5 +1,7 @@
 package apikeysteward.repositories.db.entity
 
+import apikeysteward.model.{Application, ApplicationUpdate}
+
 import java.time.Instant
 
 object ApplicationEntity {
@@ -22,7 +24,15 @@ object ApplicationEntity {
       description: Option[String]
   )
 
-  object Write {}
+  object Write {
+    def from(tenantId: Long, application: Application): ApplicationEntity.Write =
+      ApplicationEntity.Write(
+        tenantId = tenantId,
+        publicApplicationId = application.applicationId.toString,
+        name = application.name,
+        description = application.description
+      )
+  }
 
   case class Update(
       publicApplicationId: String,
@@ -30,6 +40,13 @@ object ApplicationEntity {
       description: Option[String]
   )
 
-  object Update {}
+  object Update {
+    def from(applicationUpdate: ApplicationUpdate): ApplicationEntity.Update =
+      ApplicationEntity.Update(
+        publicApplicationId = applicationUpdate.applicationId.toString,
+        name = applicationUpdate.name,
+        description = applicationUpdate.description
+      )
+  }
 
 }
