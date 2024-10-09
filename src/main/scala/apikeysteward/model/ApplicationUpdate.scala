@@ -1,13 +1,12 @@
 package apikeysteward.model
 
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.routes.model.admin.application.UpdateApplicationRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-import java.util.UUID
-
 case class ApplicationUpdate(
-    applicationId: UUID,
+    applicationId: ApplicationId,
     name: String,
     description: Option[String]
 )
@@ -15,7 +14,7 @@ case class ApplicationUpdate(
 object ApplicationUpdate {
   implicit val codec: Codec[ApplicationUpdate] = deriveCodec[ApplicationUpdate]
 
-  def from(applicationId: UUID, updateApplicationRequest: UpdateApplicationRequest): ApplicationUpdate =
+  def from(applicationId: ApplicationId, updateApplicationRequest: UpdateApplicationRequest): ApplicationUpdate =
     ApplicationUpdate(
       applicationId = applicationId,
       name = updateApplicationRequest.name,

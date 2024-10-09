@@ -2,6 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
@@ -18,14 +19,11 @@ import java.util.UUID
 
 private[routes] object AdminApiKeyManagementEndpoints {
 
-  private val userIdPathParameter = path[String]("userId").description("ID of the user.")
-
-  private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
+  private val userIdPathParameter = path[String]("userId").description("Unique ID of the user.")
 
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyAdminRequest, ErrorInfo, (StatusCode, CreateApiKeyAdminResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
-      .out(statusCode.description(StatusCode.Created, "API key created"))
       .description("Create new API key for a user.")
       .in("admin" / "api-keys")
       .in(
@@ -43,6 +41,7 @@ private[routes] object AdminApiKeyManagementEndpoints {
             )
           )
       )
+      .out(statusCode.description(StatusCode.Created, "API key created successfully"))
       .out(
         jsonBody[CreateApiKeyAdminResponse]
           .example(
@@ -77,7 +76,7 @@ private[routes] object AdminApiKeyManagementEndpoints {
             )
           )
       )
-      .out(statusCode.description(StatusCode.Ok, "API key updated"))
+      .out(statusCode.description(StatusCode.Ok, "API key updated successfully"))
       .out(
         jsonBody[UpdateApiKeyAdminResponse].example(
           UpdateApiKeyAdminResponse(

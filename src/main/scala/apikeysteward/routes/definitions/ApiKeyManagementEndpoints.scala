@@ -2,6 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
+import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.errorOutVariantBadRequest
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
@@ -14,12 +15,9 @@ import java.util.UUID
 
 private[routes] object ApiKeyManagementEndpoints {
 
-  private val keyIdPathParameter = path[UUID]("keyId").description("ID of the API Key.")
-
   val createApiKeyEndpoint
       : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
-      .out(statusCode.description(StatusCode.Created, "API key created"))
       .description("Create new API key.")
       .in("api-keys")
       .in(
@@ -36,6 +34,7 @@ private[routes] object ApiKeyManagementEndpoints {
             )
           )
       )
+      .out(statusCode.description(StatusCode.Created, "API key created successfully"))
       .out(
         jsonBody[CreateApiKeyResponse]
           .example(

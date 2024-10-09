@@ -2,6 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity
@@ -9,8 +10,6 @@ import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.Transactor
 import doobie.implicits._
-
-import java.util.UUID
 
 class TenantRepository(tenantDb: TenantDb)(transactor: Transactor[IO]) {
 
@@ -26,7 +25,7 @@ class TenantRepository(tenantDb: TenantDb)(transactor: Transactor[IO]) {
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
-  def getBy(tenantId: UUID): IO[Option[Tenant]] =
+  def getBy(tenantId: TenantId): IO[Option[Tenant]] =
     (for {
       tenantEntityRead <- OptionT(tenantDb.getByPublicTenantId(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
@@ -38,19 +37,19 @@ class TenantRepository(tenantDb: TenantDb)(transactor: Transactor[IO]) {
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).compile.toList.transact(transactor)
 
-  def activate(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def activate(tenantId: TenantId): IO[Either[TenantNotFoundError, Tenant]] =
     (for {
       tenantEntityRead <- EitherT(tenantDb.activate(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
-  def deactivate(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def deactivate(tenantId: TenantId): IO[Either[TenantNotFoundError, Tenant]] =
     (for {
       tenantEntityRead <- EitherT(tenantDb.deactivate(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 
-  def delete(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
+  def delete(tenantId: TenantId): IO[Either[TenantDbError, Tenant]] =
     (for {
       tenantEntityRead <- EitherT(tenantDb.deleteDeactivated(tenantId))
       resultTenant = Tenant.from(tenantEntityRead)

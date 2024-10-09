@@ -1,8 +1,10 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ApplicationEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
@@ -11,7 +13,6 @@ import fs2._
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
-import java.util.UUID
 
 class ApplicationDb()(implicit clock: Clock) {
 
@@ -66,20 +67,20 @@ class ApplicationDb()(implicit clock: Clock) {
   }
 
   def activate(
-      publicApplicationId: UUID
+      publicApplicationId: ApplicationId
   ): doobie.ConnectionIO[Either[ApplicationNotFoundError, ApplicationEntity.Read]] = {
     val now = Instant.now(clock)
     performUpdate(publicApplicationId)(Queries.activate(publicApplicationId.toString, now).run)
   }
 
   def deactivate(
-      publicApplicationId: UUID
+      publicApplicationId: ApplicationId
   ): doobie.ConnectionIO[Either[ApplicationNotFoundError, ApplicationEntity.Read]] = {
     val now = Instant.now(clock)
     performUpdate(publicApplicationId)(Queries.deactivate(publicApplicationId.toString, now).run)
   }
 
-  private def performUpdate(publicApplicationId: UUID)(
+  private def performUpdate(publicApplicationId: ApplicationId)(
       updateAction: => doobie.ConnectionIO[Int]
   ): doobie.ConnectionIO[Either[ApplicationNotFoundError, ApplicationEntity.Read]] =
     performUpdate(publicApplicationId.toString)(updateAction)
@@ -96,7 +97,7 @@ class ApplicationDb()(implicit clock: Clock) {
     } yield resOpt.toRight(ApplicationNotFoundError(publicApplicationId))
 
   def deleteDeactivated(
-      publicApplicationId: UUID
+      publicApplicationId: ApplicationId
   ): doobie.ConnectionIO[Either[ApplicationDbError, ApplicationEntity.Read]] =
     for {
       applicationToDelete <- getByPublicApplicationId(publicApplicationId).map(
@@ -114,7 +115,9 @@ class ApplicationDb()(implicit clock: Clock) {
       }
     } yield resultE
 
-  def getByPublicApplicationId(publicApplicationId: UUID): doobie.ConnectionIO[Option[ApplicationEntity.Read]] =
+  def getByPublicApplicationId(
+      publicApplicationId: ApplicationId
+  ): doobie.ConnectionIO[Option[ApplicationEntity.Read]] =
     getByPublicApplicationId(publicApplicationId.toString)
 
   private def getByPublicApplicationId(
@@ -122,7 +125,7 @@ class ApplicationDb()(implicit clock: Clock) {
   ): doobie.ConnectionIO[Option[ApplicationEntity.Read]] =
     Queries.getBy(publicApplicationId).option
 
-  def getAllForTenant(publicTenantId: UUID): Stream[doobie.ConnectionIO, ApplicationEntity.Read] =
+  def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ApplicationEntity.Read] =
     Queries.getAllForTenant(publicTenantId.toString).stream
 
   private object Queries {

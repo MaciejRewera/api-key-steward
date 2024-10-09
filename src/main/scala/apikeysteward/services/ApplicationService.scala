@@ -1,8 +1,10 @@
 package apikeysteward.services
 
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.ApplicationAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.{ApplicationInsertionError, ApplicationNotFoundError}
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.ApplicationRepository
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
@@ -11,17 +13,15 @@ import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 
-import java.util.UUID
-
 class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: ApplicationRepository) extends Logging {
 
   def createApplication(
-      tenantId: UUID,
+      tenantId: TenantId,
       createApplicationRequest: CreateApplicationRequest
   ): IO[Either[ApplicationInsertionError, Application]] = createApplicationWithRetry(tenantId, createApplicationRequest)
 
   private def createApplicationWithRetry(
-      tenantId: UUID,
+      tenantId: TenantId,
       createApplicationRequest: CreateApplicationRequest
   ): IO[Either[ApplicationInsertionError, Application]] = {
 
@@ -53,7 +53,7 @@ class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: Ap
   }
 
   def updateApplication(
-      applicationId: UUID,
+      applicationId: ApplicationId,
       updateApplicationRequest: UpdateApplicationRequest
   ): IO[Either[ApplicationNotFoundError, Application]] =
     applicationRepository.update(ApplicationUpdate.from(applicationId, updateApplicationRequest)).flatTap {
@@ -62,31 +62,31 @@ class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: Ap
         logger.warn(s"Could not update Application with applicationId: [$applicationId] because: ${e.message}")
     }
 
-  def reactivateApplication(applicationId: UUID): IO[Either[ApplicationNotFoundError, Application]] =
+  def reactivateApplication(applicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
     applicationRepository.activate(applicationId).flatTap {
       case Right(_) => logger.info(s"Activated Application with applicationId: [$applicationId].")
       case Left(e) =>
         logger.warn(s"Could not activate Application with applicationId: [$applicationId] because: ${e.message}")
     }
 
-  def deactivateApplication(applicationId: UUID): IO[Either[ApplicationNotFoundError, Application]] =
+  def deactivateApplication(applicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
     applicationRepository.deactivate(applicationId).flatTap {
       case Right(_) => logger.info(s"Deactivated Application with applicationId: [$applicationId].")
       case Left(e) =>
         logger.warn(s"Could not deactivate Application with applicationId: [$applicationId] because: ${e.message}")
     }
 
-  def deleteApplication(applicationId: UUID): IO[Either[ApplicationDbError, Application]] =
+  def deleteApplication(applicationId: ApplicationId): IO[Either[ApplicationDbError, Application]] =
     applicationRepository.delete(applicationId).flatTap {
       case Right(_) => logger.info(s"Deleted Application with applicationId: [$applicationId].")
       case Left(e) =>
         logger.warn(s"Could not delete Application with applicationId: [$applicationId] because: ${e.message}")
     }
 
-  def getBy(applicationId: UUID): IO[Option[Application]] =
+  def getBy(applicationId: ApplicationId): IO[Option[Application]] =
     applicationRepository.getBy(applicationId)
 
-  def getAllForTenant(tenantId: UUID): IO[List[Application]] =
+  def getAllForTenant(tenantId: TenantId): IO[List[Application]] =
     applicationRepository.getAllForTenant(tenantId)
 
 }

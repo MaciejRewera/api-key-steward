@@ -1,6 +1,7 @@
 package apikeysteward.model
 
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Tenant.TenantId
 
 import java.sql.SQLException
 import java.util.UUID
@@ -86,9 +87,11 @@ object RepositoryErrors {
     case class TenantNotFoundError(publicTenantId: String)
         extends TenantDbError(message = s"Could not find Tenant with publicTenantId = $publicTenantId")
 
-    def tenantIsNotDeactivatedError(publicTenantId: UUID): TenantDbError = TenantIsNotDeactivatedError(publicTenantId)
+    def tenantIsNotDeactivatedError(publicTenantId: TenantId): TenantDbError = TenantIsNotDeactivatedError(
+      publicTenantId
+    )
 
-    case class TenantIsNotDeactivatedError(publicTenantId: UUID)
+    case class TenantIsNotDeactivatedError(publicTenantId: TenantId)
         extends TenantDbError(
           message =
             s"Could not delete Tenant with publicTenantId = ${publicTenantId.toString} because it is not deactivated."
@@ -117,7 +120,7 @@ object RepositoryErrors {
         def apply(tenantId: Long): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with id = [$tenantId] does not exist."
         )
-        def apply(publicTenantId: UUID): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
+        def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
         )
       }
@@ -136,10 +139,10 @@ object RepositoryErrors {
           message = s"Could not find Application with publicApplicationId = $publicApplicationId"
         )
 
-    def applicationIsNotDeactivatedError(publicApplicationId: UUID): ApplicationDbError =
+    def applicationIsNotDeactivatedError(publicApplicationId: ApplicationId): ApplicationDbError =
       ApplicationIsNotDeactivatedError(publicApplicationId)
 
-    case class ApplicationIsNotDeactivatedError(publicApplicationId: UUID)
+    case class ApplicationIsNotDeactivatedError(publicApplicationId: ApplicationId)
         extends ApplicationDbError(
           message =
             s"Could not delete Application with publicApplicationId = ${publicApplicationId.toString} because it is not deactivated."

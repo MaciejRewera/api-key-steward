@@ -26,6 +26,16 @@ private[routes] object ApiErrorMessages {
     }
   }
 
+  object AdminApplication {
+    val ApplicationNotFound = "No Application found for provided applicationId."
+    def ApplicationIsNotDeactivated(applicationId: UUID): String = {
+      val method = AdminApplicationEndpoints.deactivateApplicationEndpoint.method.getOrElse("PUT")
+      val path = AdminApplicationEndpoints.deactivateApplicationEndpoint.showPathTemplate()
+
+      s"Could not delete Application with applicationId = [$applicationId] because it is active and only inactive Applications can be permanently deleted. Deactivate the Application first, using $method $path API."
+    }
+  }
+
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
     val GetSingleApiKeyNotFound = "No API Key found for provided keyId."
