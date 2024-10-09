@@ -10,5 +10,4 @@ case class CreateTenantResponse(
 
 object CreateTenantResponse {
   implicit val codec: Codec[CreateTenantResponse] = deriveCodec[CreateTenantResponse]
-
 }

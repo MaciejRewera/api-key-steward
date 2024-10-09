@@ -2,6 +2,7 @@ package apikeysteward.routes.model
 
 import apikeysteward.routes.model.TapirCustomValidators.ValidateOption
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
+import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
@@ -44,6 +45,18 @@ object TapirCustomSchemas {
       .modify(_.name)(validateName)
       .modify(_.description)(validateDescription)
 
+  val createApplicationRequestSchema: Schema[CreateApplicationRequest] =
+    implicitly[Derived[Schema[CreateApplicationRequest]]].value
+      .map(Option(_))(trimStringFields)
+      .modify(_.name)(validateName)
+      .modify(_.description)(validateDescription)
+
+  val updateApplicationRequestSchema: Schema[UpdateApplicationRequest] =
+    implicitly[Derived[Schema[UpdateApplicationRequest]]].value
+      .map(Option(_))(trimStringFields)
+      .modify(_.name)(validateName)
+      .modify(_.description)(validateDescription)
+
   private def trimStringFields(request: CreateApiKeyRequest): CreateApiKeyRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
@@ -57,6 +70,12 @@ object TapirCustomSchemas {
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def trimStringFields(request: UpdateTenantRequest): UpdateTenantRequest =
+    request.copy(name = request.name.trim, description = request.description.map(_.trim))
+
+  private def trimStringFields(request: CreateApplicationRequest): CreateApplicationRequest =
+    request.copy(name = request.name.trim, description = request.description.map(_.trim))
+
+  private def trimStringFields(request: UpdateApplicationRequest): UpdateApplicationRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def validateName(schema: Schema[String]): Schema[String] =

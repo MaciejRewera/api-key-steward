@@ -102,9 +102,6 @@ object RepositoryErrors {
     sealed abstract class ApplicationInsertionError(override val message: String) extends ApplicationDbError(message)
     object ApplicationInsertionError {
 
-      def applicationAlreadyExistsError(publicApplicationId: String): ApplicationDbError =
-        ApplicationAlreadyExistsError(publicApplicationId)
-
       case class ApplicationAlreadyExistsError(publicApplicationId: String)
           extends ApplicationInsertionError(
             message = s"Application with publicApplicationId = $publicApplicationId already exists."
