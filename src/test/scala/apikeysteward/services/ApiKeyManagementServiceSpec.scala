@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.ApiKeys._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError

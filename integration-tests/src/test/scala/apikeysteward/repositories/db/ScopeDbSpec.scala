@@ -1,6 +1,6 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.base.TestData.ApiKeys._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ScopeEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

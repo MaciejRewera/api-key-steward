@@ -1,14 +1,11 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.Applications._
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.ApplicationsTestData._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.Application
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.{
-  ApplicationInsertionErrorImpl,
-  ReferencedTenantDoesNotExistError
-}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.repositories.db.entity.{ApplicationEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApplicationDb, TenantDb}

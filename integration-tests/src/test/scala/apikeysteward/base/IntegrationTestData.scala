@@ -1,17 +1,15 @@
 package apikeysteward.base
 
-import apikeysteward.base.TestData.ApiKeys._
-import apikeysteward.base.TestData.Applications._
-import apikeysteward.base.TestData.Tenants._
-import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity, ApplicationEntity, TenantEntity}
+import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 
 import java.util.concurrent.TimeUnit
 
 object IntegrationTestData extends IntegrationTestData
 
-trait IntegrationTestData extends FixedClock {
+trait IntegrationTestData {
 
-  object ApiKeys {
+  object ApiKeys extends FixedClock {
 
     val apiKeyEntityWrite_1: ApiKeyEntity.Write = ApiKeyEntity.Write(apiKey_1.value)
     val apiKeyEntityWrite_2: ApiKeyEntity.Write = ApiKeyEntity.Write(apiKey_2.value)

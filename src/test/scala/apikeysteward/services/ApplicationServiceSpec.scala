@@ -1,8 +1,8 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.Applications._
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.ApplicationsTestData._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.{ApplicationInsertionError, ApplicationNotFoundError}
@@ -459,6 +459,7 @@ class ApplicationServiceSpec
 
         applicationService.getBy(publicApplicationId_1).asserting(_ shouldBe None)
       }
+
       "ApplicationRepository returns non-empty Option" in {
         applicationRepository.getBy(any[UUID]) returns IO.pure(Some(application_1))
 

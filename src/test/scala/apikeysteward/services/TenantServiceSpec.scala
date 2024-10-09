@@ -1,12 +1,9 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.{
-  TenantAlreadyExistsError,
-  TenantInsertionErrorImpl
-}
+import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError._
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantInsertionError, TenantNotFoundError}
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.TenantRepository

@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
 import apikeysteward.repositories.DatabaseIntegrationSpec

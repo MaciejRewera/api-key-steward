@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.ApiKeys.{hashedApiKey_1, hashedApiKey_2}
+import apikeysteward.base.testdata.ApiKeysTestData.{hashedApiKey_1, hashedApiKey_2}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec

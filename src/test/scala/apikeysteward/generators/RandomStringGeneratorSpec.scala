@@ -1,6 +1,6 @@
 package apikeysteward.generators
 
-import apikeysteward.base.TestData.ApiKeys.ttlMinutes
+import apikeysteward.base.testdata.ApiKeysTestData.ttlMinutes
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.repositories.SecureHashGenerator.Algorithm.SHA3_256
 import cats.effect.testing.scalatest.AsyncIOSpec

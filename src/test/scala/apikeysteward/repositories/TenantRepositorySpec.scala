@@ -1,14 +1,10 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantInsertionErrorImpl
-import apikeysteward.model.RepositoryErrors.TenantDbError.{
-  TenantInsertionError,
-  TenantIsNotDeactivatedError,
-  TenantNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.model.Tenant
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity

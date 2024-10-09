@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData.ApiKeys._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
@@ -8,11 +8,7 @@ import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.admin.apikey.{
-  CreateApiKeyAdminRequest,
-  UpdateApiKeyAdminRequest,
-  UpdateApiKeyAdminResponse
-}
+import apikeysteward.routes.model.admin.apikey._
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}

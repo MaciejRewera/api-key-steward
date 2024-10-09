@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData.ApiKeys._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}

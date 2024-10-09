@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.TestData.Tenants._
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
@@ -8,7 +8,6 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.tenant._
-import apikeysteward.routes.model.apikey.{CreateApiKeyRequest, CreateApiKeyResponse}
 import apikeysteward.services.TenantService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
