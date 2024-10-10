@@ -1,6 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
@@ -28,6 +29,9 @@ class AdminApplicationRoutes(jwtAuthorizer: JwtAuthorizer, applicationService: A
 
             case Right(newApplication) =>
               (StatusCode.Created, CreateApplicationResponse(newApplication)).asRight
+
+            case Left(_: ReferencedTenantDoesNotExistError) =>
+              ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminApplication.ReferencedTenantNotFound)).asLeft
 
             case Left(_: ApplicationInsertionError) =>
               ErrorInfo.internalServerErrorInfo().asLeft

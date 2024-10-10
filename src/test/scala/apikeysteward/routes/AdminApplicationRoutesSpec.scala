@@ -27,6 +27,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import org.typelevel.ci.{CIString, CIStringSyntax}
 
+import java.sql.SQLException
 import java.util.UUID
 
 class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
@@ -354,7 +355,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         }
       }
 
-      "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationInsertionError" in authorizedFixture {
+      "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationAlreadyExistsError" in authorizedFixture {
         applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
           Left(ApplicationAlreadyExistsError(publicApplicationIdStr_1))
         )
@@ -366,15 +367,32 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         } yield ()
       }
 
-      "return Internal Server Error when ApplicationService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+      "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationInsertionErrorImpl" in authorizedFixture {
+        val testSqlException = new SQLException("Test SQL Exception")
         applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicApplicationId_1))
+          Left(ApplicationInsertionErrorImpl(testSqlException))
         )
 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "return Bad Request when ApplicationService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+          Left(ReferencedTenantDoesNotExistError(publicApplicationId_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminApplication.ReferencedTenantNotFound))
+            )
         } yield ()
       }
 

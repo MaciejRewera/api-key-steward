@@ -18,6 +18,7 @@ private[routes] object ApiErrorMessages {
 
   object AdminTenant {
     val TenantNotFound = "No Tenant found for provided tenantId."
+
     def TenantIsNotDeactivated(tenantId: UUID): String = {
       val method = AdminTenantEndpoints.deactivateTenantEndpoint.method.getOrElse("PUT")
       val path = AdminTenantEndpoints.deactivateTenantEndpoint.showPathTemplate()
@@ -28,6 +29,8 @@ private[routes] object ApiErrorMessages {
 
   object AdminApplication {
     val ApplicationNotFound = "No Application found for provided applicationId."
+    val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
+
     def ApplicationIsNotDeactivated(applicationId: UUID): String = {
       val method = AdminApplicationEndpoints.deactivateApplicationEndpoint.method.getOrElse("PUT")
       val path = AdminApplicationEndpoints.deactivateApplicationEndpoint.showPathTemplate()
