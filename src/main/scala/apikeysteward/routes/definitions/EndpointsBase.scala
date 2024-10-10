@@ -19,7 +19,7 @@ private[routes] object EndpointsBase {
 
   val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
-    .description("Unique ID of the tenant for which to scope this request.")
+    .description("Unique ID of the Tenant for which to scope this request.")
 
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
 

@@ -28,7 +28,7 @@ private[routes] object AdminApplicationEndpoints {
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.post
-      .description("Create new Application with provided name.")
+      .description("Create a new Application with provided details.")
       .in(tenantIdHeaderInput)
       .in("admin" / "applications")
       .in(
@@ -100,7 +100,7 @@ private[routes] object AdminApplicationEndpoints {
       .out(statusCode.description(StatusCode.Ok, "Application deactivated"))
       .out(
         jsonBody[DeactivateApplicationResponse]
-          .example(DeactivateApplicationResponse(EndpointsBase.ApplicationExample))
+          .example(DeactivateApplicationResponse(EndpointsBase.ApplicationExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
@@ -109,13 +109,15 @@ private[routes] object AdminApplicationEndpoints {
       : Endpoint[AccessToken, ApplicationId, ErrorInfo, (StatusCode, DeleteApplicationResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
-        "Delete an inactive Application. The Application has to be inactive before using this API. This operation is permanent. Proceed with caution."
+        """Delete an inactive Application. The Application has to be inactive before using this API.
+          |
+          |This operation is permanent. Proceed with caution.""".stripMargin
       )
       .in("admin" / "applications" / applicationIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Application deleted"))
       .out(
         jsonBody[DeleteApplicationResponse]
-          .example(DeleteApplicationResponse(EndpointsBase.ApplicationExample))
+          .example(DeleteApplicationResponse(EndpointsBase.ApplicationExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
@@ -123,7 +125,7 @@ private[routes] object AdminApplicationEndpoints {
   val getSingleApplicationEndpoint
       : Endpoint[AccessToken, ApplicationId, ErrorInfo, (StatusCode, GetSingleApplicationResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get single Application with provided applicationId.")
+      .description("Get single Application for provided applicationId.")
       .in("admin" / "applications" / applicationIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Application found"))
       .out(
@@ -136,7 +138,7 @@ private[routes] object AdminApplicationEndpoints {
   val searchApplicationsEndpoint
       : Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetMultipleApplicationsResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all Applications for provided tenantId")
+      .description("Get all Applications for provided tenantId.")
       .in(tenantIdHeaderInput)
       .in("admin" / "applications")
       .out(statusCode.description(StatusCode.Ok, "Applications found"))

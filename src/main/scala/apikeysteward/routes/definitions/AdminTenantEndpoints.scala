@@ -20,7 +20,7 @@ private[routes] object AdminTenantEndpoints {
   val createTenantEndpoint
       : Endpoint[AccessToken, CreateTenantRequest, ErrorInfo, (StatusCode, CreateTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
-      .description("Create new Tenant with provided name.")
+      .description("Create a new Tenant with provided details.")
       .in("admin" / "tenants")
       .in(
         jsonBody[CreateTenantRequest]
@@ -80,7 +80,7 @@ private[routes] object AdminTenantEndpoints {
       .out(statusCode.description(StatusCode.Ok, "Tenant deactivated"))
       .out(
         jsonBody[DeactivateTenantResponse]
-          .example(DeactivateTenantResponse(EndpointsBase.TenantExample))
+          .example(DeactivateTenantResponse(EndpointsBase.TenantExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
@@ -88,20 +88,22 @@ private[routes] object AdminTenantEndpoints {
   val deleteTenantEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, DeleteTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
-        "Delete an inactive Tenant. The Tenant has to be inactive before using this API. This operation is permanent. Proceed with caution."
+        """Delete an inactive Tenant. The Tenant has to be inactive before using this API.
+          |
+          |This operation is permanent. Proceed with caution.""".stripMargin
       )
       .in("admin" / "tenants" / tenantIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Tenant deleted"))
       .out(
         jsonBody[DeleteTenantResponse]
-          .example(DeleteTenantResponse(EndpointsBase.TenantExample))
+          .example(DeleteTenantResponse(EndpointsBase.TenantExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getSingleTenantEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetSingleTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get single Tenant with provided tenantId.")
+      .description("Get single Tenant for provided tenantId.")
       .in("admin" / "tenants" / tenantIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Tenant found"))
       .out(
