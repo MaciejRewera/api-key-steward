@@ -13,11 +13,10 @@ import fs2._
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
+import doobie.postgres._
+import doobie.postgres.implicits._
 
 class ApplicationDb()(implicit clock: Clock) {
-
-  import doobie.postgres._
-  import doobie.postgres.implicits._
 
   def insert(
       applicationEntity: ApplicationEntity.Write

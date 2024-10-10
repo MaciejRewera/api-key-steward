@@ -6,6 +6,8 @@ import apikeysteward.model.RepositoryErrors.TenantDbError._
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
+import doobie.postgres._
+import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream
 
@@ -14,9 +16,6 @@ import java.time.{Clock, Instant}
 import java.util.UUID
 
 class TenantDb()(implicit clock: Clock) {
-
-  import doobie.postgres._
-  import doobie.postgres.implicits._
 
   def insert(tenantEntity: TenantEntity.Write): doobie.ConnectionIO[Either[TenantInsertionError, TenantEntity.Read]] = {
     val now = Instant.now(clock)

@@ -69,7 +69,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
 
-        apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
+        apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
         createApiKeyRequestValidator = new CreateApiKeyRequestValidator(config.apiKey)
         apiKeyManagementService = new ApiKeyManagementService(
@@ -82,7 +82,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
 
-        validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
+        validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)

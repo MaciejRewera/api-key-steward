@@ -6,6 +6,8 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundErr
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
+import doobie.postgres._
+import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.{FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION}
 import fs2.Stream
 

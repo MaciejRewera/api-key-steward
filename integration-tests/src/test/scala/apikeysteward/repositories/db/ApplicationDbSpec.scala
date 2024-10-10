@@ -728,7 +728,7 @@ class ApplicationDbSpec
           res <- applicationDb.deleteDeactivated(publicApplicationId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(ApplicationIsNotDeactivatedError(publicApplicationId_1)))
+        result.asserting(_ shouldBe Left(ApplicationIsNotDeactivatedError(publicApplicationId_1)))
       }
 
       "make no changes to the DB" in {
@@ -810,11 +810,11 @@ class ApplicationDbSpec
           res <- Queries.getAllApplications
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
-        result.asserting { case (res, entityRead_2, entityRead_3) =>
-          res.size shouldBe 2
+        result.asserting { case (allApplications, entityRead_2, entityRead_3) =>
+          allApplications.size shouldBe 2
 
           val expectedEntities = Seq(entityRead_2, entityRead_3)
-          res should contain theSameElementsAs expectedEntities
+          allApplications should contain theSameElementsAs expectedEntities
         }
       }
     }
