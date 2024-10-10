@@ -26,9 +26,7 @@ object RepositoryErrors {
           extends ApiKeyInsertionError(message = s"ApiKey with id = [$apiKeyId] does not exist.")
 
       case class ApiKeyInsertionErrorImpl(cause: SQLException)
-          extends ApiKeyInsertionError(
-            message = s"An error occurred when inserting ApiKey: $cause"
-          )
+          extends ApiKeyInsertionError(message = s"An error occurred when inserting ApiKey: $cause")
     }
 
     def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =
@@ -51,13 +49,13 @@ object RepositoryErrors {
         apply(userId, publicKeyId.toString)
 
       def apply(userId: String, publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
-        errorMessage = s"Could not find API Key Data with userId = $userId and publicKeyId = $publicKeyId"
+        errorMessage = s"Could not find API Key Data with userId = [$userId] and publicKeyId = [$publicKeyId]."
       )
 
       def apply(publicKeyId: UUID): ApiKeyDataNotFoundError =
         apply(publicKeyId.toString)
       def apply(publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
-        errorMessage = s"Could not find API Key Data with publicKeyId = $publicKeyId"
+        errorMessage = s"Could not find API Key Data with publicKeyId = [$publicKeyId]."
       )
     }
 
@@ -73,19 +71,17 @@ object RepositoryErrors {
 
       case class TenantAlreadyExistsError(publicTenantId: String)
           extends TenantInsertionError(
-            message = s"Tenant with publicTenantId = $publicTenantId already exists."
+            message = s"Tenant with publicTenantId = [$publicTenantId] already exists."
           )
 
       case class TenantInsertionErrorImpl(cause: SQLException)
-          extends TenantInsertionError(
-            message = s"An error occurred when inserting Tenant: $cause"
-          )
+          extends TenantInsertionError(message = s"An error occurred when inserting Tenant: $cause")
     }
 
     def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
 
     case class TenantNotFoundError(publicTenantId: String)
-        extends TenantDbError(message = s"Could not find Tenant with publicTenantId = $publicTenantId")
+        extends TenantDbError(message = s"Could not find Tenant with publicTenantId = [$publicTenantId].")
 
     def tenantIsNotDeactivatedError(publicTenantId: TenantId): TenantDbError = TenantIsNotDeactivatedError(
       publicTenantId
@@ -94,9 +90,8 @@ object RepositoryErrors {
     case class TenantIsNotDeactivatedError(publicTenantId: TenantId)
         extends TenantDbError(
           message =
-            s"Could not delete Tenant with publicTenantId = ${publicTenantId.toString} because it is not deactivated."
+            s"Could not delete Tenant with publicTenantId = [${publicTenantId.toString}] because it is not deactivated."
         )
-
   }
 
   sealed abstract class ApplicationDbError(override val message: String) extends CustomError
@@ -107,7 +102,7 @@ object RepositoryErrors {
 
       case class ApplicationAlreadyExistsError(publicApplicationId: String)
           extends ApplicationInsertionError(
-            message = s"Application with publicApplicationId = $publicApplicationId already exists."
+            message = s"Application with publicApplicationId = [$publicApplicationId] already exists."
           )
 
       trait ReferencedTenantDoesNotExistError extends ApplicationInsertionError { val errorMessage: String }
@@ -126,9 +121,7 @@ object RepositoryErrors {
       }
 
       case class ApplicationInsertionErrorImpl(cause: SQLException)
-          extends ApplicationInsertionError(
-            message = s"An error occurred when inserting Application: $cause"
-          )
+          extends ApplicationInsertionError(message = s"An error occurred when inserting Application: $cause")
     }
 
     def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
@@ -136,7 +129,7 @@ object RepositoryErrors {
 
     case class ApplicationNotFoundError(publicApplicationId: String)
         extends ApplicationDbError(
-          message = s"Could not find Application with publicApplicationId = $publicApplicationId"
+          message = s"Could not find Application with publicApplicationId = [$publicApplicationId]."
         )
 
     def applicationIsNotDeactivatedError(publicApplicationId: ApplicationId): ApplicationDbError =
@@ -145,8 +138,55 @@ object RepositoryErrors {
     case class ApplicationIsNotDeactivatedError(publicApplicationId: ApplicationId)
         extends ApplicationDbError(
           message =
-            s"Could not delete Application with publicApplicationId = ${publicApplicationId.toString} because it is not deactivated."
+            s"Could not delete Application with publicApplicationId = [${publicApplicationId.toString}] because it is not deactivated."
         )
-
   }
+
+  sealed abstract class PermissionDbError(override val message: String) extends CustomError
+  object PermissionDbError {
+
+    sealed abstract class PermissionInsertionError(override val message: String) extends PermissionDbError(message)
+    object PermissionInsertionError {
+
+      case class PermissionAlreadyExistsError(publicPermissionId: String)
+          extends PermissionInsertionError(
+            message = s"Permission with publicPermissionId = [$publicPermissionId] already exists."
+          )
+
+      case class PermissionAlreadyExistsForThisApplicationError(permissionName: String, applicationId: Long)
+          extends PermissionInsertionError(
+            message =
+              s"Permission with name = $permissionName already exists for Application with ID = [$applicationId]."
+          )
+
+      trait ReferencedApplicationDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
+      object ReferencedApplicationDoesNotExistError {
+
+        private case class ReferencedApplicationDoesNotExistErrorImpl(override val errorMessage: String)
+            extends PermissionInsertionError(errorMessage)
+            with ReferencedApplicationDoesNotExistError
+
+        def apply(applicationId: Long): ReferencedApplicationDoesNotExistError =
+          ReferencedApplicationDoesNotExistErrorImpl(
+            errorMessage = s"Application with id = [$applicationId] does not exist."
+          )
+        def apply(publicApplicationId: TenantId): ReferencedApplicationDoesNotExistError =
+          ReferencedApplicationDoesNotExistErrorImpl(
+            errorMessage = s"Application with publicApplicationId = [$publicApplicationId] does not exist."
+          )
+      }
+
+      case class PermissionInsertionErrorImpl(cause: SQLException)
+          extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")
+    }
+
+    def permissionNotFoundError(publicPermissionId: String): PermissionDbError =
+      PermissionNotFoundError(publicPermissionId)
+
+    case class PermissionNotFoundError(publicPermissionId: String)
+        extends PermissionDbError(
+          message = s"Could not find Permission with publicPermissionId = [$publicPermissionId]."
+        )
+  }
+
 }

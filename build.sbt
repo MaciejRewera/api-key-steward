@@ -85,6 +85,7 @@ lazy val it = (project in file("integration-tests"))
   .dependsOn(root % "compile->compile;test->test")
   .settings(
     Test / parallelExecution := false,
+    scalafmtOnCompile := true,
     libraryDependencies ++= Seq(
       "org.tpolecat" %% "doobie-scalatest" % DoobieVersion % Test,
       "org.typelevel" %% "cats-effect-testing-scalatest" % "1.4.0" % Test,

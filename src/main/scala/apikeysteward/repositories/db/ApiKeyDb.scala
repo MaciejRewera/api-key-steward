@@ -6,15 +6,14 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._
+import doobie.postgres._
+import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
 
 class ApiKeyDb()(implicit clock: Clock) {
-
-  import doobie.postgres._
-  import doobie.postgres.implicits._
 
   def insert(apiKeyEntity: ApiKeyEntity.Write): doobie.ConnectionIO[Either[ApiKeyInsertionError, ApiKeyEntity.Read]] = {
     val now = Instant.now(clock)

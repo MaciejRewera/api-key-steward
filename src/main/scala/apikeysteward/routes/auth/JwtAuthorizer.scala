@@ -40,7 +40,7 @@ class JwtAuthorizer(jwtDecoder: JwtDecoder) {
 
 object JwtAuthorizer {
   type AccessToken = String
-  type Permission = String
+  private[routes] type Permission = String
 
   def buildNoRequiredPermissionsUnauthorizedErrorInfo(
       requiredPermissions: Set[Permission],
