@@ -12,7 +12,11 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
+import java.util.UUID
+
 private[definitions] object ApiKeyManagementEndpointsBase {
+
+  val keyIdPathParameter: EndpointInput.PathCapture[UUID] = path[UUID]("keyId").description("Unique ID of the API Key.")
 
   val getAllApiKeysForUserEndpointBase
       : Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =

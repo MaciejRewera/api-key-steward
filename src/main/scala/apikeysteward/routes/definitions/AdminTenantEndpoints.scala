@@ -1,5 +1,6 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
@@ -12,16 +13,14 @@ import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-import java.util.UUID
-
 private[routes] object AdminTenantEndpoints {
 
-  private val tenantIdPathParameter = path[UUID]("tenantId").description("ID of the Tenant.")
+  private val tenantIdPathParameter = path[TenantId]("tenantId").description("Unique ID of the Tenant.")
 
   val createTenantEndpoint
       : Endpoint[AccessToken, CreateTenantRequest, ErrorInfo, (StatusCode, CreateTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
-      .description("Create new Tenant with provided name.")
+      .description("Create a new Tenant with provided details.")
       .in("admin" / "tenants")
       .in(
         jsonBody[CreateTenantRequest]
@@ -30,7 +29,7 @@ private[routes] object AdminTenantEndpoints {
             CreateTenantRequest(name = "My new Tenant", description = Some("A description what this Tenant is for."))
           )
       )
-      .out(statusCode.description(StatusCode.Created, "Tenant created"))
+      .out(statusCode.description(StatusCode.Created, "Tenant created successfully"))
       .out(
         jsonBody[CreateTenantResponse]
           .example(CreateTenantResponse(EndpointsBase.TenantExample))
@@ -38,7 +37,7 @@ private[routes] object AdminTenantEndpoints {
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val updateTenantEndpoint
-      : Endpoint[AccessToken, (UUID, UpdateTenantRequest), ErrorInfo, (StatusCode, UpdateTenantResponse), Any] =
+      : Endpoint[AccessToken, (TenantId, UpdateTenantRequest), ErrorInfo, (StatusCode, UpdateTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.put
       .description(
         """Update an existing Tenant. You have to specify all of the fields of the Tenant.
@@ -52,7 +51,7 @@ private[routes] object AdminTenantEndpoints {
             UpdateTenantRequest(name = "My new Tenant", description = Some("A description what this Tenant is for."))
           )
       )
-      .out(statusCode.description(StatusCode.Ok, "Tenant updated"))
+      .out(statusCode.description(StatusCode.Ok, "Tenant updated successfully"))
       .out(
         jsonBody[UpdateTenantResponse]
           .example(UpdateTenantResponse(EndpointsBase.TenantExample))
@@ -60,7 +59,8 @@ private[routes] object AdminTenantEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val reactivateTenantEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, ReactivateTenantResponse), Any] =
+  val reactivateTenantEndpoint
+      : Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, ReactivateTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.put
       .description("Reactivate an inactive Tenant. If the Tenant is already active, this API has no effect.")
       .in("admin" / "tenants" / tenantIdPathParameter / "reactivation")
@@ -72,35 +72,38 @@ private[routes] object AdminTenantEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deactivateTenantEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeactivateTenantResponse), Any] =
+  val deactivateTenantEndpoint
+      : Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, DeactivateTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.put
       .description("Deactivate an active Tenant. If the Tenant is already inactive, this API has no effect.")
       .in("admin" / "tenants" / tenantIdPathParameter / "deactivation")
       .out(statusCode.description(StatusCode.Ok, "Tenant deactivated"))
       .out(
         jsonBody[DeactivateTenantResponse]
-          .example(DeactivateTenantResponse(EndpointsBase.TenantExample))
+          .example(DeactivateTenantResponse(EndpointsBase.TenantExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deleteTenantEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteTenantResponse), Any] =
+  val deleteTenantEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, DeleteTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
-        "Delete an inactive Tenant. The Tenant has to be inactive before using this API. This operation is permanent. Proceed with caution."
+        """Delete an inactive Tenant. The Tenant has to be inactive before using this API.
+          |
+          |This operation is permanent. Proceed with caution.""".stripMargin
       )
       .in("admin" / "tenants" / tenantIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Tenant deleted"))
       .out(
         jsonBody[DeleteTenantResponse]
-          .example(DeleteTenantResponse(EndpointsBase.TenantExample))
+          .example(DeleteTenantResponse(EndpointsBase.TenantExample.copy(isActive = false)))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleTenantEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, GetSingleTenantResponse), Any] =
+  val getSingleTenantEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetSingleTenantResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get single Tenant with provided tenantId.")
+      .description("Get single Tenant for provided tenantId.")
       .in("admin" / "tenants" / tenantIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Tenant found"))
       .out(

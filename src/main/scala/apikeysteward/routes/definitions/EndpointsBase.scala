@@ -1,10 +1,12 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.{ApiKey, ApiKeyData, Tenant}
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.{ApiKey, ApiKeyData, Application, Tenant}
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
+import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
@@ -14,6 +16,40 @@ import java.time.Instant
 import java.util.UUID
 
 private[routes] object EndpointsBase {
+
+  val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
+  val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
+    .description("Unique ID of the Tenant for which to scope this request.")
+
+  val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
+
+  val ApiKeyDataExample: ApiKeyData = ApiKeyData(
+    publicKeyId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My API key",
+    description = Some("A short description what this API key is for."),
+    userId = "user-1234567",
+    expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z"),
+    scopes = List("read:myApi", "write:myApi")
+  )
+
+  val TenantExample: Tenant = Tenant(
+    tenantId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My new Tenant",
+    description = Some("A description what this Tenant is for."),
+    isActive = true
+  )
+
+  val ApplicationExample: Application = Application(
+    applicationId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My new Application",
+    description = Some("A description what this Application is for."),
+    isActive = true
+  )
+
+  val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
+    endpoint
+      .securityIn(auth.bearer[AccessToken]())
+      .errorOut(oneOf[ErrorInfo](errorOutVariantUnauthorized, errorOutVariantInternalServerError))
 
   object ErrorOutputVariants {
 
@@ -62,26 +98,4 @@ private[routes] object EndpointsBase {
       ) { case errorInfo: ErrorInfo => errorInfo.error == Errors.NotFound }
   }
 
-  val ApiKeyDataExample: ApiKeyData = ApiKeyData(
-    publicKeyId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "My API key",
-    description = Some("A short description what this API key is for."),
-    userId = "user-1234567",
-    expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z"),
-    scopes = List("read:myApi", "write:myApi")
-  )
-
-  val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
-
-  val TenantExample: Tenant = Tenant(
-    tenantId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "My new Tenant",
-    description = Some("A description what this Tenant is for."),
-    isActive = true
-  )
-
-  val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
-    endpoint
-      .securityIn(auth.bearer[AccessToken]())
-      .errorOut(oneOf[ErrorInfo](errorOutVariantUnauthorized, errorOutVariantInternalServerError))
 }

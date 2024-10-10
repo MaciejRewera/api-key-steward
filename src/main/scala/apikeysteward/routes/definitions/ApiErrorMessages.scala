@@ -18,11 +18,24 @@ private[routes] object ApiErrorMessages {
 
   object AdminTenant {
     val TenantNotFound = "No Tenant found for provided tenantId."
+
     def TenantIsNotDeactivated(tenantId: UUID): String = {
       val method = AdminTenantEndpoints.deactivateTenantEndpoint.method.getOrElse("PUT")
       val path = AdminTenantEndpoints.deactivateTenantEndpoint.showPathTemplate()
 
       s"Could not delete Tenant with tenantId = [$tenantId] because it is active and only inactive Tenants can be permanently deleted. Deactivate the Tenant first, using $method $path API."
+    }
+  }
+
+  object AdminApplication {
+    val ApplicationNotFound = "No Application found for provided applicationId."
+    val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
+
+    def ApplicationIsNotDeactivated(applicationId: UUID): String = {
+      val method = AdminApplicationEndpoints.deactivateApplicationEndpoint.method.getOrElse("PUT")
+      val path = AdminApplicationEndpoints.deactivateApplicationEndpoint.showPathTemplate()
+
+      s"Could not delete Application with applicationId = [$applicationId] because it is active and only inactive Applications can be permanently deleted. Deactivate the Application first, using $method $path API."
     }
   }
 

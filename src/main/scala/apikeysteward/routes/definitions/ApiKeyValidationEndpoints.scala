@@ -14,7 +14,7 @@ object ApiKeyValidationEndpoints {
       : Endpoint[Unit, ValidateApiKeyRequest, ErrorInfo, (StatusCode, ValidateApiKeyResponse), Any] =
     endpoint.post
       .description(
-        "Validate API key. This API is public - it does not require either authentication nor authorization."
+        "Validate provided API key. This API is public - it does not require JSON Web Token."
       )
       .in("api-keys" / "validation")
       .in(

@@ -67,6 +67,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
+        applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
 
         apiKeyService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
@@ -79,27 +80,34 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         )
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
+        applicationService = new ApplicationService(uuidGenerator, applicationRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyService).allRoutes
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
-        apiKeyManagementRoutes = new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, apiKeyManagementService).allRoutes
-        adminApiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
+        userApiKeyManagementRoutes = new ApiKeyManagementRoutes(
+          jwtOps,
+          jwtAuthorizer,
+          apiKeyManagementService
+        ).allRoutes
+        apiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
+        applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
         userRoutes = new AdminUserRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
         httpApp = CORS.policy
           .withAllowOriginAll(
-            validateRoutes <+>
+            documentationRoutes <+>
+              validateRoutes <+>
+              userApiKeyManagementRoutes <+>
               apiKeyManagementRoutes <+>
-              adminApiKeyManagementRoutes <+>
               tenantRoutes <+>
-              userRoutes <+>
-              documentationRoutes
+              applicationRoutes <+>
+              userRoutes
           )
           .orNotFound
 
@@ -142,6 +150,13 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val tenantDb = new TenantDb
 
     new TenantRepository(tenantDb)(transactor)
+  }
+
+  private def buildApplicationRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
+    val applicationDb = new ApplicationDb
+
+    new ApplicationRepository(tenantDb, applicationDb)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {

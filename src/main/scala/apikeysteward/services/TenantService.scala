@@ -3,6 +3,7 @@ package apikeysteward.services
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.TenantDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.TenantRepository
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
@@ -10,8 +11,6 @@ import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
-
-import java.util.UUID
 
 class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantRepository) extends Logging {
 
@@ -48,31 +47,34 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
       .recover { case exc: RetryException[TenantInsertionError] => exc.error.asLeft[Tenant] }
   }
 
-  def updateTenant(tenantId: UUID, updateTenantRequest: UpdateTenantRequest): IO[Either[TenantNotFoundError, Tenant]] =
+  def updateTenant(
+      tenantId: TenantId,
+      updateTenantRequest: UpdateTenantRequest
+  ): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.update(TenantUpdate.from(tenantId, updateTenantRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not update Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
-  def reactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def reactivateTenant(tenantId: TenantId): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.activate(tenantId).flatTap {
       case Right(_) => logger.info(s"Activated Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not activate Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
-  def deactivateTenant(tenantId: UUID): IO[Either[TenantNotFoundError, Tenant]] =
+  def deactivateTenant(tenantId: TenantId): IO[Either[TenantNotFoundError, Tenant]] =
     tenantRepository.deactivate(tenantId).flatTap {
       case Right(_) => logger.info(s"Deactivated Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not deactivate Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
-  def deleteTenant(tenantId: UUID): IO[Either[TenantDbError, Tenant]] =
+  def deleteTenant(tenantId: TenantId): IO[Either[TenantDbError, Tenant]] =
     tenantRepository.delete(tenantId).flatTap {
       case Right(_) => logger.info(s"Deleted Tenant with tenantId: [$tenantId].")
       case Left(e)  => logger.warn(s"Could not delete Tenant with tenantId: [$tenantId] because: ${e.message}")
     }
 
-  def getBy(tenantId: UUID): IO[Option[Tenant]] =
+  def getBy(tenantId: TenantId): IO[Option[Tenant]] =
     tenantRepository.getBy(tenantId)
 
   def getAll: IO[List[Tenant]] =
