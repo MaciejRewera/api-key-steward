@@ -74,7 +74,7 @@ class ApplicationDbSpec
       }
     }
 
-    "there is a row in the DB with a different applicationId" should {
+    "there is a row in the DB with a different publicApplicationId" should {
 
       "return inserted entity" in {
         val result = (for {
@@ -123,7 +123,7 @@ class ApplicationDbSpec
 
         result.asserting { res =>
           res shouldBe Left(ApplicationAlreadyExistsError(publicApplicationIdStr_1))
-          res.left.value.message shouldBe s"Application with publicApplicationId = $publicApplicationIdStr_1 already exists."
+          res.left.value.message shouldBe s"Application with publicApplicationId = [$publicApplicationIdStr_1] already exists."
         }
       }
 
