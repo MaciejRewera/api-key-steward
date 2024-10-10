@@ -26,6 +26,16 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminTenantEndpoints.getAllTenantsEndpoint
   ).map(_.withTag(Tags.AdminTenants))
 
+  private val adminApplicationEndpoints = List(
+    AdminApplicationEndpoints.createApplicationEndpoint,
+    AdminApplicationEndpoints.updateApplicationEndpoint,
+    AdminApplicationEndpoints.reactivateApplicationEndpoint,
+    AdminApplicationEndpoints.deactivateApplicationEndpoint,
+    AdminApplicationEndpoints.deleteApplicationEndpoint,
+    AdminApplicationEndpoints.getSingleApplicationEndpoint,
+    AdminApplicationEndpoints.searchApplicationsEndpoint
+  ).map(_.withTag(Tags.AdminApplications))
+
   private val adminUserEndpoints = List(
     AdminUserEndpoints.getAllUserIdsEndpoint
   ).map(_.withTag(Tags.AdminUsers))
@@ -44,6 +54,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val allEndpoints =
     adminApiKeyManagementEndpoints ++
       adminTenantEndpoints ++
+      adminApplicationEndpoints ++
       adminUserEndpoints ++
       managementEndpoints ++
       validateApiKeyEndpoints
@@ -60,6 +71,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private object Tags {
     val AdminApiKeys = "API keys"
     val AdminTenants = "Tenants"
+    val AdminApplications = "Applications"
     val AdminUsers = "Users"
 
     val UserApiKeys = "User - API keys"
