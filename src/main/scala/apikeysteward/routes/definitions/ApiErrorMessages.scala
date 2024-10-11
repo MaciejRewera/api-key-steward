@@ -39,6 +39,11 @@ private[routes] object ApiErrorMessages {
     }
   }
 
+  object AdminPermission {
+    val PermissionNotFound = "No Permission found for provided permissionId."
+    val ReferencedApplicationNotFound = "No Application found for provided applicationId."
+  }
+
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
     val GetSingleApiKeyNotFound = "No API Key found for provided keyId."

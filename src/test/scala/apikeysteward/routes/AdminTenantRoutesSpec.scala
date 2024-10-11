@@ -356,7 +356,8 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     "provided with tenantId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectTenantId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
@@ -502,7 +503,8 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     "provided with tenantId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/reactivation")
-        val requestWithIncorrectTenantId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectTenantId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
@@ -571,7 +573,8 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     "provided with tenantId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/deactivation")
-        val requestWithIncorrectTenantId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectTenantId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
@@ -640,7 +643,8 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     "provided with tenantId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId = Request[IO](method = Method.DELETE, uri = uri)
+        val requestWithIncorrectTenantId =
+          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
@@ -725,7 +729,8 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     "provided with tenantId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId = Request[IO](method = Method.GET, uri = uri)
+        val requestWithIncorrectTenantId =
+          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)

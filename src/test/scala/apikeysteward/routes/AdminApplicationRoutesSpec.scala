@@ -327,7 +327,8 @@ class AdminApplicationRoutesSpec
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectApplicationId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
@@ -532,7 +533,8 @@ class AdminApplicationRoutesSpec
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/reactivation")
-        val requestWithIncorrectApplicationId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectApplicationId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
@@ -607,7 +609,8 @@ class AdminApplicationRoutesSpec
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/deactivation")
-        val requestWithIncorrectApplicationId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectApplicationId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
@@ -682,7 +685,8 @@ class AdminApplicationRoutesSpec
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId = Request[IO](method = Method.DELETE, uri = uri)
+        val requestWithIncorrectApplicationId =
+          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
@@ -775,7 +779,8 @@ class AdminApplicationRoutesSpec
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId = Request[IO](method = Method.GET, uri = uri)
+        val requestWithIncorrectApplicationId =
+          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)

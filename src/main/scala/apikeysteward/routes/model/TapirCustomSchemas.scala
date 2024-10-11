@@ -61,7 +61,7 @@ object TapirCustomSchemas {
   val createPermissionRequestSchema: Schema[CreatePermissionRequest] =
     implicitly[Derived[Schema[CreatePermissionRequest]]].value
       .map(Option(_))(trimStringFields)
-      .modify(_.name)(validateName125)
+      .modify(_.name)(validateName120)
       .modify(_.description)(validateDescription)
 
   private def trimStringFields(request: CreateApiKeyRequest): CreateApiKeyRequest =
@@ -89,7 +89,7 @@ object TapirCustomSchemas {
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def validateName250(schema: Schema[String]): Schema[String] = validateName(250)(schema)
-  private def validateName125(schema: Schema[String]): Schema[String] = validateName(125)(schema)
+  private def validateName120(schema: Schema[String]): Schema[String] = validateName(120)(schema)
 
   private def validateName(maxLength: Int)(schema: Schema[String]): Schema[String] =
     schema.validate(Validator.nonEmptyString and Validator.maxLength(maxLength))
