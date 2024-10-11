@@ -170,7 +170,7 @@ object RepositoryErrors {
           ReferencedApplicationDoesNotExistErrorImpl(
             errorMessage = s"Application with id = [$applicationId] does not exist."
           )
-        def apply(publicApplicationId: TenantId): ReferencedApplicationDoesNotExistError =
+        def apply(publicApplicationId: ApplicationId): ReferencedApplicationDoesNotExistError =
           ReferencedApplicationDoesNotExistErrorImpl(
             errorMessage = s"Application with publicApplicationId = [$publicApplicationId] does not exist."
           )

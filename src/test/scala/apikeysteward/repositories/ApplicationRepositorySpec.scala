@@ -4,9 +4,11 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.Application
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.{ApplicationEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApplicationDb, TenantDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -45,9 +47,6 @@ class ApplicationRepositorySpec
 
   private val testException = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
-
-  private val testExceptionWrappedOpt: doobie.ConnectionIO[Option[ApplicationEntity.Read]] =
-    testException.raiseError[doobie.ConnectionIO, Option[ApplicationEntity.Read]]
 
   private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, ApplicationEntity.Read]] =
     testException.raiseError[doobie.ConnectionIO, Either[E, ApplicationEntity.Read]]
@@ -112,7 +111,7 @@ class ApplicationRepositorySpec
       }
     }
 
-    "TenantDb returns different exception" should {
+    "TenantDb returns exception" should {
 
       "NOT call ApplicationDb" in {
         tenantDb.getByPublicTenantId(any[UUID]) returns testException
@@ -309,7 +308,7 @@ class ApplicationRepositorySpec
     "everything works correctly" should {
 
       "call ApplicationDb" in {
-        applicationDb.deleteDeactivated(any[UUID]) returns deletedApplicationEntityReadWrapped
+        applicationDb.deleteDeactivated(any[ApplicationId]) returns deletedApplicationEntityReadWrapped
 
         for {
           _ <- applicationRepository.delete(publicApplicationId_1)
@@ -319,7 +318,7 @@ class ApplicationRepositorySpec
       }
 
       "return Right containing deleted Application" in {
-        applicationDb.deleteDeactivated(any[UUID]) returns deletedApplicationEntityReadWrapped
+        applicationDb.deleteDeactivated(any[ApplicationId]) returns deletedApplicationEntityReadWrapped
         val expectedDeletedApplication = application_1.copy(isActive = false)
 
         applicationRepository.delete(publicApplicationId_1).asserting(_ shouldBe Right(expectedDeletedApplication))
@@ -328,7 +327,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns Left containing ApplicationNotFoundError" should {
       "return Left containing this error" in {
-        applicationDb.deleteDeactivated(any[UUID]) returns applicationNotFoundWrapped
+        applicationDb.deleteDeactivated(any[ApplicationId]) returns applicationNotFoundWrapped
 
         applicationRepository.delete(publicApplicationId_1).asserting(_ shouldBe Left(applicationNotFoundError))
       }
@@ -336,15 +335,15 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns Left containing ApplicationNotDeactivatedError" should {
       "return Left containing this error" in {
-        applicationDb.deleteDeactivated(any[UUID]) returns applicationIsNotDeactivatedErrorWrapped
+        applicationDb.deleteDeactivated(any[ApplicationId]) returns applicationIsNotDeactivatedErrorWrapped
 
         applicationRepository.delete(publicApplicationId_1).asserting(_ shouldBe Left(applicationIsNotDeactivatedError))
       }
     }
 
-    "ApplicationDb returns different exception" should {
+    "ApplicationDb returns exception" should {
       "return failed IO containing this exception" in {
-        applicationDb.deleteDeactivated(any[UUID]) returns testExceptionWrappedE[ApplicationDbError]
+        applicationDb.deleteDeactivated(any[ApplicationId]) returns testExceptionWrappedE[ApplicationDbError]
 
         applicationRepository.delete(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -354,7 +353,7 @@ class ApplicationRepositorySpec
   "ApplicationRepository on getBy(:applicationId)" when {
 
     "should always call ApplicationDb" in {
-      applicationDb.getByPublicApplicationId(any[UUID]) returns Option(applicationEntityRead_1)
+      applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
         .pure[doobie.ConnectionIO]
 
       for {
@@ -367,7 +366,7 @@ class ApplicationRepositorySpec
     "ApplicationDb returns empty Option" should {
       "return empty Option" in {
         applicationDb
-          .getByPublicApplicationId(any[UUID]) returns Option.empty[ApplicationEntity.Read].pure[doobie.ConnectionIO]
+          .getByPublicApplicationId(any[ApplicationId]) returns Option.empty[ApplicationEntity.Read].pure[doobie.ConnectionIO]
 
         applicationRepository.getBy(publicApplicationId_1).asserting(_ shouldBe None)
       }
@@ -375,7 +374,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns Option containing ApplicationEntity" should {
       "return Option containing Application" in {
-        applicationDb.getByPublicApplicationId(any[UUID]) returns Option(applicationEntityRead_1)
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
           .pure[doobie.ConnectionIO]
 
         applicationRepository.getBy(publicApplicationId_1).asserting(_ shouldBe Some(application_1))
@@ -384,7 +383,8 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns exception" should {
       "return failed IO containing this exception" in {
-        applicationDb.getByPublicApplicationId(any[UUID]) returns testExceptionWrappedOpt
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApplicationEntity.Read]]
 
         applicationRepository.getBy(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -394,7 +394,7 @@ class ApplicationRepositorySpec
   "ApplicationRepository on getAllForTenant" when {
 
     "should always call ApplicationDb" in {
-      applicationDb.getAllForTenant(any[UUID]) returns Stream.empty
+      applicationDb.getAllForTenant(any[TenantId]) returns Stream.empty
 
       for {
         _ <- applicationRepository.getAllForTenant(publicTenantId_1)
@@ -405,7 +405,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns empty Stream" should {
       "return empty List" in {
-        applicationDb.getAllForTenant(any[UUID]) returns Stream.empty
+        applicationDb.getAllForTenant(any[TenantId]) returns Stream.empty
 
         applicationRepository.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List.empty[Application])
       }
@@ -413,7 +413,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns ApplicationEntities in Stream" should {
       "return List containing Applications" in {
-        applicationDb.getAllForTenant(any[UUID]) returns Stream(
+        applicationDb.getAllForTenant(any[TenantId]) returns Stream(
           applicationEntityRead_1,
           applicationEntityRead_2,
           applicationEntityRead_3
@@ -427,12 +427,11 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns exception" should {
       "return failed IO containing this exception" in {
-        applicationDb.getAllForTenant(any[UUID]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+        applicationDb.getAllForTenant(any[TenantId]) returns Stream.raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
     }
-
   }
 
 }
