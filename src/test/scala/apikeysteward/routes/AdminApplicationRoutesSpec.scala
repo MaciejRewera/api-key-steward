@@ -5,9 +5,9 @@ import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicT
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
+import apikeysteward.routes.auth.JwtAuthorizer
+import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.application._
 import apikeysteward.services.ApplicationService
@@ -15,10 +15,8 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
 import io.circe.syntax.EncoderOps
-import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Header, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
@@ -30,7 +28,12 @@ import org.typelevel.ci.{CIString, CIStringSyntax}
 import java.sql.SQLException
 import java.util.UUID
 
-class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class AdminApplicationRoutesSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with RoutesSpecBase {
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val applicationService = mock[ApplicationService]
@@ -38,118 +41,19 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
   private val adminRoutes: HttpApp[IO] =
     new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes.orNotFound
 
-  private val tokenString: AccessToken = "TOKEN"
-  private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
-
   private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
-
-  private val testException = new RuntimeException("Test Exception")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(jwtAuthorizer, applicationService)
   }
 
-  private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-      AuthTestData.jwtWithMockedSignature.asRight
-    )
-  }.flatMap(_ => test)
+  private def authorizedFixture[T](test: => IO[T]): IO[T] =
+    authorizedFixture(jwtAuthorizer)(test)
 
-  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit = {
-
-    "the JWT is NOT provided" should {
-
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- adminRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtAuthorizer or ApplicationService" in {
-        for {
-          _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, applicationService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided" should {
-      "call JwtAuthorizer providing access token" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          ErrorInfo.unauthorizedErrorInfo().asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(requiredPermissions))(eqTo(tokenString))
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Left containing error" should {
-
-      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
-        } yield ()
-      }
-
-      "NOT call ApplicationService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns failed IO" should {
-
-      "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "NOT call ApplicationService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-  }
+  private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, applicationService)(request, requiredPermissions)
 
   "AdminApplicationRoutes on POST /admin/applications" when {
 
@@ -159,7 +63,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)
 
-    runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
 
@@ -418,7 +322,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)
 
-    runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
@@ -510,6 +414,55 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
           } yield ()
         }
       }
+
+      "request body is provided with description containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApplicationService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(applicationService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description longer than 250 characters" should {
+
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApplicationService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(applicationService)
+          } yield ()
+        }
+      }
     }
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
@@ -574,7 +527,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/reactivation")
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
@@ -649,7 +602,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/deactivation")
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
@@ -724,7 +677,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
@@ -817,7 +770,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
     "provided with applicationId which is not an UUID" should {
       "return Bad Request" in {
@@ -890,7 +843,7 @@ class AdminApplicationRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val uri = Uri.unsafeFromString(s"/admin/applications")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
     "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
 
