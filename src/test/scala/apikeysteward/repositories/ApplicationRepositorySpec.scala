@@ -366,7 +366,9 @@ class ApplicationRepositorySpec
     "ApplicationDb returns empty Option" should {
       "return empty Option" in {
         applicationDb
-          .getByPublicApplicationId(any[ApplicationId]) returns Option.empty[ApplicationEntity.Read].pure[doobie.ConnectionIO]
+          .getByPublicApplicationId(any[ApplicationId]) returns Option
+          .empty[ApplicationEntity.Read]
+          .pure[doobie.ConnectionIO]
 
         applicationRepository.getBy(publicApplicationId_1).asserting(_ shouldBe None)
       }

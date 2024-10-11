@@ -260,7 +260,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns empty Stream" should {
       "return empty List" in {
-        permissionDb.getAllBy(any[ApplicationId])(nameFragment) returns Stream.empty
+        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream.empty
 
         permissionRepository.getAllBy(publicApplicationId_1)(nameFragment).asserting(_ shouldBe List.empty[Permission])
       }
@@ -268,7 +268,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns PermissionEntities in Stream" should {
       "return List containing Permissions" in {
-        permissionDb.getAllBy(any[ApplicationId])(nameFragment) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -282,7 +282,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllBy(any[ApplicationId])(nameFragment) returns Stream.raiseError[doobie.ConnectionIO](
+        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream.raiseError[doobie.ConnectionIO](
           testException
         )
 

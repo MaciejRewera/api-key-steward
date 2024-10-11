@@ -2,6 +2,7 @@ package apikeysteward.model
 
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.repositories.db.entity.PermissionEntity
+import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -18,9 +19,15 @@ object Permission {
 
   type PermissionId = UUID
 
-  def from(permissionEntity: PermissionEntity.Read) = Permission(
+  def from(permissionEntity: PermissionEntity.Read): Permission = Permission(
     permissionId = UUID.fromString(permissionEntity.publicPermissionId),
     name = permissionEntity.name,
     description = permissionEntity.description
+  )
+
+  def from(permissionId: PermissionId, createPermissionRequest: CreatePermissionRequest): Permission = Permission(
+    permissionId = permissionId,
+    name = createPermissionRequest.name,
+    description = createPermissionRequest.description
   )
 }

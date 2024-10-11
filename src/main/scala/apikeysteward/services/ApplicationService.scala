@@ -40,7 +40,7 @@ class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: Ap
         newApplication <- applicationRepository
           .insert(tenantId, Application.from(applicationId, createApplicationRequest))
           .flatTap {
-            case Right(_) => logger.info(s"Inserted Application with applicationId: [$tenantId] into database.")
+            case Right(_) => logger.info(s"Inserted Application with applicationId: [$applicationId] into database.")
             case Left(e)  => logger.warn(s"Could not insert Application into database because: ${e.message}")
           }
 

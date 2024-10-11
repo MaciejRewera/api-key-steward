@@ -11,9 +11,11 @@ object PermissionsTestData extends FixedClock {
   val publicPermissionId_1: UUID = UUID.randomUUID()
   val publicPermissionId_2: UUID = UUID.randomUUID()
   val publicPermissionId_3: UUID = UUID.randomUUID()
+  val publicPermissionId_4: UUID = UUID.randomUUID()
   val publicPermissionIdStr_1: String = publicPermissionId_1.toString
   val publicPermissionIdStr_2: String = publicPermissionId_2.toString
   val publicPermissionIdStr_3: String = publicPermissionId_3.toString
+  val publicPermissionIdStr_4: String = publicPermissionId_4.toString
 
   val permissionName_1 = "read:permission:1"
   val permissionName_2 = "read:permission:2"
