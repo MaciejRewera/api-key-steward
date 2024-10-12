@@ -51,15 +51,18 @@ class PermissionService(uuidGenerator: UuidGenerator, permissionRepository: Perm
       .recover { case exc: RetryException[PermissionInsertionError] => exc.error.asLeft[Permission] }
   }
 
-  def deletePermission(permissionId: PermissionId): IO[Either[PermissionNotFoundError, Permission]] =
-    permissionRepository.delete(permissionId).flatTap {
+  def deletePermission(
+      applicationId: ApplicationId,
+      permissionId: PermissionId
+  ): IO[Either[PermissionNotFoundError, Permission]] =
+    permissionRepository.delete(applicationId, permissionId).flatTap {
       case Right(_) => logger.info(s"Deleted Permission with permissionId: [$permissionId].")
       case Left(e) =>
         logger.warn(s"Could not delete Permission with permissionId: [$permissionId] because: ${e.message}")
     }
 
-  def getBy(permissionId: PermissionId): IO[Option[Permission]] =
-    permissionRepository.getBy(permissionId)
+  def getBy(applicationId: ApplicationId, permissionId: PermissionId): IO[Option[Permission]] =
+    permissionRepository.getBy(applicationId, permissionId)
 
   def getAllBy(applicationId: ApplicationId)(nameFragment: Option[String]): IO[List[Permission]] =
     permissionRepository.getAllBy(applicationId)(nameFragment)

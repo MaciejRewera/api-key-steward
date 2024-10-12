@@ -31,15 +31,18 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
-  def delete(publicPermissionId: PermissionId): IO[Either[PermissionNotFoundError, Permission]] =
+  def delete(
+      publicApplicationId: ApplicationId,
+      publicPermissionId: PermissionId
+  ): IO[Either[PermissionNotFoundError, Permission]] =
     (for {
-      permissionEntityRead <- EitherT(permissionDb.delete(publicPermissionId))
+      permissionEntityRead <- EitherT(permissionDb.delete(publicApplicationId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
-  def getBy(publicPermissionId: PermissionId): IO[Option[Permission]] =
+  def getBy(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): IO[Option[Permission]] =
     (for {
-      permissionEntityRead <- OptionT(permissionDb.getByPublicPermissionId(publicPermissionId))
+      permissionEntityRead <- OptionT(permissionDb.getByPublicPermissionId(publicApplicationId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 

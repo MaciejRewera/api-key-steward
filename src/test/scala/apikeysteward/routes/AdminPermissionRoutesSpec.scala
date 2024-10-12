@@ -367,16 +367,16 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[PermissionId]) returns IO.pure(permission_1.asRight)
+        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).deletePermission(eqTo(publicPermissionId_1))
+          _ = verify(permissionService).deletePermission(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[PermissionId]) returns IO.pure(permission_1.asRight)
+        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
@@ -388,8 +388,8 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns successful IO with Left containing PermissionNotFoundError" in authorizedFixture {
-        permissionService.deletePermission(any[PermissionId]) returns IO.pure(
-          Left(PermissionNotFoundError(publicPermissionIdStr_1))
+        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(
+          Left(PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1))
         )
 
         for {
@@ -404,7 +404,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.deletePermission(any[PermissionId]) returns IO.raiseError(testException)
+        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -463,16 +463,16 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.getBy(any[PermissionId]) returns IO.pure(permission_1.some)
+        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.some)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).getBy(eqTo(publicPermissionId_1))
+          _ = verify(permissionService).getBy(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.getBy(any[PermissionId]) returns IO.pure(permission_1.some)
+        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.some)
 
         for {
           response <- adminRoutes.run(request)
@@ -484,7 +484,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns empty Option" in authorizedFixture {
-        permissionService.getBy(any[PermissionId]) returns IO.pure(none)
+        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(none)
 
         for {
           response <- adminRoutes.run(request)
@@ -498,7 +498,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getBy(any[PermissionId]) returns IO.raiseError(testException)
+        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

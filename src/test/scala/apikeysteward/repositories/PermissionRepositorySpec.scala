@@ -42,9 +42,6 @@ class PermissionRepositorySpec
   private val testException = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
 
-  private val testExceptionWrappedOpt: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
-    testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
-
   private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, PermissionEntity.Read]] =
     testException.raiseError[doobie.ConnectionIO, Either[E, PermissionEntity.Read]]
 
@@ -166,38 +163,46 @@ class PermissionRepositorySpec
     "everything works correctly" should {
 
       "call PermissionDb" in {
-        permissionDb.delete(any[PermissionId]) returns deletedPermissionEntityReadWrapped
+        permissionDb.delete(any[ApplicationId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
 
         for {
-          _ <- permissionRepository.delete(publicPermissionId_1)
+          _ <- permissionRepository.delete(publicApplicationId_1, publicPermissionId_1)
 
-          _ = verify(permissionDb).delete(eqTo(publicPermissionId_1))
+          _ = verify(permissionDb).delete(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return Right containing deleted Permission" in {
-        permissionDb.delete(any[PermissionId]) returns deletedPermissionEntityReadWrapped
+        permissionDb.delete(any[ApplicationId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
 
-        permissionRepository.delete(publicPermissionId_1).asserting(_ shouldBe Right(permission_1))
+        permissionRepository
+          .delete(publicApplicationId_1, publicPermissionId_1)
+          .asserting(_ shouldBe Right(permission_1))
       }
     }
 
     "PermissionDb returns Left containing PermissionNotFoundError" should {
       "return Left containing this error" in {
-        val permissionNotFoundError = PermissionNotFoundError(publicPermissionIdStr_1)
-        permissionDb.delete(any[PermissionId]) returns permissionNotFoundError
+        val permissionNotFoundError = PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1)
+        permissionDb.delete(any[ApplicationId], any[PermissionId]) returns permissionNotFoundError
           .asLeft[PermissionEntity.Read]
           .pure[doobie.ConnectionIO]
 
-        permissionRepository.delete(publicPermissionId_1).asserting(_ shouldBe Left(permissionNotFoundError))
+        permissionRepository
+          .delete(publicApplicationId_1, publicPermissionId_1)
+          .asserting(_ shouldBe Left(permissionNotFoundError))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.delete(any[PermissionId]) returns testExceptionWrappedE[PermissionNotFoundError]
+        permissionDb
+          .delete(any[ApplicationId], any[PermissionId]) returns testExceptionWrappedE[PermissionNotFoundError]
 
-        permissionRepository.delete(publicPermissionId_1).attempt.asserting(_ shouldBe Left(testException))
+        permissionRepository
+          .delete(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }
@@ -205,41 +210,46 @@ class PermissionRepositorySpec
   "PermissionRepository on getBy(:publicPermissionId)" when {
 
     "should always call PermissionDb" in {
-      permissionDb.getByPublicPermissionId(any[PermissionId]) returns Option(permissionEntityRead_1)
+      permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option(permissionEntityRead_1)
         .pure[doobie.ConnectionIO]
 
       for {
-        _ <- permissionRepository.getBy(publicPermissionId_1)
+        _ <- permissionRepository.getBy(publicApplicationId_1, publicPermissionId_1)
 
-        _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicPermissionId_1))
+        _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
       } yield ()
     }
 
     "PermissionDb returns empty Option" should {
       "return empty Option" in {
-        permissionDb.getByPublicPermissionId(any[PermissionId]) returns Option
+        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option
           .empty[PermissionEntity.Read]
           .pure[doobie.ConnectionIO]
 
-        permissionRepository.getBy(publicPermissionId_1).asserting(_ shouldBe None)
+        permissionRepository.getBy(publicApplicationId_1, publicPermissionId_1).asserting(_ shouldBe None)
       }
     }
 
     "PermissionDb returns Option containing PermissionEntity" should {
       "return Option containing Permission" in {
-        permissionDb.getByPublicPermissionId(any[PermissionId]) returns Option(permissionEntityRead_1)
+        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option(
+          permissionEntityRead_1
+        )
           .pure[doobie.ConnectionIO]
 
-        permissionRepository.getBy(publicPermissionId_1).asserting(_ shouldBe Some(permission_1))
+        permissionRepository.getBy(publicApplicationId_1, publicPermissionId_1).asserting(_ shouldBe Some(permission_1))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getByPublicPermissionId(any[PermissionId]) returns testException
+        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
 
-        permissionRepository.getBy(publicPermissionId_1).attempt.asserting(_ shouldBe Left(testException))
+        permissionRepository
+          .getBy(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

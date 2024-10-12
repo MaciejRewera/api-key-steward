@@ -1,6 +1,7 @@
 package apikeysteward.model
 
 import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
 
 import java.sql.SQLException
@@ -180,12 +181,10 @@ object RepositoryErrors {
           extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")
     }
 
-    def permissionNotFoundError(publicPermissionId: String): PermissionDbError =
-      PermissionNotFoundError(publicPermissionId)
-
-    case class PermissionNotFoundError(publicPermissionId: String)
+    case class PermissionNotFoundError(publicApplicationId: ApplicationId, publicPermissionId: PermissionId)
         extends PermissionDbError(
-          message = s"Could not find Permission with publicPermissionId = [$publicPermissionId]."
+          message =
+            s"Could not find Permission with publicPermissionId = [$publicPermissionId] for Application with publicApplicationId = [$publicApplicationId]."
         )
   }
 

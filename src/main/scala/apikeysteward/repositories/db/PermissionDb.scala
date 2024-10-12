@@ -58,29 +58,41 @@ class PermissionDb()(implicit clock: Clock) {
     }
 
   def delete(
+      publicApplicationId: ApplicationId,
       publicPermissionId: PermissionId
   ): doobie.ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
-      permissionToDeleteE <- getByPublicPermissionId(publicPermissionId).map(
-        _.toRight(PermissionNotFoundError(publicPermissionId.toString))
+      permissionToDeleteE <- getByPublicPermissionId(publicApplicationId, publicPermissionId).map(
+        _.toRight(PermissionNotFoundError(publicApplicationId, publicPermissionId))
       )
       resultE <- permissionToDeleteE.traverse { result =>
-        Queries.delete(publicPermissionId.toString).run.map(_ => result)
+        Queries.delete(publicApplicationId, publicPermissionId).run.map(_ => result)
       }
     } yield resultE
 
-  def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
-    Queries.getBy(publicPermissionId.toString).option
+  def getByPublicPermissionId(
+      publicApplicationId: ApplicationId,
+      publicPermissionId: PermissionId
+  ): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    Queries.getBy(publicApplicationId, publicPermissionId).option
 
   def getAllBy(publicApplicationId: ApplicationId)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllBy(publicApplicationId.toString)(nameFragment).stream
+    Queries.getAllBy(publicApplicationId)(nameFragment).stream
 
   private object Queries {
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, application_id, public_permission_id, name, description, created_at, updated_at"
+      fr"""SELECT
+            permission.id,
+            permission.application_id,
+            permission.public_permission_id,
+            permission.name,
+            permission.description,
+            permission.created_at,
+            permission.updated_at
+          """
 
     def insert(permissionEntity: PermissionEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO permission(application_id, public_permission_id, name, description, created_at, updated_at)
@@ -94,17 +106,28 @@ class PermissionDb()(implicit clock: Clock) {
             )
            """.stripMargin.update
 
-    def delete(publicPermissionId: String): doobie.Update0 =
+    def delete(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM permission
-            WHERE permission.public_permission_id = $publicPermissionId
+            USING application
+            WHERE application.public_application_id = ${publicApplicationId.toString}
+              AND permission.public_permission_id = ${publicPermissionId.toString}
            """.stripMargin.update
 
-    def getBy(publicPermissionId: String): doobie.Query0[PermissionEntity.Read] =
+    def getBy(
+        publicApplicationId: ApplicationId,
+        publicPermissionId: PermissionId
+    ): doobie.Query0[PermissionEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM permission WHERE permission.public_permission_id = $publicPermissionId").query[PermissionEntity.Read]
+        sql"""FROM permission
+              JOIN application ON application.id = permission.application_id
+              WHERE application.public_application_id = ${publicApplicationId.toString}
+                AND permission.public_permission_id = ${publicPermissionId.toString}
+             """).query[PermissionEntity.Read]
 
-    def getAllBy(publicApplicationId: String)(nameFragment: Option[String]): doobie.Query0[PermissionEntity.Read] = {
-      val publicApplicationIdEquals = Some(fr"application.public_application_id = $publicApplicationId")
+    def getAllBy(
+        publicApplicationId: ApplicationId
+    )(nameFragment: Option[String]): doobie.Query0[PermissionEntity.Read] = {
+      val publicApplicationIdEquals = Some(fr"application.public_application_id = ${publicApplicationId.toString}")
       val nameLikeFr = nameFragment
         .map(n => s"%$n%")
         .map(n => fr"permission.name ILIKE $n")

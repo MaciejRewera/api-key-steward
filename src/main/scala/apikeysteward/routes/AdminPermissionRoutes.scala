@@ -5,12 +5,7 @@ import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInserti
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminPermissionEndpoints, ApiErrorMessages}
-import apikeysteward.routes.model.admin.permission.{
-  CreatePermissionResponse,
-  DeletePermissionResponse,
-  GetMultiplePermissionsResponse,
-  GetSinglePermissionResponse
-}
+import apikeysteward.routes.model.admin.permission._
 import apikeysteward.services.PermissionService
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
@@ -49,7 +44,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
           val (applicationId, permissionId) = input
-          permissionService.deletePermission(permissionId).map {
+          permissionService.deletePermission(applicationId, permissionId).map {
 
             case Right(deletedPermission) =>
               (StatusCode.Ok, DeletePermissionResponse(deletedPermission)).asRight
@@ -66,7 +61,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
           val (applicationId, permissionId) = input
-          permissionService.getBy(permissionId).map {
+          permissionService.getBy(applicationId, permissionId).map {
             case Some(permission) => (StatusCode.Ok, GetSinglePermissionResponse(permission)).asRight
             case None =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.PermissionNotFound)).asLeft
