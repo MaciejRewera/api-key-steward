@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS permission
     application_id       INTEGER      NOT NULL,
 
     public_permission_id VARCHAR(128) NOT NULL,
-    name                 VARCHAR(128) NOT NULL,
-    description          VARCHAR(256),
+    name                 VARCHAR(280) NOT NULL,
+    description          VARCHAR(500),
 
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
