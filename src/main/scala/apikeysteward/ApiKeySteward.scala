@@ -68,6 +68,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
+        permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
@@ -81,6 +82,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
+        permissionService = new PermissionService(uuidGenerator, permissionRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
 
@@ -95,6 +97,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
         applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
+        permissionRoutes = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
         userRoutes = new AdminUserRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
@@ -107,6 +110,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
               apiKeyManagementRoutes <+>
               tenantRoutes <+>
               applicationRoutes <+>
+              permissionRoutes <+>
               userRoutes
           )
           .orNotFound
@@ -157,6 +161,13 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val applicationDb = new ApplicationDb
 
     new ApplicationRepository(tenantDb, applicationDb)(transactor)
+  }
+
+  private def buildPermissionRepository(transactor: HikariTransactor[IO]) = {
+    val applicationDb = new ApplicationDb
+    val permissionDb = new PermissionDb
+
+    new PermissionRepository(applicationDb, permissionDb)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {
