@@ -1,6 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError.ApplicationAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.{ApplicationInsertionError, ApplicationNotFoundError}
@@ -8,10 +9,11 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.ApplicationRepository
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
+import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
-import cats.implicits.catsSyntaxEitherId
+import cats.implicits.{catsSyntaxEitherId, toTraverseOps}
 
 class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: ApplicationRepository) extends Logging {
 
@@ -36,9 +38,14 @@ class ApplicationService(uuidGenerator: UuidGenerator, applicationRepository: Ap
         _ <- logger.info("Generating Application ID...")
         applicationId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Application ID."))
 
+        _ <- logger.info("Generating Permission IDs...")
+        permissionIds <- createApplicationRequest.permissions.traverse { _ =>
+          uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Permission IDs."))
+        }
+
         _ <- logger.info("Inserting Application into database...")
         newApplication <- applicationRepository
-          .insert(tenantId, Application.from(applicationId, createApplicationRequest))
+          .insert(tenantId, Application.from(applicationId, permissionIds, createApplicationRequest))
           .flatTap {
             case Right(_) => logger.info(s"Inserted Application with applicationId: [$applicationId] into database.")
             case Left(e)  => logger.warn(s"Could not insert Application into database because: ${e.message}")

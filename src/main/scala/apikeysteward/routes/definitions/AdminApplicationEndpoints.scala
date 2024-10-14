@@ -8,7 +8,12 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.definitions.EndpointsBase.{applicationIdPathParameter, tenantIdHeaderInput}
+import apikeysteward.routes.definitions.EndpointsBase.{
+  applicationIdPathParameter,
+  createApplicationRequest,
+  createPermissionRequest,
+  tenantIdHeaderInput
+}
 import apikeysteward.routes.model.admin.application._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -31,12 +36,7 @@ private[routes] object AdminApplicationEndpoints {
       .in(
         jsonBody[CreateApplicationRequest]
           .description("Details of the Application to create.")
-          .example(
-            CreateApplicationRequest(
-              name = "My new Application",
-              description = Some("A description what this Application is for.")
-            )
-          )
+          .example(EndpointsBase.createApplicationRequest)
       )
       .out(statusCode.description(StatusCode.Created, "Application created successfully"))
       .out(

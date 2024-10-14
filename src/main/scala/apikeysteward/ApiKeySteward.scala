@@ -159,8 +159,9 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   private def buildApplicationRepository(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
     val applicationDb = new ApplicationDb
+    val permissionDb = new PermissionDb
 
-    new ApplicationRepository(tenantDb, applicationDb)(transactor)
+    new ApplicationRepository(tenantDb, applicationDb, permissionDb)(transactor)
   }
 
   private def buildPermissionRepository(transactor: HikariTransactor[IO]) = {

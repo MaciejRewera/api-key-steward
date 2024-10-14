@@ -1,7 +1,8 @@
 package apikeysteward.model
 
 import apikeysteward.model.Application.ApplicationId
-import apikeysteward.repositories.db.entity.ApplicationEntity
+import apikeysteward.model.Permission.PermissionId
+import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
 import apikeysteward.routes.model.admin.application.CreateApplicationRequest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -12,7 +13,8 @@ case class Application(
     applicationId: ApplicationId,
     name: String,
     description: Option[String],
-    isActive: Boolean
+    isActive: Boolean,
+    permissions: List[Permission]
 )
 
 object Application {
@@ -20,17 +22,26 @@ object Application {
 
   type ApplicationId = UUID
 
-  def from(applicationEntity: ApplicationEntity.Read): Application = Application(
-    applicationId = UUID.fromString(applicationEntity.publicApplicationId),
-    name = applicationEntity.name,
-    description = applicationEntity.description,
-    isActive = applicationEntity.deactivatedAt.isEmpty
-  )
+  def from(applicationEntity: ApplicationEntity.Read, permissions: List[PermissionEntity.Read]): Application =
+    Application(
+      applicationId = UUID.fromString(applicationEntity.publicApplicationId),
+      name = applicationEntity.name,
+      description = applicationEntity.description,
+      isActive = applicationEntity.deactivatedAt.isEmpty,
+      permissions = permissions.map(Permission.from)
+    )
 
-  def from(applicationId: ApplicationId, createApplicationRequest: CreateApplicationRequest): Application = Application(
+  def from(
+      applicationId: ApplicationId,
+      permissionIds: List[PermissionId],
+      createApplicationRequest: CreateApplicationRequest
+  ): Application = Application(
     applicationId = applicationId,
     name = createApplicationRequest.name,
     description = createApplicationRequest.description,
-    isActive = true
+    isActive = true,
+    permissions = (permissionIds zip createApplicationRequest.permissions).map { case (id, request) =>
+      Permission.from(id, request)
+    }
   )
 }

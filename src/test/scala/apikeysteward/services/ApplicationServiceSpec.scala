@@ -2,6 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApplicationsTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
@@ -42,31 +43,47 @@ class ApplicationServiceSpec
   "ApplicationService on createApplication" when {
 
     val createApplicationRequest =
-      CreateApplicationRequest(name = applicationName_1, description = applicationDescription_1)
+      CreateApplicationRequest(
+        name = applicationName_1,
+        description = applicationDescription_1,
+        permissions = List(createPermissionRequest_1, createPermissionRequest_2, createPermissionRequest_3)
+      )
+
+    val application = application_1.copy(permissions = List(permission_1, permission_2, permission_3))
 
     val applicationAlreadyExistsError = ApplicationAlreadyExistsError(publicApplicationIdStr_1)
 
     "everything works correctly" should {
 
       "call UuidGenerator and ApplicationRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Right(application_1))
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
+        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Right(application))
 
         for {
           _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
-          _ = verify(uuidGenerator).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+          _ = verify(uuidGenerator, times(4)).generateUuid
+          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application))
         } yield ()
       }
 
       "return the newly created Application returned by ApplicationRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Right(application_1))
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
+        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Right(application))
 
         applicationService
           .createApplication(publicTenantId_1, createApplicationRequest)
-          .asserting(_ shouldBe Right(application_1))
+          .asserting(_ shouldBe Right(application))
       }
     }
 
@@ -95,8 +112,17 @@ class ApplicationServiceSpec
     "ApplicationRepository returns Left containing ApplicationAlreadyExistsError on the first try" should {
 
       "call UuidGenerator and ApplicationRepository again" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicApplicationId_1), IO.pure(publicApplicationId_2))
-        val insertedApplication = application_1.copy(applicationId = publicApplicationId_2)
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
+          IO.pure(publicApplicationId_2),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
+        val insertedApplication = application.copy(applicationId = publicApplicationId_2)
         applicationRepository.insert(any[UUID], any[Application]) returns (
           IO.pure(Left(applicationAlreadyExistsError)),
           IO.pure(Right(insertedApplication))
@@ -105,15 +131,24 @@ class ApplicationServiceSpec
         for {
           _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
-          _ = verify(uuidGenerator, times(2)).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+          _ = verify(uuidGenerator, times(8)).generateUuid
+          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application))
           _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(insertedApplication))
         } yield ()
       }
 
       "return the second created Application returned by ApplicationRepository" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicApplicationId_1), IO.pure(publicApplicationId_2))
-        val insertedApplication = application_1.copy(applicationId = publicApplicationId_2)
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
+          IO.pure(publicApplicationId_2),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
+        val insertedApplication = application.copy(applicationId = publicApplicationId_2)
         applicationRepository.insert(any[UUID], any[Application]) returns (
           IO.pure(Left(applicationAlreadyExistsError)),
           IO.pure(Right(insertedApplication))
@@ -130,28 +165,40 @@ class ApplicationServiceSpec
       "call UuidGenerator and ApplicationRepository again until reaching max retries amount" in {
         uuidGenerator.generateUuid returns (
           IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
           IO.pure(publicApplicationId_2),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
           IO.pure(publicApplicationId_3),
-          IO.pure(publicApplicationId_4)
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
+          IO.pure(publicApplicationId_4),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
         )
         applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Left(applicationAlreadyExistsError))
 
         for {
           _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
-          _ = verify(uuidGenerator, times(4)).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+          _ = verify(uuidGenerator, times(16)).generateUuid
+          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application))
           _ = verify(applicationRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(application_1.copy(applicationId = publicApplicationId_2))
+            eqTo(application.copy(applicationId = publicApplicationId_2))
           )
           _ = verify(applicationRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(application_1.copy(applicationId = publicApplicationId_3))
+            eqTo(application.copy(applicationId = publicApplicationId_3))
           )
           _ = verify(applicationRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(application_1.copy(applicationId = publicApplicationId_4))
+            eqTo(application.copy(applicationId = publicApplicationId_4))
           )
         } yield ()
       }
@@ -159,9 +206,21 @@ class ApplicationServiceSpec
       "return successful IO containing Left with ApplicationAlreadyExistsError" in {
         uuidGenerator.generateUuid returns (
           IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
           IO.pure(publicApplicationId_2),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
           IO.pure(publicApplicationId_3),
-          IO.pure(publicApplicationId_4)
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
+          IO.pure(publicApplicationId_4),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3),
         )
         applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Left(applicationAlreadyExistsError))
 
@@ -178,7 +237,12 @@ class ApplicationServiceSpec
       s"ApplicationRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "NOT call UuidGenerator or ApplicationRepository again" in {
-          uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+          uuidGenerator.generateUuid returns (
+            IO.pure(publicApplicationId_1),
+            IO.pure(publicPermissionId_1),
+            IO.pure(publicPermissionId_2),
+            IO.pure(publicPermissionId_3)
+          )
           applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
             Left(insertionError)
           )
@@ -186,13 +250,18 @@ class ApplicationServiceSpec
           for {
             _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
-            _ = verify(uuidGenerator).generateUuid
-            _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+            _ = verify(uuidGenerator, times(4)).generateUuid
+            _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application))
           } yield ()
         }
 
         "return failed IO containing this error" in {
-          uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+          uuidGenerator.generateUuid returns (
+            IO.pure(publicApplicationId_1),
+            IO.pure(publicPermissionId_1),
+            IO.pure(publicPermissionId_2),
+            IO.pure(publicPermissionId_3)
+          )
           applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
             Left(insertionError)
           )
@@ -207,19 +276,29 @@ class ApplicationServiceSpec
     "ApplicationRepository returns failed IO" should {
 
       "NOT call UuidGenerator or ApplicationRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
         applicationRepository.insert(any[UUID], any[Application]) returns IO.raiseError(testException)
 
         for {
           _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest).attempt
 
-          _ = verify(uuidGenerator).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+          _ = verify(uuidGenerator, times(4)).generateUuid
+          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application))
         } yield ()
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+        uuidGenerator.generateUuid returns (
+          IO.pure(publicApplicationId_1),
+          IO.pure(publicPermissionId_1),
+          IO.pure(publicPermissionId_2),
+          IO.pure(publicPermissionId_3)
+        )
         applicationRepository.insert(any[UUID], any[Application]) returns IO.raiseError(testException)
 
         applicationService

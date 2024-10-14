@@ -1,6 +1,11 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApplicationsTestData._
+import apikeysteward.base.testdata.PermissionsTestData.{
+  createPermissionRequest_1,
+  createPermissionRequest_2,
+  createPermissionRequest_3
+}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
@@ -58,7 +63,11 @@ class AdminApplicationRoutesSpec
   "AdminApplicationRoutes on POST /admin/applications" when {
 
     val uri = Uri.unsafeFromString("/admin/applications")
-    val requestBody = CreateApplicationRequest(name = applicationName_1, description = applicationDescription_1)
+    val requestBody = CreateApplicationRequest(
+      name = applicationName_1,
+      description = applicationDescription_1,
+      permissions = List(createPermissionRequest_1, createPermissionRequest_2, createPermissionRequest_3)
+    )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)
