@@ -1,3 +1,5 @@
+-- This file contains SQL commands to create functions and triggers which copy rows to a dedicated table just before they are deleted.
+
 CREATE OR REPLACE FUNCTION copy_tenant() RETURNS TRIGGER AS
 $BODY$
 BEGIN

@@ -8,7 +8,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
+import apikeysteward.routes.definitions.EndpointsBase.{applicationIdPathParameter, tenantIdHeaderInput}
 import apikeysteward.routes.model.admin.application._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -16,9 +16,6 @@ import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
 private[routes] object AdminApplicationEndpoints {
-
-  private val applicationIdPathParameter =
-    path[ApplicationId]("applicationId").description("Unique ID of the Application.")
 
   val createApplicationEndpoint: Endpoint[
     AccessToken,
@@ -144,7 +141,7 @@ private[routes] object AdminApplicationEndpoints {
       .out(statusCode.description(StatusCode.Ok, "Applications found"))
       .out(
         jsonBody[GetMultipleApplicationsResponse]
-          .example(GetMultipleApplicationsResponse(applications = List(EndpointsBase.ApplicationExample)))
+          .example(GetMultipleApplicationsResponse(applications = List.fill(3)(EndpointsBase.ApplicationExample)))
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 

@@ -39,6 +39,14 @@ private[routes] object ApiErrorMessages {
     }
   }
 
+  object AdminPermission {
+    val PermissionNotFound = "No Permission found for provided combination of applicationId and permissionId."
+    val ReferencedApplicationNotFound = "No Application found for provided applicationId."
+
+    val PermissionAlreadyExistsForThisApplication =
+      "Permission with this name already exists for Application with provided ID"
+  }
+
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
     val GetSingleApiKeyNotFound = "No API Key found for provided keyId."

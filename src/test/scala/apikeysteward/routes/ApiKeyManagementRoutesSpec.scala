@@ -611,7 +611,8 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+        val requestWithIncorrectPublicKeyId =
+          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
@@ -755,7 +756,8 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
+        val requestWithIncorrectPublicKeyId =
+          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- managementRoutes.run(requestWithIncorrectPublicKeyId)

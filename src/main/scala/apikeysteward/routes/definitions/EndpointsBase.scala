@@ -1,7 +1,8 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.{ApiKey, ApiKeyData, Application, Tenant}
+import apikeysteward.model.{ApiKey, ApiKeyData, Application, Permission, Tenant}
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
@@ -20,6 +21,9 @@ private[routes] object EndpointsBase {
   val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
     .description("Unique ID of the Tenant for which to scope this request.")
+
+  val applicationIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
+    path[ApplicationId]("applicationId").description("Unique ID of the Application.")
 
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
 
@@ -44,6 +48,12 @@ private[routes] object EndpointsBase {
     name = "My new Application",
     description = Some("A description what this Application is for."),
     isActive = true
+  )
+
+  val PermissionExample: Permission = Permission(
+    permissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "read:permission:123",
+    description = Some("A description what this Permission is for.")
   )
 
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =

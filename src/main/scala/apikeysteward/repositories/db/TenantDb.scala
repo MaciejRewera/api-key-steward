@@ -3,9 +3,12 @@ package apikeysteward.repositories.db
 import apikeysteward.model.RepositoryErrors.TenantDbError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError._
 import apikeysteward.model.RepositoryErrors.TenantDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
+import doobie.postgres._
+import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 import fs2.Stream
 
@@ -14,9 +17,6 @@ import java.time.{Clock, Instant}
 import java.util.UUID
 
 class TenantDb()(implicit clock: Clock) {
-
-  import doobie.postgres._
-  import doobie.postgres.implicits._
 
   def insert(tenantEntity: TenantEntity.Write): doobie.ConnectionIO[Either[TenantInsertionError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
@@ -52,17 +52,17 @@ class TenantDb()(implicit clock: Clock) {
     performUpdate(tenantEntity.publicTenantId)(Queries.update(tenantEntity, now).run)
   }
 
-  def activate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
+  def activate(publicTenantId: TenantId): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
     performUpdate(publicTenantId)(Queries.activate(publicTenantId.toString, now).run)
   }
 
-  def deactivate(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
+  def deactivate(publicTenantId: TenantId): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] = {
     val now = Instant.now(clock)
     performUpdate(publicTenantId)(Queries.deactivate(publicTenantId.toString, now).run)
   }
 
-  private def performUpdate(publicTenantId: UUID)(
+  private def performUpdate(publicTenantId: TenantId)(
       updateAction: => doobie.ConnectionIO[Int]
   ): doobie.ConnectionIO[Either[TenantNotFoundError, TenantEntity.Read]] =
     performUpdate(publicTenantId.toString)(updateAction)
@@ -78,7 +78,7 @@ class TenantDb()(implicit clock: Clock) {
         else Option.empty[TenantEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(TenantNotFoundError(publicTenantId))
 
-  def deleteDeactivated(publicTenantId: UUID): doobie.ConnectionIO[Either[TenantDbError, TenantEntity.Read]] =
+  def deleteDeactivated(publicTenantId: TenantId): doobie.ConnectionIO[Either[TenantDbError, TenantEntity.Read]] =
     for {
       tenantToDeleteE <- getByPublicTenantId(publicTenantId).map(
         _.toRight(tenantNotFoundError(publicTenantId.toString))
@@ -95,7 +95,7 @@ class TenantDb()(implicit clock: Clock) {
       }
     } yield resultE
 
-  def getByPublicTenantId(publicTenantId: UUID): doobie.ConnectionIO[Option[TenantEntity.Read]] =
+  def getByPublicTenantId(publicTenantId: TenantId): doobie.ConnectionIO[Option[TenantEntity.Read]] =
     getByPublicTenantId(publicTenantId.toString)
 
   private def getByPublicTenantId(publicTenantId: String): doobie.ConnectionIO[Option[TenantEntity.Read]] =

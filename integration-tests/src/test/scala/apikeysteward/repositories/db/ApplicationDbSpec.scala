@@ -74,7 +74,7 @@ class ApplicationDbSpec
       }
     }
 
-    "there is a row in the DB with a different applicationId" should {
+    "there is a row in the DB with a different publicApplicationId" should {
 
       "return inserted entity" in {
         val result = (for {
@@ -123,7 +123,7 @@ class ApplicationDbSpec
 
         result.asserting { res =>
           res shouldBe Left(ApplicationAlreadyExistsError(publicApplicationIdStr_1))
-          res.left.value.message shouldBe s"Application with publicApplicationId = $publicApplicationIdStr_1 already exists."
+          res.left.value.message shouldBe s"Application with publicApplicationId = [$publicApplicationIdStr_1] already exists."
         }
       }
 
@@ -728,7 +728,7 @@ class ApplicationDbSpec
           res <- applicationDb.deleteDeactivated(publicApplicationId_1)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(ApplicationIsNotDeactivatedError(publicApplicationId_1)))
+        result.asserting(_ shouldBe Left(ApplicationIsNotDeactivatedError(publicApplicationId_1)))
       }
 
       "make no changes to the DB" in {
@@ -810,11 +810,11 @@ class ApplicationDbSpec
           res <- Queries.getAllApplications
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
-        result.asserting { case (res, entityRead_2, entityRead_3) =>
-          res.size shouldBe 2
+        result.asserting { case (allApplications, entityRead_2, entityRead_3) =>
+          allApplications.size shouldBe 2
 
           val expectedEntities = Seq(entityRead_2, entityRead_3)
-          res should contain theSameElementsAs expectedEntities
+          allApplications should contain theSameElementsAs expectedEntities
         }
       }
     }

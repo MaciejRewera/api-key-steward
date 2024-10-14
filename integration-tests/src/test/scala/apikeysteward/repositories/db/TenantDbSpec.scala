@@ -139,7 +139,7 @@ class TenantDbSpec
 
         result.asserting { res =>
           res shouldBe Left(TenantAlreadyExistsError(publicTenantIdStr_1))
-          res.left.value.message shouldBe s"Tenant with publicTenantId = $publicTenantIdStr_1 already exists."
+          res.left.value.message shouldBe s"Tenant with publicTenantId = [$publicTenantIdStr_1] already exists."
         }
       }
 

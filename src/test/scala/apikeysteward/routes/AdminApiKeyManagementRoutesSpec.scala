@@ -483,7 +483,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.PUT, uri = uri)
+        val requestWithIncorrectPublicKeyId =
+          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
@@ -760,7 +761,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.GET, uri = uri)
+        val requestWithIncorrectPublicKeyId =
+          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectPublicKeyId)
@@ -830,7 +832,8 @@ class AdminApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec wit
     "provided with publicKeyId which is not an UUID" should {
       "return Bad Request" in {
         val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId = Request[IO](method = Method.DELETE, uri = uri)
+        val requestWithIncorrectPublicKeyId =
+          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
         for {
           response <- adminRoutes.run(requestWithIncorrectPublicKeyId)

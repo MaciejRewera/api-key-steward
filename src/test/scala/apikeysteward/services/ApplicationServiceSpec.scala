@@ -5,7 +5,7 @@ import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.{ApplicationInsertionError, ApplicationNotFoundError}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.ApplicationRepository
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
@@ -48,13 +48,14 @@ class ApplicationServiceSpec
 
     "everything works correctly" should {
 
-      "call ApplicationRepository" in {
+      "call UuidGenerator and ApplicationRepository" in {
         uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
         applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Right(application_1))
 
         for {
           _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
+          _ = verify(uuidGenerator).generateUuid
           _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
         } yield ()
       }
@@ -170,60 +171,36 @@ class ApplicationServiceSpec
       }
     }
 
-    "ApplicationRepository returns Left containing ReferencedTenantDoesNotExistError" should {
+    Seq(
+      ReferencedTenantDoesNotExistError(publicTenantId_1),
+      ApplicationInsertionErrorImpl(testSqlException)
+    ).foreach { insertionError =>
+      s"ApplicationRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
-      val referencedTenantDoesNotExistError: ReferencedTenantDoesNotExistError =
-        ReferencedTenantDoesNotExistError(publicTenantId_1)
+        "NOT call UuidGenerator or ApplicationRepository again" in {
+          uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+          applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
+            Left(insertionError)
+          )
 
-      "NOT call UuidGenerator or ApplicationRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
-          Left(referencedTenantDoesNotExistError)
-        )
+          for {
+            _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
 
-        for {
-          _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
+            _ = verify(uuidGenerator).generateUuid
+            _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
+          } yield ()
+        }
 
-          _ = verify(uuidGenerator).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
-        } yield ()
-      }
+        "return failed IO containing this error" in {
+          uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
+          applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
+            Left(insertionError)
+          )
 
-      "return failed IO containing this error" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(
-          Left(referencedTenantDoesNotExistError)
-        )
-
-        applicationService
-          .createApplication(publicTenantId_1, createApplicationRequest)
-          .asserting(_ shouldBe Left(referencedTenantDoesNotExistError))
-      }
-    }
-
-    "ApplicationRepository returns Left containing different ApplicationInsertionError" should {
-
-      val insertionError: ApplicationInsertionError = ApplicationInsertionErrorImpl(testSqlException)
-
-      "NOT call UuidGenerator or ApplicationRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Left(insertionError))
-
-        for {
-          _ <- applicationService.createApplication(publicTenantId_1, createApplicationRequest)
-
-          _ = verify(uuidGenerator).generateUuid
-          _ = verify(applicationRepository).insert(eqTo(publicTenantId_1), eqTo(application_1))
-        } yield ()
-      }
-
-      "return failed IO containing this error" in {
-        uuidGenerator.generateUuid returns IO.pure(publicApplicationId_1)
-        applicationRepository.insert(any[UUID], any[Application]) returns IO.pure(Left(insertionError))
-
-        applicationService
-          .createApplication(publicTenantId_1, createApplicationRequest)
-          .asserting(_ shouldBe Left(insertionError))
+          applicationService
+            .createApplication(publicTenantId_1, createApplicationRequest)
+            .asserting(_ shouldBe Left(insertionError))
+        }
       }
     }
 

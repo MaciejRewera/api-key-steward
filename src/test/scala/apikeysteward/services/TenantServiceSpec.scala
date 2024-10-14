@@ -42,13 +42,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "everything works correctly" should {
 
-      "call TenantRepository" in {
+      "call UuidGenerator and TenantRepository" in {
         uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
         tenantRepository.insert(any[Tenant]) returns IO.pure(Right(tenant_1))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest)
 
+          _ = verify(uuidGenerator).generateUuid
           _ = verify(tenantRepository).insert(eqTo(tenant_1))
         } yield ()
       }
