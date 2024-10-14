@@ -263,19 +263,6 @@ class AdminPermissionRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisApplicationError" in authorizedFixture {
-        val applicationId = 13L
-        permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
-          Left(PermissionAlreadyExistsForThisApplicationError(permissionName_1, applicationId))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
       "return Internal Server Error when PermissionService returns successful IO with Left containing PermissionInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
         permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
@@ -286,6 +273,25 @@ class AdminPermissionRoutesSpec
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "return Bad Request when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisApplicationError" in authorizedFixture {
+        val applicationId = 13L
+        permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
+          Left(PermissionAlreadyExistsForThisApplicationError(permissionName_1, applicationId))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisApplication)
+              )
+            )
         } yield ()
       }
 

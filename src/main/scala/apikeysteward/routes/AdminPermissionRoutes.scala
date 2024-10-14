@@ -1,6 +1,9 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.ReferencedApplicationDoesNotExistError
+import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.{
+  PermissionAlreadyExistsForThisApplicationError,
+  ReferencedApplicationDoesNotExistError
+}
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
@@ -31,6 +34,11 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
 
             case Left(_: ReferencedApplicationDoesNotExistError) =>
               ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
+
+            case Left(_: PermissionAlreadyExistsForThisApplicationError) =>
+              ErrorInfo
+                .badRequestErrorInfo(Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisApplication))
+                .asLeft
 
             case Left(_: PermissionInsertionError) =>
               ErrorInfo.internalServerErrorInfo().asLeft

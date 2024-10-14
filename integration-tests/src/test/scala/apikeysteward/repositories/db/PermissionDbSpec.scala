@@ -625,7 +625,7 @@ class PermissionDbSpec
         }
       }
 
-      "there is a row in the DB with the same applicationId" when {
+      "there is a row in the DB with provided applicationId" when {
 
         "the row has a different name" should {
           "return empty Stream" in {
@@ -715,7 +715,7 @@ class PermissionDbSpec
         }
       }
 
-      "there are several rows in the DB" when {
+      "there are several rows in the DB with provided applicationId" when {
 
         "none of them has matching name" should {
           "return empty Stream" in {
