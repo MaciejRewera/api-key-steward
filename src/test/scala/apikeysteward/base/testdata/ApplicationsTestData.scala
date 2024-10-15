@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3}
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.db.entity.ApplicationEntity
 
@@ -31,19 +32,22 @@ object ApplicationsTestData extends FixedClock {
     applicationId = publicApplicationId_1,
     name = applicationName_1,
     description = applicationDescription_1,
-    isActive = true
+    isActive = true,
+    permissions = List(permission_1)
   )
   val application_2: Application = Application(
     applicationId = publicApplicationId_2,
     name = applicationName_2,
     description = applicationDescription_2,
-    isActive = true
+    isActive = true,
+    permissions = List(permission_2)
   )
   val application_3: Application = Application(
     applicationId = publicApplicationId_3,
     name = applicationName_3,
     description = applicationDescription_3,
-    isActive = true
+    isActive = true,
+    permissions = List(permission_3)
   )
 
   val applicationUpdate_1: ApplicationUpdate =

@@ -3,6 +3,7 @@ package apikeysteward.base.testdata
 import apikeysteward.base.FixedClock
 import apikeysteward.model.Permission
 import apikeysteward.repositories.db.entity.PermissionEntity
+import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 
 import java.util.UUID
 
@@ -24,6 +25,13 @@ object PermissionsTestData extends FixedClock {
   val permissionDescription_1: Option[String] = Some("Test Permission description no. 1.")
   val permissionDescription_2: Option[String] = Some("Test Permission description no. 2.")
   val permissionDescription_3: Option[String] = Some("Test Permission description no. 3.")
+
+  val createPermissionRequest_1: CreatePermissionRequest =
+    CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
+  val createPermissionRequest_2: CreatePermissionRequest =
+    CreatePermissionRequest(name = permissionName_2, description = permissionDescription_2)
+  val createPermissionRequest_3: CreatePermissionRequest =
+    CreatePermissionRequest(name = permissionName_3, description = permissionDescription_3)
 
   val permission_1: Permission = Permission(
     permissionId = publicPermissionId_1,

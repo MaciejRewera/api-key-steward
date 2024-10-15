@@ -13,4 +13,12 @@ object TapirCustomValidators {
         }
       )
   }
+
+  implicit class ValidateList[T](schema: Schema[List[T]]) {
+    def validateList(validator: Validator[T]): Schema[List[T]] =
+      schema.validate(
+        Validator.custom[List[T]](list => ValidationResult.validWhen(list.flatMap(elem => validator(elem)).isEmpty))
+      )
+  }
+
 }

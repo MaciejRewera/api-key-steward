@@ -35,12 +35,7 @@ private[routes] object AdminPermissionEndpoints {
       .in(
         jsonBody[CreatePermissionRequest]
           .description("Details of the Permission to create.")
-          .example(
-            CreatePermissionRequest(
-              name = "read:permission:123",
-              description = Some("A description what this Permission is for.")
-            )
-          )
+          .example(EndpointsBase.createPermissionRequest)
       )
       .out(statusCode.description(StatusCode.Created, "Permission created successfully"))
       .out(

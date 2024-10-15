@@ -2,6 +2,7 @@ package apikeysteward.model
 
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 
 import java.sql.SQLException
@@ -121,6 +122,20 @@ object RepositoryErrors {
         )
       }
 
+      def cannotInsertPermissionError(
+          publicApplicationId: ApplicationId,
+          permissionInsertionError: PermissionInsertionError
+      ): ApplicationInsertionError =
+        CannotInsertPermissionError(publicApplicationId, permissionInsertionError)
+
+      case class CannotInsertPermissionError(
+          publicApplicationId: ApplicationId,
+          permissionInsertionError: PermissionInsertionError
+      ) extends ApplicationInsertionError(
+            message =
+              s"Could not insert Permissions for Application with publicApplicationId = [$publicApplicationId], because: $permissionInsertionError"
+          )
+
       case class ApplicationInsertionErrorImpl(cause: SQLException)
           extends ApplicationInsertionError(message = s"An error occurred when inserting Application: $cause")
     }
@@ -141,6 +156,21 @@ object RepositoryErrors {
           message =
             s"Could not delete Application with publicApplicationId = [${publicApplicationId.toString}] because it is not deactivated."
         )
+
+    def cannotDeletePermissionError(
+        publicApplicationId: ApplicationId,
+        permissionNotFoundError: PermissionNotFoundError
+    ): ApplicationDbError =
+      CannotDeletePermissionError(publicApplicationId, permissionNotFoundError)
+
+    case class CannotDeletePermissionError(
+        publicApplicationId: ApplicationId,
+        permissionNotFoundError: PermissionNotFoundError
+    ) extends ApplicationDbError(
+          message =
+            s"Could not delete Permissions for Application with publicApplicationId = [$publicApplicationId], because: $permissionNotFoundError"
+        )
+
   }
 
   sealed abstract class PermissionDbError(override val message: String) extends CustomError

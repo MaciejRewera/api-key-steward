@@ -2,11 +2,13 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.{ApiKey, ApiKeyData, Application, Permission, Tenant}
+import apikeysteward.model._
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
+import apikeysteward.routes.model.admin.application.CreateApplicationRequest
+import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -24,6 +26,17 @@ private[routes] object EndpointsBase {
 
   val applicationIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
     path[ApplicationId]("applicationId").description("Unique ID of the Application.")
+
+  val createPermissionRequest: CreatePermissionRequest = CreatePermissionRequest(
+    name = "read:permission:123",
+    description = Some("A description what this Permission is for.")
+  )
+
+  val createApplicationRequest: CreateApplicationRequest = CreateApplicationRequest(
+    name = "My new Application",
+    description = Some("A description what this Application is for."),
+    permissions = List(EndpointsBase.createPermissionRequest)
+  )
 
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
 
@@ -43,17 +56,18 @@ private[routes] object EndpointsBase {
     isActive = true
   )
 
-  val ApplicationExample: Application = Application(
-    applicationId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "My new Application",
-    description = Some("A description what this Application is for."),
-    isActive = true
-  )
-
   val PermissionExample: Permission = Permission(
     permissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
     name = "read:permission:123",
     description = Some("A description what this Permission is for.")
+  )
+
+  val ApplicationExample: Application = Application(
+    applicationId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My new Application",
+    description = Some("A description what this Application is for."),
+    isActive = true,
+    permissions = List(PermissionExample, PermissionExample)
   )
 
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
