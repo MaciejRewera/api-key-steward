@@ -4,16 +4,8 @@ import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
-  errorOutVariantBadRequest,
-  errorOutVariantNotFound
-}
-import apikeysteward.routes.definitions.EndpointsBase.{
-  applicationIdPathParameter,
-  createApplicationRequest,
-  createPermissionRequest,
-  tenantIdHeaderInput
-}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
+import apikeysteward.routes.definitions.EndpointsBase._
 import apikeysteward.routes.model.admin.application._
 import sttp.model.StatusCode
 import sttp.tapir._

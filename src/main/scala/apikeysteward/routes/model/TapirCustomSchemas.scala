@@ -7,14 +7,11 @@ import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
-import sttp.tapir.generic.Derived
-import sttp.tapir.generic.auto.schemaForCaseClass
 import sttp.tapir.{Schema, Validator}
 
 object TapirCustomSchemas {
 
   val createApiKeyRequestSchema: Schema[CreateApiKeyRequest] =
-//    implicitly[Derived[Schema[CreateApiKeyRequest]]].value
     Schema
       .derived[CreateApiKeyRequest]
       .map(Option(_))(trimStringFields)
@@ -23,7 +20,6 @@ object TapirCustomSchemas {
       .modify(_.ttl)(validateTtl)
 
   val createApiKeyAdminRequestSchema: Schema[CreateApiKeyAdminRequest] =
-//    implicitly[Derived[Schema[CreateApiKeyAdminRequest]]].value
     Schema
       .derived[CreateApiKeyAdminRequest]
       .map(Option(_))(trimStringFields)
@@ -33,7 +29,6 @@ object TapirCustomSchemas {
       .modify(_.userId)(validateUserId)
 
   val updateApiKeyAdminRequestSchema: Schema[UpdateApiKeyAdminRequest] =
-//    implicitly[Derived[Schema[UpdateApiKeyAdminRequest]]].value
     Schema
       .derived[UpdateApiKeyAdminRequest]
       .map(Option(_))(trimStringFields)
@@ -41,7 +36,6 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescription250)
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
-//    implicitly[Derived[Schema[CreateTenantRequest]]].value
     Schema
       .derived[CreateTenantRequest]
       .map(Option(_))(trimStringFields)
@@ -49,7 +43,6 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescription250)
 
   val updateTenantRequestSchema: Schema[UpdateTenantRequest] =
-//    implicitly[Derived[Schema[UpdateTenantRequest]]].value
     Schema
       .derived[UpdateTenantRequest]
       .map(Option(_))(trimStringFields)
@@ -57,7 +50,6 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescription250)
 
   lazy val createApplicationRequestSchema: Schema[CreateApplicationRequest] =
-//    implicitly[Derived[Schema[CreateApplicationRequest]]].value
     Schema
       .derived[CreateApplicationRequest]
       .map(Option(_))(trimStringFields)
@@ -66,7 +58,6 @@ object TapirCustomSchemas {
       .modify(_.permissions)(_.validateList(createPermissionRequestSchema.validator))
 
   val updateApplicationRequestSchema: Schema[UpdateApplicationRequest] =
-//    implicitly[Derived[Schema[UpdateApplicationRequest]]].value
     Schema
       .derived[UpdateApplicationRequest]
       .map(Option(_))(trimStringFields)
@@ -74,7 +65,6 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescription250)
 
   val createPermissionRequestSchema: Schema[CreatePermissionRequest] =
-//    implicitly[Derived[Schema[CreatePermissionRequest]]].value
     Schema
       .derived[CreatePermissionRequest]
       .map(Option(_))(trimStringFields)

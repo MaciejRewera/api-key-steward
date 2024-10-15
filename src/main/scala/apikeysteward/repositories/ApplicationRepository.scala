@@ -3,11 +3,7 @@ package apikeysteward.repositories
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.{
-  ApplicationInsertionError,
-  ApplicationNotFoundError,
-  cannotDeletePermissionError
-}
+import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
