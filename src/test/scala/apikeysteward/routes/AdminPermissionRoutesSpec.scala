@@ -4,10 +4,11 @@ import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.routes.auth.JwtAuthorizer
-import apikeysteward.routes.auth.JwtAuthorizer.Permission
+import apikeysteward.routes.auth.JwtAuthorizer.{Permission => JwtPermission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.permission._
@@ -49,7 +50,7 @@ class AdminPermissionRoutesSpec
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
     authorizedFixture(jwtAuthorizer)(test)
 
-  private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
+  private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[JwtPermission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, permissionService)(request, requiredPermissions)
 
   "AdminPermissionRoutes on POST /admin/applications/{applicationId}/permissions" when {
@@ -295,18 +296,18 @@ class AdminPermissionRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when PermissionService returns successful IO with Left containing ReferencedApplicationDoesNotExistError" in authorizedFixture {
+      "return Not Found when PermissionService returns successful IO with Left containing ReferencedApplicationDoesNotExistError" in authorizedFixture {
         permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
           Left(ReferencedApplicationDoesNotExistError(publicApplicationId_1))
         )
 
         for {
           response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
+          _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
                 Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)
               )
             )
@@ -547,7 +548,7 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService providing nameFragment when request contains 'name' query param" in authorizedFixture {
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
         for {
           _ <- adminRoutes.run(request)
@@ -559,7 +560,7 @@ class AdminPermissionRoutesSpec
         val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions")
         val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
         for {
           _ <- adminRoutes.run(request)
@@ -570,7 +571,7 @@ class AdminPermissionRoutesSpec
       "return successful value returned by PermissionService" when {
 
         "PermissionService returns an empty List" in authorizedFixture {
-          permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+          permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
           for {
             response <- adminRoutes.run(request)
@@ -583,7 +584,7 @@ class AdminPermissionRoutesSpec
 
         "PermissionService returns a List with several elements" in authorizedFixture {
           permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
-            List(permission_1, permission_2, permission_3)
+            List(permission_1, permission_2, permission_3).asRight
           )
 
           for {
@@ -596,6 +597,24 @@ class AdminPermissionRoutesSpec
               )
           } yield ()
         }
+      }
+
+      "return Not Found when PermissionService returns ApplicationNotFoundError" in authorizedFixture {
+        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
+          ApplicationNotFoundError(publicApplicationId_1.toString).asLeft
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)
+              )
+            )
+        } yield ()
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {

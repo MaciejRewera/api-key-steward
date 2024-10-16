@@ -1,5 +1,6 @@
 package apikeysteward.routes
 
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.{
   PermissionAlreadyExistsForThisApplicationError,
   ReferencedApplicationDoesNotExistError
@@ -33,7 +34,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
               (StatusCode.Created, CreatePermissionResponse(newPermission)).asRight
 
             case Left(_: ReferencedApplicationDoesNotExistError) =>
-              ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
 
             case Left(_: PermissionAlreadyExistsForThisApplicationError) =>
               ErrorInfo
@@ -83,8 +84,13 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
           val (applicationId, nameFragment) = input
-          permissionService.getAllBy(applicationId)(nameFragment).map { permissions =>
-            (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+          permissionService.getAllBy(applicationId)(nameFragment).map {
+
+            case Right(permissions) =>
+              (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+
+            case Left(_: ApplicationNotFoundError) =>
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
           }
         }
     )

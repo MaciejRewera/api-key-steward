@@ -1,18 +1,20 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
+import apikeysteward.base.testdata.ApplicationsTestData.{application_1, publicApplicationIdStr_1, publicApplicationId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.Application.ApplicationId
-import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.repositories.PermissionRepository
+import apikeysteward.model.{Application, Permission}
+import apikeysteward.repositories.{ApplicationRepository, PermissionRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.none
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyZeroInteractions}
@@ -32,8 +34,9 @@ class PermissionServiceSpec
 
   private val uuidGenerator = mock[UuidGenerator]
   private val permissionRepository = mock[PermissionRepository]
+  private val applicationRepository = mock[ApplicationRepository]
 
-  private val permissionService = new PermissionService(uuidGenerator, permissionRepository)
+  private val permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
 
   override def beforeEach(): Unit =
     reset(uuidGenerator, permissionRepository)
@@ -321,41 +324,72 @@ class PermissionServiceSpec
     }
   }
 
-  "PermissionService on getAllBy" should {
+  "PermissionService on getAllBy" when {
 
     val nameFragment = Some("test:name:fragment")
 
-    "call PermissionRepository" in {
-      permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+    "everything works correctly" should {
 
-      for {
-        _ <- permissionService.getAllBy(publicApplicationId_1)(nameFragment)
-
-        _ = verify(permissionRepository).getAllBy(eqTo(publicApplicationId_1))(eqTo(nameFragment))
-      } yield ()
-    }
-
-    "return the value returned by PermissionRepository" when {
-
-      "PermissionRepository returns empty List" in {
+      "call ApplicationRepository and PermissionRepository" in {
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
         permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
 
-        permissionService.getAllBy(publicApplicationId_1)(nameFragment).asserting(_ shouldBe List.empty[Permission])
+        for {
+          _ <- permissionService.getAllBy(publicApplicationId_1)(nameFragment)
+
+          _ = verify(applicationRepository).getBy(eqTo(publicApplicationId_1))
+          _ = verify(permissionRepository).getAllBy(eqTo(publicApplicationId_1))(eqTo(nameFragment))
+        } yield ()
       }
 
-      "PermissionRepository returns non-empty List" in {
-        permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
-          List(permission_1, permission_2, permission_3)
-        )
+      "return the value returned by PermissionRepository" when {
+
+        "PermissionRepository returns empty List" in {
+          applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
+          permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+
+          permissionService
+            .getAllBy(publicApplicationId_1)(nameFragment)
+            .asserting(_ shouldBe Right(List.empty[Permission]))
+        }
+
+        "PermissionRepository returns non-empty List" in {
+          applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
+          permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
+            List(permission_1, permission_2, permission_3)
+          )
+
+          permissionService
+            .getAllBy(publicApplicationId_1)(nameFragment)
+            .asserting(_ shouldBe Right(List(permission_1, permission_2, permission_3)))
+        }
+      }
+    }
+
+    "ApplicationRepository returns empty Option" should {
+
+      "NOT call PermissionRepository" in {
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(none[Application])
+
+        for {
+          _ <- permissionService.getAllBy(publicApplicationId_1)(nameFragment)
+
+          _ = verifyZeroInteractions(permissionRepository)
+        } yield ()
+      }
+
+      "return Left containing ApplicationNotFoundError" in {
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(none[Application])
 
         permissionService
           .getAllBy(publicApplicationId_1)(nameFragment)
-          .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
+          .asserting(_ shouldBe Left(ApplicationNotFoundError(publicApplicationIdStr_1)))
       }
     }
 
-    "return failed IO" when {
-      "PermissionRepository returns failed IO" in {
+    "PermissionRepository returns failed IO" should {
+      "return failed IO" in {
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
         permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.raiseError(testException)
 
         permissionService
