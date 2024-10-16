@@ -45,8 +45,7 @@ private[routes] object EndpointsBase {
     name = "My API key",
     description = Some("A short description what this API key is for."),
     userId = "user-1234567",
-    expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z"),
-    scopes = List("read:myApi", "write:myApi")
+    expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z")
   )
 
   val TenantExample: Tenant = Tenant(

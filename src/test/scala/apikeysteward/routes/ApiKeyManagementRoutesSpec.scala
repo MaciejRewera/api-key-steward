@@ -10,7 +10,7 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.TtlTooLargeError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -27,6 +27,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
 class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
@@ -154,8 +156,7 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     val requestBody = CreateApiKeyRequest(
       name = name,
       description = description,
-      ttl = ttlMinutes,
-      scopes = List(scopeRead_1, scopeWrite_1)
+      ttl = ttlMinutes
     )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
@@ -432,7 +433,8 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
         }
 
         "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
-          val error = ValidationError(Seq(NotAllowedScopesProvidedError(Set("illegal-scope-1", "illegal-scope-2"))))
+          val error =
+            ValidationError(Seq(TtlTooLargeError(requestBody.ttl, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))))
           managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(Left(error))
 
           for {
