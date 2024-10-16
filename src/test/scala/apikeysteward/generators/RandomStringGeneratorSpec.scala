@@ -16,6 +16,7 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
   "RandomStringGenerator on generate" should {
 
     val config = ApiKeyConfig(
+      prngAmount = 13,
       randomSectionLength = 42,
       prefix = "prefix",
       ttlMax = FiniteDuration(ttlMinutes, TimeUnit.MINUTES),

@@ -8,6 +8,7 @@ import pureconfig.generic.semiauto.deriveReader
 import scala.concurrent.duration.FiniteDuration
 
 case class ApiKeyConfig(
+    prngAmount: Int,
     randomSectionLength: Int,
     prefix: String,
     ttlMax: FiniteDuration,

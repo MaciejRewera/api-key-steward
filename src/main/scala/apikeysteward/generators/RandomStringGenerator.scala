@@ -14,8 +14,7 @@ class RandomStringGenerator(apiKeyConfig: ApiKeyConfig) {
     else throw new IllegalArgumentException(s"Provided length is not greater than zero: $length")
   }
 
-//  TODO: Consider reseeding or re-instantiating the PRNG periodically.
-  private val PRNGsAmount: Int = 13
+  private val PRNGsAmount: Int = apiKeyConfig.prngAmount
   private val rngIo: IO[SecureRandom[IO]] = SecureRandom.javaSecuritySecureRandom[IO](PRNGsAmount)
 
   def generate: IO[String] =
