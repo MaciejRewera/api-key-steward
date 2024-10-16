@@ -82,7 +82,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
-        permissionService = new PermissionService(uuidGenerator, permissionRepository)
+        permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
 

@@ -43,6 +43,7 @@ private[routes] object AdminPermissionEndpoints {
           .example(CreatePermissionResponse(EndpointsBase.PermissionExample))
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
+      .errorOutVariantPrepend(errorOutVariantNotFound)
 
   val deletePermissionEndpoint
       : Endpoint[AccessToken, (ApplicationId, PermissionId), ErrorInfo, (StatusCode, DeletePermissionResponse), Any] =

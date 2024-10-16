@@ -3,16 +3,22 @@ package apikeysteward.services
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.repositories.PermissionRepository
+import apikeysteward.repositories.{ApplicationRepository, PermissionRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
+import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 
-class PermissionService(uuidGenerator: UuidGenerator, permissionRepository: PermissionRepository) extends Logging {
+class PermissionService(
+    uuidGenerator: UuidGenerator,
+    permissionRepository: PermissionRepository,
+    applicationRepository: ApplicationRepository
+) extends Logging {
 
   def createPermission(
       applicationId: ApplicationId,
@@ -64,7 +70,19 @@ class PermissionService(uuidGenerator: UuidGenerator, permissionRepository: Perm
   def getBy(applicationId: ApplicationId, permissionId: PermissionId): IO[Option[Permission]] =
     permissionRepository.getBy(applicationId, permissionId)
 
-  def getAllBy(applicationId: ApplicationId)(nameFragment: Option[String]): IO[List[Permission]] =
-    permissionRepository.getAllBy(applicationId)(nameFragment)
+  def getAllBy(
+      applicationId: ApplicationId
+  )(nameFragment: Option[String]): IO[Either[ApplicationNotFoundError, List[Permission]]] =
+    (for {
+      _ <- EitherT(
+        applicationRepository
+          .getBy(applicationId)
+          .map(_.toRight(ApplicationNotFoundError(applicationId.toString)))
+      )
+
+      result <- EitherT.liftF[IO, ApplicationNotFoundError, List[Permission]](
+        permissionRepository.getAllBy(applicationId)(nameFragment)
+      )
+    } yield result).value
 
 }
