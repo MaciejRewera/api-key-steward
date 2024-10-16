@@ -10,14 +10,12 @@ case class CreateApiKeyAdminRequest(
     userId: String,
     name: String,
     description: Option[String],
-    ttl: Int,
-    scopes: List[String]
+    ttl: Int
 ) {
   def toUserRequest: (String, CreateApiKeyRequest) = userId -> CreateApiKeyRequest(
     name = this.name,
     description = this.description,
-    ttl = this.ttl,
-    scopes = this.scopes
+    ttl = this.ttl
   )
 
 }

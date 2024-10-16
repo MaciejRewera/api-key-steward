@@ -36,8 +36,7 @@ private[routes] object AdminApiKeyManagementEndpoints {
               userId = "user-1234567890",
               name = "My API key",
               description = Some("A short description what this API key is for."),
-              ttl = 60,
-              scopes = List("read:myApi", "write:myApi")
+              ttl = 60
             )
           )
       )

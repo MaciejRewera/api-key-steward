@@ -67,24 +67,21 @@ object ApiKeysTestData extends FixedClock {
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
-    scopes = scopes_1
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
-    scopes = scopes_2
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name,
     description = description,
     userId = userId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
-    scopes = scopes_3
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
 
   val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(

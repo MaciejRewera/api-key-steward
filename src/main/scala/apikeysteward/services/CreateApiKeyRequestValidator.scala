@@ -15,23 +15,9 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   def validateCreateRequest(
       createApiKeyRequest: CreateApiKeyRequest
   ): Either[NonEmptyChain[CreateApiKeyRequestValidatorError], CreateApiKeyRequest] =
-    (
-      validateScopes(createApiKeyRequest),
-      validateTimeToLive(createApiKeyRequest)
-    ).mapN((_, _) => createApiKeyRequest).toEither
-
-  private def validateScopes(
-      createApiKeyRequest: CreateApiKeyRequest
-  ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] = {
-    val notAllowedScopes = createApiKeyRequest.scopes.toSet.diff(apiKeyConfig.allowedScopes)
-
-    Validated
-      .condNec(
-        notAllowedScopes.isEmpty,
-        createApiKeyRequest,
-        NotAllowedScopesProvidedError(notAllowedScopes)
-      )
-  }
+    validateTimeToLive(createApiKeyRequest)
+      .map(_ => createApiKeyRequest)
+      .toEither
 
   private def validateTimeToLive(
       createApiKeyRequest: CreateApiKeyRequest
@@ -48,11 +34,6 @@ object CreateApiKeyRequestValidator {
 
   sealed abstract class CreateApiKeyRequestValidatorError(override val message: String) extends CustomError
   object CreateApiKeyRequestValidatorError {
-
-    case class NotAllowedScopesProvidedError(notAllowedScopes: Set[String])
-        extends CreateApiKeyRequestValidatorError(
-          message = s"Provided request contains not allowed scopes: [${notAllowedScopes.mkString("'", "', '", "'")}]."
-        )
 
     case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
         extends CreateApiKeyRequestValidatorError(

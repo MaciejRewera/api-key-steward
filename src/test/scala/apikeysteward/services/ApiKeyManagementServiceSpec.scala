@@ -11,7 +11,7 @@ import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
-import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.NotAllowedScopesProvidedError
+import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.TtlTooLargeError
 import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -26,6 +26,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
 class ApiKeyManagementServiceSpec
     extends AsyncWordSpec
@@ -45,8 +47,7 @@ class ApiKeyManagementServiceSpec
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,
     description = description,
-    ttl = ttlMinutes,
-    scopes = List(scopeRead_1, scopeWrite_1)
+    ttl = ttlMinutes
   )
 
   override def beforeEach(): Unit = {
@@ -91,7 +92,7 @@ class ApiKeyManagementServiceSpec
 
       "NOT call ApiKeyGenerator, UuidGenerator or ApiKeyRepository" in {
         createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
-          NonEmptyChain.one(NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2)))
+          NonEmptyChain.one(TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)))
         )
 
         for {
@@ -102,7 +103,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "return successful IO containing Left with ValidationError" in {
-        val error = NotAllowedScopesProvidedError(Set(scopeRead_2, scopeWrite_2))
+        val error = TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
         createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
           NonEmptyChain.one(error)
         )
@@ -299,8 +300,7 @@ class ApiKeyManagementServiceSpec
       name = nameUpdated,
       description = descriptionUpdated,
       userId = userId_1,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42),
-      scopes = apiKeyData_1.scopes
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42)
     )
 
     "call ApiKeyRepository" in {

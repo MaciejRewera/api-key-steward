@@ -60,21 +60,6 @@ END;
 $BODY$
     LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION copy_api_key_data_scopes() RETURNS TRIGGER AS
-$BODY$
-BEGIN
-    INSERT INTO api_key_data_scopes_deleted (deleted_at, api_key_data_id, scope_id, created_at, updated_at)
-    VALUES (now(),
-            OLD.api_key_data_id,
-            OLD.scope_id,
-            OLD.created_at,
-            OLD.updated_at);
-
-    RETURN OLD;
-END;
-$BODY$
-    LANGUAGE plpgsql;
-
 CREATE OR REPLACE TRIGGER copy_tenant_on_deletion
     BEFORE DELETE
     ON tenant
@@ -92,9 +77,3 @@ CREATE OR REPLACE TRIGGER copy_api_key_data_on_deletion
     ON api_key_data
     FOR EACH ROW
 EXECUTE PROCEDURE copy_api_key_data();
-
-CREATE OR REPLACE TRIGGER copy_api_key_data_scopes_on_deletion
-    BEFORE DELETE
-    ON api_key_data_scopes
-    FOR EACH ROW
-EXECUTE PROCEDURE copy_api_key_data_scopes();

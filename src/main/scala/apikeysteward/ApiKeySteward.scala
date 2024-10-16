@@ -136,18 +136,10 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   private def buildApiKeyRepository(config: AppConfig, transactor: HikariTransactor[IO]) = {
     val apiKeyDb = new ApiKeyDb
     val apiKeyDataDb = new ApiKeyDataDb
-    val scopeDb = new ScopeDb
-    val apiKeyDataScopesDb = new ApiKeyDataScopesDb
 
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-    new ApiKeyRepository(
-      apiKeyDb,
-      apiKeyDataDb,
-      scopeDb,
-      apiKeyDataScopesDb,
-      secureHashGenerator
-    )(transactor)
+    new ApiKeyRepository(apiKeyDb, apiKeyDataDb, secureHashGenerator)(transactor)
   }
 
   private def buildTenantRepository(transactor: HikariTransactor[IO]) = {
