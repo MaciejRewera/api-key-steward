@@ -1,6 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Pagination
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
@@ -79,7 +80,7 @@ class PermissionDb()(implicit clock: Clock) {
   def getAllBy(publicApplicationId: ApplicationId)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllBy(publicApplicationId)(nameFragment).stream
+    Queries.getAllBy(publicApplicationId, Pagination())(nameFragment).stream
 
   private object Queries {
 
@@ -125,12 +126,15 @@ class PermissionDb()(implicit clock: Clock) {
              """).query[PermissionEntity.Read]
 
     def getAllBy(
-        publicApplicationId: ApplicationId
+        publicApplicationId: ApplicationId,
+        pagination: Pagination
     )(nameFragment: Option[String]): doobie.Query0[PermissionEntity.Read] = {
       val publicApplicationIdEquals = Some(fr"application.public_application_id = ${publicApplicationId.toString}")
       val nameLikeFr = nameFragment
         .map(n => s"%$n%")
         .map(n => fr"permission.name ILIKE $n")
+
+      val offset = (pagination.page - 1) * pagination.itemsPerPage
 
       sql"""SELECT
               permission.id,
@@ -144,6 +148,7 @@ class PermissionDb()(implicit clock: Clock) {
             JOIN application ON application.id = permission.application_id
             ${whereAndOpt(publicApplicationIdEquals, nameLikeFr)}
             ORDER BY permission.name
+            LIMIT ${pagination.itemsPerPage} OFFSET $offset
             """.stripMargin.query[PermissionEntity.Read]
     }
 
