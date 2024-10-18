@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.Application
+import apikeysteward.model.{Application, Pagination}
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
@@ -228,7 +228,7 @@ class ApplicationRepositorySpec
 
       "call ApplicationDb and PermissionDb" in {
         applicationDb.update(any[ApplicationEntity.Update]) returns updatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         for {
           _ <- applicationRepository.update(applicationUpdate_1)
@@ -239,13 +239,13 @@ class ApplicationRepositorySpec
             description = applicationDescriptionUpdated
           )
           _ = verify(applicationDb).update(eqTo(expectedApplicationEntityUpdate))
-          _ = verify(permissionDb).getAllBy(eqTo(publicApplicationId_1))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(eqTo(publicApplicationId_1), eqTo())(eqTo(none[String]))
         } yield ()
       }
 
       "return Right containing updated Application" in {
         applicationDb.update(any[ApplicationEntity.Update]) returns updatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         val expectedUpdatedApplication =
           application_1.copy(name = applicationNameUpdated, description = applicationDescriptionUpdated)
@@ -293,7 +293,7 @@ class ApplicationRepositorySpec
     "PermissionDb returns an exception" should {
       "return failed IO containing this exception" in {
         applicationDb.update(any[ApplicationEntity.Update]) returns updatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.update(applicationUpdate_1).attempt.asserting(_ shouldBe Left(testException))
@@ -311,7 +311,7 @@ class ApplicationRepositorySpec
 
       "call ApplicationDb and PermissionDb" in {
         applicationDb.activate(any[UUID]) returns activatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         for {
           _ <- applicationRepository.activate(publicApplicationId_1)
@@ -323,7 +323,7 @@ class ApplicationRepositorySpec
 
       "return Right containing activated Application" in {
         applicationDb.activate(any[UUID]) returns activatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         val expectedActivatedApplication = application_1.copy(isActive = true)
 
@@ -370,7 +370,7 @@ class ApplicationRepositorySpec
     "PermissionDb returns an exception" should {
       "return failed IO containing this exception" in {
         applicationDb.activate(any[UUID]) returns activatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.activate(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
@@ -388,7 +388,7 @@ class ApplicationRepositorySpec
 
       "call ApplicationDb and PermissionDb" in {
         applicationDb.deactivate(any[UUID]) returns deactivatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         for {
           _ <- applicationRepository.deactivate(publicApplicationId_1)
@@ -400,7 +400,7 @@ class ApplicationRepositorySpec
 
       "return Right containing deactivated Application" in {
         applicationDb.deactivate(any[UUID]) returns deactivatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         val expectedDeactivatedApplication = application_1.copy(isActive = false)
 
@@ -449,7 +449,7 @@ class ApplicationRepositorySpec
     "PermissionDb returns an exception" should {
       "return failed IO containing this exception" in {
         applicationDb.deactivate(any[UUID]) returns deactivatedApplicationEntityReadWrapped
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.deactivate(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
@@ -473,7 +473,7 @@ class ApplicationRepositorySpec
     "everything works correctly" should {
 
       "call ApplicationDb and PermissionDb" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -497,7 +497,7 @@ class ApplicationRepositorySpec
       }
 
       "return Right containing deleted Application" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -519,7 +519,7 @@ class ApplicationRepositorySpec
     "PermissionDb.getAllBy returns an exception" should {
 
       "NOT call either PermissionDb.delete or ApplicationDb" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -533,7 +533,7 @@ class ApplicationRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++
           Stream.raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.delete(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
@@ -545,7 +545,7 @@ class ApplicationRepositorySpec
       val permissionNotFoundError = PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1)
 
       "NOT call ApplicationDb" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -562,7 +562,7 @@ class ApplicationRepositorySpec
       }
 
       "return Left containing CannotDeletePermissionError" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -580,7 +580,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns Left containing ApplicationNotFoundError" should {
       "return Left containing this error" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
@@ -592,7 +592,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns Left containing ApplicationNotDeactivatedError" should {
       "return Left containing this error" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
@@ -604,7 +604,7 @@ class ApplicationRepositorySpec
 
     "ApplicationDb returns different exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
@@ -620,7 +620,7 @@ class ApplicationRepositorySpec
     "should always call ApplicationDb" in {
       applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
         .pure[doobie.ConnectionIO]
-      permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream.empty
+      permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream.empty
 
       for {
         _ <- applicationRepository.getBy(publicApplicationId_1)
@@ -654,7 +654,7 @@ class ApplicationRepositorySpec
       "call PermissionDb with publicApplicationId" in {
         applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         for {
           _ <- applicationRepository.getBy(publicApplicationId_1)
@@ -665,7 +665,7 @@ class ApplicationRepositorySpec
       "return Option containing Application" in {
         applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1)
 
         applicationRepository.getBy(publicApplicationId_1).asserting(_ shouldBe Some(application_1))
       }
@@ -695,7 +695,7 @@ class ApplicationRepositorySpec
       "return failed IO containing this exception" in {
         applicationDb.getByPublicApplicationId(any[ApplicationId]) returns Option(applicationEntityRead_1)
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.getBy(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
@@ -741,7 +741,7 @@ class ApplicationRepositorySpec
           applicationEntityRead_2,
           applicationEntityRead_3
         )
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns (
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns (
           Stream(permissionEntityRead_1),
           Stream(permissionEntityRead_2),
           Stream(permissionEntityRead_3)
@@ -762,7 +762,7 @@ class ApplicationRepositorySpec
           applicationEntityRead_2,
           applicationEntityRead_3
         )
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns (
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns (
           Stream(permissionEntityRead_1),
           Stream(permissionEntityRead_2),
           Stream(permissionEntityRead_3)
@@ -795,7 +795,7 @@ class ApplicationRepositorySpec
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
         applicationDb.getAllForTenant(any[TenantId]) returns Stream(applicationEntityRead_1)
-        permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
+        permissionDb.getAllBy(any[ApplicationId], any[Pagination])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
 
         applicationRepository.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))

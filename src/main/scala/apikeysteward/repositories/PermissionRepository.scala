@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.Application.ApplicationId
-import apikeysteward.model.Permission
+import apikeysteward.model.{Pagination, Permission}
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.ReferencedApplicationDoesNotExistError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
@@ -48,7 +48,7 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
 
   def getAllBy(publicApplicationId: ApplicationId)(nameFragment: Option[String]): IO[List[Permission]] =
     (for {
-      permissionEntityRead <- permissionDb.getAllBy(publicApplicationId)(nameFragment)
+      permissionEntityRead <- permissionDb.getAllBy(publicApplicationId, Pagination())(nameFragment)
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).compile.toList.transact(transactor)
 

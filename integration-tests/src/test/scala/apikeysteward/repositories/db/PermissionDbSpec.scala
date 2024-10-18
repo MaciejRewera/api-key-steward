@@ -4,6 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApplicationsTestData.{publicApplicationId_1, _}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
+import apikeysteward.model.Pagination
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
@@ -527,6 +528,273 @@ class PermissionDbSpec
     }
   }
 
+  "PermissionDb on countAllBy" when {
+
+    "provided with empty nameFragment" when {
+
+      val nameFragment = Option.empty[String]
+
+      "there are no rows in the DB" should {
+        "return zero" in {
+          permissionDb.countAllBy(publicApplicationId_1)(nameFragment).transact(transactor).asserting(_ shouldBe 0)
+        }
+      }
+
+      "there is a row in the DB with a different applicationId" should {
+        "return zero" in {
+          val result = (for {
+            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+            _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+
+            res <- permissionDb.countAllBy(publicApplicationId_2)(nameFragment)
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe 0)
+        }
+      }
+
+      "there is a row in the DB with the same applicationId" should {
+        "return one" in {
+          val result = (for {
+            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+            _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+
+            res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe 1)
+        }
+      }
+
+      "there are several rows in the DB" should {
+        "return the number of entities with the same applicationId" in {
+          val result = (for {
+            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            applicationId_1 <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+            applicationId_2 <- applicationDb.insert(applicationEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
+            _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId_1))
+            _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId_2))
+            _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId_1))
+
+            res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe 2)
+        }
+      }
+    }
+
+    "provided with non-empty nameFragment" when {
+
+      "there are no rows in the DB" should {
+        "return zero" in {
+          permissionDb
+            .countAllBy(publicApplicationId_1)(Some(permissionName_1))
+            .transact(transactor)
+            .asserting(_ shouldBe 0)
+        }
+      }
+
+      "there is a row in the DB with a different applicationId but matching name" should {
+        "return zero" in {
+          val result = (for {
+            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+            _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+
+            res <- permissionDb.countAllBy(publicApplicationId_2)(Some(permissionName_1))
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe 0)
+        }
+      }
+
+      "there is a row in the DB with provided applicationId" when {
+
+        "the row has a different name" should {
+          "return zero" in {
+            val nameFragment = Option("write")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
+              _ <- permissionDb.insert(permissionEntity)
+
+              res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+            } yield res).transact(transactor)
+
+            result.asserting(_ shouldBe 0)
+          }
+        }
+
+        "the row has name column exactly the same as provided name" should {
+          "return one" in {
+            val nameFragment = Option(permissionName_1)
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
+              _ <- permissionDb.insert(permissionEntity)
+
+              res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+            } yield res).transact(transactor)
+
+            result.asserting(_ shouldBe 1)
+          }
+        }
+
+        "the row has name column matching characters of provided name" should {
+          "return one" in {
+            val nameFragment_1 = Some("read:")
+            val nameFragment_2 = Some(":perm")
+            val nameFragment_3 = Some("1")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
+              _ <- permissionDb.insert(permissionEntity)
+
+              res_1 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_1)
+              res_2 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_2)
+              res_3 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_3)
+            } yield (res_1, res_2, res_3)).transact(transactor)
+
+            result.asserting { case (res_1, res_2, res_3) =>
+              res_1 shouldBe 1
+              res_2 shouldBe 1
+              res_3 shouldBe 1
+            }
+          }
+        }
+
+        "the row has name column matching characters of provided name, but the capitalisation is different" should {
+          "return one" in {
+            val nameFragment_1 = Some("Read:")
+            val nameFragment_2 = Some(":PERM")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
+              _ <- permissionDb.insert(permissionEntity)
+
+              res_1 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_1)
+              res_2 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_2)
+            } yield (res_1, res_2)).transact(transactor)
+
+            result.asserting { case (res_1, res_2) =>
+              res_1 shouldBe 1
+              res_2 shouldBe 1
+            }
+          }
+        }
+      }
+
+      "there are several rows in the DB with provided applicationId" when {
+
+        "none of them has matching name" should {
+          "return zero" in {
+            val nameFragment = Option("write")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
+
+              res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+            } yield res).transact(transactor)
+
+            result.asserting(_ shouldBe 0)
+          }
+        }
+
+        "one of them has name column exactly the same as provided name" should {
+          "return one" in {
+            val nameFragment = Some(permissionName_1)
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
+
+              res <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment)
+            } yield res).transact(transactor)
+
+            result.asserting(_ shouldBe 1)
+          }
+        }
+
+        "some of them have name column matching characters of provided name" should {
+          "return the number of these entities" in {
+            val nameFragment_1 = Some("read:")
+            val nameFragment_2 = Some(":perm")
+            val nameFragment_3 = Some("2")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
+
+              res_1 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_1)
+              res_2 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_2)
+              res_3 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_3)
+            } yield (res_1, res_2, res_3)).transact(transactor)
+
+            result.asserting { case (res_1, res_2, res_3) =>
+              res_1 shouldBe 2
+              res_2 shouldBe 3
+              res_3 shouldBe 1
+            }
+          }
+        }
+
+        "some of them have name column matching characters of provided name, but the capitalisation is different" should {
+          "return the number of these entities" in {
+            val nameFragment_1 = Some("Read:")
+            val nameFragment_2 = Some(":PERM")
+            val nameFragment_3 = Some("RiTe")
+
+            val result = (for {
+              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+              _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
+              _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
+
+              res_1 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_1)
+              res_2 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_2)
+              res_3 <- permissionDb.countAllBy(publicApplicationId_1)(nameFragment_3)
+            } yield (res_1, res_2, res_3)).transact(transactor)
+
+            result.asserting { case (res_1, res_2, res_3) =>
+              res_1 shouldBe 2
+              res_2 shouldBe 3
+              res_3 shouldBe 1
+            }
+          }
+        }
+      }
+    }
+  }
+
   "PermissionDb on getAllBy" when {
 
     "provided with empty nameFragment" when {
@@ -536,7 +804,7 @@ class PermissionDbSpec
       "there are no rows in the DB" should {
         "return empty Stream" in {
           permissionDb
-            .getAllBy(publicApplicationId_1)(nameFragment)
+            .getAllBy(publicApplicationId_1, Pagination())(nameFragment)
             .compile
             .toList
             .transact(transactor)
@@ -551,7 +819,7 @@ class PermissionDbSpec
             applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
             _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
 
-            res <- permissionDb.getAllBy(publicApplicationId_2)(nameFragment).compile.toList
+            res <- permissionDb.getAllBy(publicApplicationId_2, Pagination())(nameFragment).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -567,7 +835,7 @@ class PermissionDbSpec
 
             expectedEntities = Seq(entityRead).map(_.value)
 
-            res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+            res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
           } yield (res, expectedEntities)).transact(transactor)
 
           result.asserting { case (res, expectedEntities) =>
@@ -577,7 +845,7 @@ class PermissionDbSpec
       }
 
       "there are several rows in the DB" should {
-        "return Stream containing only entities with the same applicationId" in {
+        "return Stream containing only entities with the same applicationId, ordered by name" in {
           val result = (for {
             tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
             applicationId_1 <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
@@ -588,11 +856,11 @@ class PermissionDbSpec
 
             expectedEntities = Seq(entityRead_1, entityRead_3).map(_.value)
 
-            res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+            res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
           } yield (res, expectedEntities)).transact(transactor)
 
           result.asserting { case (res, expectedEntities) =>
-            res should contain theSameElementsAs expectedEntities
+            res shouldBe expectedEntities.sortBy(_.name)
           }
         }
       }
@@ -603,7 +871,7 @@ class PermissionDbSpec
       "there are no rows in the DB" should {
         "return empty Stream" in {
           permissionDb
-            .getAllBy(publicApplicationId_1)(Some(permissionName_1))
+            .getAllBy(publicApplicationId_1, Pagination())(Some(permissionName_1))
             .compile
             .toList
             .transact(transactor)
@@ -618,7 +886,7 @@ class PermissionDbSpec
             applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
             _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
 
-            res <- permissionDb.getAllBy(publicApplicationId_2)(Some(permissionName_1)).compile.toList
+            res <- permissionDb.getAllBy(publicApplicationId_2, Pagination())(Some(permissionName_1)).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -638,7 +906,7 @@ class PermissionDbSpec
               permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
               _ <- permissionDb.insert(permissionEntity)
 
-              res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
             } yield res).transact(transactor)
 
             result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -656,7 +924,7 @@ class PermissionDbSpec
               permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
               entityRead <- permissionDb.insert(permissionEntity)
 
-              res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
             } yield (res, entityRead.value)).transact(transactor)
 
             result.asserting { case (res, entityRead) =>
@@ -678,9 +946,9 @@ class PermissionDbSpec
               permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
               entityRead <- permissionDb.insert(permissionEntity)
 
-              res_1 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_1).compile.toList
+              res_2 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_2).compile.toList
+              res_3 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_3).compile.toList
             } yield (res_1, res_2, res_3, entityRead.value)).transact(transactor)
 
             result.asserting { case (res_1, res_2, res_3, entityRead) =>
@@ -703,8 +971,8 @@ class PermissionDbSpec
               permissionEntity = permissionEntityWrite_1.copy(applicationId = applicationId)
               entityRead <- permissionDb.insert(permissionEntity)
 
-              res_1 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_2).compile.toList
+              res_1 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_1).compile.toList
+              res_2 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_2).compile.toList
             } yield (res_1, res_2, entityRead.value)).transact(transactor)
 
             result.asserting { case (res_1, res_2, entityRead) =>
@@ -728,7 +996,7 @@ class PermissionDbSpec
               _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
               _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
 
-              res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
             } yield res).transact(transactor)
 
             result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -747,7 +1015,7 @@ class PermissionDbSpec
               _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
               _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
 
-              res <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment).compile.toList
             } yield (res, entityRead_1.value)).transact(transactor)
 
             result.asserting { case (res, entityRead_1) =>
@@ -757,7 +1025,7 @@ class PermissionDbSpec
         }
 
         "some of them have name column matching characters of provided name" should {
-          "return Stream containing these entities" in {
+          "return Stream containing these entities, ordered by name" in {
             val nameFragment_1 = Some("read:")
             val nameFragment_2 = Some(":perm")
             val nameFragment_3 = Some("2")
@@ -770,22 +1038,22 @@ class PermissionDbSpec
               entityRead_2 <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
               entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
 
-              res_1 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_1).compile.toList
+              res_2 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_2).compile.toList
+              res_3 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_3).compile.toList
             } yield (res_1, res_2, res_3, entityRead_1.value, entityRead_2.value, entityRead_3.value))
               .transact(transactor)
 
             result.asserting { case (res_1, res_2, res_3, entityRead_1, entityRead_2, entityRead_3) =>
-              res_1 should contain theSameElementsAs List(entityRead_1, entityRead_2)
-              res_2 should contain theSameElementsAs List(entityRead_1, entityRead_2, entityRead_3)
+              res_1 shouldBe List(entityRead_1, entityRead_2).sortBy(_.name)
+              res_2 shouldBe List(entityRead_1, entityRead_2, entityRead_3).sortBy(_.name)
               res_3 shouldBe List(entityRead_2)
             }
           }
         }
 
         "some of them have name column matching characters of provided name, but the capitalisation is different" should {
-          "return Stream containing these entities" in {
+          "return Stream containing these entities, ordered by name" in {
             val nameFragment_1 = Some("Read:")
             val nameFragment_2 = Some(":PERM")
             val nameFragment_3 = Some("RiTe")
@@ -798,18 +1066,66 @@ class PermissionDbSpec
               entityRead_2 <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId))
               entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId))
 
-              res_1 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicApplicationId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_1).compile.toList
+              res_2 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_2).compile.toList
+              res_3 <- permissionDb.getAllBy(publicApplicationId_1, Pagination())(nameFragment_3).compile.toList
             } yield (res_1, res_2, res_3, entityRead_1.value, entityRead_2.value, entityRead_3.value))
               .transact(transactor)
 
             result.asserting { case (res_1, res_2, res_3, entityRead_1, entityRead_2, entityRead_3) =>
-              res_1 should contain theSameElementsAs List(entityRead_1, entityRead_2)
-              res_2 should contain theSameElementsAs List(entityRead_1, entityRead_2, entityRead_3)
+              res_1 shouldBe List(entityRead_1, entityRead_2).sortBy(_.name)
+              res_2 shouldBe List(entityRead_1, entityRead_2, entityRead_3).sortBy(_.name)
               res_3 shouldBe List(entityRead_3)
             }
           }
+        }
+      }
+    }
+
+    "there are several matching rows in the DB" should {
+
+      "return Stream containing paginated entities" when {
+
+        "provided with correct page no. and itemsPerPage > total rows found" in {}
+
+        "provided with correct page no. and itemsPerPage = total rows found" in {}
+
+        "provided with correct page no. and itemsPerPage < total rows found" in {}
+      }
+
+      "return empty Stream" when {
+
+        "provided with negative page no." in {
+          permissionDb
+            .getAllBy(publicApplicationId_1, Pagination(page = -1))(None)
+            .compile
+            .toList
+            .transact(transactor)
+            .asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        }
+
+        "provided with page no. equal to 0" in {
+          permissionDb
+            .getAllBy(publicApplicationId_1, Pagination(page = 0))(None)
+            .compile
+            .toList
+            .transact(transactor)
+            .asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        }
+
+        "provided with too big page no." in {
+          val result = (for {
+            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            applicationId_1 <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+            _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId_1))
+            _ <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId_1))
+            _ <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId_1))
+
+            res <- permissionDb.getAllBy(publicApplicationId_1, Pagination(page = 2, itemsPerPage = 5))(None).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
         }
       }
     }

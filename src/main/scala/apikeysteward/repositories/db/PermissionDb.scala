@@ -1,6 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Pagination
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
@@ -76,10 +77,13 @@ class PermissionDb()(implicit clock: Clock) {
   ): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Queries.getBy(publicApplicationId, publicPermissionId).option
 
-  def getAllBy(publicApplicationId: ApplicationId)(
+  def countAllBy(publicApplicationId: ApplicationId)(nameFragment: Option[String]): doobie.ConnectionIO[Int] =
+    Queries.countAllBy(publicApplicationId)(nameFragment).unique
+
+  def getAllBy(publicApplicationId: ApplicationId, pagination: Pagination)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllBy(publicApplicationId)(nameFragment).stream
+    Queries.getAllBy(publicApplicationId, pagination)(nameFragment).stream
 
   private object Queries {
 
@@ -124,13 +128,29 @@ class PermissionDb()(implicit clock: Clock) {
                 AND permission.public_permission_id = ${publicPermissionId.toString}
              """).query[PermissionEntity.Read]
 
+    def countAllBy(publicApplicationId: ApplicationId)(nameFragment: Option[String]): doobie.Query0[Int] = {
+      val publicApplicationIdEquals = Some(fr"application.public_application_id = ${publicApplicationId.toString}")
+      val nameLikeFr = nameFragment
+        .map(n => s"%$n%")
+        .map(n => fr"permission.name ILIKE $n")
+
+      sql"""SELECT COUNT(*)
+            FROM permission
+            JOIN application ON application.id = permission.application_id
+            ${whereAndOpt(publicApplicationIdEquals, nameLikeFr)}
+            """.stripMargin.query[Int]
+    }
+
     def getAllBy(
-        publicApplicationId: ApplicationId
+        publicApplicationId: ApplicationId,
+        pagination: Pagination
     )(nameFragment: Option[String]): doobie.Query0[PermissionEntity.Read] = {
       val publicApplicationIdEquals = Some(fr"application.public_application_id = ${publicApplicationId.toString}")
       val nameLikeFr = nameFragment
         .map(n => s"%$n%")
         .map(n => fr"permission.name ILIKE $n")
+
+      val offset = (pagination.page - 1) * pagination.itemsPerPage
 
       sql"""SELECT
               permission.id,
@@ -144,6 +164,7 @@ class PermissionDb()(implicit clock: Clock) {
             JOIN application ON application.id = permission.application_id
             ${whereAndOpt(publicApplicationIdEquals, nameLikeFr)}
             ORDER BY permission.name
+            LIMIT ${pagination.itemsPerPage} OFFSET $offset
             """.stripMargin.query[PermissionEntity.Read]
     }
 

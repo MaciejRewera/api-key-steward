@@ -5,7 +5,7 @@ import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.{Application, ApplicationUpdate}
+import apikeysteward.model.{Application, ApplicationUpdate, Pagination}
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
 import apikeysteward.repositories.db.{ApplicationDb, PermissionDb, TenantDb}
 import cats.data.{EitherT, OptionT}
@@ -83,7 +83,7 @@ class ApplicationRepository(tenantDb: TenantDb, applicationDb: ApplicationDb, pe
   ): EitherT[doobie.ConnectionIO, ApplicationDbError, List[PermissionEntity.Read]] =
     EitherT {
       for {
-        permissionEntitiesToDelete <- permissionDb.getAllBy(applicationId)(None).compile.toList
+        permissionEntitiesToDelete <- permissionDb.getAllBy(applicationId, Pagination())(None).compile.toList
         permissionEntitiesDeletedE <- permissionEntitiesToDelete.traverse { entity =>
           permissionDb.delete(applicationId, UUID.fromString(entity.publicPermissionId))
         }.map(_.sequence)
@@ -107,7 +107,7 @@ class ApplicationRepository(tenantDb: TenantDb, applicationDb: ApplicationDb, pe
   private def constructApplication(applicationEntity: ApplicationEntity.Read): doobie.ConnectionIO[Application] =
     for {
       permissionEntities <- permissionDb
-        .getAllBy(UUID.fromString(applicationEntity.publicApplicationId))(None)
+        .getAllBy(UUID.fromString(applicationEntity.publicApplicationId), Pagination())(None)
         .compile
         .toList
       resultApplication = Application.from(applicationEntity, permissionEntities)
