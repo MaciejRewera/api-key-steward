@@ -1,9 +1,9 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, publicTenantId_2, publicTenantId_3, tenantEntityWrite_1, tenantEntityWrite_2, tenantEntityWrite_3}
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{ReferencedTenantDoesNotExistError, UserAlreadyExistsForThisTenantError}
+import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.UserEntity

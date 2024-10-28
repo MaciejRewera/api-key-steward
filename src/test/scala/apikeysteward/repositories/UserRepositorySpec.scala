@@ -240,7 +240,7 @@ class UserRepositorySpec
     }
   }
 
-  "UserRepository on getAllBy" when {
+  "UserRepository on getAllForTenant" when {
 
     "should always call UserDb" in {
       userDb.getAllForTenant(any[TenantId]) returns Stream.empty
