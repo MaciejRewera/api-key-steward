@@ -1,5 +1,7 @@
 package apikeysteward.repositories.db.entity
 
+import apikeysteward.model.User
+
 import java.time.Instant
 
 object UserEntity {
@@ -17,5 +19,11 @@ object UserEntity {
       publicUserId: String
   )
 
-  object Write {}
+  object Write {
+    def from(tenantId: Long, user: User): UserEntity.Write =
+      UserEntity.Write(
+        tenantId = tenantId,
+        publicUserId = user.userId
+      )
+  }
 }
