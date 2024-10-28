@@ -4,6 +4,7 @@ import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 
 import java.sql.SQLException
 import java.util.UUID
@@ -215,6 +216,45 @@ object RepositoryErrors {
         extends PermissionDbError(
           message =
             s"Could not find Permission with publicPermissionId = [$publicPermissionId] for Application with publicApplicationId = [$publicApplicationId]."
+        )
+  }
+
+  sealed abstract class UserDbError(override val message: String) extends CustomError
+  object UserDbError {
+
+    sealed abstract class UserInsertionError(override val message: String) extends UserDbError(message)
+    object UserInsertionError {
+
+      case class UserAlreadyExistsForThisTenantError(userId: UserId, tenantId: Long)
+          extends UserInsertionError(
+            message = s"User with userId = $userId already exists for Tenant with ID = [$tenantId]."
+          )
+
+      trait ReferencedTenantDoesNotExistError extends UserInsertionError { val errorMessage: String }
+      object ReferencedTenantDoesNotExistError {
+
+        private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
+            extends UserInsertionError(errorMessage)
+            with ReferencedTenantDoesNotExistError
+
+        def apply(tenantId: Long): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with id = [$tenantId] does not exist."
+          )
+        def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
+          )
+      }
+
+      case class UserInsertionErrorImpl(cause: SQLException)
+          extends UserInsertionError(message = s"An error occurred when inserting User: $cause")
+    }
+
+    case class UserNotFoundError(publicTenantId: TenantId, publicUserId: UserId)
+        extends UserDbError(
+          message =
+            s"Could not find User with publicUserId = [$publicUserId] for Tenant with publicTenantId = [$publicTenantId]."
         )
   }
 
