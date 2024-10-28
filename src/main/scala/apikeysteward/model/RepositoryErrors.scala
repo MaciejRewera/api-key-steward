@@ -116,7 +116,7 @@ object RepositoryErrors {
             with ReferencedTenantDoesNotExistError
 
         def apply(tenantId: Long): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
-          errorMessage = s"Tenant with id = [$tenantId] does not exist."
+          errorMessage = s"Tenant with ID = [$tenantId] does not exist."
         )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
@@ -200,7 +200,7 @@ object RepositoryErrors {
 
         def apply(applicationId: Long): ReferencedApplicationDoesNotExistError =
           ReferencedApplicationDoesNotExistErrorImpl(
-            errorMessage = s"Application with id = [$applicationId] does not exist."
+            errorMessage = s"Application with ID = [$applicationId] does not exist."
           )
         def apply(publicApplicationId: ApplicationId): ReferencedApplicationDoesNotExistError =
           ReferencedApplicationDoesNotExistErrorImpl(
@@ -239,7 +239,7 @@ object RepositoryErrors {
 
         def apply(tenantId: Long): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
-            errorMessage = s"Tenant with id = [$tenantId] does not exist."
+            errorMessage = s"Tenant with ID = [$tenantId] does not exist."
           )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
