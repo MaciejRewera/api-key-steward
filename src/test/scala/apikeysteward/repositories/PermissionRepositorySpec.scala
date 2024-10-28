@@ -40,7 +40,6 @@ class PermissionRepositorySpec
     reset(applicationDb, permissionDb)
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
 
   private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, PermissionEntity.Read]] =
     testException.raiseError[doobie.ConnectionIO, Either[E, PermissionEntity.Read]]
@@ -53,6 +52,7 @@ class PermissionRepositorySpec
 
     val permissionEntityReadWrapped = permissionEntityRead_1.asRight[PermissionInsertionError].pure[doobie.ConnectionIO]
 
+    val testSqlException = new SQLException("Test SQL Exception")
     val permissionInsertionError: PermissionInsertionError = PermissionInsertionErrorImpl(testSqlException)
     val permissionInsertionErrorWrapped =
       permissionInsertionError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
@@ -66,6 +66,7 @@ class PermissionRepositorySpec
         for {
           _ <- permissionRepository.insert(publicApplicationId_1, permission_1)
 
+          _ = verify(applicationDb).getByPublicApplicationId(eqTo(publicApplicationId_1))
           expectedPermissionEntityWrite = PermissionEntity.Write(
             applicationId = applicationId,
             publicPermissionId = publicPermissionIdStr_1,
@@ -207,7 +208,7 @@ class PermissionRepositorySpec
     }
   }
 
-  "PermissionRepository on getBy(:publicPermissionId)" when {
+  "PermissionRepository on getBy(:publicApplicationId, :publicPermissionId)" when {
 
     "should always call PermissionDb" in {
       permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option(permissionEntityRead_1)

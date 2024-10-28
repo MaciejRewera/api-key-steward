@@ -308,7 +308,7 @@ class PermissionDbSpec
           res <- Queries.getAllPermissions
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
       }
     }
 

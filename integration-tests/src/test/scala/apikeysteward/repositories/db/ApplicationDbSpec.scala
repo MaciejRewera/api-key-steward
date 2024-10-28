@@ -110,7 +110,7 @@ class ApplicationDbSpec
       }
     }
 
-    "there is a row in the DB with the same applicationId" should {
+    "there is a row in the DB with the same publicApplicationId" should {
 
       "return Left containing ApplicationAlreadyExistsError" in {
         val result = (for {
