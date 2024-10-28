@@ -23,7 +23,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
 import java.sql.SQLException
-import java.util.UUID
 
 class PermissionServiceSpec
     extends AsyncWordSpec
@@ -39,10 +38,9 @@ class PermissionServiceSpec
   private val permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, permissionRepository)
+    reset(uuidGenerator, permissionRepository, applicationRepository)
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
 
   "PermissionService on createPermission" when {
 
@@ -102,7 +100,7 @@ class PermissionServiceSpec
       "call UuidGenerator and PermissionRepository again" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
         val insertedPermission = permission_1.copy(permissionId = publicPermissionId_2)
-        permissionRepository.insert(any[UUID], any[Permission]) returns (
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
         )
@@ -119,7 +117,7 @@ class PermissionServiceSpec
       "return the second created Permission returned by PermissionRepository" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
         val insertedPermission = permission_1.copy(permissionId = publicPermissionId_2)
-        permissionRepository.insert(any[UUID], any[Permission]) returns (
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
         )
@@ -139,7 +137,9 @@ class PermissionServiceSpec
           IO.pure(publicPermissionId_3),
           IO.pure(publicPermissionId_4)
         )
-        permissionRepository.insert(any[UUID], any[Permission]) returns IO.pure(Left(permissionAlreadyExistsError))
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+          Left(permissionAlreadyExistsError)
+        )
 
         for {
           _ <- permissionService.createPermission(publicTenantId_1, createPermissionRequest)
@@ -168,7 +168,9 @@ class PermissionServiceSpec
           IO.pure(publicPermissionId_3),
           IO.pure(publicPermissionId_4)
         )
-        permissionRepository.insert(any[UUID], any[Permission]) returns IO.pure(Left(permissionAlreadyExistsError))
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+          Left(permissionAlreadyExistsError)
+        )
 
         permissionService
           .createPermission(publicTenantId_1, createPermissionRequest)
@@ -177,6 +179,8 @@ class PermissionServiceSpec
     }
 
     val applicationId = 13L
+    val testSqlException = new SQLException("Test SQL Exception")
+
     Seq(
       PermissionAlreadyExistsForThisApplicationError(permissionName_1, applicationId),
       ReferencedApplicationDoesNotExistError(publicTenantId_1),
@@ -184,13 +188,10 @@ class PermissionServiceSpec
     ).foreach { insertionError =>
       s"PermissionRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
-        val referencedApplicationDoesNotExistError: ReferencedApplicationDoesNotExistError =
-          ReferencedApplicationDoesNotExistError(publicTenantId_1)
-
         "NOT call UuidGenerator or PermissionRepository again" in {
           uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
           permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
-            Left(referencedApplicationDoesNotExistError)
+            Left(insertionError)
           )
 
           for {
@@ -204,12 +205,12 @@ class PermissionServiceSpec
         "return failed IO containing this error" in {
           uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
           permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
-            Left(referencedApplicationDoesNotExistError)
+            Left(insertionError)
           )
 
           permissionService
             .createPermission(publicTenantId_1, createPermissionRequest)
-            .asserting(_ shouldBe Left(referencedApplicationDoesNotExistError))
+            .asserting(_ shouldBe Left(insertionError))
         }
       }
     }
@@ -218,7 +219,7 @@ class PermissionServiceSpec
 
       "NOT call UuidGenerator or PermissionRepository again" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[UUID], any[Permission]) returns IO.raiseError(testException)
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.raiseError(testException)
 
         for {
           _ <- permissionService.createPermission(publicTenantId_1, createPermissionRequest).attempt
@@ -230,7 +231,7 @@ class PermissionServiceSpec
 
       "return failed IO containing this exception" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[UUID], any[Permission]) returns IO.raiseError(testException)
+        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.raiseError(testException)
 
         permissionService
           .createPermission(publicTenantId_1, createPermissionRequest)
@@ -285,7 +286,7 @@ class PermissionServiceSpec
     }
   }
 
-  "PermissionService on getBy(:permissionId)" should {
+  "PermissionService on getBy(:applicationId, :permissionId)" should {
 
     "call PermissionRepository" in {
       permissionRepository.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(Some(permission_1))
