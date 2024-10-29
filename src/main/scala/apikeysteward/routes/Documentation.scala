@@ -44,6 +44,9 @@ object Documentation extends OpenAPIDocsInterpreter {
   ).map(_.withTag(Tags.AdminPermissions))
 
   private val adminUserEndpoints = List(
+    AdminUserEndpoints.createUserEndpoint,
+    AdminUserEndpoints.deleteUserEndpoint,
+    AdminUserEndpoints.getSingleUserEndpoint,
     AdminUserEndpoints.searchUsersEndpoint
   ).map(_.withTag(Tags.AdminUsers))
 
