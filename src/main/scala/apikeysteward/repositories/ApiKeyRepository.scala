@@ -98,9 +98,6 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def getAllUserIds: IO[List[String]] =
-    apiKeyDataDb.getAllUserIds.transact(transactor).compile.toList
-
   def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
     (for {
       apiKeyDataToDelete <- EitherT {

@@ -744,34 +744,4 @@ class ApiKeyRepositorySpec
     }
   }
 
-  "ApiKeyRepository on getAllUserIds" should {
-
-    "call ApiKeyDataDb" in {
-      apiKeyDataDb.getAllUserIds returns Stream.empty
-
-      for {
-        _ <- apiKeyRepository.getAllUserIds
-
-        _ = verify(apiKeyDataDb).getAllUserIds
-      } yield ()
-    }
-
-    "return userIds obtained from getAllUserIds" when {
-
-      "getAllUserIds returns empty Stream" in {
-        apiKeyDataDb.getAllUserIds returns Stream.empty
-
-        apiKeyRepository.getAllUserIds.asserting(_ shouldBe List.empty[String])
-      }
-
-      "getAllUserIds returns elements in Stream" in {
-        apiKeyDataDb.getAllUserIds returns Stream(userId_1, userId_2)
-
-        apiKeyRepository.getAllUserIds.asserting { result =>
-          result.size shouldBe 2
-          result shouldBe List(userId_1, userId_2)
-        }
-      }
-    }
-  }
 }

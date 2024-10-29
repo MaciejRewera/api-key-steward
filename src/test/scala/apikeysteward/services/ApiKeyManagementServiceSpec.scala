@@ -551,39 +551,4 @@ class ApiKeyManagementServiceSpec
     }
   }
 
-  "ManagementService on getAllUserIds" should {
-
-    "call ApiKeyRepository" in {
-      apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
-
-      for {
-        _ <- managementService.getAllUserIds
-        _ = verify(apiKeyRepository).getAllUserIds
-      } yield ()
-    }
-
-    "return the value returned by ApiKeyRepository" when {
-
-      "ApiKeyRepository returns empty List" in {
-        apiKeyRepository.getAllUserIds returns IO.pure(List.empty)
-
-        managementService.getAllUserIds.asserting(_ shouldBe List.empty[String])
-      }
-
-      "ApiKeyRepository returns List containing elements" in {
-        apiKeyRepository.getAllUserIds returns IO.pure(List(userId_1, userId_2))
-
-        managementService.getAllUserIds.asserting(_ shouldBe List(userId_1, userId_2))
-      }
-    }
-
-    "return failed IO" when {
-      "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.getAllUserIds returns IO.raiseError(testException)
-
-        managementService.getAllUserIds.attempt
-          .asserting(_ shouldBe Left(testException))
-      }
-    }
-  }
 }
