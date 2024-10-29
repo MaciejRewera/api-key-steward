@@ -47,6 +47,14 @@ private[routes] object ApiErrorMessages {
       "Permission with this name already exists for Application with provided ID"
   }
 
+  object AdminUser {
+    val UserNotFound = "No User found for provided combination of tenantId and userId."
+    val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
+
+    val UserAlreadyExistsForThisTenant =
+      "User with this userId already exists for Tenant with provided ID"
+  }
+
   object Management {
     val DeleteApiKeyNotFound = "No API Key found for provided keyId."
     val GetSingleApiKeyNotFound = "No API Key found for provided keyId."

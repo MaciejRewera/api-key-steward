@@ -69,6 +69,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
+        userRepository: UserRepository = buildUserRepository(transactor)
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
@@ -83,6 +84,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
         permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
+        userService = new UserService(userRepository, tenantRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
 
@@ -98,7 +100,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
         applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
         permissionRoutes = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
-        userRoutes = new AdminUserRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
+        userRoutes = new AdminUserRoutes(jwtAuthorizer, userService).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes
 
@@ -161,6 +163,13 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val permissionDb = new PermissionDb
 
     new PermissionRepository(applicationDb, permissionDb)(transactor)
+  }
+
+  private def buildUserRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
+    val userDb = new UserDb
+
+    new UserRepository(tenantDb, userDb)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {

@@ -86,9 +86,6 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getBy(userId, publicKeyId).option
 
-  def getAllUserIds: Stream[doobie.ConnectionIO, String] =
-    Queries.getAllUserIds.stream
-
   def delete(publicKeyId: UUID): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
       apiKeyToDeleteE <- getByPublicKeyId(publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(publicKeyId)))
@@ -139,9 +136,6 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     def getBy(userId: String, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM api_key_data WHERE user_id = $userId AND public_key_id = $publicKeyId").query[ApiKeyDataEntity.Read]
-
-    val getAllUserIds: doobie.Query0[String] =
-      sql"SELECT DISTINCT user_id FROM api_key_data".query[String]
 
     def delete(publicKeyId: String): doobie.Update0 =
       sql"""DELETE FROM api_key_data
