@@ -9,6 +9,7 @@ import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.admin.application.CreateApplicationRequest
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
+import apikeysteward.routes.model.admin.user.CreateUserRequest
 import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -37,6 +38,8 @@ private[routes] object EndpointsBase {
     description = Some("A description what this Application is for."),
     permissions = List(EndpointsBase.createPermissionRequest)
   )
+
+  val createUserRequest: CreateUserRequest = CreateUserRequest(userId = "user-1234567")
 
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
 
@@ -68,6 +71,10 @@ private[routes] object EndpointsBase {
     isActive = true,
     permissions = List(PermissionExample, PermissionExample)
   )
+
+  val UserExample_1: User = User("user-123456701")
+  val UserExample_2: User = User("user-123456702")
+  val UserExample_3: User = User("user-123456703")
 
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
     endpoint

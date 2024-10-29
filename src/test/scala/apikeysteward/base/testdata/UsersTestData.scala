@@ -9,10 +9,10 @@ import scala.util.Random
 
 object UsersTestData extends FixedClock {
 
-  val publicUserId_1: UserId = Random.nextString(42)
-  val publicUserId_2: UserId = Random.nextString(42)
-  val publicUserId_3: UserId = Random.nextString(42)
-  val publicUserId_4: UserId = Random.nextString(42)
+  val publicUserId_1: UserId = Random.alphanumeric.take(42).mkString
+  val publicUserId_2: UserId = Random.alphanumeric.take(42).mkString
+  val publicUserId_3: UserId = Random.alphanumeric.take(42).mkString
+  val publicUserId_4: UserId = Random.alphanumeric.take(42).mkString
   val publicUserIdStr_1: String = publicUserId_1
   val publicUserIdStr_2: String = publicUserId_2
   val publicUserIdStr_3: String = publicUserId_3

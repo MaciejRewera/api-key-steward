@@ -1,41 +1,53 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.UsersTestData._
+import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
+import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
-import apikeysteward.routes.model.admin.GetMultipleUserIdsResponse
-import apikeysteward.services.ApiKeyManagementService
+import apikeysteward.routes.definitions.ApiErrorMessages
+import apikeysteward.routes.model.admin.user._
+import apikeysteward.services.UserService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.implicits.catsSyntaxEitherId
-import org.http4s.AuthScheme.Bearer
-import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
-import org.http4s.headers.Authorization
+import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
+import io.circe.syntax.EncoderOps
+import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.implicits.http4sLiteralsSyntax
-import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status}
+import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import org.typelevel.ci.{CIString, CIStringSyntax}
 
-class AdminUserRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+import java.sql.SQLException
+import java.util.UUID
+
+class AdminUserRoutesSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with RoutesSpecBase {
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
-  private val managementService = mock[ApiKeyManagementService]
+  private val userService = mock[UserService]
 
-  private val adminUserRoutes: HttpApp[IO] = new AdminUserRoutes(jwtAuthorizer, managementService).allRoutes.orNotFound
+  private val adminUserRoutes: HttpApp[IO] = new AdminUserRoutes(jwtAuthorizer, userService).allRoutes.orNotFound
 
-  private val tokenString: AccessToken = "TOKEN"
-  private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
-
-  private val testException = new RuntimeException("Test Exception")
+  private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
+  private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, managementService)
+    reset(jwtAuthorizer, userService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
@@ -44,76 +56,181 @@ class AdminUserRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     )
   }.flatMap(_ => test)
 
-  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit = {
+  private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
+    runCommonJwtTests(adminUserRoutes, jwtAuthorizer, userService)(request, requiredPermissions)
 
-    "the JWT is NOT provided" should {
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
 
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- adminUserRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtAuthorizer or ManagementService" in {
-        for {
-          _ <- adminUserRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, managementService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided should call JwtAuthorizer providing access token" in {
-      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-        ErrorInfo.unauthorizedErrorInfo().asLeft
+      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
       )
 
-      for {
-        _ <- adminUserRoutes.run(request)
-        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(requiredPermissions))(eqTo(tokenString))
-      } yield ()
-    }
-
-    "JwtAuthorizer returns Left containing error" should {
-
-      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
+      "return Bad Request" in authorizedFixture {
         for {
-          response <- adminUserRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
+          response <- adminUserRoutes.run(requestWithIncorrectHeader)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
         } yield ()
       }
 
-      "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
+      "NOT call ApplicationService" in authorizedFixture {
+        for {
+          _ <- adminUserRoutes.run(requestWithIncorrectHeader)
+          _ = verifyZeroInteractions(userService)
+        } yield ()
+      }
+    }
+
+  "AdminUserRoutes on POST /admin/users" when {
+
+    val uri = Uri.unsafeFromString("/admin/users")
+    val requestBody = CreateUserRequest(userId = publicUserId_1)
+
+    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+      .withEntity(requestBody.asJson)
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+
+      "request body is provided with empty userId" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(userId = ""))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected userId to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call UserService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(userService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with userId containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(userId = "  \n   \n\n "))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected userId to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call UserService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(userService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with userId longer than 250 characters" should {
+
+        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(userId = nameThatIsTooLong))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected userId to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call UserService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(userService)
+          } yield ()
+        }
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+
+      "call UserService" in authorizedFixture {
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
+          user_1.asRight
         )
 
         for {
           _ <- adminUserRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          _ = verify(userService).createUser(eqTo(publicTenantId_1), eqTo(requestBody))
         } yield ()
       }
-    }
 
-    "JwtAuthorizer returns failed IO" should {
+      "return successful value returned by UserService" in authorizedFixture {
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(user_1.asRight)
 
-      "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.Created
+          _ <- response
+            .as[CreateUserResponse]
+            .asserting(_ shouldBe CreateUserResponse(user_1))
+        } yield ()
+      }
+
+      "return Bad Request when UserService returns successful IO with Left containing UserAlreadyExistsForThisTenantError" in authorizedFixture {
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
+          Left(UserAlreadyExistsForThisTenantError(publicUserId_1, 13L))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.UserAlreadyExistsForThisTenant))
+            )
+        } yield ()
+      }
+
+      "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
+          Left(ReferencedTenantDoesNotExistError(publicTenantId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when UserService returns successful IO with Left containing UserInsertionErrorImpl" in authorizedFixture {
+        val testSqlException = new SQLException("Test SQL Exception")
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
+          Left(UserInsertionErrorImpl(testSqlException))
         )
 
         for {
@@ -123,64 +240,199 @@ class AdminUserRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         } yield ()
       }
 
-      "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
+      "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
+        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.raiseError(testException)
 
         for {
-          _ <- adminUserRoutes.run(request)
-          _ = verifyZeroInteractions(managementService)
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
       }
     }
   }
 
-  "AdminApiKeyRoutes on GET /admin/users" when {
+  "AdminUserRoutes on DELETE /admin/users/{userId}" when {
 
-    val uri = uri"/admin/users"
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
-      "call ManagementService" in authorizedFixture {
-        managementService.getAllUserIds returns IO.pure(List.empty)
+      "call UserService" in authorizedFixture {
+        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(user_1.asRight)
 
         for {
           _ <- adminUserRoutes.run(request)
-          _ = verify(managementService).getAllUserIds
+          _ = verify(userService).deleteUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
         } yield ()
       }
 
-      "return the value returned by ManagementService" when {
+      "return successful value returned by UserService" in authorizedFixture {
+        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(user_1.asRight)
 
-        "ManagementService returns an empty List" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List.empty)
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[DeleteUserResponse]
+            .asserting(_ shouldBe DeleteUserResponse(user_1))
+        } yield ()
+      }
+
+      "return Not Found when UserService returns successful IO with Left containing UserNotFoundError" in authorizedFixture {
+        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
+          Left(UserNotFoundError(publicTenantId_1, publicUserId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminUser.UserNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
+        userService.deleteUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminUserRoutes on GET /admin/users/{userId}" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call UserService" in authorizedFixture {
+        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(user_1.some)
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(userService).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+        } yield ()
+      }
+
+      "return successful value returned by UserService" in authorizedFixture {
+        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(user_1.some)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[GetSingleUserResponse]
+            .asserting(_ shouldBe GetSingleUserResponse(user_1))
+        } yield ()
+      }
+
+      "return Not Found when UserService returns empty Option" in authorizedFixture {
+        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(none)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminUser.UserNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
+        userService.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminUserRoutes on GET /admin/users" when {
+
+    val uri = uri"/admin/users"
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call UserService" in authorizedFixture {
+        userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List.empty))
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(userService).getAllForTenant(eqTo(publicTenantId_1))
+        } yield ()
+      }
+
+      "return the value returned by UserService" when {
+
+        "UserService returns an empty List" in authorizedFixture {
+          userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List.empty))
 
           for {
             response <- adminUserRoutes.run(request)
             _ = response.status shouldBe Status.Ok
-            _ <- response.as[GetMultipleUserIdsResponse].asserting(_ shouldBe GetMultipleUserIdsResponse(List.empty))
+            _ <- response.as[GetMultipleUsersResponse].asserting(_ shouldBe GetMultipleUsersResponse(List.empty))
           } yield ()
         }
 
-        "ManagementService returns a List with several elements" in authorizedFixture {
-          managementService.getAllUserIds returns IO.pure(List(userId_1, userId_2, userId_3))
+        "UserService returns a List with several elements" in authorizedFixture {
+          userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List(user_1, user_2, user_3)))
 
           for {
             response <- adminUserRoutes.run(request)
             _ = response.status shouldBe Status.Ok
             _ <- response
-              .as[GetMultipleUserIdsResponse]
-              .asserting(_ shouldBe GetMultipleUserIdsResponse(List(userId_1, userId_2, userId_3)))
+              .as[GetMultipleUsersResponse]
+              .asserting(_ shouldBe GetMultipleUsersResponse(List(user_1, user_2, user_3)))
           } yield ()
         }
       }
 
-      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllUserIds returns IO.raiseError(testException)
+      "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+        userService.getAllForTenant(any[TenantId]) returns IO.pure(
+          Left(ReferencedTenantDoesNotExistError(publicTenantId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
+        userService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
 
         for {
           response <- adminUserRoutes.run(request)
