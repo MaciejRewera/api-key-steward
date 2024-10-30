@@ -8,13 +8,13 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ApplicationEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
+import doobie.postgres._
+import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.{FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION}
 import fs2._
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
-import doobie.postgres._
-import doobie.postgres.implicits._
 
 class ApplicationDb()(implicit clock: Clock) {
 
@@ -69,14 +69,14 @@ class ApplicationDb()(implicit clock: Clock) {
       publicApplicationId: ApplicationId
   ): doobie.ConnectionIO[Either[ApplicationNotFoundError, ApplicationEntity.Read]] = {
     val now = Instant.now(clock)
-    performUpdate(publicApplicationId)(Queries.activate(publicApplicationId.toString, now).run)
+    performUpdate(publicApplicationId)(Queries.activate(publicApplicationId, now).run)
   }
 
   def deactivate(
       publicApplicationId: ApplicationId
   ): doobie.ConnectionIO[Either[ApplicationNotFoundError, ApplicationEntity.Read]] = {
     val now = Instant.now(clock)
-    performUpdate(publicApplicationId)(Queries.deactivate(publicApplicationId.toString, now).run)
+    performUpdate(publicApplicationId)(Queries.deactivate(publicApplicationId, now).run)
   }
 
   private def performUpdate(publicApplicationId: ApplicationId)(
@@ -107,7 +107,7 @@ class ApplicationDb()(implicit clock: Clock) {
         Either
           .cond(
             result.deactivatedAt.isDefined,
-            Queries.deleteDeactivated(publicApplicationId.toString).run.map(_ => result),
+            Queries.deleteDeactivated(publicApplicationId).run.map(_ => result),
             applicationIsNotDeactivatedError(publicApplicationId)
           )
           .sequence
@@ -125,7 +125,7 @@ class ApplicationDb()(implicit clock: Clock) {
     Queries.getBy(publicApplicationId).option
 
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ApplicationEntity.Read] =
-    Queries.getAllForTenant(publicTenantId.toString).stream
+    Queries.getAllForTenant(publicTenantId).stream
 
   private object Queries {
 
@@ -152,30 +152,30 @@ class ApplicationDb()(implicit clock: Clock) {
             WHERE application.public_application_id = ${applicationEntity.publicApplicationId}
            """.stripMargin.update
 
-    def activate(publicApplicationId: String, now: Instant): doobie.Update0 =
+    def activate(publicApplicationId: ApplicationId, now: Instant): doobie.Update0 =
       sql"""UPDATE application
             SET deactivated_at = NULL,
                 updated_at = $now
-            WHERE application.public_application_id = $publicApplicationId
+            WHERE application.public_application_id = ${publicApplicationId.toString}
            """.stripMargin.update
 
-    def deactivate(publicApplicationId: String, now: Instant): doobie.Update0 =
+    def deactivate(publicApplicationId: ApplicationId, now: Instant): doobie.Update0 =
       sql"""UPDATE application
             SET deactivated_at = $now,
                 updated_at = $now
-            WHERE application.public_application_id = $publicApplicationId
+            WHERE application.public_application_id = ${publicApplicationId.toString}
            """.stripMargin.update
 
-    def deleteDeactivated(publicApplicationId: String): doobie.Update0 =
+    def deleteDeactivated(publicApplicationId: ApplicationId): doobie.Update0 =
       sql"""DELETE FROM application
-            WHERE application.public_application_id = $publicApplicationId AND application.deactivated_at IS NOT NULL
+            WHERE application.public_application_id = ${publicApplicationId.toString} AND application.deactivated_at IS NOT NULL
            """.stripMargin.update
 
     def getBy(publicApplicationId: String): doobie.Query0[ApplicationEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM application WHERE public_application_id = $publicApplicationId").query[ApplicationEntity.Read]
 
-    def getAllForTenant(publicTenantId: String): doobie.Query0[ApplicationEntity.Read] =
+    def getAllForTenant(publicTenantId: TenantId): doobie.Query0[ApplicationEntity.Read] =
       sql"""SELECT
               app.id,
               app.tenant_id,
@@ -187,7 +187,7 @@ class ApplicationDb()(implicit clock: Clock) {
               app.deactivated_at
             FROM application AS app
             JOIN tenant ON tenant.id = app.tenant_id
-            WHERE tenant.public_tenant_id = $publicTenantId
+            WHERE tenant.public_tenant_id = ${publicTenantId.toString}
             ORDER BY app.created_at DESC
            """.stripMargin.query[ApplicationEntity.Read]
 
