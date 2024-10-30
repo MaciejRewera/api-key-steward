@@ -1,10 +1,10 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3}
+import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.{ApiKeyTemplate, Permission}
-import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, PermissionEntity}
-import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
+import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -45,21 +45,24 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+    permissions = List(permission_1)
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
     isDefault = false,
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
+    permissions = List(permission_2)
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
     isDefault = false,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
+    permissions = List(permission_3)
   )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
@@ -108,7 +111,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
   )
   val apiKeyTemplateEntityRead_3: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = 3L,
