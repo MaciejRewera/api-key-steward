@@ -24,10 +24,12 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyTemplateName_1 = "API Key Template no. 1"
   val apiKeyTemplateName_2 = "API Key Template no. 2"
   val apiKeyTemplateName_3 = "API Key Template no. 3"
+  val apiKeyTemplateNameUpdated = "Updated API Key Template Name"
 
-  val apiKeyTemplateDescription_1: Option[String] = Some("Test ApiKeyTemplate description no. 1.")
-  val apiKeyTemplateDescription_2: Option[String] = Some("Test ApiKeyTemplate description no. 2.")
-  val apiKeyTemplateDescription_3: Option[String] = Some("Test ApiKeyTemplate description no. 3.")
+  val apiKeyTemplateDescription_1: Option[String] = Some("Test API Key Template description no. 1.")
+  val apiKeyTemplateDescription_2: Option[String] = Some("Test API Key Template description no. 2.")
+  val apiKeyTemplateDescription_3: Option[String] = Some("Test API Key Template description no. 3.")
+  val apiKeyTemplateDescriptionUpdated: Option[String] = Some("Test Updated API Key Template description.")
 
 //  val createApiKeyTemplateRequest_1: CreateApiKeyTemplateRequest =
 //    CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1)
@@ -39,30 +41,28 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyMaxExpiryPeriod_1: FiniteDuration = Duration(101, TimeUnit.HOURS)
   val apiKeyMaxExpiryPeriod_2: FiniteDuration = Duration(102, TimeUnit.HOURS)
   val apiKeyMaxExpiryPeriod_3: FiniteDuration = Duration(103, TimeUnit.HOURS)
+  val apiKeyMaxExpiryPeriodUpdated: FiniteDuration = Duration(201, TimeUnit.HOURS)
 
   val apiKeyTemplate_1: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
     isDefault = false,
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
-    permissions = List(permission_1)
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
     isDefault = false,
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
-    permissions = List(permission_2)
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
     isDefault = false,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
-    permissions = List(permission_3)
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
   )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
@@ -123,6 +123,14 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
     createdAt = nowInstant,
     updatedAt = nowInstant
+  )
+
+  val apiKeyTemplateEntityUpdate_1: ApiKeyTemplateEntity.Update = ApiKeyTemplateEntity.Update(
+    publicTemplateId = publicTemplateIdStr_1,
+    isDefault = true,
+    name = apiKeyTemplateNameUpdated,
+    description = apiKeyTemplateDescriptionUpdated,
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
   )
 
 }

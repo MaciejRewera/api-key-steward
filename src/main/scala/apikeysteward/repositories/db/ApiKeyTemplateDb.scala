@@ -2,13 +2,10 @@ package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
-  ApiKeyTemplateInsertionError,
-  ApiKeyTemplateNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{ApiKeyTemplateInsertionError, ApiKeyTemplateNotFoundError}
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
-import cats.implicits.toTraverseOps
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApplicationEntity}
+import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
 import doobie.postgres.implicits._
@@ -58,18 +55,36 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
       case _ => ApiKeyTemplateInsertionErrorImpl(sqlException)
     }
 
+  def update(
+      templateEntity: ApiKeyTemplateEntity.Update
+  ): doobie.ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] = {
+    val now = Instant.now(clock)
+    for {
+      updateCount <- Queries.update(templateEntity, now).run
+
+      resOpt <-
+        if (updateCount > 0) getByPublicTemplateId(templateEntity.publicTemplateId)
+        else Option.empty[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
+    } yield resOpt.toRight(ApiKeyTemplateNotFoundError(templateEntity.publicTemplateId))
+  }
+
   def delete(
       publicTemplateId: ApiKeyTemplateId
   ): doobie.ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] =
     for {
       templateToDelete <- getByPublicTemplateId(publicTemplateId).map(
-        _.toRight(ApiKeyTemplateNotFoundError(publicTemplateId))
+        _.toRight(ApiKeyTemplateNotFoundError(publicTemplateId.toString))
       )
       resultE <- templateToDelete.traverse(result => Queries.delete(publicTemplateId).run.map(_ => result))
     } yield resultE
 
   def getByPublicTemplateId(
       publicTemplateId: ApiKeyTemplateId
+  ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
+    getByPublicTemplateId(publicTemplateId.toString)
+
+  private def getByPublicTemplateId(
+    publicTemplateId: String
   ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
     Queries.getByPublicTemplateId(publicTemplateId).option
 
@@ -89,20 +104,30 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               ${templateEntity.isDefault},
               ${templateEntity.name},
               ${templateEntity.description},
-              ${templateEntity.apiKeyMaxExpiryPeriod},
+              ${templateEntity.apiKeyMaxExpiryPeriod.toString},
               $now,
               $now
             )
            """.stripMargin.update
 
+    def update(templateEntity: ApiKeyTemplateEntity.Update, now: Instant): doobie.Update0 =
+      sql"""UPDATE api_key_template
+            SET is_default = ${templateEntity.isDefault},
+                name = ${templateEntity.name},
+                description = ${templateEntity.description},
+                api_key_max_expiry_period = ${templateEntity.apiKeyMaxExpiryPeriod.toString},
+                updated_at = $now
+            WHERE api_key_template.public_template_id = ${templateEntity.publicTemplateId}
+           """.stripMargin.update
+
     def delete(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
       sql"DELETE FROM api_key_template WHERE api_key_template.public_template_id = ${publicTemplateId.toString}".update
 
-    def getByPublicTemplateId(publicTemplateId: ApiKeyTemplateId): doobie.Query0[ApiKeyTemplateEntity.Read] =
+    def getByPublicTemplateId(publicTemplateId: String): doobie.Query0[ApiKeyTemplateEntity.Read] =
       (
         columnNamesSelectFragment ++
           sql"""FROM api_key_template
-                WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+                WHERE api_key_template.public_template_id = $publicTemplateId
                 """.stripMargin
       ).query[ApiKeyTemplateEntity.Read]
 

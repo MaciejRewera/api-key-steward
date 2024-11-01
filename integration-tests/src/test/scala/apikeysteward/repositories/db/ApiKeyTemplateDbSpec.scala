@@ -172,6 +172,146 @@ class ApiKeyTemplateDbSpec
     }
   }
 
+
+  "ApiKeyTemplateDb on update" when {
+
+    val updatedEntityRead =
+      apiKeyTemplateEntityRead_1.copy(
+        isDefault = true,
+        name = apiKeyTemplateNameUpdated,
+        description = apiKeyTemplateDescriptionUpdated,
+        apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+      )
+
+    "there are NO rows in the DB" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        apiKeyTemplateDb
+          .update(apiKeyTemplateEntityUpdate_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicApiKeyTemplateId" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_2)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2))
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting { allApiKeyTemplates =>
+          allApiKeyTemplates.size shouldBe 1
+
+          val expectedEntity =
+            apiKeyTemplateEntityRead_1.copy(id = allApiKeyTemplates.head.id, tenantId = allApiKeyTemplates.head.tenantId)
+          allApiKeyTemplates.head shouldBe expectedEntity
+        }
+      }
+    }
+
+    "there is a row in the DB with given publicApiKeyTemplateId" should {
+
+      "return updated entity" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
+        }
+      }
+
+      "update this row" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting { allApiKeyTemplates =>
+          allApiKeyTemplates.size shouldBe 1
+
+          val expectedEntity =
+            updatedEntityRead.copy(id = allApiKeyTemplates.head.id, tenantId = allApiKeyTemplates.head.tenantId)
+          allApiKeyTemplates.head shouldBe expectedEntity
+        }
+      }
+    }
+
+    "there are several rows in the DB but only one with given publicApiKeyTemplateId" should {
+
+      "return updated entity" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
+
+          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
+        }
+      }
+
+      "update only this row and leave others unchanged" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          entityRead_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          entityRead_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
+          entityRead_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
+
+          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          res <- Queries.getAllApiKeyTemplates
+        } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
+
+        result.asserting { case (allApiKeyTemplates, entityRead_1, entityRead_2, entityRead_3) =>
+          allApiKeyTemplates.size shouldBe 3
+
+          val expectedEntities = Seq(
+            updatedEntityRead.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
+            entityRead_2,
+            entityRead_3
+          )
+          allApiKeyTemplates should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+  }
+
+
   "ApiKeyTemplateDb on delete" when {
 
     "there are no rows in the DB" should {
@@ -180,7 +320,7 @@ class ApiKeyTemplateDbSpec
         apiKeyTemplateDb
           .delete(publicTemplateId_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateId_1)))
+          .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
       }
 
       "make no changes to the DB" in {
@@ -203,7 +343,7 @@ class ApiKeyTemplateDbSpec
           res <- apiKeyTemplateDb.delete(publicTemplateId_2)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateId_2)))
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_2)))
       }
 
       "make no changes to the DB" in {

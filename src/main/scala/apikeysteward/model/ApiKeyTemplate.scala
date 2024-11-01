@@ -13,8 +13,7 @@ case class ApiKeyTemplate(
     isDefault: Boolean,
     name: String,
     description: Option[String],
-    apiKeyMaxExpiryPeriod: Duration,
-    permissions: List[Permission]
+    apiKeyMaxExpiryPeriod: Duration
 )
 
 object ApiKeyTemplate extends CodecCommons {

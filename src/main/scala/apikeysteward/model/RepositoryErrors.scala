@@ -292,7 +292,7 @@ object RepositoryErrors {
           extends ApiKeyTemplateInsertionError(message = s"An error occurred when inserting ApiKeyTemplate: $cause")
     }
 
-    case class ApiKeyTemplateNotFoundError(publicTemplateId: ApiKeyTemplateId)
+    case class ApiKeyTemplateNotFoundError(publicTemplateId: String)
         extends ApiKeyTemplateDbError(
           message = s"Could not find ApiKeyTemplate with publicTemplateId = [$publicTemplateId]."
         )
