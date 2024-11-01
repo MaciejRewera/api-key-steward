@@ -4,9 +4,11 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.ApplicationRepository
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
@@ -499,7 +501,7 @@ class ApplicationServiceSpec
   "ApplicationService on getBy(:applicationId)" should {
 
     "call ApplicationRepository" in {
-      applicationRepository.getBy(any[UUID]) returns IO.pure(Some(application_1))
+      applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Some(application_1))
 
       for {
         _ <- applicationService.getBy(publicApplicationId_1)
@@ -511,13 +513,13 @@ class ApplicationServiceSpec
     "return the value returned by ApplicationRepository" when {
 
       "ApplicationRepository returns empty Option" in {
-        applicationRepository.getBy(any[UUID]) returns IO.pure(None)
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(None)
 
         applicationService.getBy(publicApplicationId_1).asserting(_ shouldBe None)
       }
 
       "ApplicationRepository returns non-empty Option" in {
-        applicationRepository.getBy(any[UUID]) returns IO.pure(Some(application_1))
+        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Some(application_1))
 
         applicationService.getBy(publicApplicationId_1).asserting(_ shouldBe Some(application_1))
       }
@@ -525,7 +527,7 @@ class ApplicationServiceSpec
 
     "return failed IO" when {
       "ApplicationRepository returns failed IO" in {
-        applicationRepository.getBy(any[UUID]) returns IO.raiseError(testException)
+        applicationRepository.getBy(any[ApplicationId]) returns IO.raiseError(testException)
 
         applicationService.getBy(publicApplicationId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -535,7 +537,7 @@ class ApplicationServiceSpec
   "ApplicationService on getAllForTenant" should {
 
     "call ApplicationRepository" in {
-      applicationRepository.getAllForTenant(any[UUID]) returns IO.pure(List.empty)
+      applicationRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
 
       for {
         _ <- applicationService.getAllForTenant(publicTenantId_1)
@@ -547,13 +549,13 @@ class ApplicationServiceSpec
     "return the value returned by ApplicationRepository" when {
 
       "ApplicationRepository returns empty List" in {
-        applicationRepository.getAllForTenant(any[UUID]) returns IO.pure(List.empty)
+        applicationRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
 
         applicationService.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List.empty[Application])
       }
 
       "ApplicationRepository returns non-empty List" in {
-        applicationRepository.getAllForTenant(any[UUID]) returns IO.pure(
+        applicationRepository.getAllForTenant(any[TenantId]) returns IO.pure(
           List(application_1, application_2, application_3)
         )
 
@@ -565,7 +567,7 @@ class ApplicationServiceSpec
 
     "return failed IO" when {
       "ApplicationRepository returns failed IO" in {
-        applicationRepository.getAllForTenant(any[UUID]) returns IO.raiseError(testException)
+        applicationRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
 
         applicationService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }

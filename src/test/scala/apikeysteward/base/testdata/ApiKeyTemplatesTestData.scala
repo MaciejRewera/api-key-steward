@@ -1,7 +1,6 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3}
 import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
@@ -30,13 +29,6 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyTemplateDescription_2: Option[String] = Some("Test API Key Template description no. 2.")
   val apiKeyTemplateDescription_3: Option[String] = Some("Test API Key Template description no. 3.")
   val apiKeyTemplateDescriptionUpdated: Option[String] = Some("Test Updated API Key Template description.")
-
-//  val createApiKeyTemplateRequest_1: CreateApiKeyTemplateRequest =
-//    CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1)
-//  val createApiKeyTemplateRequest_2: CreateApiKeyTemplateRequest =
-//    CreateApiKeyTemplateRequest(name = apiKeyTemplateName_2, description = apiKeyTemplateDescription_2)
-//  val createApiKeyTemplateRequest_3: CreateApiKeyTemplateRequest =
-//    CreateApiKeyTemplateRequest(name = apiKeyTemplateName_3, description = apiKeyTemplateDescription_3)
 
   val apiKeyMaxExpiryPeriod_1: FiniteDuration = Duration(101, TimeUnit.HOURS)
   val apiKeyMaxExpiryPeriod_2: FiniteDuration = Duration(102, TimeUnit.HOURS)
