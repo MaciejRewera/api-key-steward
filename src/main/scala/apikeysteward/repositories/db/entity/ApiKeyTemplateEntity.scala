@@ -1,4 +1,6 @@
 package apikeysteward.repositories.db.entity
+import apikeysteward.model.ApiKeyTemplate
+
 import java.time.Instant
 import scala.concurrent.duration.Duration
 
@@ -25,7 +27,17 @@ object ApiKeyTemplateEntity {
       apiKeyMaxExpiryPeriod: Duration
   )
 
-  object Write {}
+  object Write {
+    def from(tenantId: Long, apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Write =
+      ApiKeyTemplateEntity.Write(
+        tenantId = tenantId,
+        publicTemplateId = apiKeyTemplate.publicTemplateId.toString,
+        isDefault = apiKeyTemplate.isDefault,
+        name = apiKeyTemplate.name,
+        description = apiKeyTemplate.description,
+        apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod
+      )
+  }
 
   case class Update(
       publicTemplateId: String,
@@ -35,6 +47,15 @@ object ApiKeyTemplateEntity {
       apiKeyMaxExpiryPeriod: Duration
   )
 
-  object Update {}
+  object Update {
+    def from(apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Update =
+      ApiKeyTemplateEntity.Update(
+        publicTemplateId = apiKeyTemplate.publicTemplateId.toString,
+        isDefault = apiKeyTemplate.isDefault,
+        name = apiKeyTemplate.name,
+        description = apiKeyTemplate.description,
+        apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod
+      )
+  }
 
 }

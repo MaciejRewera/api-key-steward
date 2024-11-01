@@ -64,6 +64,13 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_3,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
   )
+  val apiKeyTemplateUpdated: ApiKeyTemplate = ApiKeyTemplate(
+    publicTemplateId = publicTemplateId_1,
+    isDefault = true,
+    name = apiKeyTemplateNameUpdated,
+    description = apiKeyTemplateDescriptionUpdated,
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+  )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
     tenantId = 1L,
