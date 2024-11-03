@@ -5,7 +5,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 case class GetMultipleApiKeyTemplatesResponse(
-    apiKeyTemplates: List[ApiKeyTemplate]
+    templates: List[ApiKeyTemplate]
 )
 
 object GetMultipleApiKeyTemplatesResponse {
