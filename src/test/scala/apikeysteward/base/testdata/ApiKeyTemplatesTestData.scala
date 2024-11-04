@@ -37,30 +37,30 @@ object ApiKeyTemplatesTestData extends FixedClock {
 
   val apiKeyTemplate_1: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
-    isDefault = false,
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
+    isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
-    isDefault = false,
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
+    isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
-    isDefault = false,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
+    isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
   )
   val apiKeyTemplateUpdated: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
-    isDefault = true,
     name = apiKeyTemplateNameUpdated,
     description = apiKeyTemplateDescriptionUpdated,
+    isDefault = true,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
   )
 

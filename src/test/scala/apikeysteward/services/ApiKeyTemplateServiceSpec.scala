@@ -46,12 +46,7 @@ class ApiKeyTemplateServiceSpec
 
   "ApiKeyTemplateService on createApiKeyTemplate" when {
 
-    val createApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
-      isDefault = false,
-      name = apiKeyTemplateName_1,
-      description = apiKeyTemplateDescription_1,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
-    )
+    val createApiKeyTemplateRequest = CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1, isDefault = false, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1)
 
     val apiKeyTemplate = apiKeyTemplate_1
 

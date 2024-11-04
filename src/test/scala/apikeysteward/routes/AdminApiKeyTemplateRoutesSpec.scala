@@ -61,12 +61,7 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on POST /admin/templates" when {
 
     val uri = Uri.unsafeFromString("/admin/templates")
-    val requestBody = CreateApiKeyTemplateRequest(
-      isDefault = false,
-      name = apiKeyTemplateName_1,
-      description = apiKeyTemplateDescription_1,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
-    )
+    val requestBody = CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1, isDefault = false, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)

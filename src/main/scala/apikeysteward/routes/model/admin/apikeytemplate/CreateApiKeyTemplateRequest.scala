@@ -8,9 +8,9 @@ import sttp.tapir.Schema
 import scala.concurrent.duration.Duration
 
 case class CreateApiKeyTemplateRequest(
-    isDefault: Boolean,
     name: String,
     description: Option[String],
+    isDefault: Boolean,
     apiKeyMaxExpiryPeriod: Duration
 )
 
