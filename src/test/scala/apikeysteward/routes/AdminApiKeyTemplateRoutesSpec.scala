@@ -65,7 +65,8 @@ class AdminApiKeyTemplateRoutesSpec
       name = apiKeyTemplateName_1,
       description = apiKeyTemplateDescription_1,
       isDefault = false,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+      apiKeyPrefix = apiKeyPrefix_1
     )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
@@ -291,6 +292,82 @@ class AdminApiKeyTemplateRoutesSpec
         "NOT call ApiKeyTemplateService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with empty apiKeyPrefix" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(apiKeyPrefix = ""))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected apiKeyPrefix to have length greater than or equal to 1, but got: "")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with apiKeyPrefix containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(apiKeyPrefix = "  \n   \n\n "))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected apiKeyPrefix to have length greater than or equal to 1, but got: "")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with apiKeyPrefix longer than 120 characters" should {
+
+        val apiKeyPrefixThatIsTooLong = List.fill(121)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(apiKeyPrefix = apiKeyPrefixThatIsTooLong))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected apiKeyPrefix to have length less than or equal to 120, but got: "$apiKeyPrefixThatIsTooLong")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
             _ = verifyZeroInteractions(apiKeyTemplateService)
           } yield ()
         }

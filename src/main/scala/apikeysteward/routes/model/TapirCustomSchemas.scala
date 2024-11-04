@@ -46,6 +46,7 @@ object TapirCustomSchemas {
       .modify(_.name)(validateNameLength280)
       .modify(_.description)(validateDescriptionLength500)
       .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
+      .modify(_.apiKeyPrefix)(validateApiKeyPrefix)
 
   val updateApiKeyTemplateRequestSchema: Schema[UpdateApiKeyTemplateRequest] =
     Schema
@@ -107,7 +108,11 @@ object TapirCustomSchemas {
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def trimStringFields(request: CreateApiKeyTemplateRequest): CreateApiKeyTemplateRequest =
-    request.copy(name = request.name.trim, description = request.description.map(_.trim))
+    request.copy(
+      name = request.name.trim,
+      description = request.description.map(_.trim),
+      apiKeyPrefix = request.apiKeyPrefix.trim
+    )
 
   private def trimStringFields(request: UpdateApiKeyTemplateRequest): UpdateApiKeyTemplateRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
@@ -143,6 +148,9 @@ object TapirCustomSchemas {
 
   private def validateDescription(maxLength: Int)(schema: Schema[Option[String]]): Schema[Option[String]] =
     schema.validateOption(Validator.nonEmptyString and Validator.maxLength(maxLength))
+
+  private def validateApiKeyPrefix(schema: Schema[String]): Schema[String] =
+    schema.validate(Validator.nonEmptyString and Validator.maxLength(120))
 
   private def validateUserId(schema: Schema[String]): Schema[String] =
     schema.validate(Validator.nonEmptyString and Validator.maxLength(250))

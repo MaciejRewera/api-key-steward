@@ -1,6 +1,6 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.ApiKeyTemplate
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
@@ -28,7 +28,7 @@ class ApiKeyTemplateRepository(tenantDb: TenantDb, apiKeyTemplateDb: ApiKeyTempl
       resultTemplate = ApiKeyTemplate.from(templateEntityRead)
     } yield resultTemplate).value.transact(transactor)
 
-  def update(apiKeyTemplate: ApiKeyTemplate): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
+  def update(apiKeyTemplate: ApiKeyTemplateUpdate): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
       templateEntityRead <- EitherT(apiKeyTemplateDb.update(ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
       resultTemplate = ApiKeyTemplate.from(templateEntityRead)

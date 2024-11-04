@@ -3,7 +3,7 @@ package apikeysteward.services
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.model.ApiKeyTemplate
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
   ApiKeyTemplateAlreadyExistsError,
@@ -50,7 +50,8 @@ class ApiKeyTemplateServiceSpec
       name = apiKeyTemplateName_1,
       description = apiKeyTemplateDescription_1,
       isDefault = false,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+      apiKeyPrefix = apiKeyPrefix_1
     )
 
     val apiKeyTemplate = apiKeyTemplate_1
@@ -259,21 +260,28 @@ class ApiKeyTemplateServiceSpec
       isDefault = true,
       apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
     )
+    val apiKeyTemplateUpdate: ApiKeyTemplateUpdate = ApiKeyTemplateUpdate(
+      publicTemplateId = publicTemplateId_1,
+      name = apiKeyTemplateNameUpdated,
+      description = apiKeyTemplateDescriptionUpdated,
+      isDefault = true,
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+    )
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.update(any[ApiKeyTemplate]) returns IO.pure(Right(apiKeyTemplateUpdated))
+      apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(Right(apiKeyTemplateUpdated))
 
       for {
         _ <- apiKeyTemplateService.updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
 
-        _ = verify(apiKeyTemplateRepository).update(eqTo(apiKeyTemplateUpdated))
+        _ = verify(apiKeyTemplateRepository).update(eqTo(apiKeyTemplateUpdate))
       } yield ()
     }
 
     "return value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns Right" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplate]) returns IO.pure(Right(apiKeyTemplateUpdated))
+        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(Right(apiKeyTemplateUpdated))
 
         apiKeyTemplateService
           .updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
@@ -281,7 +289,7 @@ class ApiKeyTemplateServiceSpec
       }
 
       "ApiKeyTemplateRepository returns Left" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplate]) returns IO.pure(
+        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(
           Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
         )
 
@@ -293,7 +301,7 @@ class ApiKeyTemplateServiceSpec
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplate]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.raiseError(testException)
 
         apiKeyTemplateService
           .updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)

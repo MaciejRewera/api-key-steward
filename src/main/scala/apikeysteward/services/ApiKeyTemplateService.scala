@@ -1,6 +1,6 @@
 package apikeysteward.services
 
-import apikeysteward.model.ApiKeyTemplate
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
@@ -60,7 +60,7 @@ class ApiKeyTemplateService(uuidGenerator: UuidGenerator, apiKeyTemplateReposito
       templateId: ApiKeyTemplateId,
       updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
-    apiKeyTemplateRepository.update(ApiKeyTemplate.from(templateId, updateApiKeyTemplateRequest)).flatTap {
+    apiKeyTemplateRepository.update(ApiKeyTemplateUpdate.from(templateId, updateApiKeyTemplateRequest)).flatTap {
       case Right(_) => logger.info(s"Updated ApiKeyTemplate with templateId: [$templateId].")
       case Left(e) =>
         logger.warn(s"Could not update ApiKeyTemplate with templateId: [$templateId] because: ${e.message}")

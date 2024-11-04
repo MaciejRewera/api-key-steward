@@ -15,7 +15,8 @@ case class ApiKeyTemplate(
     name: String,
     description: Option[String],
     isDefault: Boolean,
-    apiKeyMaxExpiryPeriod: Duration
+    apiKeyMaxExpiryPeriod: Duration,
+    apiKeyPrefix: String
 )
 
 object ApiKeyTemplate extends CodecCommons {
@@ -29,7 +30,8 @@ object ApiKeyTemplate extends CodecCommons {
       name = templateEntity.name,
       description = templateEntity.description,
       isDefault = templateEntity.isDefault,
-      apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod
+      apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod,
+      apiKeyPrefix = templateEntity.apiKeyPrefix
     )
 
   def from(templateId: ApiKeyTemplateId, createApiKeyTemplateRequest: CreateApiKeyTemplateRequest): ApiKeyTemplate =
@@ -38,16 +40,8 @@ object ApiKeyTemplate extends CodecCommons {
       name = createApiKeyTemplateRequest.name,
       description = createApiKeyTemplateRequest.description,
       isDefault = createApiKeyTemplateRequest.isDefault,
-      apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod
-    )
-
-  def from(templateId: ApiKeyTemplateId, updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest): ApiKeyTemplate =
-    ApiKeyTemplate(
-      publicTemplateId = templateId,
-      name = updateApiKeyTemplateRequest.name,
-      description = updateApiKeyTemplateRequest.description,
-      isDefault = updateApiKeyTemplateRequest.isDefault,
-      apiKeyMaxExpiryPeriod = updateApiKeyTemplateRequest.apiKeyMaxExpiryPeriod
+      apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod,
+      apiKeyPrefix = createApiKeyTemplateRequest.apiKeyPrefix
     )
 
 }

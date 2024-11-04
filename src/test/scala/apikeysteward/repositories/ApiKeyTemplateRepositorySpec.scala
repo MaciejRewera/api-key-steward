@@ -3,7 +3,6 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
-import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
   ApiKeyTemplateInsertionErrorImpl,
@@ -11,6 +10,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplate
 }
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, TenantDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -172,13 +172,21 @@ class ApiKeyTemplateRepositorySpec
         .asRight[ApiKeyTemplateNotFoundError]
         .pure[doobie.ConnectionIO]
 
+    val apiKeyTemplateUpdate: ApiKeyTemplateUpdate = ApiKeyTemplateUpdate(
+      publicTemplateId = publicTemplateId_1,
+      name = apiKeyTemplateNameUpdated,
+      description = apiKeyTemplateDescriptionUpdated,
+      isDefault = true,
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+    )
+
     "everything works correctly" should {
 
       "call ApiKeyTemplateDb" in {
         apiKeyTemplateDb.update(any[ApiKeyTemplateEntity.Update]) returns updatedApiKeyTemplateEntityReadWrapped
 
         for {
-          _ <- apiKeyTemplateRepository.update(apiKeyTemplateUpdated)
+          _ <- apiKeyTemplateRepository.update(apiKeyTemplateUpdate)
 
           _ = verify(apiKeyTemplateDb).update(eqTo(apiKeyTemplateEntityUpdate_1))
         } yield ()
@@ -195,7 +203,7 @@ class ApiKeyTemplateRepositorySpec
         )
 
         apiKeyTemplateRepository
-          .update(apiKeyTemplateUpdated)
+          .update(apiKeyTemplateUpdate)
           .asserting(_ shouldBe Right(expectedUpdatedApiKeyTemplate))
       }
     }
@@ -204,7 +212,7 @@ class ApiKeyTemplateRepositorySpec
       "return Left containing this error" in {
         apiKeyTemplateDb.update(any[ApiKeyTemplateEntity.Update]) returns apiKeyTemplateNotFoundErrorWrapped
 
-        apiKeyTemplateRepository.update(apiKeyTemplateUpdated).asserting(_ shouldBe Left(apiKeyTemplateNotFoundError))
+        apiKeyTemplateRepository.update(apiKeyTemplateUpdate).asserting(_ shouldBe Left(apiKeyTemplateNotFoundError))
       }
     }
 
@@ -213,7 +221,7 @@ class ApiKeyTemplateRepositorySpec
         apiKeyTemplateDb
           .update(any[ApiKeyTemplateEntity.Update]) returns testExceptionWrappedE[ApiKeyTemplateNotFoundError]
 
-        apiKeyTemplateRepository.update(apiKeyTemplateUpdated).attempt.asserting(_ shouldBe Left(testException))
+        apiKeyTemplateRepository.update(apiKeyTemplateUpdate).attempt.asserting(_ shouldBe Left(testException))
       }
     }
   }

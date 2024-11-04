@@ -1,5 +1,5 @@
 package apikeysteward.repositories.db.entity
-import apikeysteward.model.ApiKeyTemplate
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 
 import java.time.Instant
 import scala.concurrent.duration.Duration
@@ -10,10 +10,11 @@ object ApiKeyTemplateEntity {
       id: Long,
       tenantId: Long,
       publicTemplateId: String,
-      isDefault: Boolean,
       name: String,
       description: Option[String],
+      isDefault: Boolean,
       apiKeyMaxExpiryPeriod: Duration,
+      apiKeyPrefix: String,
       override val createdAt: Instant,
       override val updatedAt: Instant
   ) extends TimestampedEntity
@@ -21,10 +22,11 @@ object ApiKeyTemplateEntity {
   case class Write(
       tenantId: Long,
       publicTemplateId: String,
-      isDefault: Boolean,
       name: String,
       description: Option[String],
-      apiKeyMaxExpiryPeriod: Duration
+      isDefault: Boolean,
+      apiKeyMaxExpiryPeriod: Duration,
+      apiKeyPrefix: String
   )
 
   object Write {
@@ -35,20 +37,21 @@ object ApiKeyTemplateEntity {
         isDefault = apiKeyTemplate.isDefault,
         name = apiKeyTemplate.name,
         description = apiKeyTemplate.description,
-        apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod
+        apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod,
+        apiKeyPrefix = apiKeyTemplate.apiKeyPrefix
       )
   }
 
   case class Update(
       publicTemplateId: String,
-      isDefault: Boolean,
       name: String,
       description: Option[String],
+      isDefault: Boolean,
       apiKeyMaxExpiryPeriod: Duration
   )
 
   object Update {
-    def from(apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Update =
+    def from(apiKeyTemplate: ApiKeyTemplateUpdate): ApiKeyTemplateEntity.Update =
       ApiKeyTemplateEntity.Update(
         publicTemplateId = apiKeyTemplate.publicTemplateId.toString,
         isDefault = apiKeyTemplate.isDefault,

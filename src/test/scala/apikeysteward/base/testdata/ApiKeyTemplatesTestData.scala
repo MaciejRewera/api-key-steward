@@ -1,7 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
-import apikeysteward.model.ApiKeyTemplate
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 
@@ -35,33 +35,43 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyMaxExpiryPeriod_3: FiniteDuration = Duration(103, TimeUnit.HOURS)
   val apiKeyMaxExpiryPeriodUpdated: FiniteDuration = Duration(201, TimeUnit.HOURS)
 
+  val apiKeyPrefix_1: String = "testPrefix_1_"
+  val apiKeyPrefix_2: String = "testPrefix_2_"
+  val apiKeyPrefix_3: String = "testPrefix_3_"
+  val apiKeyPrefix_4: String = "testPrefix_4_"
+
   val apiKeyTemplate_1: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
     isDefault = false,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+    apiKeyPrefix = apiKeyPrefix_1
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
     isDefault = false,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
+    apiKeyPrefix = apiKeyPrefix_2
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
     isDefault = false,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
+    apiKeyPrefix = apiKeyPrefix_3
   )
+
   val apiKeyTemplateUpdated: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
     name = apiKeyTemplateNameUpdated,
     description = apiKeyTemplateDescriptionUpdated,
     isDefault = true,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated,
+    apiKeyPrefix = apiKeyPrefix_4
   )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
@@ -70,7 +80,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+    apiKeyPrefix = apiKeyPrefix_1
   )
   val apiKeyTemplateEntityRead_1: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = 1L,
@@ -80,6 +91,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
+    apiKeyPrefix = apiKeyPrefix_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -90,7 +102,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
+    apiKeyPrefix = apiKeyPrefix_2
   )
   val apiKeyTemplateEntityRead_2: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = 2L,
@@ -100,6 +113,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
+    apiKeyPrefix = apiKeyPrefix_2,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -110,7 +124,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
-    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3
+    apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
+    apiKeyPrefix = apiKeyPrefix_3
   )
   val apiKeyTemplateEntityRead_3: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = 3L,
@@ -120,6 +135,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
+    apiKeyPrefix = apiKeyPrefix_3,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )

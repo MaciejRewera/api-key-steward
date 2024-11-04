@@ -31,10 +31,11 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
           "id",
           "tenant_id",
           "public_template_id",
-          "is_default",
           "name",
           "description",
+          "is_default",
           "api_key_max_expiry_period",
+          "api_key_prefix",
           "created_at",
           "updated_at"
         )
@@ -97,17 +98,18 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
   private object Queries {
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, tenant_id, public_template_id, is_default, name, description, api_key_max_expiry_period, created_at, updated_at"
+      fr"SELECT id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at"
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key_template(tenant_id, public_template_id, is_default, name, description, api_key_max_expiry_period, created_at, updated_at)
+      sql"""INSERT INTO api_key_template(tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
             VALUES(
               ${templateEntity.tenantId},
               ${templateEntity.publicTemplateId},
-              ${templateEntity.isDefault},
               ${templateEntity.name},
               ${templateEntity.description},
+              ${templateEntity.isDefault},
               ${templateEntity.apiKeyMaxExpiryPeriod.toString},
+              ${templateEntity.apiKeyPrefix},
               $now,
               $now
             )
@@ -139,10 +141,11 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               template.id,
               template.tenant_id,
               template.public_template_id,
-              template.is_default,
               template.name,
               template.description,
+              template.is_default,
               template.api_key_max_expiry_period,
+              template.api_key_prefix,
               template.created_at,
               template.updated_at
             FROM api_key_template AS template
