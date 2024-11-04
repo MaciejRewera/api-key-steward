@@ -7,12 +7,7 @@ import sttp.tapir.Schema
 
 import scala.concurrent.duration.Duration
 
-case class UpdateApiKeyTemplateRequest(
-    isDefault: Boolean,
-    name: String,
-    description: Option[String],
-    apiKeyMaxExpiryPeriod: Duration
-)
+case class UpdateApiKeyTemplateRequest(name: String, description: Option[String], isDefault: Boolean, apiKeyMaxExpiryPeriod: Duration)
 
 object UpdateApiKeyTemplateRequest extends CodecCommons {
   implicit val codec: Codec[UpdateApiKeyTemplateRequest] = deriveCodec[UpdateApiKeyTemplateRequest]

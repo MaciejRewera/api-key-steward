@@ -31,7 +31,12 @@ private[routes] object EndpointsBase {
   val applicationIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
     path[ApplicationId]("applicationId").description("Unique ID of the Application.")
 
-  val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(name = "Basic API key", description = Some("API Key Template with basic set of available permissions."), isDefault = false, apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS))
+  val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
+    name = "Basic API key",
+    description = Some("API Key Template with basic set of available permissions."),
+    isDefault = false,
+    apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS)
+  )
 
   val createPermissionRequest: CreatePermissionRequest = CreatePermissionRequest(
     name = "read:permission:123",

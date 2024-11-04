@@ -187,7 +187,12 @@ class ApiKeyTemplateRepositorySpec
       "return Right containing updated ApiKeyTemplate" in {
         apiKeyTemplateDb.update(any[ApiKeyTemplateEntity.Update]) returns updatedApiKeyTemplateEntityReadWrapped
 
-        val expectedUpdatedApiKeyTemplate = apiKeyTemplate_1.copy(name = apiKeyTemplateNameUpdated, description = apiKeyTemplateDescriptionUpdated, isDefault = true, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated)
+        val expectedUpdatedApiKeyTemplate = apiKeyTemplate_1.copy(
+          name = apiKeyTemplateNameUpdated,
+          description = apiKeyTemplateDescriptionUpdated,
+          isDefault = true,
+          apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
+        )
 
         apiKeyTemplateRepository
           .update(apiKeyTemplateUpdated)

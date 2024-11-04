@@ -10,7 +10,13 @@ import io.circe.generic.semiauto.deriveCodec
 import java.util.UUID
 import scala.concurrent.duration.Duration
 
-case class ApiKeyTemplate(publicTemplateId: ApiKeyTemplateId, name: String, description: Option[String], isDefault: Boolean, apiKeyMaxExpiryPeriod: Duration)
+case class ApiKeyTemplate(
+    publicTemplateId: ApiKeyTemplateId,
+    name: String,
+    description: Option[String],
+    isDefault: Boolean,
+    apiKeyMaxExpiryPeriod: Duration
+)
 
 object ApiKeyTemplate extends CodecCommons {
   implicit val codec: Codec[ApiKeyTemplate] = deriveCodec[ApiKeyTemplate]
@@ -18,12 +24,30 @@ object ApiKeyTemplate extends CodecCommons {
   type ApiKeyTemplateId = UUID
 
   def from(templateEntity: ApiKeyTemplateEntity.Read): ApiKeyTemplate =
-    ApiKeyTemplate(publicTemplateId = UUID.fromString(templateEntity.publicTemplateId), name = templateEntity.name, description = templateEntity.description, isDefault = templateEntity.isDefault, apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod)
+    ApiKeyTemplate(
+      publicTemplateId = UUID.fromString(templateEntity.publicTemplateId),
+      name = templateEntity.name,
+      description = templateEntity.description,
+      isDefault = templateEntity.isDefault,
+      apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod
+    )
 
   def from(templateId: ApiKeyTemplateId, createApiKeyTemplateRequest: CreateApiKeyTemplateRequest): ApiKeyTemplate =
-    ApiKeyTemplate(publicTemplateId = templateId, name = createApiKeyTemplateRequest.name, description = createApiKeyTemplateRequest.description, isDefault = createApiKeyTemplateRequest.isDefault, apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod)
+    ApiKeyTemplate(
+      publicTemplateId = templateId,
+      name = createApiKeyTemplateRequest.name,
+      description = createApiKeyTemplateRequest.description,
+      isDefault = createApiKeyTemplateRequest.isDefault,
+      apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod
+    )
 
   def from(templateId: ApiKeyTemplateId, updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest): ApiKeyTemplate =
-    ApiKeyTemplate(publicTemplateId = templateId, name = updateApiKeyTemplateRequest.name, description = updateApiKeyTemplateRequest.description, isDefault = updateApiKeyTemplateRequest.isDefault, apiKeyMaxExpiryPeriod = updateApiKeyTemplateRequest.apiKeyMaxExpiryPeriod)
+    ApiKeyTemplate(
+      publicTemplateId = templateId,
+      name = updateApiKeyTemplateRequest.name,
+      description = updateApiKeyTemplateRequest.description,
+      isDefault = updateApiKeyTemplateRequest.isDefault,
+      apiKeyMaxExpiryPeriod = updateApiKeyTemplateRequest.apiKeyMaxExpiryPeriod
+    )
 
 }

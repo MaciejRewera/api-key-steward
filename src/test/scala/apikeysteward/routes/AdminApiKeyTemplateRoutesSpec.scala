@@ -444,12 +444,7 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on PUT /admin/templates/{apiKeyTemplateId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
-    val requestBody = UpdateApiKeyTemplateRequest(
-      isDefault = true,
-      name = apiKeyTemplateName_1,
-      description = apiKeyTemplateDescription_1,
-      apiKeyMaxExpiryPeriod = Duration(17, TimeUnit.DAYS)
-    )
+    val requestBody = UpdateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1, isDefault = true, apiKeyMaxExpiryPeriod = Duration(17, TimeUnit.DAYS))
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)

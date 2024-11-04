@@ -46,7 +46,12 @@ class ApiKeyTemplateServiceSpec
 
   "ApiKeyTemplateService on createApiKeyTemplate" when {
 
-    val createApiKeyTemplateRequest = CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1, isDefault = false, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1)
+    val createApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
+      name = apiKeyTemplateName_1,
+      description = apiKeyTemplateDescription_1,
+      isDefault = false,
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+    )
 
     val apiKeyTemplate = apiKeyTemplate_1
 
@@ -248,12 +253,7 @@ class ApiKeyTemplateServiceSpec
 
   "ApiKeyTemplateService on updateApiKeyTemplate" should {
 
-    val updateApiKeyTemplateRequest = UpdateApiKeyTemplateRequest(
-      isDefault = true,
-      name = apiKeyTemplateNameUpdated,
-      description = apiKeyTemplateDescriptionUpdated,
-      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
-    )
+    val updateApiKeyTemplateRequest = UpdateApiKeyTemplateRequest(name = apiKeyTemplateNameUpdated, description = apiKeyTemplateDescriptionUpdated, isDefault = true, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated)
 
     "call ApiKeyTemplateRepository" in {
       apiKeyTemplateRepository.update(any[ApiKeyTemplate]) returns IO.pure(Right(apiKeyTemplateUpdated))
