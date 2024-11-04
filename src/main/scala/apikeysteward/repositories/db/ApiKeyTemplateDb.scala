@@ -2,7 +2,10 @@ package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{ApiKeyTemplateInsertionError, ApiKeyTemplateNotFoundError}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
+  ApiKeyTemplateInsertionError,
+  ApiKeyTemplateNotFoundError
+}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApplicationEntity}
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
@@ -84,7 +87,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
     getByPublicTemplateId(publicTemplateId.toString)
 
   private def getByPublicTemplateId(
-    publicTemplateId: String
+      publicTemplateId: String
   ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
     Queries.getByPublicTemplateId(publicTemplateId).option
 

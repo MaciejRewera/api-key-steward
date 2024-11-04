@@ -172,7 +172,6 @@ class ApiKeyTemplateDbSpec
     }
   }
 
-
   "ApiKeyTemplateDb on update" when {
 
     val updatedEntityRead =
@@ -229,7 +228,10 @@ class ApiKeyTemplateDbSpec
           allApiKeyTemplates.size shouldBe 1
 
           val expectedEntity =
-            apiKeyTemplateEntityRead_1.copy(id = allApiKeyTemplates.head.id, tenantId = allApiKeyTemplates.head.tenantId)
+            apiKeyTemplateEntityRead_1.copy(
+              id = allApiKeyTemplates.head.id,
+              tenantId = allApiKeyTemplates.head.tenantId
+            )
           allApiKeyTemplates.head shouldBe expectedEntity
         }
       }
@@ -310,7 +312,6 @@ class ApiKeyTemplateDbSpec
       }
     }
   }
-
 
   "ApiKeyTemplateDb on delete" when {
 

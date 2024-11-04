@@ -14,7 +14,7 @@ case class CreateApiKeyTemplateRequest(
     apiKeyMaxExpiryPeriod: Duration
 )
 
-object CreateApiKeyTemplateRequest  extends CodecCommons {
+object CreateApiKeyTemplateRequest extends CodecCommons {
   implicit val codec: Codec[CreateApiKeyTemplateRequest] = deriveCodec[CreateApiKeyTemplateRequest]
 
   implicit val createApiKeyTemplateRequestSchema: Schema[CreateApiKeyTemplateRequest] =

@@ -1,7 +1,11 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApplicationsTestData._
-import apikeysteward.base.testdata.PermissionsTestData.{createPermissionRequest_1, createPermissionRequest_2, createPermissionRequest_3}
+import apikeysteward.base.testdata.PermissionsTestData.{
+  createPermissionRequest_1,
+  createPermissionRequest_2,
+  createPermissionRequest_3
+}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._

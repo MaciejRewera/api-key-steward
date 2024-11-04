@@ -5,7 +5,10 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{ApiKeyTemplateInsertionErrorImpl, ReferencedTenantDoesNotExistError}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
+  ApiKeyTemplateInsertionErrorImpl,
+  ReferencedTenantDoesNotExistError
+}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, TenantEntity}
@@ -215,14 +218,14 @@ class ApiKeyTemplateRepositorySpec
     }
   }
 
-
   "ApiKeyTemplateRepository on delete" when {
 
     val deletedApiKeyTemplateEntityReadWrapped =
       apiKeyTemplateEntityRead_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO]
 
     val apiKeyTemplateNotFound = apiKeyTemplateNotFoundError
-    val apiKeyTemplateNotFoundWrapped = apiKeyTemplateNotFound.asLeft[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
+    val apiKeyTemplateNotFoundWrapped =
+      apiKeyTemplateNotFound.asLeft[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {
 
