@@ -61,7 +61,12 @@ private[routes] object AdminApiKeyTemplateEndpoints {
         jsonBody[UpdateApiKeyTemplateRequest]
           .description("Details of the Template to update.")
           .example(
-            UpdateApiKeyTemplateRequest(name = "Basic API key", description = Some("API Key Template with basic set of available permissions."), isDefault = true, apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS))
+            UpdateApiKeyTemplateRequest(
+              name = "Basic API key",
+              description = Some("API Key Template with basic set of available permissions."),
+              isDefault = true,
+              apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS)
+            )
           )
       )
       .out(statusCode.description(StatusCode.Ok, "Template updated successfully."))
