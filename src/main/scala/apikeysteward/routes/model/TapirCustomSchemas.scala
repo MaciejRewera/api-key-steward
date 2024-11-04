@@ -9,7 +9,7 @@ import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenan
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
-import sttp.tapir.{Schema, Validator}
+import sttp.tapir.{Schema, ValidationResult, Validator}
 
 import scala.concurrent.duration.Duration
 
@@ -154,7 +154,16 @@ object TapirCustomSchemas {
         s"Time-to-live for the API Key in ${TtlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
       )
 
-  private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] =
-    schema.validate(Validator.positiveOrZero[Long].contramap(_._1))
+  private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] = {
+    val infValidator = Validator.custom[Duration](duration =>
+      ValidationResult.validWhen(
+        duration.ne(Duration.MinusInf) &&
+          duration.ne(Duration.Undefined) &&
+          (duration.eq(Duration.Inf) || duration.gteq(Duration.Zero))
+      )
+    )
+
+    schema.validate(infValidator)
+  }
 
 }

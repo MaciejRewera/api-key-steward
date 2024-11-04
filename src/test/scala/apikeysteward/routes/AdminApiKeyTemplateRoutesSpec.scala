@@ -61,7 +61,12 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on POST /admin/templates" when {
 
     val uri = Uri.unsafeFromString("/admin/templates")
-    val requestBody = CreateApiKeyTemplateRequest(name = apiKeyTemplateName_1, description = apiKeyTemplateDescription_1, isDefault = false, apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1)
+    val requestBody = CreateApiKeyTemplateRequest(
+      name = apiKeyTemplateName_1,
+      description = apiKeyTemplateDescription_1,
+      isDefault = false,
+      apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1
+    )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)
@@ -220,7 +225,59 @@ class AdminApiKeyTemplateRoutesSpec
         val requestWithNegativeMaxExpiryPeriod =
           request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration(-1, TimeUnit.SECONDS)))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some("Invalid value for: body (expected apiKeyMaxExpiryPeriod to be greater than or equal to 0, but got -1)")
+          Some("Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: -1 seconds)")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with MinusInf apiKeyMaxExpiryPeriod value" should {
+
+        val requestWithNegativeMaxExpiryPeriod =
+          request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.MinusInf))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: Duration.MinusInf)"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with Undefined apiKeyMaxExpiryPeriod value" should {
+
+        val requestWithNegativeMaxExpiryPeriod =
+          request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Undefined))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: Duration.Undefined)"
+          )
         )
 
         "return Bad Request" in authorizedFixture {
@@ -242,15 +299,36 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          apiKeyTemplate_1.asRight
-        )
+      "call ApiKeyTemplateService" when {
 
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(apiKeyTemplateService).createApiKeyTemplate(eqTo(publicTenantId_1), eqTo(requestBody))
-        } yield ()
+        "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
+            apiKeyTemplate_1.asRight
+          )
+
+          for {
+            _ <- adminRoutes.run(request)
+            _ = verify(apiKeyTemplateService).createApiKeyTemplate(eqTo(publicTenantId_1), eqTo(requestBody))
+          } yield ()
+        }
+
+        "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
+            apiKeyTemplate.asRight
+          )
+
+          val requestBodyWithInfiniteExpiryPeriod = requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          val requestWithInfiniteExpiryPeriod = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
+
+          for {
+            _ <- adminRoutes.run(requestWithInfiniteExpiryPeriod)
+            _ = verify(apiKeyTemplateService).createApiKeyTemplate(
+              eqTo(publicTenantId_1),
+              eqTo(requestBodyWithInfiniteExpiryPeriod)
+            )
+          } yield ()
+        }
       }
 
       "return successful value returned by ApiKeyTemplateService" when {
@@ -283,6 +361,24 @@ class AdminApiKeyTemplateRoutesSpec
             _ <- response
               .as[CreateApiKeyTemplateResponse]
               .asserting(_ shouldBe CreateApiKeyTemplateResponse(apiKeyTemplateWithoutDescription))
+          } yield ()
+        }
+
+        "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
+            apiKeyTemplate.asRight
+          )
+
+          val requestWithInfiniteExpiryPeriod =
+            request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf))
+
+          for {
+            response <- adminRoutes.run(requestWithInfiniteExpiryPeriod)
+            _ = response.status shouldBe Status.Created
+            _ <- response
+              .as[CreateApiKeyTemplateResponse]
+              .asserting(_ shouldBe CreateApiKeyTemplateResponse(apiKeyTemplate))
           } yield ()
         }
       }
@@ -506,7 +602,59 @@ class AdminApiKeyTemplateRoutesSpec
         val requestWithNegativeMaxExpiryPeriod =
           request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration(-1, TimeUnit.SECONDS)))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some("Invalid value for: body (expected apiKeyMaxExpiryPeriod to be greater than or equal to 0, but got -1)")
+          Some("Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: -1 seconds)")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with MinusInf apiKeyMaxExpiryPeriod value" should {
+
+        val requestWithNegativeMaxExpiryPeriod =
+          request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.MinusInf))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: Duration.MinusInf)"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithNegativeMaxExpiryPeriod)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with Undefined apiKeyMaxExpiryPeriod value" should {
+
+        val requestWithNegativeMaxExpiryPeriod =
+          request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Undefined))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (expected apiKeyMaxExpiryPeriod to pass validation, but got: Duration.Undefined)"
+          )
         )
 
         "return Bad Request" in authorizedFixture {
@@ -528,38 +676,69 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns IO
-          .pure(
-            apiKeyTemplate_1.asRight
-          )
+      "call ApiKeyTemplateService" when {
 
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(apiKeyTemplateService).updateApiKeyTemplate(eqTo(publicTemplateId_1), eqTo(requestBody))
-        } yield ()
+        "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+            IO.pure(apiKeyTemplate_1.asRight)
+
+          for {
+            _ <- adminRoutes.run(request)
+            _ = verify(apiKeyTemplateService).updateApiKeyTemplate(eqTo(publicTemplateId_1), eqTo(requestBody))
+          } yield ()
+        }
+
+        "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+            IO.pure(apiKeyTemplate.asRight)
+
+          val requestBodyWithInfiniteExpiryPeriod = requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          val requestWithInfiniteExpiryPeriod = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
+
+          for {
+            _ <- adminRoutes.run(requestWithInfiniteExpiryPeriod)
+            _ = verify(apiKeyTemplateService).updateApiKeyTemplate(
+              eqTo(publicTemplateId_1),
+              eqTo(requestBodyWithInfiniteExpiryPeriod)
+            )
+          } yield ()
+        }
       }
 
-      "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns IO
-          .pure(
-            apiKeyTemplate_1.asRight
-          )
+      "return successful value returned by ApiKeyTemplateService" when {
 
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response
-            .as[UpdateApiKeyTemplateResponse]
-            .asserting(_ shouldBe UpdateApiKeyTemplateResponse(apiKeyTemplate_1))
-        } yield ()
+        "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+            IO.pure(apiKeyTemplate_1.asRight)
+
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[UpdateApiKeyTemplateResponse]
+              .asserting(_ shouldBe UpdateApiKeyTemplateResponse(apiKeyTemplate_1))
+          } yield ()
+        }
+
+        "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
+          val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
+          apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+            IO.pure(apiKeyTemplate.asRight)
+
+          for {
+            response <- adminRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[UpdateApiKeyTemplateResponse]
+              .asserting(_ shouldBe UpdateApiKeyTemplateResponse(apiKeyTemplate))
+          } yield ()
+        }
       }
 
       "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateNotFoundError" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns IO
-          .pure(
-            Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
-          )
+        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+          IO.pure(Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
 
         for {
           response <- adminRoutes.run(request)
@@ -573,10 +752,8 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns IO
-          .raiseError(
-            testException
-          )
+        apiKeyTemplateService.updateApiKeyTemplate(any[ApiKeyTemplateId], any[UpdateApiKeyTemplateRequest]) returns
+          IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
