@@ -26,7 +26,12 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 
-class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class AdminTenantRoutesSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with RoutesSpecBase {
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val tenantService = mock[TenantService]
@@ -34,115 +39,16 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
   private val adminRoutes: HttpApp[IO] =
     new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes.orNotFound
 
-  private val tokenString: AccessToken = "TOKEN"
-  private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
-
-  private val testException = new RuntimeException("Test Exception")
-
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(jwtAuthorizer, tenantService)
   }
 
-  private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-      AuthTestData.jwtWithMockedSignature.asRight
-    )
-  }.flatMap(_ => test)
+  private def authorizedFixture[T](test: => IO[T]): IO[T] =
+    authorizedFixture(jwtAuthorizer)(test)
 
-  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit = {
-
-    "the JWT is NOT provided" should {
-
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- adminRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtAuthorizer or TenantService" in {
-        for {
-          _ <- adminRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, tenantService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided" should {
-      "call JwtAuthorizer providing access token" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          ErrorInfo.unauthorizedErrorInfo().asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(requiredPermissions))(eqTo(tokenString))
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Left containing error" should {
-
-      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
-        } yield ()
-      }
-
-      "NOT call TenantService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(tenantService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns failed IO" should {
-
-      "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "NOT call TenantService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verifyZeroInteractions(tenantService)
-        } yield ()
-      }
-    }
-  }
+  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit =
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, tenantService)(request, requiredPermissions)
 
   "AdminTenantRoutes on POST /admin/tenants" when {
 
@@ -354,17 +260,25 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
     "provided with tenantId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
+      val requestWithIncorrectTenantId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter tenantId")))
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectTenantId)
+          _ = verifyZeroInteractions(tenantService)
         } yield ()
       }
     }
@@ -501,17 +415,25 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
     "provided with tenantId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/reactivation")
-        val requestWithIncorrectTenantId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/reactivation")
+      val requestWithIncorrectTenantId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter tenantId")))
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectTenantId)
+          _ = verifyZeroInteractions(tenantService)
         } yield ()
       }
     }
@@ -571,17 +493,25 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
     "provided with tenantId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/deactivation")
-        val requestWithIncorrectTenantId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid/deactivation")
+      val requestWithIncorrectTenantId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter tenantId")))
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectTenantId)
+          _ = verifyZeroInteractions(tenantService)
         } yield ()
       }
     }
@@ -641,17 +571,25 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
 
     "provided with tenantId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId =
-          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
+      val requestWithIncorrectTenantId =
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter tenantId")))
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectTenantId)
+          _ = verifyZeroInteractions(tenantService)
         } yield ()
       }
     }
@@ -727,17 +665,25 @@ class AdminTenantRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
 
     "provided with tenantId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
-        val requestWithIncorrectTenantId =
-          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/tenants/this-is-not-a-valid-uuid")
+      val requestWithIncorrectTenantId =
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectTenantId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter tenantId")))
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectTenantId)
+          _ = verifyZeroInteractions(tenantService)
         } yield ()
       }
     }
