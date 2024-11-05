@@ -7,7 +7,7 @@ import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
-import apikeysteward.routes.model.admin.apikeytemplate.CreateApiKeyTemplateRequest
+import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.application.CreateApplicationRequest
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.user.CreateUserRequest
@@ -32,11 +32,18 @@ private[routes] object EndpointsBase {
     path[ApplicationId]("applicationId").description("Unique ID of the Application.")
 
   val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
-    name = "Basic API key Template",
-    description = Some("API Key Template with basic set of available permissions."),
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
     isDefault = false,
     apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
     apiKeyPrefix = "basic_"
+  )
+
+  val updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest = UpdateApiKeyTemplateRequest(
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
+    isDefault = false,
+    apiKeyMaxExpiryPeriod = Duration.apply(43, TimeUnit.DAYS)
   )
 
   val createPermissionRequest: CreatePermissionRequest = CreatePermissionRequest(
@@ -64,8 +71,8 @@ private[routes] object EndpointsBase {
 
   val ApiKeyTemplateExample: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "Basic API key Template",
-    description = Some("API Key Template with basic set of available permissions."),
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
     isDefault = false,
     apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
     apiKeyPrefix = "basic_"
