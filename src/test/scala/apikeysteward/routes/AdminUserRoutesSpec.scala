@@ -50,11 +50,8 @@ class AdminUserRoutesSpec
     reset(jwtAuthorizer, userService)
   }
 
-  private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-      AuthTestData.jwtWithMockedSignature.asRight
-    )
-  }.flatMap(_ => test)
+  private def authorizedFixture[T](test: => IO[T]): IO[T] =
+    authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
     runCommonJwtTests(adminUserRoutes, jwtAuthorizer, userService)(request, requiredPermissions)

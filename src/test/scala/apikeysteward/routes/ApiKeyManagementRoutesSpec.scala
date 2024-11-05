@@ -30,7 +30,12 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
-class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
+class ApiKeyManagementRoutesSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with BeforeAndAfterEach
+    with RoutesSpecBase {
 
   private val jwtOps = mock[JwtOps]
   private val jwtAuthorizer = mock[JwtAuthorizer]
@@ -39,24 +44,17 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
   private val managementRoutes: HttpApp[IO] =
     new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, managementService).allRoutes.orNotFound
 
-  private val tokenString: AccessToken = "TOKEN"
-  private val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
-
-  private val testException = new RuntimeException("Test Exception")
   private val jwtOpsTestError = ErrorInfo.unauthorizedErrorInfo(Some("JwtOps encountered an error."))
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-
     reset(jwtOps, jwtAuthorizer, managementService)
   }
 
-  private def authorizedFixture[T](test: => IO[T]): IO[T] = IO {
-    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-      AuthTestData.jwtWithMockedSignature.asRight
-    )
+  private def authorizedFixture[T](test: => IO[T]): IO[T] = {
     jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight
-  }.flatMap(_ => test)
+    authorizedFixture(jwtAuthorizer)(test)
+  }
 
   private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit = {
 
@@ -611,17 +609,25 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
 
     "provided with publicKeyId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId =
-          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+      val requestWithIncorrectPublicKeyId =
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+
+      "NOT call JwtOps or ManagementService" in authorizedFixture {
+        for {
+          _ <- managementRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
@@ -756,17 +762,25 @@ class ApiKeyManagementRoutesSpec extends AsyncWordSpec with AsyncIOSpec with Mat
     runCommonJwtTests(request)(Set(JwtPermissions.WriteApiKey))
 
     "provided with publicKeyId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
-        val requestWithIncorrectPublicKeyId =
-          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+      val requestWithIncorrectPublicKeyId =
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- managementRoutes.run(requestWithIncorrectPublicKeyId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter keyId")))
+        } yield ()
+      }
+
+      "NOT call JwtOps or ManagementService" in authorizedFixture {
+        for {
+          _ <- managementRoutes.run(requestWithIncorrectPublicKeyId)
+          _ = verifyZeroInteractions(jwtOps, managementService)
         } yield ()
       }
     }
