@@ -31,7 +31,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
     EndpointsBase.authenticatedEndpointBase.post
       .description("Create a new Template with provided details.")
       .in(tenantIdHeaderInput)
-      .in("admin" / "templates")
+      .in("admin" / "api-key-templates")
       .in(
         jsonBody[CreateApiKeyTemplateRequest]
           .description("Details of the Template to create.")
@@ -56,7 +56,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
         """Update an existing Template. You have to specify all of the fields of the Template.
           |This API replaces the existing Template with your new data.""".stripMargin
       )
-      .in("admin" / "templates" / templateIdPathParameter)
+      .in("admin" / "api-key-templates" / templateIdPathParameter)
       .in(
         jsonBody[UpdateApiKeyTemplateRequest]
           .description("Details of the Template to update.")
@@ -85,7 +85,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
-      .in("admin" / "templates" / templateIdPathParameter)
+      .in("admin" / "api-key-templates" / templateIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Template deleted."))
       .out(
         jsonBody[DeleteApiKeyTemplateResponse]
@@ -98,7 +98,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetSingleApiKeyTemplateResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Template for provided templateId.")
-      .in("admin" / "templates" / templateIdPathParameter)
+      .in("admin" / "api-key-templates" / templateIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Template found."))
       .out(
         jsonBody[GetSingleApiKeyTemplateResponse]
@@ -112,7 +112,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get all Templates for provided tenantId.")
       .in(tenantIdHeaderInput)
-      .in("admin" / "templates")
+      .in("admin" / "api-key-templates")
       .out(statusCode.description(StatusCode.Ok, "Templates found."))
       .out(
         jsonBody[GetMultipleApiKeyTemplatesResponse]
