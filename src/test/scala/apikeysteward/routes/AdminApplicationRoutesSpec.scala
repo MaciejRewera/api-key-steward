@@ -75,7 +75,7 @@ class AdminApplicationRoutesSpec
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
 
       val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
       val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
@@ -335,11 +335,12 @@ class AdminApplicationRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApplicationId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
           _ = response.status shouldBe Status.BadRequest
@@ -348,6 +349,13 @@ class AdminApplicationRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ = verifyZeroInteractions(applicationService)
         } yield ()
       }
     }
@@ -541,11 +549,12 @@ class AdminApplicationRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/reactivation")
-        val requestWithIncorrectApplicationId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/reactivation")
+      val requestWithIncorrectApplicationId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
           _ = response.status shouldBe Status.BadRequest
@@ -554,6 +563,13 @@ class AdminApplicationRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ = verifyZeroInteractions(applicationService)
         } yield ()
       }
     }
@@ -617,11 +633,12 @@ class AdminApplicationRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/deactivation")
-        val requestWithIncorrectApplicationId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/deactivation")
+      val requestWithIncorrectApplicationId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
           _ = response.status shouldBe Status.BadRequest
@@ -630,6 +647,13 @@ class AdminApplicationRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ = verifyZeroInteractions(applicationService)
         } yield ()
       }
     }
@@ -693,11 +717,12 @@ class AdminApplicationRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with applicationId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId =
-          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApplicationId =
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
           _ = response.status shouldBe Status.BadRequest
@@ -706,6 +731,13 @@ class AdminApplicationRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ = verifyZeroInteractions(applicationService)
         } yield ()
       }
     }
@@ -787,11 +819,12 @@ class AdminApplicationRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
     "provided with applicationId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApplicationId =
-          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApplicationId =
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApplicationId)
           _ = response.status shouldBe Status.BadRequest
@@ -800,6 +833,13 @@ class AdminApplicationRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ = verifyZeroInteractions(applicationService)
         } yield ()
       }
     }
@@ -860,7 +900,7 @@ class AdminApplicationRoutesSpec
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
 
       val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
       val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
