@@ -16,6 +16,12 @@ private[routes] object ApiErrorMessages {
     val ApiKeyNotFound = "No API Key found for provided combination of userId and keyId."
   }
 
+  object AdminApiKeyTemplate {
+    val ApiKeyTemplateNotFound = "No Template found for provided templateId."
+    val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
+
+  }
+
   object AdminTenant {
     val TenantNotFound = "No Tenant found for provided tenantId."
 

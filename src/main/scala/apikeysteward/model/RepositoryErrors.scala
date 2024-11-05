@@ -1,5 +1,6 @@
 package apikeysteward.model
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
@@ -255,6 +256,45 @@ object RepositoryErrors {
         extends UserDbError(
           message =
             s"Could not find User with publicUserId = [$publicUserId] for Tenant with publicTenantId = [$publicTenantId]."
+        )
+  }
+
+  sealed abstract class ApiKeyTemplateDbError(override val message: String) extends CustomError
+  object ApiKeyTemplateDbError {
+
+    sealed abstract class ApiKeyTemplateInsertionError(override val message: String)
+        extends ApiKeyTemplateDbError(message)
+    object ApiKeyTemplateInsertionError {
+
+      case class ApiKeyTemplateAlreadyExistsError(publicTemplateId: String)
+          extends ApiKeyTemplateInsertionError(
+            message = s"ApiKeyTemplate with publicTemplateId = [$publicTemplateId] already exists."
+          )
+
+      trait ReferencedTenantDoesNotExistError extends ApiKeyTemplateInsertionError { val errorMessage: String }
+      object ReferencedTenantDoesNotExistError {
+
+        private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApiKeyTemplateInsertionError(errorMessage)
+            with ReferencedTenantDoesNotExistError
+
+        def apply(tenantId: Long): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with ID = [$tenantId] does not exist."
+          )
+        def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
+          )
+      }
+
+      case class ApiKeyTemplateInsertionErrorImpl(cause: SQLException)
+          extends ApiKeyTemplateInsertionError(message = s"An error occurred when inserting ApiKeyTemplate: $cause")
+    }
+
+    case class ApiKeyTemplateNotFoundError(publicTemplateId: String)
+        extends ApiKeyTemplateDbError(
+          message = s"Could not find ApiKeyTemplate with publicTemplateId = [$publicTemplateId]."
         )
   }
 

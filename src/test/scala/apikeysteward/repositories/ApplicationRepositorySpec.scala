@@ -51,7 +51,6 @@ class ApplicationRepositorySpec
     applicationNotFoundError.asLeft[ApplicationEntity.Read].pure[doobie.ConnectionIO]
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
 
   private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, ApplicationEntity.Read]] =
     testException.raiseError[doobie.ConnectionIO, Either[E, ApplicationEntity.Read]]
@@ -65,6 +64,8 @@ class ApplicationRepositorySpec
       applicationEntityRead_1.asRight[ApplicationInsertionError].pure[doobie.ConnectionIO]
 
     val permissionEntityReadWrapped = permissionEntityRead_1.asRight[PermissionInsertionError].pure[doobie.ConnectionIO]
+
+    val testSqlException = new SQLException("Test SQL Exception")
 
     val applicationInsertionError: ApplicationInsertionError = ApplicationInsertionErrorImpl(testSqlException)
     val applicationInsertionErrorWrapped =
@@ -84,12 +85,7 @@ class ApplicationRepositorySpec
         for {
           _ <- applicationRepository.insert(publicTenantId_1, application_1)
 
-          expectedApplicationEntityWrite = ApplicationEntity.Write(
-            tenantId = tenantId,
-            publicApplicationId = publicApplicationIdStr_1,
-            name = applicationName_1,
-            description = applicationDescription_1
-          )
+          expectedApplicationEntityWrite = applicationEntityWrite_1.copy(tenantId = tenantId)
           _ = verify(applicationDb).insert(eqTo(expectedApplicationEntityWrite))
           _ = verify(permissionDb).insert(
             eqTo(permissionEntityWrite_1.copy(applicationId = applicationEntityRead_1.id))
@@ -233,12 +229,7 @@ class ApplicationRepositorySpec
         for {
           _ <- applicationRepository.update(applicationUpdate_1)
 
-          expectedApplicationEntityUpdate = ApplicationEntity.Update(
-            publicApplicationId = publicApplicationIdStr_1,
-            name = applicationNameUpdated,
-            description = applicationDescriptionUpdated
-          )
-          _ = verify(applicationDb).update(eqTo(expectedApplicationEntityUpdate))
+          _ = verify(applicationDb).update(eqTo(applicationEntityUpdate_1))
           _ = verify(permissionDb).getAllBy(eqTo(publicApplicationId_1))(eqTo(none[String]))
         } yield ()
       }

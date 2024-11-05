@@ -66,6 +66,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         )
 
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
+        apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
@@ -80,6 +81,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           uuidGenerator,
           apiKeyRepository
         )
+
+        apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository)
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
@@ -97,6 +100,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         ).allRoutes
         apiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
+        apiKeyTemplateRoutes = new AdminApiKeyTemplateRoutes(jwtAuthorizer, apiKeyTemplateService).allRoutes
+
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
         applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
         permissionRoutes = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
@@ -110,6 +115,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
               validateRoutes <+>
               userApiKeyManagementRoutes <+>
               apiKeyManagementRoutes <+>
+              apiKeyTemplateRoutes <+>
               tenantRoutes <+>
               applicationRoutes <+>
               permissionRoutes <+>
@@ -142,6 +148,13 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
     new ApiKeyRepository(apiKeyDb, apiKeyDataDb, secureHashGenerator)(transactor)
+  }
+
+  private def buildApiKeyTemplateRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
+    val apiKeyTemplateDb = new ApiKeyTemplateDb()
+
+    new ApiKeyTemplateRepository(tenantDb, apiKeyTemplateDb)(transactor)
   }
 
   private def buildTenantRepository(transactor: HikariTransactor[IO]) = {

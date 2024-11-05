@@ -2,8 +2,8 @@ package apikeysteward.repositories.db
 
 import doobie.util.meta.Meta
 
-import java.time.{Instant, ZonedDateTime}
 import java.util.UUID
+import scala.concurrent.duration.Duration
 
 object DoobieCustomMeta extends DoobieCustomMeta
 
@@ -12,9 +12,6 @@ trait DoobieCustomMeta {
   implicit val uuidMeta: Meta[UUID] =
     Meta[String].timap[UUID](UUID.fromString)(_.toString)
 
-  implicit val JavaTimeLocalDateMeta: Meta[ZonedDateTime] =
-    doobie.implicits.javatimedrivernative.JavaZonedDateTimeMeta
-
-  implicit val JavaTimeLocalDateTimeMeta: Meta[Instant] =
-    doobie.implicits.javatimedrivernative.JavaTimeInstantMeta
+  implicit val DurationMeta: Meta[Duration] =
+    Meta[String].timap[Duration](Duration.apply)(_.toString)
 }

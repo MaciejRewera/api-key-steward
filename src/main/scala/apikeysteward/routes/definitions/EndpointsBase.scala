@@ -7,6 +7,7 @@ import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
+import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.application.CreateApplicationRequest
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.user.CreateUserRequest
@@ -18,6 +19,8 @@ import sttp.tapir.json.circe.jsonBody
 
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 private[routes] object EndpointsBase {
 
@@ -27,6 +30,21 @@ private[routes] object EndpointsBase {
 
   val applicationIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
     path[ApplicationId]("applicationId").description("Unique ID of the Application.")
+
+  val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
+    isDefault = false,
+    apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
+    apiKeyPrefix = "basic_"
+  )
+
+  val updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest = UpdateApiKeyTemplateRequest(
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
+    isDefault = false,
+    apiKeyMaxExpiryPeriod = Duration.apply(43, TimeUnit.DAYS)
+  )
 
   val createPermissionRequest: CreatePermissionRequest = CreatePermissionRequest(
     name = "read:permission:123",
@@ -49,6 +67,15 @@ private[routes] object EndpointsBase {
     description = Some("A short description what this API key is for."),
     userId = "user-1234567",
     expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z")
+  )
+
+  val ApiKeyTemplateExample: ApiKeyTemplate = ApiKeyTemplate(
+    publicTemplateId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "Basic API key",
+    description = Some("API key with basic set of available permissions."),
+    isDefault = false,
+    apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
+    apiKeyPrefix = "basic_"
   )
 
   val TenantExample: Tenant = Tenant(

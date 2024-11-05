@@ -2,13 +2,16 @@ package apikeysteward.routes.model
 
 import apikeysteward.routes.model.TapirCustomValidators.{ValidateList, ValidateOption}
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
+import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
-import sttp.tapir.{Schema, Validator}
+import sttp.tapir.{Schema, ValidationResult, Validator}
+
+import scala.concurrent.duration.Duration
 
 object TapirCustomSchemas {
 
@@ -35,6 +38,23 @@ object TapirCustomSchemas {
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateNameLength250)
       .modify(_.description)(validateDescriptionLength250)
+
+  val createApiKeyTemplateRequestSchema: Schema[CreateApiKeyTemplateRequest] =
+    Schema
+      .derived[CreateApiKeyTemplateRequest]
+      .map(Option(_))(trimStringFields)
+      .modify(_.name)(validateNameLength280)
+      .modify(_.description)(validateDescriptionLength500)
+      .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
+      .modify(_.apiKeyPrefix)(validateApiKeyPrefix)
+
+  val updateApiKeyTemplateRequestSchema: Schema[UpdateApiKeyTemplateRequest] =
+    Schema
+      .derived[UpdateApiKeyTemplateRequest]
+      .map(Option(_))(trimStringFields)
+      .modify(_.name)(validateNameLength280)
+      .modify(_.description)(validateDescriptionLength500)
+      .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
     Schema
@@ -87,6 +107,16 @@ object TapirCustomSchemas {
   private def trimStringFields(request: UpdateApiKeyAdminRequest): UpdateApiKeyAdminRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
+  private def trimStringFields(request: CreateApiKeyTemplateRequest): CreateApiKeyTemplateRequest =
+    request.copy(
+      name = request.name.trim,
+      description = request.description.map(_.trim),
+      apiKeyPrefix = request.apiKeyPrefix.trim
+    )
+
+  private def trimStringFields(request: UpdateApiKeyTemplateRequest): UpdateApiKeyTemplateRequest =
+    request.copy(name = request.name.trim, description = request.description.map(_.trim))
+
   private def trimStringFields(request: CreateTenantRequest): CreateTenantRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
@@ -119,6 +149,9 @@ object TapirCustomSchemas {
   private def validateDescription(maxLength: Int)(schema: Schema[Option[String]]): Schema[Option[String]] =
     schema.validateOption(Validator.nonEmptyString and Validator.maxLength(maxLength))
 
+  private def validateApiKeyPrefix(schema: Schema[String]): Schema[String] =
+    schema.validate(Validator.nonEmptyString and Validator.maxLength(120))
+
   private def validateUserId(schema: Schema[String]): Schema[String] =
     schema.validate(Validator.nonEmptyString and Validator.maxLength(250))
 
@@ -128,5 +161,17 @@ object TapirCustomSchemas {
       .description(
         s"Time-to-live for the API Key in ${TtlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
       )
+
+  private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] = {
+    val infValidator = Validator.custom[Duration](duration =>
+      ValidationResult.validWhen(
+        duration.ne(Duration.MinusInf) &&
+          duration.ne(Duration.Undefined) &&
+          (duration.eq(Duration.Inf) || duration.gteq(Duration.Zero))
+      )
+    )
+
+    schema.validate(infValidator)
+  }
 
 }

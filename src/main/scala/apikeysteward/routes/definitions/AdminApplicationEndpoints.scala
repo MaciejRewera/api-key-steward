@@ -60,7 +60,7 @@ private[routes] object AdminApplicationEndpoints {
             )
           )
       )
-      .out(statusCode.description(StatusCode.Ok, "Application updated successfully"))
+      .out(statusCode.description(StatusCode.Ok, "Application updated successfully."))
       .out(
         jsonBody[UpdateApplicationResponse]
           .example(UpdateApplicationResponse(EndpointsBase.ApplicationExample))
@@ -73,7 +73,7 @@ private[routes] object AdminApplicationEndpoints {
     EndpointsBase.authenticatedEndpointBase.put
       .description("Reactivate an inactive Application. If the Application is already active, this API has no effect.")
       .in("admin" / "applications" / applicationIdPathParameter / "reactivation")
-      .out(statusCode.description(StatusCode.Ok, "Application reactivated"))
+      .out(statusCode.description(StatusCode.Ok, "Application reactivated."))
       .out(
         jsonBody[ReactivateApplicationResponse]
           .example(ReactivateApplicationResponse(EndpointsBase.ApplicationExample))
@@ -86,7 +86,7 @@ private[routes] object AdminApplicationEndpoints {
     EndpointsBase.authenticatedEndpointBase.put
       .description("Deactivate an active Application. If the Application is already inactive, this API has no effect.")
       .in("admin" / "applications" / applicationIdPathParameter / "deactivation")
-      .out(statusCode.description(StatusCode.Ok, "Application deactivated"))
+      .out(statusCode.description(StatusCode.Ok, "Application deactivated."))
       .out(
         jsonBody[DeactivateApplicationResponse]
           .example(DeactivateApplicationResponse(EndpointsBase.ApplicationExample.copy(isActive = false)))
@@ -103,7 +103,7 @@ private[routes] object AdminApplicationEndpoints {
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
       .in("admin" / "applications" / applicationIdPathParameter)
-      .out(statusCode.description(StatusCode.Ok, "Application deleted"))
+      .out(statusCode.description(StatusCode.Ok, "Application deleted."))
       .out(
         jsonBody[DeleteApplicationResponse]
           .example(DeleteApplicationResponse(EndpointsBase.ApplicationExample.copy(isActive = false)))
@@ -116,7 +116,7 @@ private[routes] object AdminApplicationEndpoints {
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Application for provided applicationId.")
       .in("admin" / "applications" / applicationIdPathParameter)
-      .out(statusCode.description(StatusCode.Ok, "Application found"))
+      .out(statusCode.description(StatusCode.Ok, "Application found."))
       .out(
         jsonBody[GetSingleApplicationResponse]
           .example(GetSingleApplicationResponse(EndpointsBase.ApplicationExample))
@@ -130,7 +130,7 @@ private[routes] object AdminApplicationEndpoints {
       .description("Get all Applications for provided tenantId.")
       .in(tenantIdHeaderInput)
       .in("admin" / "applications")
-      .out(statusCode.description(StatusCode.Ok, "Applications found"))
+      .out(statusCode.description(StatusCode.Ok, "Applications found."))
       .out(
         jsonBody[GetMultipleApplicationsResponse]
           .example(GetMultipleApplicationsResponse(applications = List.fill(3)(EndpointsBase.ApplicationExample)))

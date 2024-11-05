@@ -874,6 +874,19 @@ class ApplicationDbSpec
       }
     }
 
+    "there is a Tenant in the DB, but with a different publicTenantId" should {
+      "return empty Stream" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- applicationDb.getAllForTenant(publicTenantId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
+      }
+    }
+
     "there is a Tenant in the DB, but there are no Applications for this Tenant" should {
       "return empty Stream" in {
         val result = (for {

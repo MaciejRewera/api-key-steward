@@ -7,6 +7,7 @@ import apikeysteward.base.testdata.PermissionsTestData.{
   createPermissionRequest_3
 }
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
 import apikeysteward.model.Tenant.TenantId
@@ -224,7 +225,7 @@ class AdminApplicationRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApplicationService" in authorizedFixture {
-        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
           application_1.asRight
         )
 
@@ -237,7 +238,7 @@ class AdminApplicationRoutesSpec
       "return successful value returned by ApplicationService" when {
 
         "provided with description" in authorizedFixture {
-          applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+          applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
             application_1.asRight
           )
 
@@ -252,7 +253,7 @@ class AdminApplicationRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val applicationWithoutDescription = application_1.copy(description = None)
-          applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+          applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
             applicationWithoutDescription.asRight
           )
 
@@ -269,7 +270,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationAlreadyExistsError" in authorizedFixture {
-        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
           Left(ApplicationAlreadyExistsError(publicApplicationIdStr_1))
         )
 
@@ -282,7 +283,7 @@ class AdminApplicationRoutesSpec
 
       "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
           Left(ApplicationInsertionErrorImpl(testSqlException))
         )
 
@@ -294,7 +295,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return Bad Request when ApplicationService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.pure(
+        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
           Left(ReferencedTenantDoesNotExistError(publicApplicationId_1))
         )
 
@@ -310,7 +311,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.createApplication(any[UUID], any[CreateApplicationRequest]) returns IO.raiseError(
+        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.raiseError(
           testException
         )
 
@@ -478,7 +479,7 @@ class AdminApplicationRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApplicationService" in authorizedFixture {
-        applicationService.updateApplication(any[UUID], any[UpdateApplicationRequest]) returns IO.pure(
+        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
           application_1.asRight
         )
 
@@ -489,7 +490,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.updateApplication(any[UUID], any[UpdateApplicationRequest]) returns IO.pure(
+        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
           application_1.asRight
         )
 
@@ -503,7 +504,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return Not Found when ApplicationService returns successful IO with Left containing ApplicationNotFoundError" in authorizedFixture {
-        applicationService.updateApplication(any[UUID], any[UpdateApplicationRequest]) returns IO.pure(
+        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
           Left(ApplicationNotFoundError(publicApplicationIdStr_1))
         )
 
@@ -519,7 +520,7 @@ class AdminApplicationRoutesSpec
       }
 
       "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.updateApplication(any[UUID], any[UpdateApplicationRequest]) returns IO.raiseError(
+        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.raiseError(
           testException
         )
 
