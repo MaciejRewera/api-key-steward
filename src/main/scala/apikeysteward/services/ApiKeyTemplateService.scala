@@ -24,7 +24,7 @@ class ApiKeyTemplateService(uuidGenerator: UuidGenerator, apiKeyTemplateReposito
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
     createApiKeyTemplateWithRetry(tenantId, createApiKeyTemplateRequest)
 
-  def createApiKeyTemplateWithRetry(
+  private def createApiKeyTemplateWithRetry(
       tenantId: TenantId,
       createApiKeyTemplateRequest: CreateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] = {
@@ -61,16 +61,16 @@ class ApiKeyTemplateService(uuidGenerator: UuidGenerator, apiKeyTemplateReposito
       updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     apiKeyTemplateRepository.update(ApiKeyTemplateUpdate.from(templateId, updateApiKeyTemplateRequest)).flatTap {
-      case Right(_) => logger.info(s"Updated ApiKeyTemplate with templateId: [$templateId].")
+      case Right(_) => logger.info(s"Updated API Key Template with templateId: [$templateId].")
       case Left(e) =>
-        logger.warn(s"Could not update ApiKeyTemplate with templateId: [$templateId] because: ${e.message}")
+        logger.warn(s"Could not update API Key Template with templateId: [$templateId] because: ${e.message}")
     }
 
   def deleteApiKeyTemplate(templateId: ApiKeyTemplateId): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     apiKeyTemplateRepository.delete(templateId).flatTap {
-      case Right(_) => logger.info(s"Deleted ApiKeyTemplate with templateId: [$templateId].")
+      case Right(_) => logger.info(s"Deleted API Key Template with templateId: [$templateId].")
       case Left(e) =>
-        logger.warn(s"Could not delete ApiKeyTemplate with templateId: [$templateId] because: ${e.message}")
+        logger.warn(s"Could not delete API Key Template with templateId: [$templateId] because: ${e.message}")
     }
 
   def getBy(templateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
