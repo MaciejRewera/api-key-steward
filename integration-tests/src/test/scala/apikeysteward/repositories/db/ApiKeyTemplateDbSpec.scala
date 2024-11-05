@@ -486,6 +486,19 @@ class ApiKeyTemplateDbSpec
       }
     }
 
+    "there is a Tenant in the DB, but with a different publicTenantId" should {
+      "return empty Stream" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- apiKeyTemplateDb.getAllForTenant(publicTenantId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
     "there is a Tenant in the DB, but there are no ApiKeyTemplates for this Tenant" should {
       "return empty Stream" in {
         val result = (for {

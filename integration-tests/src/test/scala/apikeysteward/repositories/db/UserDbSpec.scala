@@ -484,6 +484,19 @@ class UserDbSpec
       }
     }
 
+    "there is a Tenant in the DB, but with a different publicTenantId" should {
+      "return empty Stream" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- userDb.getAllForTenant(publicTenantId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+
     "there is a Tenant in the DB, but there are no Users for this Tenant" should {
       "return empty Stream" in {
         val result = (for {
