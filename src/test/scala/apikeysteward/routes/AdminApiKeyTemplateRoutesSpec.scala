@@ -534,11 +534,12 @@ class AdminApiKeyTemplateRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with apiKeyTemplateId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApiKeyTemplateId =
-          Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApiKeyTemplateId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
           _ = response.status shouldBe Status.BadRequest
@@ -547,6 +548,13 @@ class AdminApiKeyTemplateRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter templateId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = verifyZeroInteractions(apiKeyTemplateService)
         } yield ()
       }
     }
@@ -849,11 +857,12 @@ class AdminApiKeyTemplateRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with apiKeyTemplateId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApiKeyTemplateId =
-          Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApiKeyTemplateId =
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
           _ = response.status shouldBe Status.BadRequest
@@ -862,6 +871,13 @@ class AdminApiKeyTemplateRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter templateId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = verifyZeroInteractions(apiKeyTemplateService)
         } yield ()
       }
     }
@@ -925,11 +941,12 @@ class AdminApiKeyTemplateRoutesSpec
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
     "provided with apiKeyTemplateId which is not an UUID" should {
-      "return Bad Request" in {
-        val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
-        val requestWithIncorrectApiKeyTemplateId =
-          Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
+      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApiKeyTemplateId =
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
         for {
           response <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
           _ = response.status shouldBe Status.BadRequest
@@ -938,6 +955,13 @@ class AdminApiKeyTemplateRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter templateId"))
             )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = verifyZeroInteractions(apiKeyTemplateService)
         } yield ()
       }
     }
