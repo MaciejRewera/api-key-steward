@@ -460,6 +460,24 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
+          Left(ReferencedTenantDoesNotExistError(publicTemplateId_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplate.ReferencedTenantNotFound)
+              )
+            )
+        } yield ()
+      }
+
       "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateAlreadyExistsError" in authorizedFixture {
         apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
           Left(ApiKeyTemplateAlreadyExistsError(publicTemplateIdStr_1))
@@ -482,24 +500,6 @@ class AdminApiKeyTemplateRoutesSpec
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.InternalServerError
           _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicTemplateId_1))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplate.ReferencedTenantNotFound)
-              )
-            )
         } yield ()
       }
 
