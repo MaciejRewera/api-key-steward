@@ -58,9 +58,9 @@ class AdminApiKeyTemplateRoutesSpec
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, apiKeyTemplateService)(request, requiredPermissions)
 
-  "AdminApiKeyTemplateRoutes on POST /admin/api-key-templates" when {
+  "AdminApiKeyTemplateRoutes on POST /admin/templates" when {
 
-    val uri = Uri.unsafeFromString("/admin/api-key-templates")
+    val uri = Uri.unsafeFromString("/admin/templates")
     val requestBody = CreateApiKeyTemplateRequest(
       name = apiKeyTemplateName_1,
       description = apiKeyTemplateDescription_1,
@@ -518,9 +518,9 @@ class AdminApiKeyTemplateRoutesSpec
     }
   }
 
-  "AdminApiKeyTemplateRoutes on PUT /admin/api-key-templates/{apiKeyTemplateId}" when {
+  "AdminApiKeyTemplateRoutes on PUT /admin/templates/{publicTemplateId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-key-templates/$publicTemplateId_1")
+    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
     val requestBody = UpdateApiKeyTemplateRequest(
       name = apiKeyTemplateName_1,
       description = apiKeyTemplateDescription_1,
@@ -535,7 +535,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId =
         Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
@@ -849,16 +849,16 @@ class AdminApiKeyTemplateRoutesSpec
     }
   }
 
-  "AdminApiKeyTemplateRoutes on DELETE /admin/api-key-templates/{apiKeyTemplateId}" when {
+  "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{publicTemplateId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-key-templates/$publicTemplateId_1")
+    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     "provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId =
         Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
@@ -933,16 +933,16 @@ class AdminApiKeyTemplateRoutesSpec
     }
   }
 
-  "AdminApiKeyTemplateRoutes on GET /admin/api-key-templates/{apiKeyTemplateId}" when {
+  "AdminApiKeyTemplateRoutes on GET /admin/templates/{publicTemplateId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-key-templates/$publicTemplateId_1")
+    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
     "provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/api-key-templates/this-is-not-a-valid-uuid")
+      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId =
         Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
@@ -1015,9 +1015,9 @@ class AdminApiKeyTemplateRoutesSpec
     }
   }
 
-  "AdminApiKeyTemplateRoutes on GET /admin/api-key-templates" when {
+  "AdminApiKeyTemplateRoutes on GET /admin/templates" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-key-templates")
+    val uri = Uri.unsafeFromString(s"/admin/templates")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
