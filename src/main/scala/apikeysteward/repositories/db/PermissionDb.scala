@@ -4,6 +4,7 @@ import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
+import apikeysteward.repositories.db.PermissionDb.ColumnNamesSelectFragment
 import apikeysteward.repositories.db.entity.PermissionEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._
@@ -62,7 +63,7 @@ class PermissionDb()(implicit clock: Clock) {
       publicPermissionId: PermissionId
   ): doobie.ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
-      permissionToDeleteE <- getByPublicPermissionId(publicApplicationId, publicPermissionId).map(
+      permissionToDeleteE <- getBy(publicApplicationId, publicPermissionId).map(
         _.toRight(PermissionNotFoundError(publicApplicationId, publicPermissionId))
       )
       resultE <- permissionToDeleteE.traverse { result =>
@@ -70,11 +71,14 @@ class PermissionDb()(implicit clock: Clock) {
       }
     } yield resultE
 
-  def getByPublicPermissionId(
+  def getBy(
       publicApplicationId: ApplicationId,
       publicPermissionId: PermissionId
   ): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Queries.getBy(publicApplicationId, publicPermissionId).option
+
+  def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    Queries.getByPublicPermissionId(publicPermissionId).option
 
   def getAllBy(publicApplicationId: ApplicationId)(
       nameFragment: Option[String]
@@ -82,17 +86,6 @@ class PermissionDb()(implicit clock: Clock) {
     Queries.getAllBy(publicApplicationId)(nameFragment).stream
 
   private object Queries {
-
-    private val columnNamesSelectFragment =
-      fr"""SELECT
-            permission.id,
-            permission.application_id,
-            permission.public_permission_id,
-            permission.name,
-            permission.description,
-            permission.created_at,
-            permission.updated_at
-          """
 
     def insert(permissionEntity: PermissionEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO permission(application_id, public_permission_id, name, description, created_at, updated_at)
@@ -117,11 +110,18 @@ class PermissionDb()(implicit clock: Clock) {
         publicApplicationId: ApplicationId,
         publicPermissionId: PermissionId
     ): doobie.Query0[PermissionEntity.Read] =
-      (columnNamesSelectFragment ++
+      (ColumnNamesSelectFragment ++
         sql"""FROM permission
               JOIN application ON application.id = permission.application_id
               WHERE application.public_application_id = ${publicApplicationId.toString}
                 AND permission.public_permission_id = ${publicPermissionId.toString}
+             """).query[PermissionEntity.Read]
+
+    def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.Query0[PermissionEntity.Read] =
+      (ColumnNamesSelectFragment ++
+        sql"""FROM permission
+              JOIN application ON application.id = permission.application_id
+              WHERE permission.public_permission_id = ${publicPermissionId.toString}
              """).query[PermissionEntity.Read]
 
     def getAllBy(
@@ -148,4 +148,18 @@ class PermissionDb()(implicit clock: Clock) {
     }
 
   }
+}
+
+private[db] object PermissionDb {
+
+  val ColumnNamesSelectFragment =
+    fr"""SELECT
+            permission.id,
+            permission.application_id,
+            permission.public_permission_id,
+            permission.name,
+            permission.description,
+            permission.created_at,
+            permission.updated_at
+          """
 }

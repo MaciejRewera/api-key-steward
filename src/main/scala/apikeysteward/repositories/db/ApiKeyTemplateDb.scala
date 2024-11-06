@@ -2,13 +2,10 @@ package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
-  ApiKeyTemplateInsertionError,
-  ApiKeyTemplateNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApplicationEntity}
-import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
+import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
+import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
 import doobie.postgres.implicits._

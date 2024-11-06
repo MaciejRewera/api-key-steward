@@ -42,7 +42,7 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
 
   def getBy(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): IO[Option[Permission]] =
     (for {
-      permissionEntityRead <- OptionT(permissionDb.getByPublicPermissionId(publicApplicationId, publicPermissionId))
+      permissionEntityRead <- OptionT(permissionDb.getBy(publicApplicationId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
