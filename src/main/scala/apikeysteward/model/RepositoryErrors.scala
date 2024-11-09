@@ -358,8 +358,12 @@ object RepositoryErrors {
 
     case class ApiKeyTemplatesPermissionsNotFoundError(missingEntities: List[ApiKeyTemplatesPermissionsEntity.Write])
         extends ApiKeyTemplatesPermissionsDbError(
-          message =
-            s"Could not find ApiKeyTemplatesPermissions with (apiKeyTemplateId, permissionId): [${missingEntities.map(e => (e.apiKeyTemplateId, e.permissionId).toString).mkString(", ")}]."
+          message = {
+            val missingEntitiesFormatted =
+              missingEntities.map(e => (e.apiKeyTemplateId, e.permissionId).toString).mkString("[", ", ", "]")
+
+            s"Could not find ApiKeyTemplatesPermissions with (apiKeyTemplateId, permissionId): $missingEntitiesFormatted."
+          }
         )
   }
 

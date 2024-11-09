@@ -70,10 +70,10 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
   }
 
   private def scrapeApiKeyTemplateId(message: String): Long =
-    message.split("\\(api_key_template_id\\)=\\(").drop(1).head.takeWhile(_.isDigit).toLong
+    message.split("\\(api_key_template_id\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
 
   private def scrapePermissionId(message: String): Long =
-    message.split("\\(permission_id\\)=\\(").drop(1).head.takeWhile(_.isDigit).toLong
+    message.split("\\(permission_id\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
 
   def deleteMany(
       entities: List[ApiKeyTemplatesPermissionsEntity.Write]
@@ -120,7 +120,7 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
     Queries.getAllThatExistFrom(entitiesWrite).stream
 
   def getAllPermissionsForTemplate(
-    publicTemplateId: ApiKeyTemplateId
+      publicTemplateId: ApiKeyTemplateId
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
     Queries.getAllPermissionsForTemplate(publicTemplateId).stream
 
@@ -139,8 +139,8 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
         NonEmptyList.fromListUnsafe(entities.map(entity => (entity.apiKeyTemplateId, entity.permissionId)))
 
       sql"""DELETE FROM api_key_templates_permissions
-           |WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
-           |""".stripMargin.update
+            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
+           """.stripMargin.update
     }
 
     def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[ApiKeyTemplatesPermissionsEntity.Read] =
@@ -170,14 +170,13 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
             """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]
     }
 
-    def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] = {
+    def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
       (PermissionDb.ColumnNamesSelectFragment ++
-      sql"""FROM permission
+        sql"""FROM permission
             JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
             JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
             WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
            """.stripMargin).query[PermissionEntity.Read]
-    }
 
   }
 }

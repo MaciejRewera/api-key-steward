@@ -4,7 +4,6 @@ import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
-import apikeysteward.repositories.db.PermissionDb.ColumnNamesSelectFragment
 import apikeysteward.repositories.db.entity.PermissionEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._
@@ -110,7 +109,7 @@ class PermissionDb()(implicit clock: Clock) {
         publicApplicationId: ApplicationId,
         publicPermissionId: PermissionId
     ): doobie.Query0[PermissionEntity.Read] =
-      (ColumnNamesSelectFragment ++
+      (PermissionDb.ColumnNamesSelectFragment ++
         sql"""FROM permission
               JOIN application ON application.id = permission.application_id
               WHERE application.public_application_id = ${publicApplicationId.toString}
@@ -118,9 +117,8 @@ class PermissionDb()(implicit clock: Clock) {
              """).query[PermissionEntity.Read]
 
     def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.Query0[PermissionEntity.Read] =
-      (ColumnNamesSelectFragment ++
+      (PermissionDb.ColumnNamesSelectFragment ++
         sql"""FROM permission
-              JOIN application ON application.id = permission.application_id
               WHERE permission.public_permission_id = ${publicPermissionId.toString}
              """).query[PermissionEntity.Read]
 

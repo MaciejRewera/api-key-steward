@@ -5,7 +5,6 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApplicationsTestData.applicationEntityWrite_1
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
-import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
@@ -1195,7 +1194,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
             expectedPermissionEntities = List(
               permissionEntityRead_1.copy(id = permissionIds.head, applicationId = applicationId),
-              permissionEntityRead_2.copy(id = permissionIds(1), applicationId = applicationId),
+              permissionEntityRead_2.copy(id = permissionIds(1), applicationId = applicationId)
             )
 
             res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList

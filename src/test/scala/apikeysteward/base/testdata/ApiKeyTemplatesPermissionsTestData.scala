@@ -1,38 +1,43 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
-import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.apiKeyTemplateEntityRead_1
+import apikeysteward.base.testdata.PermissionsTestData.{
+  permissionEntityRead_1,
+  permissionEntityRead_2,
+  permissionEntityRead_3
+}
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesPermissionsEntity, PermissionEntity}
+import cats.implicits.catsSyntaxApplicativeId
 
 object ApiKeyTemplatesPermissionsTestData extends FixedClock {
 
-  val apiKeyTemplatesPermissionsEntityWrite_1: ApiKeyTemplatesPermissionsEntity.Write =
-    ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 11L, permissionId = 12L)
-  val apiKeyTemplatesPermissionsEntityRead_1: ApiKeyTemplatesPermissionsEntity.Read =
-    ApiKeyTemplatesPermissionsEntity.Read(
-      apiKeyTemplateId = 11L,
-      permissionId = 12L,
-      createdAt = nowInstant,
-      updatedAt = nowInstant
-    )
+  val apiKeyTemplateEntityWrapped: doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
+    Option(apiKeyTemplateEntityRead_1).pure[doobie.ConnectionIO]
 
-  val apiKeyTemplatesPermissionsEntityWrite_2: ApiKeyTemplatesPermissionsEntity.Write =
-    ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 21L, permissionId = 22L)
-  val apiKeyTemplatesPermissionsEntityRead_2: ApiKeyTemplatesPermissionsEntity.Read =
-    ApiKeyTemplatesPermissionsEntity.Read(
-      apiKeyTemplateId = 21L,
-      permissionId = 22L,
-      createdAt = nowInstant,
-      updatedAt = nowInstant
-    )
+  val permissionEntityWrapped_1: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    Option(permissionEntityRead_1).pure[doobie.ConnectionIO]
+  val permissionEntityWrapped_2: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    Option(permissionEntityRead_2).pure[doobie.ConnectionIO]
+  val permissionEntityWrapped_3: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    Option(permissionEntityRead_3).pure[doobie.ConnectionIO]
 
-  val apiKeyTemplatesPermissionsEntityWrite_3: ApiKeyTemplatesPermissionsEntity.Write =
-    ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 31L, permissionId = 32L)
-  val apiKeyTemplatesPermissionsEntityRead_3: ApiKeyTemplatesPermissionsEntity.Read =
-    ApiKeyTemplatesPermissionsEntity.Read(
-      apiKeyTemplateId = 31L,
-      permissionId = 32L,
-      createdAt = nowInstant,
-      updatedAt = nowInstant
-    )
+  val apiKeyTemplatesPermissionsEntitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write] = List(
+    ApiKeyTemplatesPermissionsEntity
+      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_1.id),
+    ApiKeyTemplatesPermissionsEntity
+      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_2.id),
+    ApiKeyTemplatesPermissionsEntity
+      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_3.id)
+  )
+  val apiKeyTemplatesPermissionsEntitiesRead: List[ApiKeyTemplatesPermissionsEntity.Read] =
+    apiKeyTemplatesPermissionsEntitiesWrite.map { entityWrite =>
+      ApiKeyTemplatesPermissionsEntity.Read(
+        apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+        permissionId = entityWrite.permissionId,
+        createdAt = nowInstant,
+        updatedAt = nowInstant
+      )
+    }
 
 }
