@@ -42,7 +42,6 @@ class ApiKeyTemplateServiceSpec
     reset(uuidGenerator, apiKeyTemplateRepository)
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
 
   "ApiKeyTemplateService on createApiKeyTemplate" when {
 
@@ -193,6 +192,8 @@ class ApiKeyTemplateServiceSpec
       }
     }
 
+    val testSqlException = new SQLException("Test SQL Exception")
+
     Seq(
       ReferencedTenantDoesNotExistError(publicTenantId_1),
       ApiKeyTemplateInsertionErrorImpl(testSqlException)
@@ -213,7 +214,7 @@ class ApiKeyTemplateServiceSpec
           } yield ()
         }
 
-        "return failed IO containing this error" in {
+        "return Left containing this error" in {
           uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
           apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(
             Left(insertionError)

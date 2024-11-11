@@ -40,7 +40,6 @@ class ApplicationServiceSpec
     reset(uuidGenerator, applicationRepository)
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
 
   "ApplicationService on createApplication" when {
 
@@ -231,6 +230,8 @@ class ApplicationServiceSpec
           .asserting(_ shouldBe Left(applicationAlreadyExistsError))
       }
     }
+
+    val testSqlException = new SQLException("Test SQL Exception")
 
     Seq(
       ReferencedTenantDoesNotExistError(publicTenantId_1),
