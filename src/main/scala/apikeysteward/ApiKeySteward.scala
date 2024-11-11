@@ -67,6 +67,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
         apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
+        apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
+          buildApiKeyTemplatesPermissionsRepository(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
@@ -84,6 +86,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository)
 
+        apiKeyTemplatesPermissionsService = new ApiKeyTemplatesPermissionsService(apiKeyTemplatesPermissionsRepository)
+
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
         permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
@@ -100,7 +104,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         ).allRoutes
         apiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes
 
-        apiKeyTemplateRoutes = new AdminApiKeyTemplateRoutes(jwtAuthorizer, apiKeyTemplateService).allRoutes
+        apiKeyTemplateRoutes = new AdminApiKeyTemplateRoutes(
+          jwtAuthorizer,
+          apiKeyTemplateService,
+          apiKeyTemplatesPermissionsService
+        ).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
         applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
@@ -152,9 +160,17 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
   private def buildApiKeyTemplateRepository(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
-    val apiKeyTemplateDb = new ApiKeyTemplateDb()
+    val apiKeyTemplateDb = new ApiKeyTemplateDb
 
     new ApiKeyTemplateRepository(tenantDb, apiKeyTemplateDb)(transactor)
+  }
+
+  private def buildApiKeyTemplatesPermissionsRepository(transactor: HikariTransactor[IO]) = {
+    val apiKeyTemplateDb = new ApiKeyTemplateDb
+    val permissionDb = new PermissionDb
+    val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+
+    new ApiKeyTemplatesPermissionsRepository(apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
   }
 
   private def buildTenantRepository(transactor: HikariTransactor[IO]) = {

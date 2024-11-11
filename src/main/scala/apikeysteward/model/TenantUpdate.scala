@@ -2,8 +2,8 @@ package apikeysteward.model
 
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.model.admin.tenant.UpdateTenantRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 case class TenantUpdate(
     tenantId: TenantId,
@@ -12,7 +12,8 @@ case class TenantUpdate(
 )
 
 object TenantUpdate {
-  implicit val codec: Codec[TenantUpdate] = deriveCodec[TenantUpdate]
+  implicit val encoder: Encoder[TenantUpdate] = deriveEncoder[TenantUpdate].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[TenantUpdate] = deriveDecoder[TenantUpdate]
 
   def from(tenantId: TenantId, updateTenantRequest: UpdateTenantRequest): TenantUpdate =
     TenantUpdate(

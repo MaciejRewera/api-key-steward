@@ -3,8 +3,8 @@ package apikeysteward.model
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.repositories.db.entity.PermissionEntity
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 import java.util.UUID
 
@@ -15,7 +15,8 @@ case class Permission(
 )
 
 object Permission {
-  implicit val codec: Codec[Permission] = deriveCodec[Permission]
+  implicit val encoder: Encoder[Permission] = deriveEncoder[Permission].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[Permission] = deriveDecoder[Permission]
 
   type PermissionId = UUID
 

@@ -2,8 +2,8 @@ package apikeysteward.model
 
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.routes.model.admin.application.UpdateApplicationRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 case class ApplicationUpdate(
     applicationId: ApplicationId,
@@ -12,7 +12,8 @@ case class ApplicationUpdate(
 )
 
 object ApplicationUpdate {
-  implicit val codec: Codec[ApplicationUpdate] = deriveCodec[ApplicationUpdate]
+  implicit val encoder: Encoder[ApplicationUpdate] = deriveEncoder[ApplicationUpdate].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[ApplicationUpdate] = deriveDecoder[ApplicationUpdate]
 
   def from(applicationId: ApplicationId, updateApplicationRequest: UpdateApplicationRequest): ApplicationUpdate =
     ApplicationUpdate(

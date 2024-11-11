@@ -3,13 +3,14 @@ package apikeysteward.model
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.UserEntity
 import apikeysteward.routes.model.admin.user.CreateUserRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 case class User(userId: UserId)
 
 object User {
-  implicit val codec: Codec[User] = deriveCodec[User]
+  implicit val encoder: Encoder[User] = deriveEncoder[User].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[User] = deriveDecoder[User]
 
   type UserId = String
 

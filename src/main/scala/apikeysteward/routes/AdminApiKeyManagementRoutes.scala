@@ -34,6 +34,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
 
               case Left(validationError: ValidationError) =>
                 ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
+
               case Left(_: InsertionError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }

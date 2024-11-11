@@ -1,4 +1,5 @@
 package apikeysteward.repositories.db.entity
+
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 
 import java.time.Instant

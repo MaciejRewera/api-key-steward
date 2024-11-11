@@ -471,12 +471,12 @@ class PermissionDbSpec
     }
   }
 
-  "PermissionDb on getByPublicPermissionId" when {
+  "PermissionDb on getBy" when {
 
     "there are no rows in the DB" should {
       "return empty Option" in {
         permissionDb
-          .getByPublicPermissionId(publicApplicationId_1, publicPermissionId_1)
+          .getBy(publicApplicationId_1, publicPermissionId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[PermissionEntity.Read])
       }
@@ -489,7 +489,7 @@ class PermissionDbSpec
           applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
 
-          res <- permissionDb.getByPublicPermissionId(publicApplicationId_1, publicPermissionId_2)
+          res <- permissionDb.getBy(publicApplicationId_1, publicPermissionId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[PermissionEntity.Read])
@@ -503,7 +503,7 @@ class PermissionDbSpec
           applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
 
-          res <- permissionDb.getByPublicPermissionId(publicApplicationId_2, publicPermissionId_1)
+          res <- permissionDb.getBy(publicApplicationId_2, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[PermissionEntity.Read])
@@ -517,7 +517,49 @@ class PermissionDbSpec
           applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
 
-          res <- permissionDb.getByPublicPermissionId(publicApplicationId_1, publicPermissionId_1)
+          res <- permissionDb.getBy(publicApplicationId_1, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Some(permissionEntityRead_1.copy(id = res.get.id, applicationId = res.get.applicationId))
+        }
+      }
+    }
+  }
+
+  "PermissionDb on getByPublicPermissionId" when {
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        permissionDb
+          .getByPublicPermissionId(publicPermissionId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicPermissionId" should {
+      "return empty Option" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+
+          res <- permissionDb.getByPublicPermissionId(publicPermissionId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same publicPermissionId" should {
+      "return this entity" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+
+          res <- permissionDb.getByPublicPermissionId(publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>

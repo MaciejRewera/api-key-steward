@@ -211,19 +211,19 @@ class PermissionRepositorySpec
   "PermissionRepository on getBy(:publicApplicationId, :publicPermissionId)" when {
 
     "should always call PermissionDb" in {
-      permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option(permissionEntityRead_1)
+      permissionDb.getBy(any[ApplicationId], any[PermissionId]) returns Option(permissionEntityRead_1)
         .pure[doobie.ConnectionIO]
 
       for {
         _ <- permissionRepository.getBy(publicApplicationId_1, publicPermissionId_1)
 
-        _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
+        _ = verify(permissionDb).getBy(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
       } yield ()
     }
 
     "PermissionDb returns empty Option" should {
       "return empty Option" in {
-        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option
+        permissionDb.getBy(any[ApplicationId], any[PermissionId]) returns Option
           .empty[PermissionEntity.Read]
           .pure[doobie.ConnectionIO]
 
@@ -233,7 +233,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns Option containing PermissionEntity" should {
       "return Option containing Permission" in {
-        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns Option(
+        permissionDb.getBy(any[ApplicationId], any[PermissionId]) returns Option(
           permissionEntityRead_1
         )
           .pure[doobie.ConnectionIO]
@@ -244,7 +244,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getByPublicPermissionId(any[ApplicationId], any[PermissionId]) returns testException
+        permissionDb.getBy(any[ApplicationId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
 
         permissionRepository
