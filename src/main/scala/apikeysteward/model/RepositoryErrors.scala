@@ -306,6 +306,11 @@ object RepositoryErrors {
         extends ApiKeyTemplatesPermissionsDbError(message)
     object ApiKeyTemplatesPermissionsInsertionError {
 
+      case class ApiKeyTemplatesPermissionsInsertionErrorImpl(cause: SQLException)
+          extends ApiKeyTemplatesPermissionsInsertionError(
+            message = s"An error occurred when inserting ApiKeyTemplatesPermissions: $cause"
+          )
+
       case class ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId: Long, permissionId: Long)
           extends ApiKeyTemplatesPermissionsInsertionError(
             message =
@@ -349,11 +354,6 @@ object RepositoryErrors {
             errorMessage = s"Permission with publicPermissionId = [$publicPermissionId] does not exist."
           )
       }
-
-      case class ApiKeyTemplatesPermissionsInsertionErrorImpl(cause: SQLException)
-          extends ApiKeyTemplatesPermissionsInsertionError(
-            message = s"An error occurred when inserting ApiKeyTemplatesPermissions: $cause"
-          )
     }
 
     case class ApiKeyTemplatesPermissionsNotFoundError(missingEntities: List[ApiKeyTemplatesPermissionsEntity.Write])
