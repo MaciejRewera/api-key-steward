@@ -20,8 +20,8 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminApiKeyTemplateEndpoints.createApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.updateApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.deleteApplicationEndpoint,
-    AdminApiKeyTemplateEndpoints.getSingleApplicationEndpoint,
-    AdminApiKeyTemplateEndpoints.searchApplicationsEndpoint
+    AdminApiKeyTemplateEndpoints.getSingleApiKeyTemplateEndpoint,
+    AdminApiKeyTemplateEndpoints.searchApiKeyTemplatesEndpoint
   ).map(_.withTag(Tags.AdminApiKeyTemplates))
 
   private val adminTenantEndpoints = List(

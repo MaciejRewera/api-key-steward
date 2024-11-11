@@ -1,24 +1,27 @@
 package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
 import apikeysteward.routes.model.admin.apikeytemplate._
+import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
+  CreateApiKeyTemplatePermissionsRequest,
+  DeleteApiKeyTemplatePermissionsRequest
+}
+import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.Duration
+import java.util.UUID
 
 private[routes] object AdminApiKeyTemplateEndpoints {
 
-  private val templateIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
+  private val templateIdPathParameter: EndpointInput.PathCapture[ApiKeyTemplateId] =
     path[ApiKeyTemplateId]("templateId").description("Unique ID of the Template.")
 
   val createApiKeyTemplateEndpoint: Endpoint[
@@ -87,7 +90,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleApplicationEndpoint
+  val getSingleApiKeyTemplateEndpoint
       : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetSingleApiKeyTemplateResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Template for provided templateId.")
@@ -100,7 +103,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val searchApplicationsEndpoint
+  val searchApiKeyTemplatesEndpoint
       : Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetMultipleApiKeyTemplatesResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get all Templates for provided tenantId.")
@@ -110,6 +113,65 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .out(
         jsonBody[GetMultipleApiKeyTemplatesResponse]
           .example(GetMultipleApiKeyTemplatesResponse(templates = List.fill(3)(EndpointsBase.ApiKeyTemplateExample)))
+      )
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val associatePermissionsWithApiKeyTemplateEndpoint
+      : Endpoint[AccessToken, (ApiKeyTemplateId, CreateApiKeyTemplatePermissionsRequest), ErrorInfo, StatusCode, Any] =
+    EndpointsBase.authenticatedEndpointBase.post
+      .description("""Associate Permissions with a Template.
+                     |Add one or more Permissions to a specified Template.
+          """.stripMargin)
+      .in("admin" / "templates" / templateIdPathParameter / "permissions")
+      .in(
+        jsonBody[CreateApiKeyTemplatePermissionsRequest]
+          .example(
+            CreateApiKeyTemplatePermissionsRequest(
+              List(
+                UUID.fromString("f877c2e5-f820-4e84-a706-919a630337ec"),
+                UUID.fromString("af7b4c89-481a-4ab7-ad10-b976615a0de2"),
+                UUID.fromString("06022369-8ca1-43c3-ab49-d176cc1803d9")
+              )
+            )
+          )
+      )
+      .out(statusCode.description(StatusCode.Created, "Permissions successfully associated with the Template."))
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val removePermissionsFromApiKeyTemplateEndpoint
+      : Endpoint[AccessToken, (ApiKeyTemplateId, DeleteApiKeyTemplatePermissionsRequest), ErrorInfo, StatusCode, Any] =
+    EndpointsBase.authenticatedEndpointBase.delete
+      .description(
+        """Remove Permissions from a Template.
+          |Remove one or more Permissions from a specified Template.""".stripMargin
+      )
+      .in("admin" / "templates" / templateIdPathParameter / "permissions")
+      .in(
+        jsonBody[DeleteApiKeyTemplatePermissionsRequest]
+          .example(
+            DeleteApiKeyTemplatePermissionsRequest(
+              List(
+                UUID.fromString("f877c2e5-f820-4e84-a706-919a630337ec"),
+                UUID.fromString("af7b4c89-481a-4ab7-ad10-b976615a0de2"),
+                UUID.fromString("06022369-8ca1-43c3-ab49-d176cc1803d9")
+              )
+            )
+          )
+      )
+      .out(statusCode.description(StatusCode.Ok, "Permissions successfully removed from the Template."))
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val getAllPermissionsForTemplateEndpoint
+      : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetMultiplePermissionsResponse), Any] =
+    EndpointsBase.authenticatedEndpointBase.get
+      .description("Get all Permissions associated with a specified Template.")
+      .in("admin" / "templates" / templateIdPathParameter / "permissions")
+      .out(statusCode.description(StatusCode.Ok, "Permissions found."))
+      .out(
+        jsonBody[GetMultiplePermissionsResponse]
+          .example(GetMultiplePermissionsResponse(permissions = List.fill(3)(EndpointsBase.PermissionExample)))
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 

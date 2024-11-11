@@ -19,7 +19,16 @@ private[routes] object ApiErrorMessages {
   object AdminApiKeyTemplate {
     val ApiKeyTemplateNotFound = "No Template found for provided templateId."
     val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
+  }
 
+  object AdminApiKeyTemplatesPermissions {
+    val ApiKeyTemplatesPermissionsAlreadyExists =
+      "At least one of provided permissionIds is already associated with given Template."
+    val ReferencedApiKeyTemplateNotFound = "No Template found for provided templateId."
+    val ReferencedPermissionNotFound = "At least one Permission cannot be found for provided permissionIds."
+
+    val ApiKeyTemplatesPermissionsNotFound =
+      "At least one Template-Permission association does not exist for provided combination of templateId and permissionIds."
   }
 
   object AdminTenant {

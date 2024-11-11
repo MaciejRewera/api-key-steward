@@ -3,6 +3,10 @@ package apikeysteward.routes.model
 import apikeysteward.routes.model.TapirCustomValidators.{ValidateList, ValidateOption}
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
+import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
+  CreateApiKeyTemplatePermissionsRequest,
+  DeleteApiKeyTemplatePermissionsRequest
+}
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
@@ -55,6 +59,16 @@ object TapirCustomSchemas {
       .modify(_.name)(validateNameLength280)
       .modify(_.description)(validateDescriptionLength500)
       .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
+
+  val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatePermissionsRequest] =
+    Schema
+      .derived[CreateApiKeyTemplatePermissionsRequest]
+      .modify(_.permissionIds)(validateListNotEmpty)
+
+  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatePermissionsRequest] =
+    Schema
+      .derived[DeleteApiKeyTemplatePermissionsRequest]
+      .modify(_.permissionIds)(validateListNotEmpty)
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
     Schema
@@ -161,6 +175,9 @@ object TapirCustomSchemas {
       .description(
         s"Time-to-live for the API Key in ${TtlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
       )
+
+  private def validateListNotEmpty[T](schema: Schema[List[T]]): Schema[List[T]] =
+    schema.validate(Validator.nonEmpty)
 
   private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] = {
     val infValidator = Validator.custom[Duration](duration =>
