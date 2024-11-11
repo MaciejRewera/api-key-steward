@@ -21,7 +21,10 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminApiKeyTemplateEndpoints.updateApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.deleteApplicationEndpoint,
     AdminApiKeyTemplateEndpoints.getSingleApiKeyTemplateEndpoint,
-    AdminApiKeyTemplateEndpoints.searchApiKeyTemplatesEndpoint
+    AdminApiKeyTemplateEndpoints.searchApiKeyTemplatesEndpoint,
+    AdminApiKeyTemplateEndpoints.associatePermissionsWithApiKeyTemplateEndpoint,
+    AdminApiKeyTemplateEndpoints.removePermissionsFromApiKeyTemplateEndpoint,
+    AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint,
   ).map(_.withTag(Tags.AdminApiKeyTemplates))
 
   private val adminTenantEndpoints = List(
@@ -90,7 +93,7 @@ object Documentation extends OpenAPIDocsInterpreter {
 
   private object Tags {
     val AdminApiKeys = "API keys"
-    val AdminApiKeyTemplates = "API key Templates"
+    val AdminApiKeyTemplates = "Templates"
     val AdminTenants = "Tenants"
     val AdminApplications = "Applications"
     val AdminPermissions = "Permissions"
