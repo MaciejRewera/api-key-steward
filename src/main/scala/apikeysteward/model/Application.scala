@@ -4,8 +4,8 @@ import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
 import apikeysteward.routes.model.admin.application.CreateApplicationRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 import java.util.UUID
 
@@ -18,7 +18,8 @@ case class Application(
 )
 
 object Application {
-  implicit val codec: Codec[Application] = deriveCodec[Application]
+  implicit val encoder: Encoder[Application] = deriveEncoder[Application].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[Application] = deriveDecoder[Application]
 
   type ApplicationId = UUID
 

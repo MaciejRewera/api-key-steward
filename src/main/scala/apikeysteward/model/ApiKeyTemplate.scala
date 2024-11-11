@@ -4,8 +4,8 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 import apikeysteward.routes.model.CodecCommons
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 import java.util.UUID
 import scala.concurrent.duration.Duration
@@ -20,7 +20,8 @@ case class ApiKeyTemplate(
 )
 
 object ApiKeyTemplate extends CodecCommons {
-  implicit val codec: Codec[ApiKeyTemplate] = deriveCodec[ApiKeyTemplate]
+  implicit val encoder: Encoder[ApiKeyTemplate] = deriveEncoder[ApiKeyTemplate].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[ApiKeyTemplate] = deriveDecoder[ApiKeyTemplate]
 
   type ApiKeyTemplateId = UUID
 

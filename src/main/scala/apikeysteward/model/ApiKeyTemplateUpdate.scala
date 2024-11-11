@@ -3,8 +3,8 @@ package apikeysteward.model
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.routes.model.CodecCommons
 import apikeysteward.routes.model.admin.apikeytemplate.UpdateApiKeyTemplateRequest
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 
 import scala.concurrent.duration.Duration
 
@@ -17,7 +17,9 @@ case class ApiKeyTemplateUpdate(
 )
 
 object ApiKeyTemplateUpdate extends CodecCommons {
-  implicit val codec: Codec[ApiKeyTemplateUpdate] = deriveCodec[ApiKeyTemplateUpdate]
+  implicit val encoder: Encoder[ApiKeyTemplateUpdate] =
+    deriveEncoder[ApiKeyTemplateUpdate].mapJson(_.deepDropNullValues)
+  implicit val decoder: Decoder[ApiKeyTemplateUpdate] = deriveDecoder[ApiKeyTemplateUpdate]
 
   def from(
       templateId: ApiKeyTemplateId,
