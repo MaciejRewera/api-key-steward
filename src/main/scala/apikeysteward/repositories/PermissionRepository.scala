@@ -1,5 +1,6 @@
 package apikeysteward.repositories
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
@@ -45,6 +46,14 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
       permissionEntityRead <- OptionT(permissionDb.getBy(publicApplicationId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
+
+  def getAllFor(publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
+    permissionDb
+      .getAllPermissionsForTemplate(publicTemplateId)
+      .map(Permission.from)
+      .compile
+      .toList
+      .transact(transactor)
 
   def getAllBy(publicApplicationId: ApplicationId)(nameFragment: Option[String]): IO[List[Permission]] =
     (for {

@@ -13,7 +13,7 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikeytemplate._
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
-import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService}
+import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService, PermissionService}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -23,7 +23,8 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 class AdminApiKeyTemplateRoutes(
     jwtAuthorizer: JwtAuthorizer,
     apiKeyTemplateService: ApiKeyTemplateService,
-    apiKeyTemplatesPermissionsService: ApiKeyTemplatesPermissionsService
+    apiKeyTemplatesPermissionsService: ApiKeyTemplatesPermissionsService,
+    permissionService: PermissionService
 ) {
 
   private val serverInterpreter =
@@ -191,7 +192,7 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
-          apiKeyTemplatesPermissionsService.getAllPermissionsForApiKeyTemplate(apiKeyTemplateId).map { permissions =>
+          permissionService.getAllFor(apiKeyTemplateId).map { permissions =>
             (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
           }
         }

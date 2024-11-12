@@ -8,7 +8,8 @@ import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, PermissionEntity}
+import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{PermissionId, TemplateId}
+import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
@@ -16,42 +17,17 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ApiKeyTemplatesPermissionsDbSpec
-    extends AsyncWordSpec
-    with AsyncIOSpec
-    with Matchers
-    with FixedClock
-    with DatabaseIntegrationSpec
-    with EitherValues {
+private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
 
-  override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <-
-      sql"TRUNCATE tenant, application, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
-  } yield ()
+  type PermissionId = Long
+  type TemplateId = Long
 
-  private type PermissionId = Long
-  private type TemplateId = Long
-
-  private val tenantDb = new TenantDb
-  private val applicationDb = new ApplicationDb
-  private val permissionDb = new PermissionDb
-  private val apiKeyTemplateDb = new ApiKeyTemplateDb
-
-  private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
-
-  private object Queries {
-    import doobie.postgres._
-    import doobie.postgres.implicits._
-
-    val getAllAssociations: doobie.ConnectionIO[List[ApiKeyTemplatesPermissionsEntity.Read]] =
-      sql"SELECT * FROM api_key_templates_permissions"
-        .query[ApiKeyTemplatesPermissionsEntity.Read]
-        .stream
-        .compile
-        .toList
-  }
-
-  private def insertPrerequisiteData(): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+  def insertPrerequisiteData(
+      tenantDb: TenantDb,
+      applicationDb: ApplicationDb,
+      permissionDb: PermissionDb,
+      apiKeyTemplateDb: ApiKeyTemplateDb
+  ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       applicationId <- applicationDb
@@ -81,6 +57,42 @@ class ApiKeyTemplatesPermissionsDbSpec
       templateIds = List(templateId_1, templateId_2, templateId_3)
       permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
     } yield (applicationId, templateIds, permissionIds)
+}
+
+class ApiKeyTemplatesPermissionsDbSpec
+    extends AsyncWordSpec
+    with AsyncIOSpec
+    with Matchers
+    with FixedClock
+    with DatabaseIntegrationSpec
+    with EitherValues {
+
+  override protected val resetDataQuery: ConnectionIO[_] = for {
+    _ <-
+      sql"TRUNCATE tenant, application, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
+  } yield ()
+
+  private val tenantDb = new TenantDb
+  private val applicationDb = new ApplicationDb
+  private val permissionDb = new PermissionDb
+  private val apiKeyTemplateDb = new ApiKeyTemplateDb
+
+  private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+
+  private object Queries {
+    import doobie.postgres._
+    import doobie.postgres.implicits._
+
+    val getAllAssociations: ConnectionIO[List[ApiKeyTemplatesPermissionsEntity.Read]] =
+      sql"SELECT * FROM api_key_templates_permissions"
+        .query[ApiKeyTemplatesPermissionsEntity.Read]
+        .stream
+        .compile
+        .toList
+  }
+
+  private def insertPrerequisiteData(): ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+    ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
   private def convertEntitiesWriteToRead(
       entitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write]
@@ -851,237 +863,6 @@ class ApiKeyTemplatesPermissionsDbSpec
           res.size shouldBe 3
           val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedToBePresent)
           res should contain theSameElementsAs expectedEntities
-        }
-      }
-    }
-  }
-
-  "ApiKeyTemplatesPermissionsDb on getAllPermissionsForTemplate" when {
-
-    "there are NO ApiKeyTemplates in the DB" should {
-      "return empty Stream" in {
-        apiKeyTemplatesPermissionsDb
-          .getAllPermissionsForTemplate(publicTemplateId_1)
-          .compile
-          .toList
-          .transact(transactor)
-          .asserting(_ shouldBe List.empty[PermissionEntity.Read])
-      }
-    }
-
-    "there is an ApiKeyTemplate in the DB, but with a different publicTemplateId" should {
-      "return empty Stream" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-            .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
-          )
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-          res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_2).compile.toList
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
-      }
-    }
-
-    "there is an ApiKeyTemplate in the DB, but there are no ApiKeyTemplatesPermissions for this Template" should {
-      "return empty Stream" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-
-          res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
-      }
-    }
-
-    "there is an ApiKeyTemplate in the DB with a single ApiKeyTemplatesPermissions" should {
-      "return this single ApiKeyTemplatesPermissions" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-            .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
-          )
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-          expectedPermissionEntities = List(
-            permissionEntityRead_1.copy(id = permissionId, applicationId = applicationId)
-          )
-
-          res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
-        } yield (res, expectedPermissionEntities)).transact(transactor)
-
-        result.asserting { case (res, expectedPermissionEntities) =>
-          res shouldBe expectedPermissionEntities
-        }
-      }
-    }
-
-    "there is an ApiKeyTemplate in the DB with multiple ApiKeyTemplatesPermissions" should {
-      "return all these ApiKeyTemplatesPermissions" in {
-        val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          permissionId_1 <- permissionDb
-            .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-            .map(_.value.id)
-          permissionId_2 <- permissionDb
-            .insert(permissionEntityWrite_2.copy(applicationId = applicationId))
-            .map(_.value.id)
-          permissionId_3 <- permissionDb
-            .insert(permissionEntityWrite_3.copy(applicationId = applicationId))
-            .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-
-          preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_1),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_2),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_3)
-          )
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-          expectedPermissionEntities = List(
-            permissionEntityRead_1.copy(id = permissionId_1, applicationId = applicationId),
-            permissionEntityRead_2.copy(id = permissionId_2, applicationId = applicationId),
-            permissionEntityRead_3.copy(id = permissionId_3, applicationId = applicationId)
-          )
-
-          res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
-        } yield (res, expectedPermissionEntities)).transact(transactor)
-
-        result.asserting { case (res, expectedPermissionEntities) =>
-          res.size shouldBe 3
-          res should contain theSameElementsAs expectedPermissionEntities
-        }
-      }
-    }
-
-    "there are several ApiKeyTemplates in the DB with associated ApiKeyTemplatesPermissions" when {
-
-      "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {
-        "return empty Stream" in {
-          val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (_, templateIds, permissionIds) = dataIds
-
-            preExistingEntities = List(
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
-            )
-            _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-            res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_3).compile.toList
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
-        }
-      }
-
-      "there is a single ApiKeyTemplatesPermissions for given publicTemplateId" should {
-        "return this single ApiKeyTemplatesPermissions" in {
-          val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (applicationId, templateIds, permissionIds) = dataIds
-
-            preExistingEntityExpectedToBeFetched = List(
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
-            )
-
-            preExistingEntities = preExistingEntityExpectedToBeFetched ++ List(
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
-            )
-            _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-            expectedPermissionEntities = List(
-              permissionEntityRead_1.copy(id = permissionIds.head, applicationId = applicationId)
-            )
-
-            res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
-          } yield (res, expectedPermissionEntities)).transact(transactor)
-
-          result.asserting { case (res, expectedPermissionEntities) =>
-            res.size shouldBe 1
-            res shouldBe expectedPermissionEntities
-          }
-        }
-      }
-
-      "there are several ApiKeyTemplatesPermissions got given publicTemplateId" should {
-        "return all these ApiKeyTemplatesPermissions" in {
-          val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (applicationId, templateIds, permissionIds) = dataIds
-
-            preExistingEntitiesExpectedToBeFetched = List(
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1))
-            )
-
-            preExistingEntities = preExistingEntitiesExpectedToBeFetched ++ List(
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
-              ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
-            )
-            _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
-
-            expectedPermissionEntities = List(
-              permissionEntityRead_1.copy(id = permissionIds.head, applicationId = applicationId),
-              permissionEntityRead_2.copy(id = permissionIds(1), applicationId = applicationId)
-            )
-
-            res <- apiKeyTemplatesPermissionsDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
-          } yield (res, expectedPermissionEntities)).transact(transactor)
-
-          result.asserting { case (res, expectedPermissionEntities) =>
-            res.size shouldBe 2
-            res should contain theSameElementsAs expectedPermissionEntities
-          }
         }
       }
     }

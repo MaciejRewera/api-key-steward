@@ -114,11 +114,6 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
   ): Stream[doobie.ConnectionIO, ApiKeyTemplatesPermissionsEntity.Read] =
     Queries.getAllThatExistFrom(entitiesWrite).stream
 
-  def getAllPermissionsForTemplate(
-      publicTemplateId: ApiKeyTemplateId
-  ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllPermissionsForTemplate(publicTemplateId).stream
-
   private object Queries {
 
     def insertMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write], now: Instant): doobie.ConnectionIO[Int] = {
@@ -153,14 +148,6 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
             WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
             """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]
     }
-
-    def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
-      (PermissionDb.ColumnNamesSelectFragment ++
-        sql"""FROM permission
-            JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
-            JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
-            WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
-           """.stripMargin).query[PermissionEntity.Read]
 
   }
 }

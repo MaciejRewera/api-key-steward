@@ -110,6 +110,7 @@ class ApplicationRepository(tenantDb: TenantDb, applicationDb: ApplicationDb, pe
         .getAllBy(UUID.fromString(applicationEntity.publicApplicationId))(None)
         .compile
         .toList
+
       resultApplication = Application.from(applicationEntity, permissionEntities)
     } yield resultApplication
 }

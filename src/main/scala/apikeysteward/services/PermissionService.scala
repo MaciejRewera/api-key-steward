@@ -1,5 +1,6 @@
 package apikeysteward.services
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
@@ -69,6 +70,9 @@ class PermissionService(
 
   def getBy(applicationId: ApplicationId, permissionId: PermissionId): IO[Option[Permission]] =
     permissionRepository.getBy(applicationId, permissionId)
+
+  def getAllFor(templateId: ApiKeyTemplateId): IO[List[Permission]] =
+    permissionRepository.getAllFor(templateId)
 
   def getAllBy(
       applicationId: ApplicationId

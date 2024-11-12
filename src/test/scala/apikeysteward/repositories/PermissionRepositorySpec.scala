@@ -1,8 +1,10 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApplicationsTestData.{applicationEntityRead_1, publicApplicationId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
@@ -249,6 +251,56 @@ class PermissionRepositorySpec
 
         permissionRepository
           .getBy(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "PermissionRepository on getAllPermissionsForTemplate" when {
+
+    "should always call PermissionDb" in {
+      permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+      for {
+        _ <- permissionRepository.getAllFor(publicTemplateId_1)
+
+        _ = verify(permissionDb).getAllPermissionsForTemplate(eqTo(publicTemplateId_1))
+      } yield ()
+    }
+
+    "PermissionDb returns empty Stream" should {
+      "return empty List" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List.empty[Permission])
+      }
+    }
+
+    "PermissionDb returns PermissionEntities in Stream" should {
+      "return List containing Permissions" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(
+          permissionEntityRead_1,
+          permissionEntityRead_2,
+          permissionEntityRead_3
+        )
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
+      }
+    }
+
+    "PermissionDb returns exception" should {
+      "return failed IO containing this exception" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](
+          testException
+        )
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

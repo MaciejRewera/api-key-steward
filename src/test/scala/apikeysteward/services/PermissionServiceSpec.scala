@@ -1,9 +1,11 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApplicationsTestData.{application_1, publicApplicationIdStr_1, publicApplicationId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
@@ -319,6 +321,53 @@ class PermissionServiceSpec
 
         permissionService
           .getBy(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "PermissionService on getAllPermissionsForApiKeyTemplate" should {
+
+    "call PermissionRepository" in {
+      permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
+        List(permission_1, permission_2, permission_3)
+      )
+
+      for {
+        _ <- permissionService.getAllFor(publicTemplateId_1)
+
+        _ = verify(permissionRepository).getAllFor(eqTo(publicTemplateId_1))
+      } yield ()
+    }
+
+    "return the value returned by PermissionRepository" when {
+
+      "PermissionRepository returns empty List" in {
+        permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty[Permission])
+
+        permissionService
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List.empty[Permission])
+      }
+
+      "PermissionRepository returns non-empty List" in {
+        permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
+          List(permission_1, permission_2, permission_3)
+        )
+
+        permissionService
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
+      }
+    }
+
+    "return failed IO" when {
+      "PermissionRepository returns failed IO" in {
+        permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+
+        permissionService
+          .getAllFor(publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

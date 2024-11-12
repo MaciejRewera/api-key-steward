@@ -1,7 +1,6 @@
 package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
@@ -23,8 +22,5 @@ class ApiKeyTemplatesPermissionsService(apiKeyTemplatesPermissionsRepository: Ap
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
     apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds)
-
-  def getAllPermissionsForApiKeyTemplate(templateId: ApiKeyTemplateId): IO[List[Permission]] =
-    apiKeyTemplatesPermissionsRepository.getAllPermissionsForTemplate(templateId)
 
 }

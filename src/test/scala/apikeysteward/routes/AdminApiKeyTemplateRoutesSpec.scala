@@ -25,7 +25,7 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.apikeytemplate._
 import apikeysteward.routes.model.admin.apikeytemplatespermissions.CreateApiKeyTemplatePermissionsRequest
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
-import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService}
+import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService, PermissionService}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
@@ -56,12 +56,14 @@ class AdminApiKeyTemplateRoutesSpec
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val apiKeyTemplateService = mock[ApiKeyTemplateService]
   private val apiKeyTemplatesPermissionsService = mock[ApiKeyTemplatesPermissionsService]
+  private val permissionService = mock[PermissionService]
 
   private val adminRoutes: HttpApp[IO] =
     new AdminApiKeyTemplateRoutes(
       jwtAuthorizer,
       apiKeyTemplateService,
-      apiKeyTemplatesPermissionsService
+      apiKeyTemplatesPermissionsService,
+      permissionService
     ).allRoutes.orNotFound
 
   private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
@@ -69,7 +71,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, apiKeyTemplateService, apiKeyTemplatesPermissionsService)
+    reset(jwtAuthorizer, apiKeyTemplateService, apiKeyTemplatesPermissionsService, permissionService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
@@ -1594,23 +1596,19 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
-      "call ApiKeyTemplatesPermissionsService" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.getAllPermissionsForApiKeyTemplate(any[ApiKeyTemplateId]) returns IO.pure(
-          List.empty
-        )
+      "call PermissionService" in authorizedFixture {
+        permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(apiKeyTemplatesPermissionsService).getAllPermissionsForApiKeyTemplate(eqTo(publicTemplateId_1))
+          _ = verify(permissionService).getAllFor(eqTo(publicTemplateId_1))
         } yield ()
       }
 
-      "return successful value returned by ApiKeyTemplatesPermissionsService" when {
+      "return successful value returned by PermissionService" when {
 
-        "ApiKeyTemplatesPermissionsService returns an empty List" in authorizedFixture {
-          apiKeyTemplatesPermissionsService.getAllPermissionsForApiKeyTemplate(any[ApiKeyTemplateId]) returns IO.pure(
-            List.empty
-          )
+        "PermissionService returns an empty List" in authorizedFixture {
+          permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
           for {
             response <- adminRoutes.run(request)
@@ -1621,8 +1619,8 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "ApiKeyTemplatesPermissionsService returns a List with several elements" in authorizedFixture {
-          apiKeyTemplatesPermissionsService.getAllPermissionsForApiKeyTemplate(any[ApiKeyTemplateId]) returns IO.pure(
+        "PermissionService returns a List with several elements" in authorizedFixture {
+          permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
             List(permission_1, permission_2, permission_3)
           )
 
@@ -1638,9 +1636,8 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "return Internal Server Error when ApiKeyTemplatesPermissionsService returns failed IO" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.getAllPermissionsForApiKeyTemplate(any[ApiKeyTemplateId]) returns IO
-          .raiseError(testException)
+      "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
+        permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
