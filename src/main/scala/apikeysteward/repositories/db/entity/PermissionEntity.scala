@@ -27,7 +27,7 @@ object PermissionEntity {
     def from(applicationId: Long, permission: Permission): PermissionEntity.Write =
       PermissionEntity.Write(
         applicationId = applicationId,
-        publicPermissionId = permission.permissionId.toString,
+        publicPermissionId = permission.publicPermissionId.toString,
         name = permission.name,
         description = permission.description
       )

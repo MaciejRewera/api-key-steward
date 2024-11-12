@@ -17,48 +17,6 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
-
-  type PermissionId = Long
-  type TemplateId = Long
-
-  def insertPrerequisiteData(
-      tenantDb: TenantDb,
-      applicationDb: ApplicationDb,
-      permissionDb: PermissionDb,
-      apiKeyTemplateDb: ApiKeyTemplateDb
-  ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
-    for {
-      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-      applicationId <- applicationDb
-        .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
-
-      permissionId_1 <- permissionDb
-        .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_2 <- permissionDb
-        .insert(permissionEntityWrite_2.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_3 <- permissionDb
-        .insert(permissionEntityWrite_3.copy(applicationId = applicationId))
-        .map(_.value.id)
-
-      templateId_1 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_2 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_3 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
-        .map(_.value.id)
-
-      templateIds = List(templateId_1, templateId_2, templateId_3)
-      permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
-    } yield (applicationId, templateIds, permissionIds)
-}
-
 class ApiKeyTemplatesPermissionsDbSpec
     extends AsyncWordSpec
     with AsyncIOSpec
@@ -485,6 +443,344 @@ class ApiKeyTemplatesPermissionsDbSpec
     }
   }
 
+  "ApiKeyTemplatesPermissionsDb on deleteAllForPermission" when {
+
+    "there are no rows in the DB" should {
+
+      "return zero" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 0)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+      }
+    }
+
+    "there is a row in the DB, but for a different Permission" should {
+
+      "return zero" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 0)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_2)
+          res <- Queries.getAllAssociations
+        } yield (res, preExistingEntities)).transact(transactor)
+
+        result.asserting { case (allEntities, preExistingEntities) =>
+          allEntities.size shouldBe 1
+          val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there is a row in the DB for given Permission" should {
+
+      "return one" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 1)
+      }
+
+      "delete this row from the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+      }
+    }
+
+    "there are several rows in the DB, some of which are for given Permission" should {
+
+      "return the number of deleted rows" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds(1))
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 3)
+      }
+
+      "delete these rows from the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds.head)
+          )
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId_1)
+          res <- Queries.getAllAssociations
+        } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 2
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+  }
+
+  "ApiKeyTemplatesPermissionsDb on deleteAllForApiKeyTemplate" when {
+
+    "there are no rows in the DB" should {
+
+      "return zero" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 0)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+      }
+    }
+
+    "there is a row in the DB, but for a different Permission" should {
+
+      "return zero" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 0)
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_2)
+          res <- Queries.getAllAssociations
+        } yield (res, preExistingEntities)).transact(transactor)
+
+        result.asserting { case (allEntities, preExistingEntities) =>
+          allEntities.size shouldBe 1
+          val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there is a row in the DB for given Permission" should {
+
+      "return one" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 1)
+      }
+
+      "delete this row from the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+      }
+    }
+
+    "there are several rows in the DB, some of which are for given Permission" should {
+
+      "return the number of deleted rows" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(2)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds(1))
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe 3)
+      }
+
+      "delete these rows from the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, permissionIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(2))
+          )
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId_1)
+          res <- Queries.getAllAssociations
+        } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 2
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+  }
+
   "ApiKeyTemplatesPermissionsDb on deleteMany" when {
 
     "there are no rows in the DB" should {
@@ -868,4 +1164,46 @@ class ApiKeyTemplatesPermissionsDbSpec
     }
   }
 
+}
+
+private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
+
+  type PermissionId = Long
+  type TemplateId = Long
+
+  def insertPrerequisiteData(
+    tenantDb: TenantDb,
+    applicationDb: ApplicationDb,
+    permissionDb: PermissionDb,
+    apiKeyTemplateDb: ApiKeyTemplateDb
+  ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+    for {
+      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+      applicationId <- applicationDb
+        .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
+        .map(_.value.id)
+
+      permissionId_1 <- permissionDb
+        .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+        .map(_.value.id)
+      permissionId_2 <- permissionDb
+        .insert(permissionEntityWrite_2.copy(applicationId = applicationId))
+        .map(_.value.id)
+      permissionId_3 <- permissionDb
+        .insert(permissionEntityWrite_3.copy(applicationId = applicationId))
+        .map(_.value.id)
+
+      templateId_1 <- apiKeyTemplateDb
+        .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+        .map(_.value.id)
+      templateId_2 <- apiKeyTemplateDb
+        .insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
+        .map(_.value.id)
+      templateId_3 <- apiKeyTemplateDb
+        .insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
+        .map(_.value.id)
+
+      templateIds = List(templateId_1, templateId_2, templateId_3)
+      permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
+    } yield (applicationId, templateIds, permissionIds)
 }

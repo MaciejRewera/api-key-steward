@@ -107,7 +107,8 @@ class PermissionDb()(implicit clock: Clock) {
     def delete(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM permission
             USING application
-            WHERE application.public_application_id = ${publicApplicationId.toString}
+            WHERE permission.application_id = application.id
+              AND application.public_application_id = ${publicApplicationId.toString}
               AND permission.public_permission_id = ${publicPermissionId.toString}
            """.stripMargin.update
 

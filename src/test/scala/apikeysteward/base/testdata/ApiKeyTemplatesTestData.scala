@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3, permission_4}
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
@@ -46,7 +47,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_1,
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
-    apiKeyPrefix = apiKeyPrefix_1
+    apiKeyPrefix = apiKeyPrefix_1,
+    permissions = List(permission_1)
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
@@ -54,7 +56,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_2,
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
-    apiKeyPrefix = apiKeyPrefix_2
+    apiKeyPrefix = apiKeyPrefix_2,
+    permissions = List(permission_2)
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
@@ -62,7 +65,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_3,
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
-    apiKeyPrefix = apiKeyPrefix_3
+    apiKeyPrefix = apiKeyPrefix_3,
+    permissions = List(permission_3)
   )
 
   val apiKeyTemplateUpdated: ApiKeyTemplate = ApiKeyTemplate(
@@ -71,7 +75,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescriptionUpdated,
     isDefault = true,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated,
-    apiKeyPrefix = apiKeyPrefix_4
+    apiKeyPrefix = apiKeyPrefix_4,
+    permissions = List(permission_4)
   )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(

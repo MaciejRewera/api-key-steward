@@ -101,7 +101,7 @@ class PermissionServiceSpec
 
       "call UuidGenerator and PermissionRepository again" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
-        val insertedPermission = permission_1.copy(permissionId = publicPermissionId_2)
+        val insertedPermission = permission_1.copy(publicPermissionId = publicPermissionId_2)
         permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
@@ -118,7 +118,7 @@ class PermissionServiceSpec
 
       "return the second created Permission returned by PermissionRepository" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
-        val insertedPermission = permission_1.copy(permissionId = publicPermissionId_2)
+        val insertedPermission = permission_1.copy(publicPermissionId = publicPermissionId_2)
         permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
@@ -150,15 +150,15 @@ class PermissionServiceSpec
           _ = verify(permissionRepository).insert(eqTo(publicTenantId_1), eqTo(permission_1))
           _ = verify(permissionRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(permission_1.copy(permissionId = publicPermissionId_2))
+            eqTo(permission_1.copy(publicPermissionId = publicPermissionId_2))
           )
           _ = verify(permissionRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(permission_1.copy(permissionId = publicPermissionId_3))
+            eqTo(permission_1.copy(publicPermissionId = publicPermissionId_3))
           )
           _ = verify(permissionRepository).insert(
             eqTo(publicTenantId_1),
-            eqTo(permission_1.copy(permissionId = publicPermissionId_4))
+            eqTo(permission_1.copy(publicPermissionId = publicPermissionId_4))
           )
         } yield ()
       }
