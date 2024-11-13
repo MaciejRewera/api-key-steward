@@ -26,7 +26,7 @@ object ApiKeyTemplate extends CodecCommons {
 
   type ApiKeyTemplateId = UUID
 
-  def from(templateEntity: ApiKeyTemplateEntity.Read, permissions: List[PermissionEntity.Read]): ApiKeyTemplate =
+  def from(templateEntity: ApiKeyTemplateEntity.Read, permissionEntities: List[PermissionEntity.Read]): ApiKeyTemplate =
     ApiKeyTemplate(
       publicTemplateId = UUID.fromString(templateEntity.publicTemplateId),
       name = templateEntity.name,
@@ -34,7 +34,7 @@ object ApiKeyTemplate extends CodecCommons {
       isDefault = templateEntity.isDefault,
       apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod,
       apiKeyPrefix = templateEntity.apiKeyPrefix,
-      permissions = permissions.map(Permission.from)
+      permissions = permissionEntities.map(Permission.from)
     )
 
   def from(templateId: ApiKeyTemplateId, createApiKeyTemplateRequest: CreateApiKeyTemplateRequest): ApiKeyTemplate =
