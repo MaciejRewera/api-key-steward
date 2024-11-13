@@ -7,7 +7,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.data.NonEmptyList
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
-import doobie.{ConnectionIO, Fragments}
+import doobie.Fragments
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
 import doobie.postgres.implicits._
@@ -124,9 +124,7 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
   private object Queries {
 
     def insertMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write], now: Instant): doobie.ConnectionIO[Int] = {
-      val sql =
-        s"""INSERT INTO api_key_templates_permissions (api_key_template_id, permission_id, created_at, updated_at)
-            VALUES (?, ?, '$now', '$now')""".stripMargin
+      val sql = s"INSERT INTO api_key_templates_permissions (api_key_template_id, permission_id) VALUES (?, ?)"
 
       Update[ApiKeyTemplatesPermissionsEntity.Write](sql).updateMany(entities)
     }
@@ -162,9 +160,7 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
 
       sql"""SELECT
               api_key_template_id,
-              permission_id,
-              created_at,
-              updated_at
+              permission_id
             FROM api_key_templates_permissions
             WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
             """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]

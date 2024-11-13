@@ -58,9 +58,7 @@ class ApiKeyTemplatesPermissionsDbSpec
     entitiesWrite.map { entityWrite =>
       ApiKeyTemplatesPermissionsEntity.Read(
         apiKeyTemplateId = entityWrite.apiKeyTemplateId,
-        permissionId = entityWrite.permissionId,
-        createdAt = nowInstant,
-        updatedAt = nowInstant
+        permissionId = entityWrite.permissionId
       )
     }
 
@@ -1172,10 +1170,10 @@ private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
   type TemplateId = Long
 
   def insertPrerequisiteData(
-    tenantDb: TenantDb,
-    applicationDb: ApplicationDb,
-    permissionDb: PermissionDb,
-    apiKeyTemplateDb: ApiKeyTemplateDb
+      tenantDb: TenantDb,
+      applicationDb: ApplicationDb,
+      permissionDb: PermissionDb,
+      apiKeyTemplateDb: ApiKeyTemplateDb
   ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
