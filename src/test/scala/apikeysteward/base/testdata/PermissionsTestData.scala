@@ -21,10 +21,12 @@ object PermissionsTestData extends FixedClock {
   val permissionName_1 = "read:permission:1"
   val permissionName_2 = "read:permission:2"
   val permissionName_3 = "write:permission:3"
+  val permissionName_4 = "write:permission:4"
 
   val permissionDescription_1: Option[String] = Some("Test Permission description no. 1.")
   val permissionDescription_2: Option[String] = Some("Test Permission description no. 2.")
   val permissionDescription_3: Option[String] = Some("Test Permission description no. 3.")
+  val permissionDescription_4: Option[String] = Some("Test Permission description no. 4.")
 
   val createPermissionRequest_1: CreatePermissionRequest =
     CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
@@ -34,19 +36,24 @@ object PermissionsTestData extends FixedClock {
     CreatePermissionRequest(name = permissionName_3, description = permissionDescription_3)
 
   val permission_1: Permission = Permission(
-    permissionId = publicPermissionId_1,
+    publicPermissionId = publicPermissionId_1,
     name = permissionName_1,
     description = permissionDescription_1
   )
   val permission_2: Permission = Permission(
-    permissionId = publicPermissionId_2,
+    publicPermissionId = publicPermissionId_2,
     name = permissionName_2,
     description = permissionDescription_2
   )
   val permission_3: Permission = Permission(
-    permissionId = publicPermissionId_3,
+    publicPermissionId = publicPermissionId_3,
     name = permissionName_3,
     description = permissionDescription_3
+  )
+  val permission_4: Permission = Permission(
+    publicPermissionId = publicPermissionId_4,
+    name = permissionName_4,
+    description = permissionDescription_4
   )
 
   val permissionEntityWrite_1: PermissionEntity.Write = PermissionEntity.Write(

@@ -53,7 +53,7 @@ class ApiKeyTemplateServiceSpec
       apiKeyPrefix = apiKeyPrefix_1
     )
 
-    val apiKeyTemplate = apiKeyTemplate_1
+    val apiKeyTemplate = apiKeyTemplate_1.copy(permissions = List.empty)
 
     val apiKeyTemplateAlreadyExistsError = ApiKeyTemplateAlreadyExistsError(publicTemplateIdStr_1)
 

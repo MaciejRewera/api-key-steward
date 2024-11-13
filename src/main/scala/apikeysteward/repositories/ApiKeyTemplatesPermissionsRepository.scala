@@ -1,7 +1,6 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
@@ -73,13 +72,5 @@ class ApiKeyTemplatesPermissionsRepository(
         )
         .map(_.id)
     }
-
-  def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
-    apiKeyTemplatesPermissionsDb
-      .getAllPermissionsForTemplate(publicTemplateId)
-      .map(Permission.from)
-      .compile
-      .toList
-      .transact(transactor)
 
 }

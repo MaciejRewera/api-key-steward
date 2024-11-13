@@ -1,18 +1,23 @@
 package apikeysteward.repositories
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.ReferencedApplicationDoesNotExistError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.repositories.db.entity.PermissionEntity
-import apikeysteward.repositories.db.{ApplicationDb, PermissionDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ApplicationDb, PermissionDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.Transactor
 import doobie.implicits._
 
-class PermissionRepository(applicationDb: ApplicationDb, permissionDb: PermissionDb)(transactor: Transactor[IO]) {
+class PermissionRepository(
+    applicationDb: ApplicationDb,
+    permissionDb: PermissionDb,
+    apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
+)(transactor: Transactor[IO]) {
 
   def insert(
       publicApplicationId: ApplicationId,
@@ -36,7 +41,9 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
       publicPermissionId: PermissionId
   ): IO[Either[PermissionNotFoundError, Permission]] =
     (for {
+      _ <- EitherT.liftF(apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId))
       permissionEntityRead <- EitherT(permissionDb.delete(publicApplicationId, publicPermissionId))
+
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
@@ -45,6 +52,14 @@ class PermissionRepository(applicationDb: ApplicationDb, permissionDb: Permissio
       permissionEntityRead <- OptionT(permissionDb.getBy(publicApplicationId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
+
+  def getAllFor(publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
+    permissionDb
+      .getAllPermissionsForTemplate(publicTemplateId)
+      .map(Permission.from)
+      .compile
+      .toList
+      .transact(transactor)
 
   def getAllBy(publicApplicationId: ApplicationId)(nameFragment: Option[String]): IO[List[Permission]] =
     (for {

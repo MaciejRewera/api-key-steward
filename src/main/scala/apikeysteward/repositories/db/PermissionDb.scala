@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
@@ -79,6 +80,11 @@ class PermissionDb()(implicit clock: Clock) {
   def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Queries.getByPublicPermissionId(publicPermissionId).option
 
+  def getAllPermissionsForTemplate(
+      publicTemplateId: ApiKeyTemplateId
+  ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
+    Queries.getAllPermissionsForTemplate(publicTemplateId).stream
+
   def getAllBy(publicApplicationId: ApplicationId)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
@@ -101,7 +107,8 @@ class PermissionDb()(implicit clock: Clock) {
     def delete(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM permission
             USING application
-            WHERE application.public_application_id = ${publicApplicationId.toString}
+            WHERE permission.application_id = application.id
+              AND application.public_application_id = ${publicApplicationId.toString}
               AND permission.public_permission_id = ${publicPermissionId.toString}
            """.stripMargin.update
 
@@ -121,6 +128,14 @@ class PermissionDb()(implicit clock: Clock) {
         sql"""FROM permission
               WHERE permission.public_permission_id = ${publicPermissionId.toString}
              """).query[PermissionEntity.Read]
+
+    def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
+      (PermissionDb.ColumnNamesSelectFragment ++
+        sql"""FROM permission
+            JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
+            JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
+            WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+           """.stripMargin).query[PermissionEntity.Read]
 
     def getAllBy(
         publicApplicationId: ApplicationId

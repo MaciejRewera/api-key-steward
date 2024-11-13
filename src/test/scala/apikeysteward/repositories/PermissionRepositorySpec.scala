@@ -1,15 +1,17 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApplicationsTestData.{applicationEntityRead_1, publicApplicationId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Application.ApplicationId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
-import apikeysteward.repositories.db.{ApplicationDb, PermissionDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ApplicationDb, PermissionDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
 import fs2.Stream
@@ -33,11 +35,13 @@ class PermissionRepositorySpec
 
   private val applicationDb = mock[ApplicationDb]
   private val permissionDb = mock[PermissionDb]
+  private val apiKeyTemplatesPermissionsDb = mock[ApiKeyTemplatesPermissionsDb]
 
-  private val permissionRepository = new PermissionRepository(applicationDb, permissionDb)(noopTransactor)
+  private val permissionRepository =
+    new PermissionRepository(applicationDb, permissionDb, apiKeyTemplatesPermissionsDb)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(applicationDb, permissionDb)
+    reset(applicationDb, permissionDb, apiKeyTemplatesPermissionsDb)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -163,17 +167,20 @@ class PermissionRepositorySpec
 
     "everything works correctly" should {
 
-      "call PermissionDb" in {
+      "call ApiKeyTemplatesPermissionsDb and PermissionDb" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
 
         for {
           _ <- permissionRepository.delete(publicApplicationId_1, publicPermissionId_1)
 
+          _ = verify(apiKeyTemplatesPermissionsDb).deleteAllForPermission(eqTo(publicPermissionId_1))
           _ = verify(permissionDb).delete(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return Right containing deleted Permission" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
 
         permissionRepository
@@ -182,8 +189,33 @@ class PermissionRepositorySpec
       }
     }
 
+    "ApiKeyTemplatesPermissionsDb returns exception" should {
+
+      "NOT call PermissionDb" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+          .raiseError[doobie.ConnectionIO, Int]
+
+        for {
+          _ <- permissionRepository.delete(publicApplicationId_1, publicPermissionId_1).attempt
+
+          _ = verifyZeroInteractions(permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+          .raiseError[doobie.ConnectionIO, Int]
+
+        permissionRepository
+          .delete(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "PermissionDb returns Left containing PermissionNotFoundError" should {
       "return Left containing this error" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
         val permissionNotFoundError = PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1)
         permissionDb.delete(any[ApplicationId], any[PermissionId]) returns permissionNotFoundError
           .asLeft[PermissionEntity.Read]
@@ -197,6 +229,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
         permissionDb
           .delete(any[ApplicationId], any[PermissionId]) returns testExceptionWrappedE[PermissionNotFoundError]
 
@@ -249,6 +282,56 @@ class PermissionRepositorySpec
 
         permissionRepository
           .getBy(publicApplicationId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "PermissionRepository on getAllPermissionsForTemplate" when {
+
+    "should always call PermissionDb" in {
+      permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+      for {
+        _ <- permissionRepository.getAllFor(publicTemplateId_1)
+
+        _ = verify(permissionDb).getAllPermissionsForTemplate(eqTo(publicTemplateId_1))
+      } yield ()
+    }
+
+    "PermissionDb returns empty Stream" should {
+      "return empty List" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List.empty[Permission])
+      }
+    }
+
+    "PermissionDb returns PermissionEntities in Stream" should {
+      "return List containing Permissions" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(
+          permissionEntityRead_1,
+          permissionEntityRead_2,
+          permissionEntityRead_3
+        )
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
+          .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
+      }
+    }
+
+    "PermissionDb returns exception" should {
+      "return failed IO containing this exception" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](
+          testException
+        )
+
+        permissionRepository
+          .getAllFor(publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

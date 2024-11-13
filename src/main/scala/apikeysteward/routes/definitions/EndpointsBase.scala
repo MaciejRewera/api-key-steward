@@ -69,13 +69,20 @@ private[routes] object EndpointsBase {
     expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z")
   )
 
+  val PermissionExample: Permission = Permission(
+    publicPermissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "read:permission:123",
+    description = Some("A description what this Permission is for.")
+  )
+
   val ApiKeyTemplateExample: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
     name = "Basic API key",
     description = Some("API key with basic set of available permissions."),
     isDefault = false,
     apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
-    apiKeyPrefix = "basic_"
+    apiKeyPrefix = "basic_",
+    permissions = List(PermissionExample, PermissionExample)
   )
 
   val TenantExample: Tenant = Tenant(
@@ -83,12 +90,6 @@ private[routes] object EndpointsBase {
     name = "My new Tenant",
     description = Some("A description what this Tenant is for."),
     isActive = true
-  )
-
-  val PermissionExample: Permission = Permission(
-    permissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "read:permission:123",
-    description = Some("A description what this Permission is for.")
   )
 
   val ApplicationExample: Application = Application(

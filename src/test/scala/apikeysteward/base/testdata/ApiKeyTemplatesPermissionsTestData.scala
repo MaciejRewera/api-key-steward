@@ -34,9 +34,7 @@ object ApiKeyTemplatesPermissionsTestData extends FixedClock {
     apiKeyTemplatesPermissionsEntitiesWrite.map { entityWrite =>
       ApiKeyTemplatesPermissionsEntity.Read(
         apiKeyTemplateId = entityWrite.apiKeyTemplateId,
-        permissionId = entityWrite.permissionId,
-        createdAt = nowInstant,
-        updatedAt = nowInstant
+        permissionId = entityWrite.permissionId
       )
     }
 

@@ -1,11 +1,11 @@
 package apikeysteward.model
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, PermissionEntity}
 import apikeysteward.routes.model.CodecCommons
-import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
-import io.circe.{Codec, Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import apikeysteward.routes.model.admin.apikeytemplate.CreateApiKeyTemplateRequest
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 import java.util.UUID
 import scala.concurrent.duration.Duration
@@ -16,7 +16,8 @@ case class ApiKeyTemplate(
     description: Option[String],
     isDefault: Boolean,
     apiKeyMaxExpiryPeriod: Duration,
-    apiKeyPrefix: String
+    apiKeyPrefix: String,
+    permissions: List[Permission]
 )
 
 object ApiKeyTemplate extends CodecCommons {
@@ -25,14 +26,15 @@ object ApiKeyTemplate extends CodecCommons {
 
   type ApiKeyTemplateId = UUID
 
-  def from(templateEntity: ApiKeyTemplateEntity.Read): ApiKeyTemplate =
+  def from(templateEntity: ApiKeyTemplateEntity.Read, permissionEntities: List[PermissionEntity.Read]): ApiKeyTemplate =
     ApiKeyTemplate(
       publicTemplateId = UUID.fromString(templateEntity.publicTemplateId),
       name = templateEntity.name,
       description = templateEntity.description,
       isDefault = templateEntity.isDefault,
       apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod,
-      apiKeyPrefix = templateEntity.apiKeyPrefix
+      apiKeyPrefix = templateEntity.apiKeyPrefix,
+      permissions = permissionEntities.map(Permission.from)
     )
 
   def from(templateId: ApiKeyTemplateId, createApiKeyTemplateRequest: CreateApiKeyTemplateRequest): ApiKeyTemplate =
@@ -42,7 +44,8 @@ object ApiKeyTemplate extends CodecCommons {
       description = createApiKeyTemplateRequest.description,
       isDefault = createApiKeyTemplateRequest.isDefault,
       apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod,
-      apiKeyPrefix = createApiKeyTemplateRequest.apiKeyPrefix
+      apiKeyPrefix = createApiKeyTemplateRequest.apiKeyPrefix,
+      permissions = List.empty
     )
 
 }
