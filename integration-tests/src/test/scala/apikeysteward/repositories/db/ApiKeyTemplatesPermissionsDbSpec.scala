@@ -8,7 +8,7 @@ import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{PermissionId, TemplateId}
+import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{PermissionDbId, TemplateDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -49,7 +49,7 @@ class ApiKeyTemplatesPermissionsDbSpec
         .toList
   }
 
-  private def insertPrerequisiteData(): ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+  private def insertPrerequisiteData(): ConnectionIO[(Long, List[TemplateDbId], List[PermissionDbId])] =
     ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
   private def convertEntitiesWriteToRead(
@@ -1164,17 +1164,18 @@ class ApiKeyTemplatesPermissionsDbSpec
 
 }
 
-private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
+private[repositories] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
 
-  type PermissionId = Long
-  type TemplateId = Long
+  type ApplicationDbId = Long
+  type PermissionDbId = Long
+  type TemplateDbId = Long
 
   def insertPrerequisiteData(
       tenantDb: TenantDb,
       applicationDb: ApplicationDb,
       permissionDb: PermissionDb,
       apiKeyTemplateDb: ApiKeyTemplateDb
-  ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+  ): doobie.ConnectionIO[(ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       applicationId <- applicationDb

@@ -7,13 +7,13 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
   publicTemplateId_2,
   publicTemplateId_3
 }
-import apikeysteward.base.testdata.ApplicationsTestData.{publicApplicationId_1, _}
+import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{PermissionId, TemplateId}
+import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{ApplicationDbId, PermissionDbId, TemplateDbId}
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApplicationEntity, PermissionEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -717,9 +717,7 @@ class PermissionDbSpec
 
     "there are several ApiKeyTemplates in the DB with associated ApiKeyTemplatesPermissions" when {
 
-      def insertPrerequisiteData(): ConnectionIO[
-        (Long, List[ApiKeyTemplatesPermissionsDbSpec.TemplateId], List[ApiKeyTemplatesPermissionsDbSpec.PermissionId])
-      ] =
+      def insertPrerequisiteData(): ConnectionIO[(ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
         ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
       "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {

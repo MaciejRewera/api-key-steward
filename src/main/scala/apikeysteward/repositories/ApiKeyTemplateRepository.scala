@@ -9,8 +9,8 @@ import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import doobie.Transactor
 import doobie.implicits._
+import doobie.{ConnectionIO, Transactor}
 import fs2.Stream
 
 import java.util.UUID
@@ -33,7 +33,7 @@ class ApiKeyTemplateRepository(
 
       templateEntityRead <- EitherT(apiKeyTemplateDb.insert(ApiKeyTemplateEntity.Write.from(tenantId, apiKeyTemplate)))
 
-      resultTemplate <- EitherT.liftF[doobie.ConnectionIO, ApiKeyTemplateInsertionError, ApiKeyTemplate](
+      resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateInsertionError, ApiKeyTemplate](
         constructApiKeyTemplate(templateEntityRead)
       )
     } yield resultTemplate).value.transact(transactor)
@@ -41,20 +41,28 @@ class ApiKeyTemplateRepository(
   def update(apiKeyTemplate: ApiKeyTemplateUpdate): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
       templateEntityRead <- EitherT(apiKeyTemplateDb.update(ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
-      resultTemplate <- EitherT.liftF[doobie.ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
+
+      resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
         constructApiKeyTemplate(templateEntityRead)
       )
     } yield resultTemplate).value.transact(transactor)
 
   def delete(publicTemplateId: ApiKeyTemplateId): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
-      _ <- EitherT.liftF(apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId))
-      templateEntityRead <- EitherT(apiKeyTemplateDb.delete(publicTemplateId))
+      templateEntityRead <- EitherT(deleteOp(publicTemplateId))
 
-      resultTemplate <- EitherT.liftF[doobie.ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
+      resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
         constructApiKeyTemplate(templateEntityRead)
       )
     } yield resultTemplate).value.transact(transactor)
+
+  private[repositories] def deleteOp(
+      publicTemplateId: ApiKeyTemplateId
+  ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] =
+    for {
+      _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
+      deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTemplateId)
+    } yield deletedTemplateEntity
 
   def getBy(publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
     (for {
@@ -68,7 +76,7 @@ class ApiKeyTemplateRepository(
       resultTemplate <- Stream.eval(constructApiKeyTemplate(templateEntityRead))
     } yield resultTemplate).compile.toList.transact(transactor)
 
-  private def constructApiKeyTemplate(templateEntity: ApiKeyTemplateEntity.Read): doobie.ConnectionIO[ApiKeyTemplate] =
+  private def constructApiKeyTemplate(templateEntity: ApiKeyTemplateEntity.Read): ConnectionIO[ApiKeyTemplate] =
     for {
       permissionEntities <- permissionDb
         .getAllPermissionsForTemplate(UUID.fromString(templateEntity.publicTemplateId))
