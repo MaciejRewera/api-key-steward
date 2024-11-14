@@ -143,6 +143,9 @@ object RepositoryErrors {
           extends ApplicationInsertionError(message = s"An error occurred when inserting Application: $cause")
     }
 
+    def applicationNotFoundError(publicApplicationId: ApplicationId): ApplicationDbError =
+      applicationNotFoundError(publicApplicationId.toString)
+
     def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
       ApplicationNotFoundError(publicApplicationId)
 

@@ -8,7 +8,12 @@ import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{PermissionId, TemplateId}
+import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{
+  ApplicationDbId,
+  PermissionDbId,
+  TemplateDbId,
+  TenantDbId
+}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -49,7 +54,8 @@ class ApiKeyTemplatesPermissionsDbSpec
         .toList
   }
 
-  private def insertPrerequisiteData(): ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+  private def insertPrerequisiteData()
+      : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
   private def convertEntitiesWriteToRead(
@@ -69,7 +75,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToInsert = List(
             ApiKeyTemplatesPermissionsEntity
@@ -91,7 +97,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToInsert = List(
             ApiKeyTemplatesPermissionsEntity
@@ -118,7 +124,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -145,7 +151,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -177,7 +183,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -204,7 +210,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -236,7 +242,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -260,7 +266,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "NOT insert any new entity into the DB" in {
         val result = for {
           dataIds <- insertPrerequisiteData().transact(transactor)
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -383,7 +389,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing appropriate ApiKeyTemplatesPermissionsInsertionError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -413,7 +419,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "NOT insert any new entity into the DB" in {
         val result = for {
           dataIds <- insertPrerequisiteData().transact(transactor)
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -472,7 +478,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return zero" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -489,7 +495,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -514,7 +520,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return one" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -531,7 +537,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "delete this row from the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -552,7 +558,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return the number of deleted rows" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -577,7 +583,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "delete these rows from the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -641,7 +647,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return zero" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -658,7 +664,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -683,7 +689,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return one" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -700,7 +706,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "delete this row from the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -721,7 +727,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return the number of deleted rows" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -746,7 +752,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "delete these rows from the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -786,7 +792,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing ApiKeyTemplatesPermissionsNotFoundError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -804,7 +810,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -824,7 +830,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing ApiKeyTemplatesPermissionsNotFoundError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -847,7 +853,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -876,7 +882,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing ApiKeyTemplatesPermissionsNotFoundError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -899,7 +905,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -928,7 +934,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Right containing deleted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -960,7 +966,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "delete these rows from the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToDelete = List(
             ApiKeyTemplatesPermissionsEntity
@@ -997,7 +1003,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing appropriate ApiKeyTemplatesPermissionsNotFoundError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -1032,7 +1038,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "make no changes to the DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -1075,7 +1081,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return empty Stream" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesToFetch = List(
             ApiKeyTemplatesPermissionsEntity
@@ -1096,7 +1102,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return empty Stream" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -1128,7 +1134,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Stream containing matching entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, templateIds, permissionIds) = dataIds
+          (_, _, templateIds, permissionIds) = dataIds
 
           entitiesExpectedToBePresent = List(
             ApiKeyTemplatesPermissionsEntity
@@ -1164,17 +1170,19 @@ class ApiKeyTemplatesPermissionsDbSpec
 
 }
 
-private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
+private[repositories] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
 
-  type PermissionId = Long
-  type TemplateId = Long
+  type TenantDbId = Long
+  type ApplicationDbId = Long
+  type PermissionDbId = Long
+  type TemplateDbId = Long
 
   def insertPrerequisiteData(
       tenantDb: TenantDb,
       applicationDb: ApplicationDb,
       permissionDb: PermissionDb,
       apiKeyTemplateDb: ApiKeyTemplateDb
-  ): doobie.ConnectionIO[(Long, List[TemplateId], List[PermissionId])] =
+  ): doobie.ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       applicationId <- applicationDb
@@ -1203,5 +1211,5 @@ private[db] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
 
       templateIds = List(templateId_1, templateId_2, templateId_3)
       permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
-    } yield (applicationId, templateIds, permissionIds)
+    } yield (tenantId, applicationId, templateIds, permissionIds)
 }
