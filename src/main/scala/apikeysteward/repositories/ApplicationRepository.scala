@@ -1,13 +1,15 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApplicationDbError
 import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
 import apikeysteward.model.RepositoryErrors.ApplicationDbError._
+import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Application, ApplicationUpdate}
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity}
-import apikeysteward.repositories.db.{ApplicationDb, PermissionDb, TenantDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ApplicationDb, PermissionDb, TenantDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits.toTraverseOps
@@ -17,7 +19,12 @@ import fs2.Stream
 
 import java.util.UUID
 
-class ApplicationRepository(tenantDb: TenantDb, applicationDb: ApplicationDb, permissionDb: PermissionDb)(
+class ApplicationRepository(
+    tenantDb: TenantDb,
+    applicationDb: ApplicationDb,
+    permissionDb: PermissionDb,
+    permissionRepository: PermissionRepository
+)(
     transactor: Transactor[IO]
 ) {
 
@@ -54,47 +61,47 @@ class ApplicationRepository(tenantDb: TenantDb, applicationDb: ApplicationDb, pe
       )
     } yield resultApplication).value.transact(transactor)
 
-  def activate(applicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
+  def activate(publicApplicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
     (for {
-      applicationEntityRead <- EitherT(applicationDb.activate(applicationId))
+      applicationEntityRead <- EitherT(applicationDb.activate(publicApplicationId))
       resultApplication <- EitherT.liftF[doobie.ConnectionIO, ApplicationNotFoundError, Application](
         constructApplication(applicationEntityRead)
       )
     } yield resultApplication).value.transact(transactor)
 
-  def deactivate(applicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
+  def deactivate(publicApplicationId: ApplicationId): IO[Either[ApplicationNotFoundError, Application]] =
     (for {
-      applicationEntityRead <- EitherT(applicationDb.deactivate(applicationId))
+      applicationEntityRead <- EitherT(applicationDb.deactivate(publicApplicationId))
       resultApplication <- EitherT.liftF[doobie.ConnectionIO, ApplicationNotFoundError, Application](
         constructApplication(applicationEntityRead)
       )
     } yield resultApplication).value.transact(transactor)
 
-  def delete(applicationId: ApplicationId): IO[Either[ApplicationDbError, Application]] =
+  def delete(publicApplicationId: ApplicationId): IO[Either[ApplicationDbError, Application]] =
     (for {
-      permissionEntitiesDeleted <- deletePermissions(applicationId)
-      applicationEntityRead <- EitherT(applicationDb.deleteDeactivated(applicationId))
+      permissionEntitiesDeleted <- deletePermissions(publicApplicationId)
+      applicationEntityRead <- EitherT(applicationDb.deleteDeactivated(publicApplicationId))
 
       resultApplication = Application.from(applicationEntityRead, permissionEntitiesDeleted)
     } yield resultApplication).value.transact(transactor)
 
   private def deletePermissions(
-      applicationId: ApplicationId
+      publicApplicationId: ApplicationId
   ): EitherT[doobie.ConnectionIO, ApplicationDbError, List[PermissionEntity.Read]] =
     EitherT {
       for {
-        permissionEntitiesToDelete <- permissionDb.getAllBy(applicationId)(None).compile.toList
+        permissionEntitiesToDelete <- permissionDb.getAllBy(publicApplicationId)(None).compile.toList
         permissionEntitiesDeletedE <- permissionEntitiesToDelete.traverse { entity =>
-          permissionDb.delete(applicationId, UUID.fromString(entity.publicPermissionId))
+          permissionRepository.deleteOp(publicApplicationId, UUID.fromString(entity.publicPermissionId))
         }.map(_.sequence)
 
-        result = permissionEntitiesDeletedE.left.map(cannotDeletePermissionError(applicationId, _))
+        result = permissionEntitiesDeletedE.left.map(cannotDeletePermissionError(publicApplicationId, _))
       } yield result
     }
 
-  def getBy(applicationId: ApplicationId): IO[Option[Application]] =
+  def getBy(publicApplicationId: ApplicationId): IO[Option[Application]] =
     (for {
-      applicationEntityRead <- OptionT(applicationDb.getByPublicApplicationId(applicationId))
+      applicationEntityRead <- OptionT(applicationDb.getByPublicApplicationId(publicApplicationId))
       resultApplication <- OptionT.liftF(constructApplication(applicationEntityRead))
     } yield resultApplication).value.transact(transactor)
 

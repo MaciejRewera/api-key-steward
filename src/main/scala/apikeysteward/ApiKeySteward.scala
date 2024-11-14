@@ -2,7 +2,7 @@ package apikeysteward
 
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
-import apikeysteward.repositories._
+import apikeysteward.repositories.{PermissionRepository, _}
 import apikeysteward.repositories.db._
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
@@ -70,8 +70,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(transactor)
-        applicationRepository: ApplicationRepository = buildApplicationRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
+        applicationRepository: ApplicationRepository = buildApplicationRepository(permissionRepository)(transactor)
         userRepository: UserRepository = buildUserRepository(transactor)
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
@@ -182,12 +182,14 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     new TenantRepository(tenantDb)(transactor)
   }
 
-  private def buildApplicationRepository(transactor: HikariTransactor[IO]) = {
+  private def buildApplicationRepository(
+      permissionRepository: PermissionRepository
+  )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
     val applicationDb = new ApplicationDb
     val permissionDb = new PermissionDb
 
-    new ApplicationRepository(tenantDb, applicationDb, permissionDb)(transactor)
+    new ApplicationRepository(tenantDb, applicationDb, permissionDb, permissionRepository)(transactor)
   }
 
   private def buildPermissionRepository(transactor: HikariTransactor[IO]) = {

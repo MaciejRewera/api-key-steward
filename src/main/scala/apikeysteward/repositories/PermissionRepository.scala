@@ -10,7 +10,7 @@ import apikeysteward.repositories.db.entity.PermissionEntity
 import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ApplicationDb, PermissionDb}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import doobie.Transactor
+import doobie.{ConnectionIO, Transactor}
 import doobie.implicits._
 
 class PermissionRepository(
@@ -41,11 +41,19 @@ class PermissionRepository(
       publicPermissionId: PermissionId
   ): IO[Either[PermissionNotFoundError, Permission]] =
     (for {
-      _ <- EitherT.liftF(apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId))
-      permissionEntityRead <- EitherT(permissionDb.delete(publicApplicationId, publicPermissionId))
+      permissionEntityRead <- EitherT(deleteOp(publicApplicationId, publicPermissionId))
 
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
+
+  private[repositories] def deleteOp(
+      publicApplicationId: ApplicationId,
+      publicPermissionId: PermissionId
+  ): ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
+    for {
+      _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId)
+      deletedPermissionEntity <- permissionDb.delete(publicApplicationId, publicPermissionId)
+    } yield deletedPermissionEntity
 
   def getBy(publicApplicationId: ApplicationId, publicPermissionId: PermissionId): IO[Option[Permission]] =
     (for {
