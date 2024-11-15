@@ -3,19 +3,10 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApplicationsTestData.{applicationEntityRead_1, publicApplicationId_1}
-import apikeysteward.base.testdata.PermissionsTestData.{
-  permissionEntityRead_1,
-  permissionEntityRead_2,
-  permissionEntityRead_3
-}
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityRead_1
 import apikeysteward.model.ApiKeyTemplate
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{
-  ApplicationDbId,
-  PermissionDbId,
-  TemplateDbId,
-  TenantDbId
-}
+import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
 import cats.effect.IO
@@ -75,14 +66,9 @@ class ApplicationRepositoryItSpec
         .toList
   }
 
-  private def insertPrerequisiteData(): IO[
-    (
-        (TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId]),
-        List[ApiKeyTemplatesPermissionsEntity.Write]
-    )
-  ] =
+  private def insertPrerequisiteData(): IO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     (for {
-      dataIds <- ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(
+      dataIds <- TestDataInsertions.insertPrerequisiteData(
         tenantDb,
         applicationDb,
         permissionDb,
@@ -99,7 +85,7 @@ class ApplicationRepositoryItSpec
           .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
       )
       _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
-    } yield (dataIds, associationEntities)).transact(transactor)
+    } yield dataIds).transact(transactor)
 
   "ApplicationRepository on delete" when {
 
@@ -107,14 +93,23 @@ class ApplicationRepositoryItSpec
 
       "NOT delete associations between related Permissions and ApiKeyTemplates" in {
         val result = for {
-          prerequisiteDataResult <- insertPrerequisiteData()
-          (_, associationEntities) = prerequisiteDataResult
+          dataIds <- insertPrerequisiteData()
+          (_, _, templateIds, permissionIds) = dataIds
 
           _ <- repository.activate(publicApplicationId_1)
           _ <- repository.delete(publicApplicationId_1)
 
           res <- Queries.getAllAssociations.transact(transactor)
-        } yield (res, associationEntities)
+
+          expectedEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+          )
+        } yield (res, expectedEntities)
 
         result.asserting { case (res, associationEntities) =>
           val expectedEntities = associationEntities.map { entityWrite =>
@@ -130,8 +125,7 @@ class ApplicationRepositoryItSpec
 
       "NOT delete related Permissions" in {
         val result = for {
-          prerequisiteDataResult <- insertPrerequisiteData()
-          (dataIds, _) = prerequisiteDataResult
+          dataIds <- insertPrerequisiteData()
           (_, applicationId, _, _) = dataIds
 
           _ <- repository.activate(publicApplicationId_1)

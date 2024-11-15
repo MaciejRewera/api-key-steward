@@ -1,24 +1,15 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
-  apiKeyTemplateEntityWrite_1,
-  publicTemplateId_1,
-  publicTemplateId_2,
-  publicTemplateId_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{
-  ApplicationDbId,
-  PermissionDbId,
-  TemplateDbId,
-  TenantDbId
-}
+import apikeysteward.repositories.TestDataInsertions
+import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApplicationEntity, PermissionEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -724,7 +715,7 @@ class PermissionDbSpec
 
       def insertPrerequisiteData()
           : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-        ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+        TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
       "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {
         "return empty Stream" in {

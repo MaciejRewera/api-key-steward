@@ -7,13 +7,8 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
-import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{
-  ApplicationDbId,
-  PermissionDbId,
-  TemplateDbId,
-  TenantDbId
-}
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
+import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -56,7 +51,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
   private def insertPrerequisiteData()
       : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-    ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+    TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
   private def convertEntitiesWriteToRead(
       entitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write]
@@ -1168,48 +1163,4 @@ class ApiKeyTemplatesPermissionsDbSpec
     }
   }
 
-}
-
-private[repositories] object ApiKeyTemplatesPermissionsDbSpec extends EitherValues {
-
-  type TenantDbId = Long
-  type ApplicationDbId = Long
-  type PermissionDbId = Long
-  type TemplateDbId = Long
-
-  def insertPrerequisiteData(
-      tenantDb: TenantDb,
-      applicationDb: ApplicationDb,
-      permissionDb: PermissionDb,
-      apiKeyTemplateDb: ApiKeyTemplateDb
-  ): doobie.ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-    for {
-      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-      applicationId <- applicationDb
-        .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
-
-      permissionId_1 <- permissionDb
-        .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_2 <- permissionDb
-        .insert(permissionEntityWrite_2.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_3 <- permissionDb
-        .insert(permissionEntityWrite_3.copy(applicationId = applicationId))
-        .map(_.value.id)
-
-      templateId_1 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_2 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_3 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
-        .map(_.value.id)
-
-      templateIds = List(templateId_1, templateId_2, templateId_3)
-      permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
-    } yield (tenantId, applicationId, templateIds, permissionIds)
 }
