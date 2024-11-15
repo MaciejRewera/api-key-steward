@@ -76,16 +76,21 @@ class ApplicationRepository(
     } yield resultApplication).value.transact(transactor)
 
   def delete(publicApplicationId: ApplicationId): IO[Either[ApplicationDbError, Application]] =
+    deleteOp(publicApplicationId).transact(transactor)
+
+  private[repositories] def deleteOp(
+      publicApplicationId: ApplicationId
+  ): doobie.ConnectionIO[Either[ApplicationDbError, Application]] =
     (for {
-      _ <- verifyApplicationIsDeactivated(publicApplicationId)
+      _ <- verifyApplicationIsDeactivatedOp(publicApplicationId)
 
       permissionEntitiesDeleted <- deletePermissions(publicApplicationId)
       applicationEntityRead <- EitherT(applicationDb.deleteDeactivated(publicApplicationId))
 
       resultApplication = Application.from(applicationEntityRead, permissionEntitiesDeleted)
-    } yield resultApplication).value.transact(transactor)
+    } yield resultApplication).value
 
-  private def verifyApplicationIsDeactivated(
+  private[repositories] def verifyApplicationIsDeactivatedOp(
       publicApplicationId: ApplicationId
   ): EitherT[doobie.ConnectionIO, ApplicationDbError, Unit] =
     for {
@@ -122,10 +127,13 @@ class ApplicationRepository(
     } yield resultApplication).value.transact(transactor)
 
   def getAllForTenant(publicTenantId: TenantId): IO[List[Application]] =
-    (for {
+    getAllForTenantOp(publicTenantId).compile.toList.transact(transactor)
+
+  private[repositories] def getAllForTenantOp(publicTenantId: TenantId): Stream[doobie.ConnectionIO, Application] =
+    for {
       applicationEntityRead <- applicationDb.getAllForTenant(publicTenantId)
       resultApplication <- Stream.eval(constructApplication(applicationEntityRead))
-    } yield resultApplication).compile.toList.transact(transactor)
+    } yield resultApplication
 
   private def constructApplication(applicationEntity: ApplicationEntity.Read): doobie.ConnectionIO[Application] =
     for {

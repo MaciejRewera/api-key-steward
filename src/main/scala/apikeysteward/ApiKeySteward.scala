@@ -2,8 +2,8 @@ package apikeysteward
 
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
-import apikeysteward.repositories.{PermissionRepository, _}
 import apikeysteward.repositories.db._
+import apikeysteward.repositories._
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
@@ -69,10 +69,14 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
-        tenantRepository: TenantRepository = buildTenantRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(permissionRepository)(transactor)
         userRepository: UserRepository = buildUserRepository(transactor)
+        tenantRepository: TenantRepository = buildTenantRepository(
+          applicationRepository,
+          apiKeyTemplateRepository,
+          userRepository
+        )(transactor)
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
         uuidGenerator = new UuidGenerator
@@ -176,10 +180,14 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     new ApiKeyTemplatesPermissionsRepository(apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
   }
 
-  private def buildTenantRepository(transactor: HikariTransactor[IO]) = {
+  private def buildTenantRepository(
+      applicationRepository: ApplicationRepository,
+      apiKeyTemplateRepository: ApiKeyTemplateRepository,
+      userRepository: UserRepository
+  )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
 
-    new TenantRepository(tenantDb)(transactor)
+    new TenantRepository(tenantDb, applicationRepository, apiKeyTemplateRepository, userRepository)(transactor)
   }
 
   private def buildApplicationRepository(

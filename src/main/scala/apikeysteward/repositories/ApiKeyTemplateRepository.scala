@@ -48,21 +48,19 @@ class ApiKeyTemplateRepository(
     } yield resultTemplate).value.transact(transactor)
 
   def delete(publicTemplateId: ApiKeyTemplateId): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
-    (for {
-      templateEntityRead <- EitherT(deleteOp(publicTemplateId))
-
-      resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
-        constructApiKeyTemplate(templateEntityRead)
-      )
-    } yield resultTemplate).value.transact(transactor)
+    deleteOp(publicTemplateId).transact(transactor)
 
   private[repositories] def deleteOp(
       publicTemplateId: ApiKeyTemplateId
-  ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] =
+  ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     for {
+      permissionEntitiesToDelete <- permissionDb.getAllPermissionsForTemplate(publicTemplateId).compile.toList
+
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTemplateId)
-    } yield deletedTemplateEntity
+
+      deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDelete))
+    } yield deletedTemplate
 
   def getBy(publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
     (for {
@@ -71,10 +69,13 @@ class ApiKeyTemplateRepository(
     } yield resultTemplate).value.transact(transactor)
 
   def getAllForTenant(publicTenantId: TenantId): IO[List[ApiKeyTemplate]] =
-    (for {
+    getAllForTenantOp(publicTenantId).compile.toList.transact(transactor)
+
+  private[repositories] def getAllForTenantOp(publicTenantId: TenantId): Stream[ConnectionIO, ApiKeyTemplate] =
+    for {
       templateEntityRead <- apiKeyTemplateDb.getAllForTenant(publicTenantId)
       resultTemplate <- Stream.eval(constructApiKeyTemplate(templateEntityRead))
-    } yield resultTemplate).compile.toList.transact(transactor)
+    } yield resultTemplate
 
   private def constructApiKeyTemplate(templateEntity: ApiKeyTemplateEntity.Read): ConnectionIO[ApiKeyTemplate] =
     for {

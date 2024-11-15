@@ -103,22 +103,15 @@ class ApplicationRepositoryItSpec
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
-              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
           )
         } yield (res, expectedEntities)
 
-        result.asserting { case (res, associationEntities) =>
-          val expectedEntities = associationEntities.map { entityWrite =>
-            ApiKeyTemplatesPermissionsEntity.Read(
-              apiKeyTemplateId = entityWrite.apiKeyTemplateId,
-              permissionId = entityWrite.permissionId
-            )
-          }
-
+        result.asserting { case (res, expectedEntities) =>
           res should contain theSameElementsAs expectedEntities
         }
       }
@@ -129,7 +122,7 @@ class ApplicationRepositoryItSpec
           (_, applicationId, _, _) = dataIds
 
           _ <- repository.activate(publicApplicationId_1)
-          r <- repository.delete(publicApplicationId_1)
+          _ <- repository.delete(publicApplicationId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
         } yield (res, applicationId)
