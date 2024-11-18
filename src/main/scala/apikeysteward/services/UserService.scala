@@ -1,5 +1,6 @@
 package apikeysteward.services
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
@@ -51,5 +52,7 @@ class UserService(userRepository: UserRepository, tenantRepository: TenantReposi
         userRepository.getAllForTenant(tenantId)
       )
     } yield result).value
+
+  def getAllFor(templateId: ApiKeyTemplateId): IO[List[User]] = IO.pure(List.empty)
 
 }

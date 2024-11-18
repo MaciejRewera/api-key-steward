@@ -10,7 +10,9 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
 }
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.repositories.{ApiKeyTemplateRepository, ApiKeyTemplatesPermissionsRepository}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.utils.Retry.RetryException
@@ -96,5 +98,10 @@ class ApiKeyTemplateService(
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
     apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds)
+
+  def associateUsersWithApiKeyTemplate(
+      templateId: ApiKeyTemplateId,
+      userIds: List[UserId]
+  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] = IO.pure(Right(()))
 
 }

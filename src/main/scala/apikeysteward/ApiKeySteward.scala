@@ -113,7 +113,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateRoutes = new AdminApiKeyTemplateRoutes(
           jwtAuthorizer,
           apiKeyTemplateService,
-          permissionService
+          permissionService,
+          userService
         ).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes

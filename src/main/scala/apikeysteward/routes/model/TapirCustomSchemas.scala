@@ -7,6 +7,7 @@ import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
   CreateApiKeyTemplatesPermissionsRequest,
   DeleteApiKeyTemplatesPermissionsRequest
 }
+import apikeysteward.routes.model.admin.apikeytemplatesusers.CreateApiKeyTemplatesUsersRequest
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
@@ -69,6 +70,12 @@ object TapirCustomSchemas {
     Schema
       .derived[DeleteApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
+
+  val createApiKeyTemplatesUsersRequestSchema: Schema[CreateApiKeyTemplatesUsersRequest] =
+    Schema
+      .derived[CreateApiKeyTemplatesUsersRequest]
+      .modify(_.userIds)(validateListNotEmpty)
+      .modify(_.userIds)(_.validateList(userIdValidator))
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
     Schema
@@ -167,7 +174,10 @@ object TapirCustomSchemas {
     schema.validate(Validator.nonEmptyString and Validator.maxLength(120))
 
   private def validateUserId(schema: Schema[String]): Schema[String] =
-    schema.validate(Validator.nonEmptyString and Validator.maxLength(250))
+    schema.validate(userIdValidator)
+
+  private def userIdValidator: Validator[String] =
+    Validator.nonEmptyString and Validator.maxLength(250)
 
   private def validateTtl(schema: Schema[Int]): Schema[Int] =
     schema

@@ -8,12 +8,18 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
   ApiKeyTemplatesPermissionsInsertionError,
   ApiKeyTemplatesPermissionsNotFoundError
 }
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
+  ApiKeyTemplatesUsersAlreadyExistsError,
+  ReferencedUserDoesNotExistError
+}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikeytemplate._
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
-import apikeysteward.services.{ApiKeyTemplateService, PermissionService}
+import apikeysteward.routes.model.admin.user.GetMultipleUsersResponse
+import apikeysteward.services.{ApiKeyTemplateService, PermissionService, UserService}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -23,7 +29,8 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 class AdminApiKeyTemplateRoutes(
     jwtAuthorizer: JwtAuthorizer,
     apiKeyTemplateService: ApiKeyTemplateService,
-    permissionService: PermissionService
+    permissionService: PermissionService,
+    userService: UserService
 ) {
 
   private val serverInterpreter =
@@ -193,6 +200,55 @@ class AdminApiKeyTemplateRoutes(
         }
     )
 
+  private val associateUsersWithApiKeyTemplateRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminApiKeyTemplateEndpoints.associateUsersWithApiKeyTemplateEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+        .serverLogic { _ => input =>
+          val (apiKeyTemplateId, request) = input
+          apiKeyTemplateService.associateUsersWithApiKeyTemplate(apiKeyTemplateId, request.userIds).map {
+
+            case Right(()) =>
+              StatusCode.Created.asRight
+
+            case Left(_: ApiKeyTemplatesUsersAlreadyExistsError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersAlreadyExists)
+                )
+                .asLeft
+
+            case Left(_: ReferencedUserDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError) =>
+              ErrorInfo.internalServerErrorInfo().asLeft
+          }
+        }
+    )
+
+  private val getAllUsersForTemplateRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
+        .serverLogic { _ => apiKeyTemplateId =>
+          userService.getAllFor(apiKeyTemplateId).map { users =>
+            (StatusCode.Ok, GetMultipleUsersResponse(users)).asRight
+          }
+        }
+    )
+
   val allRoutes: HttpRoutes[IO] =
     createApiKeyTemplateRoutes <+>
       updateApiKeyTemplateRoutes <+>
@@ -201,6 +257,8 @@ class AdminApiKeyTemplateRoutes(
       searchApiKeyTemplateRoutes <+>
       associatePermissionsWithApiKeyTemplateRoutes <+>
       removePermissionsFromApiKeyTemplateRoutes <+>
-      getAllPermissionsForTemplateRoutes
+      getAllPermissionsForTemplateRoutes <+>
+      associateUsersWithApiKeyTemplateRoutes <+>
+      getAllUsersForTemplateRoutes
 
 }
