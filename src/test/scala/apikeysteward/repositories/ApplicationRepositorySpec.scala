@@ -16,7 +16,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.{ApplicationEntity, PermissionEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApplicationDb, PermissionDb, TenantDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
+import cats.implicits._
 import fs2.Stream
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -465,7 +465,9 @@ class ApplicationRepositorySpec
 
     "everything works correctly" should {
 
-      "call ApplicationDb and PermissionDb" in {
+      "call ApplicationDb, PermissionDb and PermissionRepository" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -481,6 +483,7 @@ class ApplicationRepositorySpec
         for {
           _ <- applicationRepository.delete(publicApplicationId_1)
 
+          _ = verify(applicationDb).getByPublicApplicationId(eqTo(publicApplicationId_1))
           _ = verify(permissionDb).getAllBy(eqTo(publicApplicationId_1))(eqTo(none[String]))
           _ = verify(permissionRepository).deleteOp(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
           _ = verify(permissionRepository).deleteOp(eqTo(publicApplicationId_1), eqTo(publicPermissionId_2))
@@ -490,6 +493,8 @@ class ApplicationRepositorySpec
       }
 
       "return Right containing deleted Application" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -509,9 +514,86 @@ class ApplicationRepositorySpec
       }
     }
 
+    "ApplicationDb.getByPublicApplicationId returns empty Option" should {
+
+      "NOT call ApplicationDb.deleteDeactivated, PermissionDb or PermissionRepository" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns none[ApplicationEntity.Read]
+          .pure[doobie.ConnectionIO]
+
+        for {
+          _ <- applicationRepository.delete(publicApplicationId_1)
+
+          _ = verifyZeroInteractions(permissionDb, permissionRepository)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
+        } yield ()
+      }
+
+      "return Left containing ApplicationNotFoundError" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns none[ApplicationEntity.Read]
+          .pure[doobie.ConnectionIO]
+
+        applicationRepository
+          .delete(publicApplicationId_1)
+          .asserting(_ shouldBe Left(ApplicationNotFoundError(publicApplicationIdStr_1)))
+      }
+    }
+
+    "ApplicationDb.getByPublicApplicationId returns Option containing active Application" should {
+
+      val activeApplication = applicationEntityRead_1.copy(deactivatedAt = None)
+
+      "NOT call ApplicationDb.deleteDeactivated, PermissionDb or PermissionRepository" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns activeApplication.some
+          .pure[doobie.ConnectionIO]
+
+        for {
+          _ <- applicationRepository.delete(publicApplicationId_1)
+
+          _ = verifyZeroInteractions(permissionDb, permissionRepository)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
+        } yield ()
+      }
+
+      "return Left containing ApplicationIsNotDeactivatedError" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns activeApplication.some
+          .pure[doobie.ConnectionIO]
+
+        applicationRepository
+          .delete(publicApplicationId_1)
+          .asserting(_ shouldBe Left(ApplicationIsNotDeactivatedError(publicApplicationId_1)))
+      }
+    }
+
+    "ApplicationDb.getByPublicApplicationId returns exception" should {
+
+      "NOT call ApplicationDb.deleteDeactivated, PermissionDb or PermissionRepository" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApplicationEntity.Read]]
+
+        for {
+          _ <- applicationRepository.delete(publicApplicationId_1).attempt
+
+          _ = verifyZeroInteractions(permissionDb, permissionRepository)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[ApplicationEntity.Read]]
+
+        applicationRepository
+          .delete(publicApplicationId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "PermissionDb.getAllBy returns an exception" should {
 
-      "NOT call either PermissionDb.delete or ApplicationDb" in {
+      "NOT call either PermissionDb.delete or ApplicationDb.deleteDeactivated" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
@@ -521,11 +603,13 @@ class ApplicationRepositorySpec
           _ <- applicationRepository.delete(publicApplicationId_1).attempt
 
           _ = verify(permissionDb, times(0)).delete(any[ApplicationId], any[PermissionId])
-          _ = verifyZeroInteractions(applicationDb)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
         } yield ()
       }
 
       "return failed IO containing this exception" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++
           Stream.raiseError[doobie.ConnectionIO](testException)
 
@@ -537,7 +621,9 @@ class ApplicationRepositorySpec
 
       val permissionNotFoundError = PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1)
 
-      "NOT call ApplicationDb" in {
+      "NOT call ApplicationDb.deleteDeactivated" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -550,11 +636,13 @@ class ApplicationRepositorySpec
 
         for {
           _ <- applicationRepository.delete(publicApplicationId_1)
-          _ = verifyZeroInteractions(applicationDb)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
         } yield ()
       }
 
       "return Left containing CannotDeletePermissionError" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -573,7 +661,9 @@ class ApplicationRepositorySpec
 
     "PermissionRepository.deleteOp returns different exception" should {
 
-      "NOT call ApplicationDb" in {
+      "NOT call ApplicationDb.deleteDeactivated" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -586,11 +676,13 @@ class ApplicationRepositorySpec
 
         for {
           _ <- applicationRepository.delete(publicApplicationId_1).attempt
-          _ = verifyZeroInteractions(applicationDb)
+          _ = verify(applicationDb, times(0)).deleteDeactivated(any[ApplicationId])
         } yield ()
       }
 
       "return Left containing CannotDeletePermissionError" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
@@ -608,8 +700,10 @@ class ApplicationRepositorySpec
       }
     }
 
-    "ApplicationDb returns Left containing ApplicationNotFoundError" should {
+    "ApplicationDb.deleteDeactivated returns Left containing ApplicationNotFoundError" should {
       "return Left containing this error" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionRepository.deleteOp(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
@@ -620,8 +714,10 @@ class ApplicationRepositorySpec
       }
     }
 
-    "ApplicationDb returns Left containing ApplicationNotDeactivatedError" should {
+    "ApplicationDb.deleteDeactivated returns Left containing ApplicationNotDeactivatedError" should {
       "return Left containing this error" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionRepository.deleteOp(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
@@ -632,8 +728,10 @@ class ApplicationRepositorySpec
       }
     }
 
-    "ApplicationDb returns different exception" should {
+    "ApplicationDb.deleteDeactivated returns different exception" should {
       "return failed IO containing this exception" in {
+        applicationDb.getByPublicApplicationId(any[ApplicationId]) returns deletedApplicationEntityRead.some
+          .pure[doobie.ConnectionIO]
         permissionDb.getAllBy(any[ApplicationId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
         permissionRepository.deleteOp(any[ApplicationId], any[PermissionId]) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]

@@ -83,6 +83,7 @@ object RepositoryErrors {
           extends TenantInsertionError(message = s"An error occurred when inserting Tenant: $cause")
     }
 
+    def tenantNotFoundError(publicTenantId: TenantId): TenantDbError = tenantNotFoundError(publicTenantId.toString)
     def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
 
     case class TenantNotFoundError(publicTenantId: String)
@@ -97,6 +98,16 @@ object RepositoryErrors {
           message =
             s"Could not delete Tenant with publicTenantId = [${publicTenantId.toString}] because it is not deactivated."
         )
+
+    def cannotDeleteDependencyError(publicTenantId: TenantId, dependencyError: CustomError): TenantDbError =
+      CannotDeleteDependencyError(publicTenantId, dependencyError)
+
+    case class CannotDeleteDependencyError(publicTenantId: TenantId, dependencyError: CustomError)
+        extends TenantDbError(
+          message =
+            s"Could not delete Tenant with publicTenantId = [${publicTenantId.toString}] because one of its dependencies cannot be deleted: ${dependencyError.message}"
+        )
+
   }
 
   sealed abstract class ApplicationDbError(override val message: String) extends CustomError
@@ -142,6 +153,9 @@ object RepositoryErrors {
       case class ApplicationInsertionErrorImpl(cause: SQLException)
           extends ApplicationInsertionError(message = s"An error occurred when inserting Application: $cause")
     }
+
+    def applicationNotFoundError(publicApplicationId: ApplicationId): ApplicationDbError =
+      applicationNotFoundError(publicApplicationId.toString)
 
     def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
       ApplicationNotFoundError(publicApplicationId)

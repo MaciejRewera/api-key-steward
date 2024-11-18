@@ -1,22 +1,15 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.PermissionsTestData.{
-  permissionEntityRead_1,
-  permissionEntityRead_2,
-  permissionEntityRead_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{publicTemplateId_1, _}
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
-  ApiKeyTemplateInsertionErrorImpl,
-  ReferencedTenantDoesNotExistError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
-import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, PermissionEntity, TenantEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -329,10 +322,10 @@ class ApiKeyTemplateRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsDb, ApiKeyTemplateDb and PermissionDb" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns deletedApiKeyTemplateEntityReadWrapped
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
 
         for {
           _ <- apiKeyTemplateRepository.delete(publicTemplateId_1)
@@ -344,29 +337,52 @@ class ApiKeyTemplateRepositorySpec
       }
 
       "return Right containing deleted ApiKeyTemplate" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns deletedApiKeyTemplateEntityReadWrapped
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
 
         apiKeyTemplateRepository.delete(publicTemplateId_1).asserting(_ shouldBe Right(apiKeyTemplate_1))
       }
     }
 
+    "PermissionDb return exception" should {
+
+      "Not call ApiKeyTemplatesPermissionsDb or ApiKeyTemplateDb" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns
+          Stream(permissionEntityRead_1) ++ Stream.raiseError[doobie.ConnectionIO](testException)
+
+        for {
+          _ <- apiKeyTemplateRepository.delete(publicTemplateId_1).attempt
+
+          _ = verifyZeroInteractions(apiKeyTemplatesPermissionsDb, apiKeyTemplateDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns
+          Stream(permissionEntityRead_1) ++ Stream.raiseError[doobie.ConnectionIO](testException)
+
+        apiKeyTemplateRepository.delete(publicTemplateId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "ApiKeyTemplatesPermissionsDb returns exception" should {
 
-      "NOT call either ApiKeyTemplateDb or PermissionDb" in {
+      "NOT call either ApiKeyTemplateDb" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         for {
           _ <- apiKeyTemplateRepository.delete(publicTemplateId_1).attempt
 
-          _ = verifyZeroInteractions(apiKeyTemplateDb, permissionDb)
+          _ = verifyZeroInteractions(apiKeyTemplateDb)
         } yield ()
       }
 
       "return failed IO containing this exception" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
@@ -375,20 +391,8 @@ class ApiKeyTemplateRepositorySpec
     }
 
     "ApiKeyTemplateDb returns Left containing ApiKeyTemplateNotFoundError" should {
-
-      "NOT call PermissionDb" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
-          .pure[doobie.ConnectionIO]
-        apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns apiKeyTemplateNotFoundWrapped
-
-        for {
-          _ <- apiKeyTemplateRepository.delete(publicTemplateId_1)
-
-          _ = verifyZeroInteractions(permissionDb)
-        } yield ()
-      }
-
       "return Left containing this error" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns apiKeyTemplateNotFoundWrapped
@@ -398,35 +402,11 @@ class ApiKeyTemplateRepositorySpec
     }
 
     "ApiKeyTemplateDb returns different exception" should {
-
-      "NOT call PermissionDb" in {
+      "return failed IO containing this exception" in {
+        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns testExceptionWrappedE[ApiKeyTemplateNotFoundError]
-
-        for {
-          _ <- apiKeyTemplateRepository.delete(publicTemplateId_1).attempt
-
-          _ = verifyZeroInteractions(permissionDb)
-        } yield ()
-      }
-
-      "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
-          .pure[doobie.ConnectionIO]
-        apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns testExceptionWrappedE[ApiKeyTemplateNotFoundError]
-
-        apiKeyTemplateRepository.delete(publicTemplateId_1).attempt.asserting(_ shouldBe Left(testException))
-      }
-    }
-
-    "PermissionDb return exception" should {
-      "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3
-          .pure[doobie.ConnectionIO]
-        apiKeyTemplateDb.delete(any[ApiKeyTemplateId]) returns deletedApiKeyTemplateEntityReadWrapped
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns
-          Stream(permissionEntityRead_1) ++ Stream.raiseError[doobie.ConnectionIO](testException)
 
         apiKeyTemplateRepository.delete(publicTemplateId_1).attempt.asserting(_ shouldBe Left(testException))
       }

@@ -42,7 +42,6 @@ class PermissionRepository(
   ): IO[Either[PermissionNotFoundError, Permission]] =
     (for {
       permissionEntityRead <- EitherT(deleteOp(publicApplicationId, publicPermissionId))
-
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 

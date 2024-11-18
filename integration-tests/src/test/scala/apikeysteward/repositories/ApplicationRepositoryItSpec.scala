@@ -2,10 +2,11 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
+import apikeysteward.base.testdata.ApplicationsTestData.{applicationEntityRead_1, publicApplicationId_1}
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityRead_1
 import apikeysteward.model.ApiKeyTemplate
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{ApplicationDbId, PermissionDbId, TemplateDbId}
+import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
 import cats.effect.IO
@@ -65,17 +66,17 @@ class ApplicationRepositoryItSpec
         .toList
   }
 
-  private def insertPrerequisiteData(): IO[(ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
+  private def insertPrerequisiteData(): IO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     (for {
-      dataIds <- ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(
+      dataIds <- TestDataInsertions.insertPrerequisiteData(
         tenantDb,
         applicationDb,
         permissionDb,
         apiKeyTemplateDb
       )
-      (_, templateIds, permissionIds) = dataIds
+      (_, _, templateIds, permissionIds) = dataIds
 
-      preExistingEntities = List(
+      associationEntities = List(
         ApiKeyTemplatesPermissionsEntity
           .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
         ApiKeyTemplatesPermissionsEntity
@@ -83,12 +84,77 @@ class ApplicationRepositoryItSpec
         ApiKeyTemplatesPermissionsEntity
           .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
       )
-      _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+      _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
     } yield dataIds).transact(transactor)
 
   "ApplicationRepository on delete" when {
 
-    "there are Permissions in the DB for given inactive Application" should {
+    "given Application is active" should {
+
+      "NOT delete associations between related Permissions and ApiKeyTemplates" in {
+        val result = for {
+          dataIds <- insertPrerequisiteData()
+          (_, _, templateIds, permissionIds) = dataIds
+
+          _ <- repository.activate(publicApplicationId_1)
+          _ <- repository.delete(publicApplicationId_1)
+
+          res <- Queries.getAllAssociations.transact(transactor)
+
+          expectedEntities = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+          )
+        } yield (res, expectedEntities)
+
+        result.asserting { case (res, expectedEntities) =>
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete related Permissions" in {
+        val result = for {
+          dataIds <- insertPrerequisiteData()
+          (_, applicationId, _, _) = dataIds
+
+          _ <- repository.activate(publicApplicationId_1)
+          _ <- repository.delete(publicApplicationId_1)
+
+          res <- Queries.getAllPermissions.transact(transactor)
+        } yield (res, applicationId)
+
+        result.asserting { case (res, applicationId) =>
+          val expectedEntities = List(
+            permissionEntityRead_1.copy(id = res.head.id, applicationId = applicationId),
+            permissionEntityRead_2.copy(id = res(1).id, applicationId = applicationId),
+            permissionEntityRead_3.copy(id = res(2).id, applicationId = applicationId)
+          )
+
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete this Application" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- repository.activate(publicApplicationId_1)
+          _ <- repository.delete(publicApplicationId_1)
+
+          res <- Queries.getAllApplications.transact(transactor)
+        } yield res
+
+        result.asserting { res =>
+          res shouldBe List(applicationEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
+        }
+      }
+    }
+
+    "there are entities in the DB for given inactive Application" should {
 
       "delete associations between these Permissions and ApiKeyTemplates" in {
         val result = for {
@@ -129,19 +195,6 @@ class ApplicationRepositoryItSpec
         result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
       }
 
-      "NOT delete the Tenant" in {
-        val result = for {
-          _ <- insertPrerequisiteData()
-
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
-
-          res <- Queries.getAllTenants.transact(transactor)
-        } yield res
-
-        result.asserting(res => res shouldBe List(tenantEntityRead_1.copy(id = res.head.id)))
-      }
-
       "NOT delete ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
@@ -159,6 +212,19 @@ class ApplicationRepositoryItSpec
             apiKeyTemplate_3.copy(permissions = List.empty)
           )
         }
+      }
+
+      "NOT delete the Tenant" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- repository.deactivate(publicApplicationId_1)
+          _ <- repository.delete(publicApplicationId_1)
+
+          res <- Queries.getAllTenants.transact(transactor)
+        } yield res
+
+        result.asserting(res => res shouldBe List(tenantEntityRead_1.copy(id = res.head.id)))
       }
     }
   }

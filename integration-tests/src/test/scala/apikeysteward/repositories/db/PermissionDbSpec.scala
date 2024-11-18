@@ -1,19 +1,15 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
-  apiKeyTemplateEntityWrite_1,
-  publicTemplateId_1,
-  publicTemplateId_2,
-  publicTemplateId_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.ApiKeyTemplatesPermissionsDbSpec.{ApplicationDbId, PermissionDbId, TemplateDbId}
+import apikeysteward.repositories.TestDataInsertions
+import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApplicationEntity, PermissionEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -717,14 +713,15 @@ class PermissionDbSpec
 
     "there are several ApiKeyTemplates in the DB with associated ApiKeyTemplatesPermissions" when {
 
-      def insertPrerequisiteData(): ConnectionIO[(ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-        ApiKeyTemplatesPermissionsDbSpec.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+      def insertPrerequisiteData()
+          : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
+        TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
 
       "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {
         "return empty Stream" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (_, templateIds, permissionIds) = dataIds
+            (_, _, templateIds, permissionIds) = dataIds
 
             preExistingEntities = List(
               ApiKeyTemplatesPermissionsEntity
@@ -747,7 +744,7 @@ class PermissionDbSpec
         "return this single ApiKeyTemplatesPermissions" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (applicationId, templateIds, permissionIds) = dataIds
+            (_, applicationId, templateIds, permissionIds) = dataIds
 
             preExistingEntityExpectedToBeFetched = List(
               ApiKeyTemplatesPermissionsEntity
@@ -780,7 +777,7 @@ class PermissionDbSpec
         "return all these ApiKeyTemplatesPermissions" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (applicationId, templateIds, permissionIds) = dataIds
+            (_, applicationId, templateIds, permissionIds) = dataIds
 
             preExistingEntitiesExpectedToBeFetched = List(
               ApiKeyTemplatesPermissionsEntity
