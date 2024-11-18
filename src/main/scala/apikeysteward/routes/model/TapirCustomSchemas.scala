@@ -4,8 +4,8 @@ import apikeysteward.routes.model.TapirCustomValidators.{ValidateList, ValidateO
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
-  CreateApiKeyTemplatePermissionsRequest,
-  DeleteApiKeyTemplatePermissionsRequest
+  CreateApiKeyTemplatesPermissionsRequest,
+  DeleteApiKeyTemplatesPermissionsRequest
 }
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
@@ -60,14 +60,14 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescriptionLength500)
       .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
 
-  val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatePermissionsRequest] =
+  val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatesPermissionsRequest] =
     Schema
-      .derived[CreateApiKeyTemplatePermissionsRequest]
+      .derived[CreateApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
 
-  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatePermissionsRequest] =
+  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatesPermissionsRequest] =
     Schema
-      .derived[DeleteApiKeyTemplatePermissionsRequest]
+      .derived[DeleteApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =

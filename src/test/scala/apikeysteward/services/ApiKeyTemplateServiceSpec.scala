@@ -2,20 +2,35 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.PermissionsTestData.{
+  publicPermissionId_1,
+  publicPermissionId_2,
+  publicPermissionId_3
+}
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
   ApiKeyTemplateAlreadyExistsError,
   ApiKeyTemplateInsertionErrorImpl,
   ReferencedTenantDoesNotExistError
 }
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError.{
+  ApiKeyTemplatesPermissionsAlreadyExistsError,
+  ApiKeyTemplatesPermissionsInsertionErrorImpl,
+  ReferencedApiKeyTemplateDoesNotExistError,
+  ReferencedPermissionDoesNotExistError
+}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.repositories.ApiKeyTemplateRepository
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
+import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
+import apikeysteward.repositories.{ApiKeyTemplateRepository, ApiKeyTemplatesPermissionsRepository}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.catsSyntaxEitherId
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyZeroInteractions}
@@ -35,13 +50,25 @@ class ApiKeyTemplateServiceSpec
 
   private val uuidGenerator = mock[UuidGenerator]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
+  private val apiKeyTemplatesPermissionsRepository = mock[ApiKeyTemplatesPermissionsRepository]
 
-  private val apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository)
+  private val apiKeyTemplateService =
+    new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository, apiKeyTemplatesPermissionsRepository)
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, apiKeyTemplateRepository)
+    reset(uuidGenerator, apiKeyTemplateRepository, apiKeyTemplatesPermissionsRepository)
 
   private val testException = new RuntimeException("Test Exception")
+  private val testSqlException = new SQLException("Test SQL Exception")
+
+  private val insertionErrors = Seq(
+    ApiKeyTemplatesPermissionsAlreadyExistsError(101L, 102L),
+    ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1),
+    ReferencedPermissionDoesNotExistError(publicPermissionId_1),
+    ApiKeyTemplatesPermissionsInsertionErrorImpl(testSqlException)
+  )
+
+  private val inputPublicPermissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
 
   "ApiKeyTemplateService on createApiKeyTemplate" when {
 
@@ -429,6 +456,137 @@ class ApiKeyTemplateServiceSpec
         apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
 
         apiKeyTemplateService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ApiKeyTemplatesPermissionsService on associatePermissionsWithApiKeyTemplate" when {
+
+    "everything works correctly" should {
+
+      "call ApiKeyTemplatesPermissionsRepository" in {
+        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+          ().asRight
+        )
+
+        for {
+          _ <- apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
+            publicTemplateId_1,
+            inputPublicPermissionIds
+          )
+
+          _ = verify(apiKeyTemplatesPermissionsRepository).insertMany(
+            eqTo(publicTemplateId_1),
+            eqTo(inputPublicPermissionIds)
+          )
+        } yield ()
+      }
+
+      "return Right containing Unit value" in {
+        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+          ().asRight
+        )
+
+        val result =
+          apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+
+        result.asserting(_ shouldBe Right(()))
+      }
+    }
+
+    insertionErrors.foreach { insertionError =>
+      s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
+
+        "return Left containing this error" in {
+          apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+            .pure(insertionError.asLeft)
+
+          val result =
+            apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+
+          result.asserting(_ shouldBe Left(insertionError))
+        }
+      }
+    }
+
+    "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
+      "return failed IO containing this exception" in {
+        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+          .raiseError(testException)
+
+        val result = apiKeyTemplateService
+          .associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          .attempt
+
+        result.asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ApiKeyTemplatesPermissionsService on removePermissionsFromApiKeyTemplate" when {
+
+    "everything works correctly" should {
+
+      "call ApiKeyTemplatesPermissionsRepository" in {
+        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+          ().asRight
+        )
+
+        for {
+          _ <- apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+
+          _ = verify(apiKeyTemplatesPermissionsRepository).deleteMany(
+            eqTo(publicTemplateId_1),
+            eqTo(inputPublicPermissionIds)
+          )
+        } yield ()
+      }
+
+      "return Right containing Unit value" in {
+        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+          ().asRight
+        )
+
+        val result =
+          apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+
+        result.asserting(_ shouldBe Right(()))
+      }
+    }
+
+    val allErrors = insertionErrors :+ ApiKeyTemplatesPermissionsNotFoundError(
+      List(
+        ApiKeyTemplatesPermissionsEntity.Write(101L, 102L),
+        ApiKeyTemplatesPermissionsEntity.Write(201L, 202L),
+        ApiKeyTemplatesPermissionsEntity.Write(301L, 302L)
+      )
+    )
+
+    allErrors.foreach { insertionError =>
+      s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
+
+        "return Left containing this error" in {
+          apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+            .pure(insertionError.asLeft)
+
+          val result =
+            apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+
+          result.asserting(_ shouldBe Left(insertionError))
+        }
+      }
+    }
+
+    "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
+      "return failed IO containing this exception" in {
+        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+          .raiseError(testException)
+
+        val result = apiKeyTemplateService
+          .removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          .attempt
+
+        result.asserting(_ shouldBe Left(testException))
       }
     }
   }

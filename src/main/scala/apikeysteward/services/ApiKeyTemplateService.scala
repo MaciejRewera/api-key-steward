@@ -2,21 +2,27 @@ package apikeysteward.services
 
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
   ApiKeyTemplateInsertionError,
   ApiKeyTemplateNotFoundError
 }
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.repositories.ApiKeyTemplateRepository
+import apikeysteward.repositories.{ApiKeyTemplateRepository, ApiKeyTemplatesPermissionsRepository}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 
-class ApiKeyTemplateService(uuidGenerator: UuidGenerator, apiKeyTemplateRepository: ApiKeyTemplateRepository)
-    extends Logging {
+class ApiKeyTemplateService(
+    uuidGenerator: UuidGenerator,
+    apiKeyTemplateRepository: ApiKeyTemplateRepository,
+    apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository
+) extends Logging {
 
   def createApiKeyTemplate(
       tenantId: TenantId,
@@ -78,5 +84,17 @@ class ApiKeyTemplateService(uuidGenerator: UuidGenerator, apiKeyTemplateReposito
 
   def getAllForTenant(tenantId: TenantId): IO[List[ApiKeyTemplate]] =
     apiKeyTemplateRepository.getAllForTenant(tenantId)
+
+  def associatePermissionsWithApiKeyTemplate(
+      templateId: ApiKeyTemplateId,
+      permissionIds: List[PermissionId]
+  ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
+    apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds)
+
+  def removePermissionsFromApiKeyTemplate(
+      templateId: ApiKeyTemplateId,
+      permissionIds: List[PermissionId]
+  ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
+    apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds)
 
 }

@@ -23,9 +23,9 @@ import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.apikeytemplate._
-import apikeysteward.routes.model.admin.apikeytemplatespermissions.CreateApiKeyTemplatePermissionsRequest
+import apikeysteward.routes.model.admin.apikeytemplatespermissions.CreateApiKeyTemplatesPermissionsRequest
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
-import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService, PermissionService}
+import apikeysteward.services.{ApiKeyTemplateService, PermissionService}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
@@ -55,14 +55,12 @@ class AdminApiKeyTemplateRoutesSpec
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val apiKeyTemplateService = mock[ApiKeyTemplateService]
-  private val apiKeyTemplatesPermissionsService = mock[ApiKeyTemplatesPermissionsService]
   private val permissionService = mock[PermissionService]
 
   private val adminRoutes: HttpApp[IO] =
     new AdminApiKeyTemplateRoutes(
       jwtAuthorizer,
       apiKeyTemplateService,
-      apiKeyTemplatesPermissionsService,
       permissionService
     ).allRoutes.orNotFound
 
@@ -71,7 +69,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, apiKeyTemplateService, apiKeyTemplatesPermissionsService, permissionService)
+    reset(jwtAuthorizer, apiKeyTemplateService, permissionService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
@@ -1126,7 +1124,7 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on POST /admin/templates/{templateId}/permissions" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions")
-    val requestBody = CreateApiKeyTemplatePermissionsRequest(
+    val requestBody = CreateApiKeyTemplatesPermissionsRequest(
       permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
     )
 
@@ -1178,10 +1176,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplatesPermissionsService" in authorizedFixture {
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(apiKeyTemplatesPermissionsService)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
           } yield ()
         }
       }
@@ -1212,10 +1210,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplatesPermissionsService" in authorizedFixture {
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithIncorrectPermissionId)
-            _ = verifyZeroInteractions(apiKeyTemplatesPermissionsService)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
           } yield ()
         }
       }
@@ -1223,23 +1221,23 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApiKeyTemplatesPermissionsService" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "call ApiKeyTemplateService" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(().asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(apiKeyTemplatesPermissionsService).associatePermissionsWithApiKeyTemplate(
+          _ = verify(apiKeyTemplateService).associatePermissionsWithApiKeyTemplate(
             eqTo(publicTemplateId_1),
             eqTo(requestBody.permissionIds)
           )
         } yield ()
       }
 
-      "return successful value returned by ApiKeyTemplatesPermissionsService" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(().asRight)
@@ -1251,8 +1249,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1272,8 +1270,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Not Found when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1293,8 +1291,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1314,9 +1312,9 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ApiKeyTemplatesPermissionsInsertionErrorImpl" in authorizedFixture {
+      "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesPermissionsInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1330,8 +1328,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApiKeyTemplatesPermissionsService returns failed IO" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.associatePermissionsWithApiKeyTemplate(
+      "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
+        apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns
@@ -1349,7 +1347,7 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}/permissions" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions")
-    val requestBody = CreateApiKeyTemplatePermissionsRequest(
+    val requestBody = CreateApiKeyTemplatesPermissionsRequest(
       permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
     )
 
@@ -1401,10 +1399,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplatesPermissionsService" in authorizedFixture {
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(apiKeyTemplatesPermissionsService)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
           } yield ()
         }
       }
@@ -1435,10 +1433,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplatesPermissionsService" in authorizedFixture {
+        "NOT call ApiKeyTemplateService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithIncorrectPermissionId)
-            _ = verifyZeroInteractions(apiKeyTemplatesPermissionsService)
+            _ = verifyZeroInteractions(apiKeyTemplateService)
           } yield ()
         }
       }
@@ -1446,23 +1444,23 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApiKeyTemplatesPermissionsService" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "call ApiKeyTemplateService" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(().asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(apiKeyTemplatesPermissionsService).removePermissionsFromApiKeyTemplate(
+          _ = verify(apiKeyTemplateService).removePermissionsFromApiKeyTemplate(
             eqTo(publicTemplateId_1),
             eqTo(requestBody.permissionIds)
           )
         } yield ()
       }
 
-      "return successful value returned by ApiKeyTemplatesPermissionsService" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(().asRight)
@@ -1474,8 +1472,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Not Found when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1495,8 +1493,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1516,8 +1514,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplatesPermissionsService returns successful IO with Left containing ApiKeyTemplatesPermissionsNotFoundError" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesPermissionsNotFoundError" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
@@ -1545,8 +1543,8 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApiKeyTemplatesPermissionsService returns failed IO" in authorizedFixture {
-        apiKeyTemplatesPermissionsService.removePermissionsFromApiKeyTemplate(
+      "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
+        apiKeyTemplateService.removePermissionsFromApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns
