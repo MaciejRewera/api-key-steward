@@ -54,7 +54,7 @@ class ApiKeyTemplateRepository(
       publicTemplateId: ApiKeyTemplateId
   ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     for {
-      permissionEntitiesToDelete <- permissionDb.getAllPermissionsForTemplate(publicTemplateId).compile.toList
+      permissionEntitiesToDelete <- permissionDb.getAllForTemplate(publicTemplateId).compile.toList
 
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTemplateId)
@@ -80,7 +80,7 @@ class ApiKeyTemplateRepository(
   private def constructApiKeyTemplate(templateEntity: ApiKeyTemplateEntity.Read): ConnectionIO[ApiKeyTemplate] =
     for {
       permissionEntities <- permissionDb
-        .getAllPermissionsForTemplate(UUID.fromString(templateEntity.publicTemplateId))
+        .getAllForTemplate(UUID.fromString(templateEntity.publicTemplateId))
         .compile
         .toList
 

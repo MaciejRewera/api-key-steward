@@ -80,7 +80,7 @@ class PermissionDb()(implicit clock: Clock) {
   def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Queries.getByPublicPermissionId(publicPermissionId).option
 
-  def getAllPermissionsForTemplate(
+  def getAllForTemplate(
       publicTemplateId: ApiKeyTemplateId
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
     Queries.getAllPermissionsForTemplate(publicTemplateId).stream

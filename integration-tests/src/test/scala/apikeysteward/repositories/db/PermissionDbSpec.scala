@@ -581,7 +581,7 @@ class PermissionDbSpec
     "there are NO ApiKeyTemplates in the DB" should {
       "return empty Stream" in {
         permissionDb
-          .getAllPermissionsForTemplate(publicTemplateId_1)
+          .getAllForTemplate(publicTemplateId_1)
           .compile
           .toList
           .transact(transactor)
@@ -609,7 +609,7 @@ class PermissionDbSpec
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_2).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_2).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -627,7 +627,7 @@ class PermissionDbSpec
           _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -658,7 +658,7 @@ class PermissionDbSpec
             permissionEntityRead_1.copy(id = permissionId, applicationId = applicationId)
           )
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -701,7 +701,7 @@ class PermissionDbSpec
             permissionEntityRead_3.copy(id = permissionId_3, applicationId = applicationId)
           )
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -738,7 +738,7 @@ class PermissionDbSpec
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_3).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_3).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -768,7 +768,7 @@ class PermissionDbSpec
               permissionEntityRead_1.copy(id = permissionIds.head, applicationId = applicationId)
             )
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>
@@ -804,7 +804,7 @@ class PermissionDbSpec
               permissionEntityRead_2.copy(id = permissionIds(1), applicationId = applicationId)
             )
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>
