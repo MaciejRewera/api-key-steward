@@ -1,12 +1,19 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
+  apiKeyTemplateEntityWrite_1,
+  publicTemplateId_1,
+  publicTemplateId_2,
+  publicTemplateId_3
+}
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
-import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.db.entity.UserEntity
+import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
+import apikeysteward.repositories.db.entity.{ApiKeyTemplatesUsersEntity, UserEntity}
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
 import doobie.ConnectionIO
@@ -24,10 +31,13 @@ class UserDbSpec
     with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <- sql"TRUNCATE tenant, tenant_user CASCADE".update.run
+    _ <- sql"TRUNCATE tenant, tenant_user, api_key_template, api_key_templates_users CASCADE".update.run
   } yield ()
 
   private val tenantDb = new TenantDb
+  private val apiKeyTemplateDb = new ApiKeyTemplateDb
+  private val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
+
   private val userDb = new UserDb
 
   private object Queries {
@@ -466,6 +476,198 @@ class UserDbSpec
 
         result.asserting { res =>
           res shouldBe Some(userEntityRead_1.copy(id = res.get.id, tenantId = res.get.tenantId))
+        }
+      }
+    }
+  }
+
+  "UserDb on getAllForTemplate" when {
+
+    "there are NO ApiKeyTemplates in the DB" should {
+      "return empty Stream" in {
+        userDb
+          .getAllForTemplate(publicTemplateId_1)
+          .compile
+          .toList
+          .transact(transactor)
+          .asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyTemplate in the DB, but with a different publicTemplateId" should {
+      "return empty Stream" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          res <- userDb.getAllForTemplate(publicTemplateId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyTemplate in the DB, but there are no ApiKeyTemplatesUsers for this Template" should {
+      "return empty Stream" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- userDb.getAllForTemplate(publicTemplateId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyTemplate in the DB with a single ApiKeyTemplatesUsers" should {
+      "return this single ApiKeyTemplatesUsers" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          expectedUserEntities = List(userEntityRead_1.copy(id = userId, tenantId = tenantId))
+
+          res <- userDb.getAllForTemplate(publicTemplateId_1).compile.toList
+        } yield (res, expectedUserEntities)).transact(transactor)
+
+        result.asserting { case (res, expectedUserEntities) =>
+          res shouldBe expectedUserEntities
+        }
+      }
+    }
+
+    "there is an ApiKeyTemplate in the DB with multiple ApiKeyTemplatesUsers" should {
+      "return all these ApiKeyTemplatesUsers" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
+          userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_1),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_2),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_3)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          expectedUserEntities = List(
+            userEntityRead_1.copy(id = userId_1, tenantId = tenantId),
+            userEntityRead_2.copy(id = userId_2, tenantId = tenantId),
+            userEntityRead_3.copy(id = userId_3, tenantId = tenantId)
+          )
+
+          res <- userDb.getAllForTemplate(publicTemplateId_1).compile.toList
+        } yield (res, expectedUserEntities)).transact(transactor)
+
+        result.asserting { case (res, expectedUserEntities) =>
+          res.size shouldBe 3
+          res should contain theSameElementsAs expectedUserEntities
+        }
+      }
+    }
+
+    "there are several ApiKeyTemplates in the DB with associated ApiKeyTemplatesUsers" when {
+
+      def insertPrerequisiteData(): ConnectionIO[(TenantDbId, List[TemplateDbId], List[UserDbId])] =
+        TestDataInsertions.insertPrerequisiteTemplatesAndUsers(tenantDb, userDb, apiKeyTemplateDb)
+
+      "there are NO ApiKeyTemplatesUsers for given publicTemplateId" should {
+        "return empty Stream" in {
+          val result = (for {
+            dataIds <- insertPrerequisiteData()
+            (_, templateIds, userIds) = dataIds
+
+            preExistingEntities = List(
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+            )
+            _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+            res <- userDb.getAllForTemplate(publicTemplateId_3).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List.empty[UserEntity.Read])
+        }
+      }
+
+      "there is a single ApiKeyTemplatesUsers for given publicTemplateId" should {
+        "return this single ApiKeyTemplatesUsers" in {
+          val result = (for {
+            dataIds <- insertPrerequisiteData()
+            (tenantId, templateIds, userIds) = dataIds
+
+            preExistingEntityExpectedToBeFetched = List(
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+            )
+
+            preExistingEntities = preExistingEntityExpectedToBeFetched ++ List(
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+            )
+            _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+            expectedUserEntities = List(userEntityRead_1.copy(id = userIds.head, tenantId = tenantId))
+
+            res <- userDb.getAllForTemplate(publicTemplateId_1).compile.toList
+          } yield (res, expectedUserEntities)).transact(transactor)
+
+          result.asserting { case (res, expectedUserEntities) =>
+            res.size shouldBe 1
+            res shouldBe expectedUserEntities
+          }
+        }
+      }
+
+      "there are several ApiKeyTemplatesUsers got given publicTemplateId" should {
+        "return all these ApiKeyTemplatesUsers" in {
+          val result = (for {
+            dataIds <- insertPrerequisiteData()
+            (tenantId, templateIds, userIds) = dataIds
+
+            preExistingEntitiesExpectedToBeFetched = List(
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1))
+            )
+
+            preExistingEntities = preExistingEntitiesExpectedToBeFetched ++ List(
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
+              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+            )
+            _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+            expectedUserEntities = List(
+              userEntityRead_1.copy(id = userIds.head, tenantId = tenantId),
+              userEntityRead_2.copy(id = userIds(1), tenantId = tenantId)
+            )
+
+            res <- userDb.getAllForTemplate(publicTemplateId_1).compile.toList
+          } yield (res, expectedUserEntities)).transact(transactor)
+
+          result.asserting { case (res, expectedUserEntities) =>
+            res.size shouldBe 2
+            res should contain theSameElementsAs expectedUserEntities
+          }
         }
       }
     }

@@ -4,12 +4,8 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.apiKeyTemplateEntityWrite_1
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.base.testdata.UsersTestData.userEntityWrite_1
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
-  ApiKeyTemplatesUsersAlreadyExistsError,
-  ReferencedApiKeyTemplateDoesNotExistError,
-  ReferencedUserDoesNotExistError
-}
-import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -50,8 +46,7 @@ class ApiKeyTemplatesUsersDbSpec
         .toList
   }
 
-  private def insertPrerequisiteData()
-      : ConnectionIO[(TenantDbId, List[TestDataInsertions.UserDbId], List[TemplateDbId])] =
+  private def insertPrerequisiteData(): ConnectionIO[(TenantDbId, List[TemplateDbId], List[UserDbId])] =
     TestDataInsertions.insertPrerequisiteTemplatesAndUsers(tenantDb, userDb, apiKeyTemplateDb)
 
   private def convertEntitiesWriteToRead(

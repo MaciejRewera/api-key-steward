@@ -7,8 +7,7 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.TestDataInsertions
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApplicationEntity, PermissionEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -576,7 +575,7 @@ class PermissionDbSpec
     }
   }
 
-  "PermissionDb on getAllPermissionsForTemplate" when {
+  "PermissionDb on getAllForTemplate" when {
 
     "there are NO ApiKeyTemplates in the DB" should {
       "return empty Stream" in {

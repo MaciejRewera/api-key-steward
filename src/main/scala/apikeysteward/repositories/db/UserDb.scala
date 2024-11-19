@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
@@ -63,6 +64,9 @@ class UserDb()(implicit clock: Clock) {
   def getByPublicUserId(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Option[UserEntity.Read]] =
     Queries.getBy(publicTenantId, publicUserId).option
 
+  def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): Stream[doobie.ConnectionIO, UserEntity.Read] =
+    Queries.getAllForTemplate(publicTemplateId).stream
+
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, UserEntity.Read] =
     Queries.getAllForTenant(publicTenantId).stream
 
@@ -101,6 +105,14 @@ class UserDb()(implicit clock: Clock) {
               WHERE tenant.public_tenant_id = ${publicTenantId.toString}
                 AND tenant_user.public_user_id = ${publicUserId.toString}
              """).query[UserEntity.Read]
+
+    def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[UserEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM tenant_user
+            JOIN api_key_templates_users ON tenant_user.id = api_key_templates_users.user_id
+            JOIN api_key_template ON api_key_template.id = api_key_templates_users.api_key_template_id
+            WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+           """.stripMargin).query[UserEntity.Read]
 
     def getAllForTenant(publicTenantId: TenantId): doobie.Query0[UserEntity.Read] =
       (columnNamesSelectFragment ++
