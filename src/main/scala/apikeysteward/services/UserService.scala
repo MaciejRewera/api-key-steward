@@ -1,18 +1,23 @@
 package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId
-import apikeysteward.repositories.{TenantRepository, UserRepository}
+import apikeysteward.repositories.{ApiKeyTemplateRepository, TenantRepository, UserRepository}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
 
-class UserService(userRepository: UserRepository, tenantRepository: TenantRepository) extends Logging {
+class UserService(
+    userRepository: UserRepository,
+    tenantRepository: TenantRepository,
+    apiKeyTemplateRepository: ApiKeyTemplateRepository
+) extends Logging {
 
   def createUser(tenantId: TenantId, createUserRequest: CreateUserRequest): IO[Either[UserInsertionError, User]] =
     for {
@@ -53,6 +58,17 @@ class UserService(userRepository: UserRepository, tenantRepository: TenantReposi
       )
     } yield result).value
 
-  def getAllForTemplate(templateId: ApiKeyTemplateId): IO[List[User]] = IO.pure(List.empty)
+  def getAllForTemplate(
+      templateId: ApiKeyTemplateId
+  ): IO[Either[ReferencedApiKeyTemplateDoesNotExistError, List[User]]] =
+    (for {
+      _ <- EitherT(
+        apiKeyTemplateRepository.getBy(templateId).map(_.toRight(ReferencedApiKeyTemplateDoesNotExistError(templateId)))
+      )
+
+      result <- EitherT.liftF[IO, ReferencedApiKeyTemplateDoesNotExistError, List[User]](
+        userRepository.getAllForTemplate(templateId)
+      )
+    } yield result).value
 
 }

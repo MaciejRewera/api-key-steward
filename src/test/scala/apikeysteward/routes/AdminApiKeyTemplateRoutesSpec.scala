@@ -3,14 +3,7 @@ package apikeysteward.routes
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
-import apikeysteward.base.testdata.UsersTestData.{
-  publicUserId_1,
-  publicUserId_2,
-  publicUserId_3,
-  user_1,
-  user_2,
-  user_3
-}
+import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
@@ -1869,7 +1862,7 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}/users" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
@@ -1902,7 +1895,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+        userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1913,7 +1906,7 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by UserService" when {
 
         "UserService returns an empty List" in authorizedFixture {
-          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
 
           for {
             response <- adminRoutes.run(request)
@@ -1925,7 +1918,7 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "UserService returns a List with several elements" in authorizedFixture {
-          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
+          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(Right(List(user_1, user_2, user_3)))
 
           for {
             response <- adminRoutes.run(request)
@@ -1937,6 +1930,22 @@ class AdminApiKeyTemplateRoutesSpec
               )
           } yield ()
         }
+      }
+
+      "return Bad Request when UserService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
+          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound))
+            )
+        } yield ()
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {

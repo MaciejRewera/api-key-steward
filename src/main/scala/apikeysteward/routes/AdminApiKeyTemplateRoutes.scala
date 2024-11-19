@@ -243,8 +243,14 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
-          userService.getAllForTemplate(apiKeyTemplateId).map { users =>
-            (StatusCode.Ok, GetMultipleUsersResponse(users)).asRight
+          userService.getAllForTemplate(apiKeyTemplateId).map {
+
+            case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
+
+            case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound))
+                .asLeft
           }
         }
     )

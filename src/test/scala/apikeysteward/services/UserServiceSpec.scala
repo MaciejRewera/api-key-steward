@@ -1,14 +1,17 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, publicTemplateId_1}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenant_1}
 import apikeysteward.base.testdata.UsersTestData._
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.model.{Tenant, User}
-import apikeysteward.repositories.{TenantRepository, UserRepository}
+import apikeysteward.model.{ApiKeyTemplate, Tenant, User}
+import apikeysteward.repositories.{ApiKeyTemplateRepository, TenantRepository, UserRepository}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -26,11 +29,12 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
   private val userRepository = mock[UserRepository]
   private val tenantRepository = mock[TenantRepository]
+  private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
 
-  private val userService = new UserService(userRepository, tenantRepository)
+  private val userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
 
   override def beforeEach(): Unit =
-    reset(userRepository, tenantRepository)
+    reset(userRepository, tenantRepository, apiKeyTemplateRepository)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -260,6 +264,74 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         userService
           .getAllForTenant(publicTenantId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "UserService on getAllForTemplate" when {
+
+    "everything works correctly" should {
+
+      "call TenantRepository and UserRepository" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+        userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+
+        for {
+          _ <- userService.getAllForTemplate(publicTemplateId_1)
+
+          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTemplateId_1))
+          _ = verify(userRepository).getAllForTemplate(eqTo(publicTemplateId_1))
+        } yield ()
+      }
+
+      "return the value returned by UserRepository" when {
+
+        "UserRepository returns empty List" in {
+          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+
+          userService.getAllForTemplate(publicTemplateId_1).asserting(_ shouldBe Right(List.empty[User]))
+        }
+
+        "UserRepository returns non-empty List" in {
+          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
+
+          userService.getAllForTemplate(publicTemplateId_1).asserting(_ shouldBe Right(List(user_1, user_2, user_3)))
+        }
+      }
+    }
+
+    "TenantRepository returns empty Option" should {
+
+      "NOT call UserRepository" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+
+        for {
+          _ <- userService.getAllForTemplate(publicTemplateId_1)
+
+          _ = verifyZeroInteractions(userRepository)
+        } yield ()
+      }
+
+      "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+
+        userService
+          .getAllForTemplate(publicTemplateId_1)
+          .asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
+      }
+    }
+
+    "UserRepository returns failed IO" should {
+      "return failed IO" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+        userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+
+        userService
+          .getAllForTemplate(publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
