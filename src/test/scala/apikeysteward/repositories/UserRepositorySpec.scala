@@ -3,10 +3,8 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.base.testdata.UsersTestData._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{
-  ReferencedTenantDoesNotExistError,
-  UserInsertionErrorImpl
-}
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{ReferencedTenantDoesNotExistError, UserInsertionErrorImpl}
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
@@ -268,20 +266,60 @@ class UserRepositorySpec
           userEntityRead_3
         )
 
-        userRepository
-          .getAllForTenant(publicTenantId_1)
-          .asserting(_ shouldBe List(user_1, user_2, user_3))
+        userRepository.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List(user_1, user_2, user_3))
       }
     }
 
     "UserDb returns exception" should {
       "return failed IO containing this exception" in {
-        userDb.getAllForTenant(any[TenantId]) returns Stream.raiseError[doobie.ConnectionIO](
-          testException
-        )
+        userDb.getAllForTenant(any[TenantId]) returns Stream.raiseError[doobie.ConnectionIO](testException)
 
         userRepository
           .getAllForTenant(publicTenantId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "UserRepository on getAllForTemplate" when {
+
+    "should always call UserDb" in {
+      userDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+      for {
+        _ <- userRepository.getAllForTemplate(publicTenantId_1)
+
+        _ = verify(userDb).getAllForTemplate(eqTo(publicTenantId_1))
+      } yield ()
+    }
+
+    "UserDb returns empty Stream" should {
+      "return empty List" in {
+        userDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+        userRepository.getAllForTemplate(publicTenantId_1).asserting(_ shouldBe List.empty[User])
+      }
+    }
+
+    "UserDb returns UserEntities in Stream" should {
+      "return List containing Users" in {
+        userDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(
+          userEntityRead_1,
+          userEntityRead_2,
+          userEntityRead_3
+        )
+
+        userRepository.getAllForTemplate(publicTenantId_1).asserting(_ shouldBe List(user_1, user_2, user_3))
+      }
+    }
+
+    "UserDb returns exception" should {
+      "return failed IO containing this exception" in {
+        userDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+
+        userRepository
+          .getAllForTemplate(publicTenantId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

@@ -1902,18 +1902,18 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+        userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(userService).getAllFor(eqTo(publicTemplateId_1))
+          _ = verify(userService).getAllForTemplate(eqTo(publicTemplateId_1))
         } yield ()
       }
 
       "return successful value returned by UserService" when {
 
         "UserService returns an empty List" in authorizedFixture {
-          userService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
           for {
             response <- adminRoutes.run(request)
@@ -1925,7 +1925,7 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "UserService returns a List with several elements" in authorizedFixture {
-          userService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
+          userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
 
           for {
             response <- adminRoutes.run(request)
@@ -1940,7 +1940,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.getAllFor(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

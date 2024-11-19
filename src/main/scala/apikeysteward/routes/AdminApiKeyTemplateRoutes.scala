@@ -243,7 +243,7 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
-          userService.getAllFor(apiKeyTemplateId).map { users =>
+          userService.getAllForTemplate(apiKeyTemplateId).map { users =>
             (StatusCode.Ok, GetMultipleUsersResponse(users)).asRight
           }
         }

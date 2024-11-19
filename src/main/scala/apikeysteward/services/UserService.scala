@@ -53,6 +53,6 @@ class UserService(userRepository: UserRepository, tenantRepository: TenantReposi
       )
     } yield result).value
 
-  def getAllFor(templateId: ApiKeyTemplateId): IO[List[User]] = IO.pure(List.empty)
+  def getAllForTemplate(templateId: ApiKeyTemplateId): IO[List[User]] = IO.pure(List.empty)
 
 }
