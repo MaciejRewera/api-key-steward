@@ -715,7 +715,12 @@ class PermissionDbSpec
 
       def insertPrerequisiteData()
           : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-        TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+        TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
+          tenantDb,
+          applicationDb,
+          permissionDb,
+          apiKeyTemplateDb
+        )
 
       "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {
         "return empty Stream" in {

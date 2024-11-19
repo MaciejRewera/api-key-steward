@@ -16,25 +16,21 @@ import doobie.util.update.Update
 import fs2.Stream
 
 import java.sql.SQLException
-import java.time.{Clock, Instant}
 
-class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
+class ApiKeyTemplatesPermissionsDb {
 
   def insertMany(
       entities: List[ApiKeyTemplatesPermissionsEntity.Write]
   ): doobie.ConnectionIO[
     Either[ApiKeyTemplatesPermissionsInsertionError, List[ApiKeyTemplatesPermissionsEntity.Read]]
-  ] = {
-    val now = Instant.now(clock)
-    for {
-      eitherResult <- Queries
-        .insertMany(entities, now)
-        .attemptSql
-        .map(_.left.map(recoverSqlException))
+  ] = for {
+    eitherResult <- Queries
+      .insertMany(entities)
+      .attemptSql
+      .map(_.left.map(recoverSqlException))
 
-      res <- eitherResult.traverse(_ => getAllThatExistFrom(entities).compile.toList)
-    } yield res
-  }
+    res <- eitherResult.traverse(_ => getAllThatExistFrom(entities).compile.toList)
+  } yield res
 
   private def recoverSqlException(
       sqlException: SQLException
@@ -70,11 +66,14 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
     (templateId, permissionId)
   }
 
+  private def scrapeColumnValue(message: String, columnName: String): Long =
+    message.split(s"\\($columnName\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
+
   private def scrapeApiKeyTemplateId(message: String): Long =
-    message.split("\\(api_key_template_id\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
+    scrapeColumnValue(message, "api_key_template_id")
 
   private def scrapePermissionId(message: String): Long =
-    message.split("\\(permission_id\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
+    scrapeColumnValue(message, "permission_id")
 
   def deleteAllForPermission(publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
     Queries.deleteAllForPermission(publicPermissionId).run
@@ -123,7 +122,7 @@ class ApiKeyTemplatesPermissionsDb()(implicit clock: Clock) {
 
   private object Queries {
 
-    def insertMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write], now: Instant): doobie.ConnectionIO[Int] = {
+    def insertMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write]): doobie.ConnectionIO[Int] = {
       val sql = s"INSERT INTO api_key_templates_permissions (api_key_template_id, permission_id) VALUES (?, ?)"
 
       Update[ApiKeyTemplatesPermissionsEntity.Write](sql).updateMany(entities)

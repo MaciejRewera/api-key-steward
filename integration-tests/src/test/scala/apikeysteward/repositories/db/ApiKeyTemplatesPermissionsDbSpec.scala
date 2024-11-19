@@ -7,9 +7,9 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
-import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
@@ -51,7 +51,12 @@ class ApiKeyTemplatesPermissionsDbSpec
 
   private def insertPrerequisiteData()
       : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-    TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+    TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
+      tenantDb,
+      applicationDb,
+      permissionDb,
+      apiKeyTemplateDb
+    )
 
   private def convertEntitiesWriteToRead(
       entitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write]
@@ -106,10 +111,10 @@ class ApiKeyTemplatesPermissionsDbSpec
           res <- Queries.getAllAssociations
         } yield (res, entitiesToInsert)).transact(transactor)
 
-        result.asserting { case (allEntities, entitiesToInsert) =>
-          allEntities.size shouldBe 3
-          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
-          allEntities should contain theSameElementsAs expectedEntities
+        result.asserting { case (res, allEntities) =>
+          res.size shouldBe 3
+          val expectedEntities = convertEntitiesWriteToRead(allEntities)
+          res should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -165,10 +170,10 @@ class ApiKeyTemplatesPermissionsDbSpec
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
 
-        result.asserting { case (allEntities, entitiesToInsert) =>
-          allEntities.size shouldBe 3
-          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
-          allEntities should contain theSameElementsAs expectedEntities
+        result.asserting { case (res, allEntities) =>
+          res.size shouldBe 3
+          val expectedEntities = convertEntitiesWriteToRead(allEntities)
+          res should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -224,10 +229,10 @@ class ApiKeyTemplatesPermissionsDbSpec
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
 
-        result.asserting { case (allEntities, entitiesToInsert) =>
-          allEntities.size shouldBe 3
-          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
-          allEntities should contain theSameElementsAs expectedEntities
+        result.asserting { case (res, allEntities) =>
+          res.size shouldBe 3
+          val expectedEntities = convertEntitiesWriteToRead(allEntities)
+          res should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -278,15 +283,14 @@ class ApiKeyTemplatesPermissionsDbSpec
           res <- Queries.getAllAssociations.transact(transactor)
         } yield (res, preExistingEntities)
 
-        result.asserting { case (allEntities, preExistingEntities) =>
-          allEntities.size shouldBe 1
+        result.asserting { case (res, preExistingEntities) =>
           val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
-          allEntities should contain theSameElementsAs expectedEntities
+          res shouldBe expectedEntities
         }
       }
     }
 
-    "there is ApiKeyTemplate but NO Permission with provided IDs in the DB" should {
+    "there is ApiKeyTemplate but NO Permissions in the DB" should {
 
       "return Left containing ReferencedPermissionDoesNotExistError" in {
         val result = (for {
@@ -426,17 +430,20 @@ class ApiKeyTemplatesPermissionsDbSpec
             ApiKeyTemplatesPermissionsEntity
               .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(2))
           )
 
           _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield (res, preExistingEntities)
 
-        result.asserting { case (allEntities, preExistingEntities) =>
-          allEntities.size shouldBe 1
+        result.asserting { case (res, preExistingEntities) =>
           val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
-          allEntities should contain theSameElementsAs expectedEntities
+          res shouldBe expectedEntities
         }
       }
     }

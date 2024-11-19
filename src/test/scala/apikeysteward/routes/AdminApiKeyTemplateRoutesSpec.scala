@@ -3,13 +3,23 @@ package apikeysteward.routes
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, user_1, user_2, user_3}
+import apikeysteward.base.testdata.UsersTestData.{
+  publicUserId_1,
+  publicUserId_2,
+  publicUserId_3,
+  user_1,
+  user_2,
+  user_3
+}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{ApiKeyTemplatesPermissionsInsertionError, ApiKeyTemplatesPermissionsNotFoundError}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
+  ApiKeyTemplatesPermissionsInsertionError,
+  ApiKeyTemplatesPermissionsNotFoundError
+}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.Tenant.TenantId
