@@ -10,6 +10,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.Ap
 import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
+import cats.data.NonEmptyList
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
 import doobie.implicits._
@@ -69,6 +70,24 @@ class ApiKeyTemplatesPermissionsDbSpec
     }
 
   "ApiKeyTemplatesPermissionsDb on insertMany" when {
+
+    "provided with an empty List" should {
+
+      "return Right containing empty List" in {
+        apiKeyTemplatesPermissionsDb.insertMany(List.empty).transact(transactor).asserting(_ shouldBe Right(List.empty))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(List.empty)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty)
+      }
+    }
 
     "there are no rows in the DB" should {
 
@@ -793,6 +812,41 @@ class ApiKeyTemplatesPermissionsDbSpec
 
   "ApiKeyTemplatesPermissionsDb on deleteMany" when {
 
+    "provided with an empty List" should {
+
+      "return Right containing empty List" in {
+        apiKeyTemplatesPermissionsDb.deleteMany(List.empty).transact(transactor).asserting(_ shouldBe Right(List.empty))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, _, templateIds, permissionIds) = dataIds
+
+          entitiesToDelete = List.empty
+
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 2
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return Left containing ApiKeyTemplatesPermissionsNotFoundError" in {
@@ -1089,7 +1143,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds) = dataIds
 
-          entitiesToFetch = List(
+          entitiesToFetch = NonEmptyList.of(
             ApiKeyTemplatesPermissionsEntity
               .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
@@ -1120,7 +1174,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          entitiesToFetch = List(
+          entitiesToFetch = NonEmptyList.of(
             ApiKeyTemplatesPermissionsEntity
               .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
             ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(2)),
@@ -1162,7 +1216,10 @@ class ApiKeyTemplatesPermissionsDbSpec
             ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateIds(2), permissionId = permissionIds.head)
           )
 
-          res <- apiKeyTemplatesPermissionsDb.getAllThatExistFrom(entitiesToFetch).compile.toList
+          res <- apiKeyTemplatesPermissionsDb
+            .getAllThatExistFrom(NonEmptyList.fromListUnsafe(entitiesToFetch))
+            .compile
+            .toList
         } yield (res, entitiesExpectedToBePresent)).transact(transactor)
 
         result.asserting { case (res, entitiesExpectedToBePresent) =>

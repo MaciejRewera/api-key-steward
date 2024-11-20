@@ -1,6 +1,9 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.{
+  ApiKeyTemplatesUsersInsertionError,
+  ApiKeyTemplatesUsersNotFoundError
+}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import cats.implicits.toTraverseOps
@@ -54,6 +57,10 @@ class ApiKeyTemplatesUsersDb {
   private def extractUserId(sqlException: SQLException): Long =
     ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("user_id")
 
+  def deleteMany(
+      entities: List[ApiKeyTemplatesUsersEntity.Write]
+  ): doobie.ConnectionIO[Either[ApiKeyTemplatesUsersNotFoundError, List[ApiKeyTemplatesUsersEntity.Read]]] = ???
+
   private object Queries {
 
     def insertMany(
@@ -67,5 +74,7 @@ class ApiKeyTemplatesUsersDb {
           "user_id"
         )(entities)
     }
+
+    def deleteMany(entities: List[ApiKeyTemplatesUsersEntity.Write]): doobie.Update0 = ???
   }
 }
