@@ -17,9 +17,7 @@ class ApiKeyTemplatesPermissionsRepository(
     apiKeyTemplateDb: ApiKeyTemplateDb,
     permissionDb: PermissionDb,
     apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
-)(
-    transactor: Transactor[IO]
-) {
+)(transactor: Transactor[IO]) {
 
   def insertMany(
       publicTemplateId: ApiKeyTemplateId,

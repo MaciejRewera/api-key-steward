@@ -6,14 +6,14 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.Schema
 
-case class DeleteApiKeyTemplatePermissionsRequest(
+case class DeleteApiKeyTemplatesPermissionsRequest(
     permissionIds: List[PermissionId]
 )
 
-object DeleteApiKeyTemplatePermissionsRequest {
-  implicit val codec: Codec[DeleteApiKeyTemplatePermissionsRequest] =
-    deriveCodec[DeleteApiKeyTemplatePermissionsRequest]
+object DeleteApiKeyTemplatesPermissionsRequest {
+  implicit val codec: Codec[DeleteApiKeyTemplatesPermissionsRequest] =
+    deriveCodec[DeleteApiKeyTemplatesPermissionsRequest]
 
-  implicit val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatePermissionsRequest] =
+  implicit val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatesPermissionsRequest] =
     TapirCustomSchemas.deleteApiKeyTemplatesPermissionsRequestSchema
 }

@@ -2,8 +2,8 @@ package apikeysteward
 
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
-import apikeysteward.repositories.db._
 import apikeysteward.repositories._
+import apikeysteward.repositories.db._
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
@@ -69,6 +69,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
+        apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository = buildApiKeyTemplatesUsersRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(permissionRepository)(transactor)
         userRepository: UserRepository = buildUserRepository(transactor)
@@ -88,14 +89,17 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyRepository
         )
 
-        apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository)
-
-        apiKeyTemplatesPermissionsService = new ApiKeyTemplatesPermissionsService(apiKeyTemplatesPermissionsRepository)
+        apiKeyTemplateService = new ApiKeyTemplateService(
+          uuidGenerator,
+          apiKeyTemplateRepository,
+          apiKeyTemplatesPermissionsRepository,
+          apiKeyTemplatesUsersRepository
+        )
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
         applicationService = new ApplicationService(uuidGenerator, applicationRepository)
         permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
-        userService = new UserService(userRepository, tenantRepository)
+        userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
 
@@ -111,8 +115,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateRoutes = new AdminApiKeyTemplateRoutes(
           jwtAuthorizer,
           apiKeyTemplateService,
-          apiKeyTemplatesPermissionsService,
-          permissionService
+          permissionService,
+          userService
         ).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
@@ -178,6 +182,14 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
     new ApiKeyTemplatesPermissionsRepository(apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+  }
+
+  private def buildApiKeyTemplatesUsersRepository(transactor: HikariTransactor[IO]) = {
+    val apiKeyTemplateDb = new ApiKeyTemplateDb
+    val userDb = new UserDb
+    val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
+
+    new ApiKeyTemplatesUsersRepository(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
   }
 
   private def buildTenantRepository(

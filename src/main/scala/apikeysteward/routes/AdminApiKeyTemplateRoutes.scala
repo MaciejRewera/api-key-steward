@@ -8,12 +8,19 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
   ApiKeyTemplatesPermissionsInsertionError,
   ApiKeyTemplatesPermissionsNotFoundError
 }
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
+  ApiKeyTemplatesUsersAlreadyExistsError,
+  ReferencedApiKeyTemplateDoesNotExistError,
+  ReferencedUserDoesNotExistError
+}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikeytemplate._
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
-import apikeysteward.services.{ApiKeyTemplateService, ApiKeyTemplatesPermissionsService, PermissionService}
+import apikeysteward.routes.model.admin.user.GetMultipleUsersResponse
+import apikeysteward.services.{ApiKeyTemplateService, PermissionService, UserService}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -23,8 +30,8 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 class AdminApiKeyTemplateRoutes(
     jwtAuthorizer: JwtAuthorizer,
     apiKeyTemplateService: ApiKeyTemplateService,
-    apiKeyTemplatesPermissionsService: ApiKeyTemplatesPermissionsService,
-    permissionService: PermissionService
+    permissionService: PermissionService,
+    userService: UserService
 ) {
 
   private val serverInterpreter =
@@ -113,37 +120,35 @@ class AdminApiKeyTemplateRoutes(
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
           val (apiKeyTemplateId, request) = input
-          apiKeyTemplatesPermissionsService
-            .associatePermissionsWithApiKeyTemplate(apiKeyTemplateId, request.permissionIds)
-            .map {
+          apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(apiKeyTemplateId, request.permissionIds).map {
 
-              case Right(()) =>
-                StatusCode.Created.asRight
+            case Right(()) =>
+              StatusCode.Created.asRight
 
-              case Left(_: ApiKeyTemplatesPermissionsAlreadyExistsError) =>
-                ErrorInfo
-                  .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ApiKeyTemplatesPermissionsAlreadyExists)
-                  )
-                  .asLeft
+            case Left(_: ApiKeyTemplatesPermissionsAlreadyExistsError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ApiKeyTemplatesPermissionsAlreadyExists)
+                )
+                .asLeft
 
-              case Left(_: ReferencedPermissionDoesNotExistError) =>
-                ErrorInfo
-                  .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedPermissionNotFound)
-                  )
-                  .asLeft
+            case Left(_: ReferencedPermissionDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedPermissionNotFound)
+                )
+                .asLeft
 
-              case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
-                ErrorInfo
-                  .notFoundErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
-                  )
-                  .asLeft
+            case Left(_: ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
+                )
+                .asLeft
 
-              case Left(_: ApiKeyTemplatesPermissionsInsertionError) =>
-                ErrorInfo.internalServerErrorInfo().asLeft
-            }
+            case Left(_: ApiKeyTemplatesPermissionsInsertionError) =>
+              ErrorInfo.internalServerErrorInfo().asLeft
+          }
         }
     )
 
@@ -153,37 +158,35 @@ class AdminApiKeyTemplateRoutes(
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
           val (apiKeyTemplateId, request) = input
-          apiKeyTemplatesPermissionsService
-            .removePermissionsFromApiKeyTemplate(apiKeyTemplateId, request.permissionIds)
-            .map {
+          apiKeyTemplateService.removePermissionsFromApiKeyTemplate(apiKeyTemplateId, request.permissionIds).map {
 
-              case Right(()) =>
-                StatusCode.Ok.asRight
+            case Right(()) =>
+              StatusCode.Ok.asRight
 
-              case Left(_: ReferencedPermissionDoesNotExistError) =>
-                ErrorInfo
-                  .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedPermissionNotFound)
-                  )
-                  .asLeft
+            case Left(_: ReferencedPermissionDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedPermissionNotFound)
+                )
+                .asLeft
 
-              case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
-                ErrorInfo
-                  .notFoundErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
-                  )
-                  .asLeft
+            case Left(_: ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
+                )
+                .asLeft
 
-              case Left(_: ApiKeyTemplatesPermissionsNotFoundError) =>
-                ErrorInfo
-                  .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ApiKeyTemplatesPermissionsNotFound)
-                  )
-                  .asLeft
+            case Left(_: ApiKeyTemplatesPermissionsNotFoundError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ApiKeyTemplatesPermissionsNotFound)
+                )
+                .asLeft
 
-              case Left(_: ApiKeyTemplatesPermissionsDbError) =>
-                ErrorInfo.internalServerErrorInfo().asLeft
-            }
+            case Left(_: ApiKeyTemplatesPermissionsDbError) =>
+              ErrorInfo.internalServerErrorInfo().asLeft
+          }
         }
     )
 
@@ -198,6 +201,61 @@ class AdminApiKeyTemplateRoutes(
         }
     )
 
+  private val associateUsersWithApiKeyTemplateRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminApiKeyTemplateEndpoints.associateUsersWithApiKeyTemplateEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+        .serverLogic { _ => input =>
+          val (tenantId, apiKeyTemplateId, request) = input
+          apiKeyTemplateService.associateUsersWithApiKeyTemplate(tenantId, apiKeyTemplateId, request.userIds).map {
+
+            case Right(()) =>
+              StatusCode.Created.asRight
+
+            case Left(_: ApiKeyTemplatesUsersAlreadyExistsError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersAlreadyExists)
+                )
+                .asLeft
+
+            case Left(_: ReferencedUserDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError) =>
+              ErrorInfo.internalServerErrorInfo().asLeft
+          }
+        }
+    )
+
+  private val getAllUsersForTemplateRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
+        .serverLogic { _ => apiKeyTemplateId =>
+          userService.getAllForTemplate(apiKeyTemplateId).map {
+
+            case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound))
+                .asLeft
+          }
+        }
+    )
+
   val allRoutes: HttpRoutes[IO] =
     createApiKeyTemplateRoutes <+>
       updateApiKeyTemplateRoutes <+>
@@ -206,6 +264,8 @@ class AdminApiKeyTemplateRoutes(
       searchApiKeyTemplateRoutes <+>
       associatePermissionsWithApiKeyTemplateRoutes <+>
       removePermissionsFromApiKeyTemplateRoutes <+>
-      getAllPermissionsForTemplateRoutes
+      getAllPermissionsForTemplateRoutes <+>
+      associateUsersWithApiKeyTemplateRoutes <+>
+      getAllUsersForTemplateRoutes
 
 }

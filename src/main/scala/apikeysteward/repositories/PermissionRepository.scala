@@ -62,7 +62,7 @@ class PermissionRepository(
 
   def getAllFor(publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
     permissionDb
-      .getAllPermissionsForTemplate(publicTemplateId)
+      .getAllForTemplate(publicTemplateId)
       .map(Permission.from)
       .compile
       .toList

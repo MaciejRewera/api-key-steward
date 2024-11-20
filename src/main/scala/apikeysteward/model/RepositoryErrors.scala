@@ -6,7 +6,7 @@ import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
+import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApiKeyTemplatesUsersEntity}
 
 import java.sql.SQLException
 import java.util.UUID
@@ -241,9 +241,9 @@ object RepositoryErrors {
     sealed abstract class UserInsertionError(override val message: String) extends UserDbError(message)
     object UserInsertionError {
 
-      case class UserAlreadyExistsForThisTenantError(userId: UserId, tenantId: Long)
+      case class UserAlreadyExistsForThisTenantError(publicUserId: UserId, tenantId: Long)
           extends UserInsertionError(
-            message = s"User with userId = $userId already exists for Tenant with ID = [$tenantId]."
+            message = s"User with publicUserId = $publicUserId already exists for Tenant with ID = [$tenantId]."
           )
 
       trait ReferencedTenantDoesNotExistError extends UserInsertionError { val errorMessage: String }
@@ -377,6 +377,75 @@ object RepositoryErrors {
               missingEntities.map(e => (e.apiKeyTemplateId, e.permissionId).toString).mkString("[", ", ", "]")
 
             s"Could not find ApiKeyTemplatesPermissions with (apiKeyTemplateId, permissionId): $missingEntitiesFormatted."
+          }
+        )
+  }
+
+  sealed abstract class ApiKeyTemplatesUsersDbError(override val message: String) extends CustomError
+  object ApiKeyTemplatesUsersDbError {
+
+    sealed abstract class ApiKeyTemplatesUsersInsertionError(override val message: String)
+        extends ApiKeyTemplatesUsersDbError(message)
+    object ApiKeyTemplatesUsersInsertionError {
+
+      case class ApiKeyTemplatesUsersInsertionErrorImpl(cause: SQLException)
+          extends ApiKeyTemplatesUsersInsertionError(
+            message = s"An error occurred when inserting ApiKeyTemplatesUsers: $cause"
+          )
+
+      case class ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId: Long, userId: Long)
+          extends ApiKeyTemplatesUsersInsertionError(
+            message =
+              s"ApiKeyTemplatesUsers with apiKeyTemplateId = [$apiKeyTemplateId] and userId = [$userId] already exists."
+          )
+
+      trait ReferencedApiKeyTemplateDoesNotExistError extends ApiKeyTemplatesUsersInsertionError {
+        val errorMessage: String
+      }
+      object ReferencedApiKeyTemplateDoesNotExistError {
+
+        private case class ReferencedApiKeyTemplateDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApiKeyTemplatesUsersInsertionError(errorMessage)
+            with ReferencedApiKeyTemplateDoesNotExistError
+
+        def apply(apiKeyTemplateId: Long): ReferencedApiKeyTemplateDoesNotExistError =
+          ReferencedApiKeyTemplateDoesNotExistErrorImpl(
+            errorMessage = s"ApiKeyTemplate with ID = [$apiKeyTemplateId] does not exist."
+          )
+        def apply(publicApiKeyTemplateId: ApiKeyTemplateId): ReferencedApiKeyTemplateDoesNotExistError =
+          ReferencedApiKeyTemplateDoesNotExistErrorImpl(
+            errorMessage = s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist."
+          )
+      }
+
+      trait ReferencedUserDoesNotExistError extends ApiKeyTemplatesUsersInsertionError {
+        val errorMessage: String
+      }
+      object ReferencedUserDoesNotExistError {
+
+        private case class ReferencedUserDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApiKeyTemplatesUsersInsertionError(errorMessage)
+            with ReferencedUserDoesNotExistError
+
+        def apply(userId: Long): ReferencedUserDoesNotExistError =
+          ReferencedUserDoesNotExistErrorImpl(
+            errorMessage = s"User with ID = [$userId] does not exist."
+          )
+        def apply(publicUserId: UserId, publicTenantId: TenantId): ReferencedUserDoesNotExistError =
+          ReferencedUserDoesNotExistErrorImpl(
+            errorMessage =
+              s"User with publicUserId = [$publicUserId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
+          )
+      }
+    }
+
+    case class ApiKeyTemplatesUsersNotFoundError(missingEntities: List[ApiKeyTemplatesUsersEntity.Write])
+        extends ApiKeyTemplatesUsersDbError(
+          message = {
+            val missingEntitiesFormatted =
+              missingEntities.map(e => (e.apiKeyTemplateId, e.userId).toString).mkString("[", ", ", "]")
+
+            s"Could not find ApiKeyTemplatesUsers with (apiKeyTemplateId, userId): $missingEntitiesFormatted."
           }
         )
   }

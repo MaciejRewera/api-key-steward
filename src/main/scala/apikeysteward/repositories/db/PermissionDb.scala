@@ -80,10 +80,10 @@ class PermissionDb()(implicit clock: Clock) {
   def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Queries.getByPublicPermissionId(publicPermissionId).option
 
-  def getAllPermissionsForTemplate(
+  def getAllForTemplate(
       publicTemplateId: ApiKeyTemplateId
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllPermissionsForTemplate(publicTemplateId).stream
+    Queries.getAllForTemplate(publicTemplateId).stream
 
   def getAllBy(publicApplicationId: ApplicationId)(
       nameFragment: Option[String]
@@ -129,7 +129,7 @@ class PermissionDb()(implicit clock: Clock) {
               WHERE permission.public_permission_id = ${publicPermissionId.toString}
              """).query[PermissionEntity.Read]
 
-    def getAllPermissionsForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
+    def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
       (PermissionDb.ColumnNamesSelectFragment ++
         sql"""FROM permission
             JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id

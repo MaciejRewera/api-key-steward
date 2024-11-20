@@ -31,6 +31,13 @@ private[routes] object ApiErrorMessages {
       "At least one Template-Permission association does not exist for provided combination of templateId and permissionIds."
   }
 
+  object AdminApiKeyTemplatesUsers {
+    val ApiKeyTemplatesUsersAlreadyExists =
+      "At least one of provided userIds is already associated with given Template."
+    val ReferencedApiKeyTemplateNotFound = "No Template found for provided templateId."
+    val ReferencedUserNotFound = "At least one User cannot be found for provided combination of tenantId and userIds."
+  }
+
   object AdminTenant {
     val TenantNotFound = "No Tenant found for provided tenantId."
 

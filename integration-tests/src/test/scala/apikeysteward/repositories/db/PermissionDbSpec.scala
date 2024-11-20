@@ -7,8 +7,7 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.repositories.DatabaseIntegrationSpec
-import apikeysteward.repositories.TestDataInsertions
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApplicationEntity, PermissionEntity}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -576,12 +575,12 @@ class PermissionDbSpec
     }
   }
 
-  "PermissionDb on getAllPermissionsForTemplate" when {
+  "PermissionDb on getAllForTemplate" when {
 
     "there are NO ApiKeyTemplates in the DB" should {
       "return empty Stream" in {
         permissionDb
-          .getAllPermissionsForTemplate(publicTemplateId_1)
+          .getAllForTemplate(publicTemplateId_1)
           .compile
           .toList
           .transact(transactor)
@@ -609,7 +608,7 @@ class PermissionDbSpec
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_2).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_2).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -627,7 +626,7 @@ class PermissionDbSpec
           _ <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId))
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -658,7 +657,7 @@ class PermissionDbSpec
             permissionEntityRead_1.copy(id = permissionId, applicationId = applicationId)
           )
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -701,7 +700,7 @@ class PermissionDbSpec
             permissionEntityRead_3.copy(id = permissionId_3, applicationId = applicationId)
           )
 
-          res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -715,7 +714,12 @@ class PermissionDbSpec
 
       def insertPrerequisiteData()
           : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
-        TestDataInsertions.insertPrerequisiteData(tenantDb, applicationDb, permissionDb, apiKeyTemplateDb)
+        TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
+          tenantDb,
+          applicationDb,
+          permissionDb,
+          apiKeyTemplateDb
+        )
 
       "there are NO ApiKeyTemplatesPermissions for given publicTemplateId" should {
         "return empty Stream" in {
@@ -733,7 +737,7 @@ class PermissionDbSpec
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_3).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_3).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -763,7 +767,7 @@ class PermissionDbSpec
               permissionEntityRead_1.copy(id = permissionIds.head, applicationId = applicationId)
             )
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>
@@ -799,7 +803,7 @@ class PermissionDbSpec
               permissionEntityRead_2.copy(id = permissionIds(1), applicationId = applicationId)
             )
 
-            res <- permissionDb.getAllPermissionsForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>

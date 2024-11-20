@@ -1,5 +1,6 @@
 package apikeysteward.repositories
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import fs2.Stream
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
@@ -56,4 +57,9 @@ class UserRepository(tenantDb: TenantDb, userDb: UserDb)(transactor: Transactor[
       resultUser = User.from(userEntityRead)
     } yield resultUser
 
+  def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): IO[List[User]] =
+    (for {
+      userEntityRead <- userDb.getAllForTemplate(publicTemplateId)
+      resultUser = User.from(userEntityRead)
+    } yield resultUser).compile.toList.transact(transactor)
 }

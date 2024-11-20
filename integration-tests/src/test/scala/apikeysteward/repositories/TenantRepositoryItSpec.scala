@@ -83,7 +83,7 @@ class TenantRepositoryItSpec
   private def insertPrerequisiteData()
       : IO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId], List[UserDbId])] =
     (for {
-      dataIds <- TestDataInsertions.insertPrerequisiteData(
+      dataIds <- TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
         tenantDb,
         applicationDb,
         permissionDb,

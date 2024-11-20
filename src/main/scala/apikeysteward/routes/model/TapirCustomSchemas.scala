@@ -4,9 +4,10 @@ import apikeysteward.routes.model.TapirCustomValidators.{ValidateList, ValidateO
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
-  CreateApiKeyTemplatePermissionsRequest,
-  DeleteApiKeyTemplatePermissionsRequest
+  CreateApiKeyTemplatesPermissionsRequest,
+  DeleteApiKeyTemplatesPermissionsRequest
 }
+import apikeysteward.routes.model.admin.apikeytemplatesusers.CreateApiKeyTemplatesUsersRequest
 import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
@@ -60,15 +61,21 @@ object TapirCustomSchemas {
       .modify(_.description)(validateDescriptionLength500)
       .modify(_.apiKeyMaxExpiryPeriod)(validateApiKeyMaxExpiryPeriod)
 
-  val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatePermissionsRequest] =
+  val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatesPermissionsRequest] =
     Schema
-      .derived[CreateApiKeyTemplatePermissionsRequest]
+      .derived[CreateApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
 
-  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatePermissionsRequest] =
+  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatesPermissionsRequest] =
     Schema
-      .derived[DeleteApiKeyTemplatePermissionsRequest]
+      .derived[DeleteApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
+
+  val createApiKeyTemplatesUsersRequestSchema: Schema[CreateApiKeyTemplatesUsersRequest] =
+    Schema
+      .derived[CreateApiKeyTemplatesUsersRequest]
+      .modify(_.userIds)(validateListNotEmpty)
+      .modify(_.userIds)(_.validateList(userIdValidator))
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
     Schema
@@ -167,7 +174,10 @@ object TapirCustomSchemas {
     schema.validate(Validator.nonEmptyString and Validator.maxLength(120))
 
   private def validateUserId(schema: Schema[String]): Schema[String] =
-    schema.validate(Validator.nonEmptyString and Validator.maxLength(250))
+    schema.validate(userIdValidator)
+
+  private def userIdValidator: Validator[String] =
+    Validator.nonEmptyString and Validator.maxLength(250)
 
   private def validateTtl(schema: Schema[Int]): Schema[Int] =
     schema

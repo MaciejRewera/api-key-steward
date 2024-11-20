@@ -12,7 +12,8 @@ import apikeysteward.base.testdata.PermissionsTestData.{
   permissionEntityWrite_3
 }
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
-import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApplicationDb, PermissionDb, TenantDb}
+import apikeysteward.base.testdata.UsersTestData.{userEntityWrite_1, userEntityWrite_2, userEntityWrite_3}
+import apikeysteward.repositories.db._
 import org.scalatest.EitherValues
 
 private[repositories] object TestDataInsertions extends EitherValues {
@@ -21,8 +22,9 @@ private[repositories] object TestDataInsertions extends EitherValues {
   type ApplicationDbId = Long
   type PermissionDbId = Long
   type TemplateDbId = Long
+  type UserDbId = Long
 
-  def insertPrerequisiteData(
+  def insertPrerequisiteTemplatesAndPermissions(
       tenantDb: TenantDb,
       applicationDb: ApplicationDb,
       permissionDb: PermissionDb,
@@ -30,31 +32,37 @@ private[repositories] object TestDataInsertions extends EitherValues {
   ): doobie.ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-      applicationId <- applicationDb
-        .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
+      applicationId <- applicationDb.insert(applicationEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
-      permissionId_1 <- permissionDb
-        .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_2 <- permissionDb
-        .insert(permissionEntityWrite_2.copy(applicationId = applicationId))
-        .map(_.value.id)
-      permissionId_3 <- permissionDb
-        .insert(permissionEntityWrite_3.copy(applicationId = applicationId))
-        .map(_.value.id)
+      permissionId_1 <- permissionDb.insert(permissionEntityWrite_1.copy(applicationId = applicationId)).map(_.value.id)
+      permissionId_2 <- permissionDb.insert(permissionEntityWrite_2.copy(applicationId = applicationId)).map(_.value.id)
+      permissionId_3 <- permissionDb.insert(permissionEntityWrite_3.copy(applicationId = applicationId)).map(_.value.id)
 
-      templateId_1 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_2 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
-        .map(_.value.id)
-      templateId_3 <- apiKeyTemplateDb
-        .insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
-        .map(_.value.id)
+      templateId_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+      templateId_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
+      templateId_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
 
       templateIds = List(templateId_1, templateId_2, templateId_3)
       permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
     } yield (tenantId, applicationId, templateIds, permissionIds)
+
+  def insertPrerequisiteTemplatesAndUsers(
+      tenantDb: TenantDb,
+      userDb: UserDb,
+      apiKeyTemplateDb: ApiKeyTemplateDb
+  ): doobie.ConnectionIO[(TenantDbId, List[TemplateDbId], List[UserDbId])] =
+    for {
+      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+      templateId_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+      templateId_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
+      templateId_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+
+      userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+      userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
+      userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+
+      templateIds = List(templateId_1, templateId_2, templateId_3)
+      userIds = List(userId_1, userId_2, userId_3)
+    } yield (tenantId, templateIds, userIds)
 }

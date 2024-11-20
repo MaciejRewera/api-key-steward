@@ -291,18 +291,18 @@ class PermissionRepositorySpec
   "PermissionRepository on getAllPermissionsForTemplate" when {
 
     "should always call PermissionDb" in {
-      permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+      permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
 
       for {
         _ <- permissionRepository.getAllFor(publicTemplateId_1)
 
-        _ = verify(permissionDb).getAllPermissionsForTemplate(eqTo(publicTemplateId_1))
+        _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_1))
       } yield ()
     }
 
     "PermissionDb returns empty Stream" should {
       "return empty List" in {
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
 
         permissionRepository
           .getAllFor(publicTemplateId_1)
@@ -312,7 +312,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns PermissionEntities in Stream" should {
       "return List containing Permissions" in {
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream(
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
@@ -326,7 +326,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllPermissionsForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](
           testException
         )
 
