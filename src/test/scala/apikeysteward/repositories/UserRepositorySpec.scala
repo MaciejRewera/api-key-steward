@@ -4,7 +4,10 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{ReferencedTenantDoesNotExistError, UserInsertionErrorImpl}
+import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{
+  ReferencedTenantDoesNotExistError,
+  UserInsertionErrorImpl
+}
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User

@@ -9,10 +9,7 @@ import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
-  ApiKeyTemplatesPermissionsInsertionError,
-  ApiKeyTemplatesPermissionsNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.Tenant.TenantId
@@ -81,6 +78,9 @@ class AdminApiKeyTemplateRoutesSpec
 
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, apiKeyTemplateService)(request, requiredPermissions)
+
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    runCommonTenantIdHeaderTests(adminRoutes, jwtAuthorizer, apiKeyTemplateService)(request)
 
   "AdminApiKeyTemplateRoutes on POST /admin/templates" when {
 
@@ -1650,16 +1650,18 @@ class AdminApiKeyTemplateRoutesSpec
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users")
     val requestBody = CreateApiKeyTemplatesUsersRequest(userIds = List(publicUserId_1, publicUserId_2, publicUserId_3))
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
       val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+        Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
       "return Bad Request" in {
         for {
@@ -1745,6 +1747,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "call ApiKeyTemplateService" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(().asRight)
@@ -1752,6 +1755,7 @@ class AdminApiKeyTemplateRoutesSpec
         for {
           _ <- adminRoutes.run(request)
           _ = verify(apiKeyTemplateService).associateUsersWithApiKeyTemplate(
+            eqTo(publicTenantId_1),
             eqTo(publicTemplateId_1),
             eqTo(requestBody.userIds)
           )
@@ -1760,6 +1764,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Created status and empty body" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(().asRight)
@@ -1773,6 +1778,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesUsersAlreadyExistsError" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(101L, 102L)))
@@ -1792,6 +1798,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(
@@ -1813,6 +1820,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
@@ -1833,6 +1841,7 @@ class AdminApiKeyTemplateRoutesSpec
       "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesUsersInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)))
@@ -1846,6 +1855,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
         ) returns IO.raiseError(testException)
@@ -1943,7 +1953,9 @@ class AdminApiKeyTemplateRoutesSpec
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+              )
             )
         } yield ()
       }

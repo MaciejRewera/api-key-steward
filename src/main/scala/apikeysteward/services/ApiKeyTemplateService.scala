@@ -13,7 +13,11 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.Ap
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.repositories.{ApiKeyTemplateRepository, ApiKeyTemplatesPermissionsRepository}
+import apikeysteward.repositories.{
+  ApiKeyTemplateRepository,
+  ApiKeyTemplatesPermissionsRepository,
+  ApiKeyTemplatesUsersRepository
+}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
@@ -23,7 +27,8 @@ import cats.implicits.catsSyntaxEitherId
 class ApiKeyTemplateService(
     uuidGenerator: UuidGenerator,
     apiKeyTemplateRepository: ApiKeyTemplateRepository,
-    apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository
+    apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository,
+    apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository
 ) extends Logging {
 
   def createApiKeyTemplate(
@@ -100,8 +105,10 @@ class ApiKeyTemplateService(
     apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds)
 
   def associateUsersWithApiKeyTemplate(
+      tenantId: TenantId,
       templateId: ApiKeyTemplateId,
       userIds: List[UserId]
-  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] = IO.pure(Right(()))
+  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
+    apiKeyTemplatesUsersRepository.insertMany(tenantId, templateId, userIds)
 
 }

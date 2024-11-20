@@ -57,28 +57,7 @@ class AdminUserRoutesSpec
     runCommonJwtTests(adminUserRoutes, jwtAuthorizer, userService)(request, requiredPermissions)
 
   private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
-    "JwtAuthorizer returns Right containing JsonWebToken, but request header is NOT a UUID" should {
-
-      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
-      )
-
-      "return Bad Request" in authorizedFixture {
-        for {
-          response <- adminUserRoutes.run(requestWithIncorrectHeader)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-        } yield ()
-      }
-
-      "NOT call ApplicationService" in authorizedFixture {
-        for {
-          _ <- adminUserRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(userService)
-        } yield ()
-      }
-    }
+    runCommonTenantIdHeaderTests(adminUserRoutes, jwtAuthorizer, userService)(request)
 
   "AdminUserRoutes on POST /admin/users" when {
 

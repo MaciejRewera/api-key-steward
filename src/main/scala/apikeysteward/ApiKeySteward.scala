@@ -2,8 +2,8 @@ package apikeysteward
 
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
-import apikeysteward.repositories.db._
 import apikeysteward.repositories._
+import apikeysteward.repositories.db._
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
@@ -69,6 +69,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
+        apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository = buildApiKeyTemplatesUsersRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
         applicationRepository: ApplicationRepository = buildApplicationRepository(permissionRepository)(transactor)
         userRepository: UserRepository = buildUserRepository(transactor)
@@ -91,7 +92,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateService = new ApiKeyTemplateService(
           uuidGenerator,
           apiKeyTemplateRepository,
-          apiKeyTemplatesPermissionsRepository
+          apiKeyTemplatesPermissionsRepository,
+          apiKeyTemplatesUsersRepository
         )
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
@@ -180,6 +182,14 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
     new ApiKeyTemplatesPermissionsRepository(apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+  }
+
+  private def buildApiKeyTemplatesUsersRepository(transactor: HikariTransactor[IO]) = {
+    val apiKeyTemplateDb = new ApiKeyTemplateDb
+    val userDb = new UserDb
+    val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
+
+    new ApiKeyTemplatesUsersRepository(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
   }
 
   private def buildTenantRepository(

@@ -205,7 +205,7 @@ class UserDbSpec
 
         result.asserting { case (res, tenantId) =>
           res shouldBe Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantId))
-          res.left.value.message shouldBe s"User with userId = $publicUserId_1 already exists for Tenant with ID = [$tenantId]."
+          res.left.value.message shouldBe s"User with publicUserId = $publicUserId_1 already exists for Tenant with ID = [$tenantId]."
         }
       }
 

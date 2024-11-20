@@ -2,13 +2,14 @@ package apikeysteward.routes
 
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
+import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderName
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
 import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
 import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Headers, HttpApp, Request, Status}
+import org.http4s.{Credentials, Header, Headers, HttpApp, Request, Status}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{verify, verifyZeroInteractions}
@@ -125,4 +126,37 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
     }
   }
 
+  def runCommonTenantIdHeaderTests[Service <: AnyRef](
+      routes: HttpApp[IO],
+      jwtAuthorizer: JwtAuthorizer,
+      mockedService: Service
+  )(
+      request: Request[IO]
+  ): Unit = {
+
+    def authorizedInnerFixture[T](test: => IO[T]): IO[T] = authorizedFixture(jwtAuthorizer)(test)
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
+
+      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
+      )
+
+      "return Bad Request" in authorizedInnerFixture {
+        for {
+          response <- routes.run(requestWithIncorrectHeader)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call ApplicationService" in authorizedInnerFixture {
+        for {
+          _ <- routes.run(requestWithIncorrectHeader)
+          _ = verifyZeroInteractions(mockedService)
+        } yield ()
+      }
+    }
+  }
 }

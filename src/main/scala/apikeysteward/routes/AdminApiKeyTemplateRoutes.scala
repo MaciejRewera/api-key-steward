@@ -11,6 +11,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
   ApiKeyTemplatesUsersAlreadyExistsError,
+  ReferencedApiKeyTemplateDoesNotExistError,
   ReferencedUserDoesNotExistError
 }
 import apikeysteward.routes.auth.JwtAuthorizer
@@ -138,7 +139,7 @@ class AdminApiKeyTemplateRoutes(
                 )
                 .asLeft
 
-            case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .notFoundErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
@@ -169,7 +170,7 @@ class AdminApiKeyTemplateRoutes(
                 )
                 .asLeft
 
-            case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .notFoundErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesPermissions.ReferencedApiKeyTemplateNotFound)
@@ -205,8 +206,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.associateUsersWithApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (apiKeyTemplateId, request) = input
-          apiKeyTemplateService.associateUsersWithApiKeyTemplate(apiKeyTemplateId, request.userIds).map {
+          val (tenantId, apiKeyTemplateId, request) = input
+          apiKeyTemplateService.associateUsersWithApiKeyTemplate(tenantId, apiKeyTemplateId, request.userIds).map {
 
             case Right(()) =>
               StatusCode.Created.asRight
@@ -247,7 +248,7 @@ class AdminApiKeyTemplateRoutes(
 
             case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
 
-            case Left(_: ReferencedApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .badRequestErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound))
                 .asLeft

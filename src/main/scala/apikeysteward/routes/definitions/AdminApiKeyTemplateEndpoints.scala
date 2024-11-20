@@ -177,12 +177,18 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val associateUsersWithApiKeyTemplateEndpoint
-      : Endpoint[AccessToken, (ApiKeyTemplateId, CreateApiKeyTemplatesUsersRequest), ErrorInfo, StatusCode, Any] =
+  val associateUsersWithApiKeyTemplateEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId, CreateApiKeyTemplatesUsersRequest),
+    ErrorInfo,
+    StatusCode,
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("""Associate Users with a Template.
                      |Add one or more Users to a specified Template.
           """.stripMargin)
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "users")
       .in(
         jsonBody[CreateApiKeyTemplatesUsersRequest]
