@@ -4,20 +4,13 @@ import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
-  ApiKeyTemplateInsertionError,
-  ApiKeyTemplateNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.repositories.{
-  ApiKeyTemplateRepository,
-  ApiKeyTemplatesPermissionsRepository,
-  ApiKeyTemplatesUsersRepository
-}
+import apikeysteward.repositories._
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
@@ -96,19 +89,47 @@ class ApiKeyTemplateService(
       templateId: ApiKeyTemplateId,
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds)
+    apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds).flatTap {
+      case Right(_) =>
+        logger.info(
+          s"Associated Permissions with permissionIds: [${permissionIds.mkString(", ")}] with Template with templateId: [$templateId]."
+        )
+      case Left(e) =>
+        logger.warn(s"Could not associate Permissions with permissionIds: [${permissionIds
+          .mkString(", ")}] with Template with templateId: [$templateId] because: ${e.message}")
+    }
 
   def removePermissionsFromApiKeyTemplate(
       templateId: ApiKeyTemplateId,
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds)
+    apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds).flatTap {
+      case Right(_) =>
+        logger.info(
+          s"Removed associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}] and Template with templateId: [$templateId]."
+        )
+      case Left(e) =>
+        logger.warn(
+          s"""Could not remove associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}]
+             | and Template with templateId: [$templateId] because: ${e.message}""".stripMargin
+        )
+    }
 
   def associateUsersWithApiKeyTemplate(
       tenantId: TenantId,
       templateId: ApiKeyTemplateId,
       userIds: List[UserId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
-    apiKeyTemplatesUsersRepository.insertMany(tenantId, templateId, userIds)
+    apiKeyTemplatesUsersRepository.insertMany(tenantId, templateId, userIds).flatTap {
+      case Right(_) =>
+        logger.info(
+          s"Associated Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}] with Template with templateId: [$templateId]."
+        )
+      case Left(e) =>
+        logger.warn(
+          s"""Could not associate Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}]
+             | with Template with templateId: [$templateId] because: ${e.message}""".stripMargin
+        )
+    }
 
 }
