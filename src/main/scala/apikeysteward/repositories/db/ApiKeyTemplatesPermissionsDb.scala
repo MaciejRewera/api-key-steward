@@ -37,43 +37,31 @@ class ApiKeyTemplatesPermissionsDb {
   ): ApiKeyTemplatesPermissionsInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value =>
-        val (apiKeyTemplateId, permissionId) = scrapeBothIds(sqlException.getMessage)
+        val (apiKeyTemplateId, permissionId) = extractBothIds(sqlException)
         ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId, permissionId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_api_key_template_id") =>
-        val apiKeyTemplateId = scrapeApiKeyTemplateId(sqlException.getMessage)
+        val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
         ReferencedApiKeyTemplateDoesNotExistError(apiKeyTemplateId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_permission_id") =>
-        val permissionId = scrapePermissionId(sqlException.getMessage)
+        val permissionId = extractPermissionId(sqlException)
         ReferencedPermissionDoesNotExistError(permissionId)
 
       case _ => ApiKeyTemplatesPermissionsInsertionErrorImpl(sqlException)
     }
 
-  private def scrapeBothIds(message: String): (Long, Long) = {
-    val rawArray = message
-      .split("\\(api_key_template_id, permission_id\\)=\\(")
-      .drop(1)
-      .head
-      .takeWhile(_ != ')')
-      .split(",")
-      .map(_.trim)
+  private def extractBothIds(sqlException: SQLException): (Long, Long) =
+    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsLongValues(sqlException)(
+      "api_key_template_id",
+      "permission_id"
+    )
 
-    val (templateId, permissionId) =
-      (rawArray.head.takeWhile(_.isDigit).toLong, rawArray(1).takeWhile(_.isDigit).toLong)
+  private def extractApiKeyTemplateId(sqlException: SQLException): Long =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("api_key_template_id")
 
-    (templateId, permissionId)
-  }
-
-  private def scrapeColumnValue(message: String, columnName: String): Long =
-    message.split(s"\\($columnName\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
-
-  private def scrapeApiKeyTemplateId(message: String): Long =
-    scrapeColumnValue(message, "api_key_template_id")
-
-  private def scrapePermissionId(message: String): Long =
-    scrapeColumnValue(message, "permission_id")
+  private def extractPermissionId(sqlException: SQLException): Long =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("permission_id")
 
   def deleteAllForPermission(publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
     Queries.deleteAllForPermission(publicPermissionId).run

@@ -23,43 +23,28 @@ class ApiKeyTemplatesUsersDb {
   ): ApiKeyTemplatesUsersInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value =>
-        val (apiKeyTemplateId, userId) = scrapeBothIds(sqlException.getMessage)
+        val (apiKeyTemplateId, userId) = extractBothIds(sqlException)
         ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId, userId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_api_key_template_id") =>
-        val apiKeyTemplateId = scrapeApiKeyTemplateId(sqlException.getMessage)
+        val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
         ReferencedApiKeyTemplateDoesNotExistError(apiKeyTemplateId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_user_id") =>
-        val userId = scrapeUserId(sqlException.getMessage)
+        val userId = extractUserId(sqlException)
         ReferencedUserDoesNotExistError(userId)
 
       case _ => ApiKeyTemplatesUsersInsertionErrorImpl(sqlException)
     }
 
-  private def scrapeBothIds(message: String): (Long, Long) = {
-    val rawArray = message
-      .split("\\(api_key_template_id, user_id\\)=\\(")
-      .drop(1)
-      .head
-      .takeWhile(_ != ')')
-      .split(",")
-      .map(_.trim)
+  private def extractBothIds(sqlException: SQLException): (Long, Long) =
+    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsLongValues(sqlException)("api_key_template_id", "user_id")
 
-    val (templateId, userId) =
-      (rawArray.head.takeWhile(_.isDigit).toLong, rawArray(1).takeWhile(_.isDigit).toLong)
+  private def extractApiKeyTemplateId(sqlException: SQLException): Long =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("api_key_template_id")
 
-    (templateId, userId)
-  }
-
-  private def scrapeColumnValue(message: String, columnName: String): Long =
-    message.split(s"\\($columnName\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
-
-  private def scrapeApiKeyTemplateId(message: String): Long =
-    scrapeColumnValue(message, "api_key_template_id")
-
-  private def scrapeUserId(message: String): Long =
-    scrapeColumnValue(message, "user_id")
+  private def extractUserId(sqlException: SQLException): Long =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("user_id")
 
   private object Queries {
 
