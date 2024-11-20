@@ -252,6 +252,8 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToInsert = List(
             ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
+            ApiKeyTemplatesPermissionsEntity
               .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
           )
 
@@ -275,6 +277,8 @@ class ApiKeyTemplatesPermissionsDbSpec
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities).transact(transactor)
 
           entitiesToInsert = List(
+            ApiKeyTemplatesPermissionsEntity
+              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1)),
             ApiKeyTemplatesPermissionsEntity
               .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
           )

@@ -48,12 +48,15 @@ class ApiKeyTemplatesUsersRepositorySpec
 
   private val testException = new RuntimeException("Test Exception")
 
-  private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, Int]] =
-    testException.raiseError[doobie.ConnectionIO, Either[E, Int]]
+  private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, List[ApiKeyTemplatesUsersEntity.Read]]] =
+    testException.raiseError[doobie.ConnectionIO, Either[E, List[ApiKeyTemplatesUsersEntity.Read]]]
 
   private val inputPublicUserIds = List(publicUserId_1, publicUserId_2, publicUserId_3)
 
   "ApiKeyTemplatesUsersRepository on insertMany" when {
+
+    val apiKeyTemplatesUsersEntitiesReadWrapped =
+      apiKeyTemplatesUsersEntitiesRead.asRight[ApiKeyTemplatesUsersInsertionError].pure[doobie.ConnectionIO]
 
     "everything works correctly" should {
 
@@ -66,7 +69,7 @@ class ApiKeyTemplatesUsersRepositorySpec
         )
         apiKeyTemplatesUsersDb.insertMany(
           any[List[ApiKeyTemplatesUsersEntity.Write]]
-        ) returns 3.asRight[ApiKeyTemplatesUsersInsertionError].pure[doobie.ConnectionIO]
+        ) returns apiKeyTemplatesUsersEntitiesReadWrapped
 
         for {
           _ <- apiKeyTemplatesUsersRepository.insertMany(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
@@ -88,7 +91,7 @@ class ApiKeyTemplatesUsersRepositorySpec
         )
         apiKeyTemplatesUsersDb.insertMany(
           any[List[ApiKeyTemplatesUsersEntity.Write]]
-        ) returns 3.asRight[ApiKeyTemplatesUsersInsertionError].pure[doobie.ConnectionIO]
+        ) returns apiKeyTemplatesUsersEntitiesReadWrapped
 
         val result = apiKeyTemplatesUsersRepository.insertMany(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
 
@@ -216,7 +219,7 @@ class ApiKeyTemplatesUsersRepositorySpec
         val apiKeyTemplatesUsersInsertionError: ApiKeyTemplatesUsersInsertionError =
           ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)
         val apiKeyTemplatesUsersInsertionErrorWrapped =
-          apiKeyTemplatesUsersInsertionError.asLeft[Int].pure[doobie.ConnectionIO]
+          apiKeyTemplatesUsersInsertionError.asLeft[List[ApiKeyTemplatesUsersEntity.Read]].pure[doobie.ConnectionIO]
 
         apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (

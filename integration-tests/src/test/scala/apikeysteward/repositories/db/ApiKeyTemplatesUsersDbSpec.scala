@@ -63,7 +63,7 @@ class ApiKeyTemplatesUsersDbSpec
 
     "there are no rows in the DB" should {
 
-      "return the number of inserted entities" in {
+      "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
           (_, userIds, templateIds) = dataIds
@@ -75,9 +75,12 @@ class ApiKeyTemplatesUsersDbSpec
           )
 
           res <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert)
-        } yield res).transact(transactor)
+        } yield (res, entitiesToInsert)).transact(transactor)
 
-        result.asserting(_.value shouldBe 3)
+        result.asserting { case (res, entitiesToInsert) =>
+          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
+          res.value should contain theSameElementsAs expectedEntities
+        }
       }
 
       "insert entities into DB" in {
@@ -105,7 +108,7 @@ class ApiKeyTemplatesUsersDbSpec
 
     "there is a row in the DB with provided apiKeyTemplateId, but different userId" should {
 
-      "return the number of inserted entities" in {
+      "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
           (_, userIds, templateIds) = dataIds
@@ -121,9 +124,12 @@ class ApiKeyTemplatesUsersDbSpec
           )
 
           res <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert)
-        } yield res).transact(transactor)
+        } yield (res, entitiesToInsert)).transact(transactor)
 
-        result.asserting(_.value shouldBe 2)
+        result.asserting { case (res, entitiesToInsert) =>
+          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
+          res.value should contain theSameElementsAs expectedEntities
+        }
       }
 
       "insert entities into DB" in {
@@ -155,7 +161,7 @@ class ApiKeyTemplatesUsersDbSpec
 
     "there is a row in the DB with a different apiKeyTemplateId, but provided userId" should {
 
-      "return the number of inserted entities" in {
+      "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
           (_, userIds, templateIds) = dataIds
@@ -171,9 +177,12 @@ class ApiKeyTemplatesUsersDbSpec
           )
 
           res <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert)
-        } yield res).transact(transactor)
+        } yield (res, entitiesToInsert)).transact(transactor)
 
-        result.asserting(_.value shouldBe 2)
+        result.asserting { case (res, entitiesToInsert) =>
+          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
+          res.value should contain theSameElementsAs expectedEntities
+        }
       }
 
       "insert entities into DB" in {
@@ -216,6 +225,7 @@ class ApiKeyTemplatesUsersDbSpec
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
           entitiesToInsert = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
           )
 
@@ -238,6 +248,7 @@ class ApiKeyTemplatesUsersDbSpec
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities).transact(transactor)
 
           entitiesToInsert = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
           )
 
