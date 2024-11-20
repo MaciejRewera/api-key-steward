@@ -460,7 +460,7 @@ class ApiKeyTemplateServiceSpec
     }
   }
 
-  "ApiKeyTemplatesPermissionsService on associatePermissionsWithApiKeyTemplate" when {
+  "ApiKeyTemplateService on associatePermissionsWithApiKeyTemplate" when {
 
     "everything works correctly" should {
 
@@ -523,7 +523,7 @@ class ApiKeyTemplateServiceSpec
     }
   }
 
-  "ApiKeyTemplatesPermissionsService on removePermissionsFromApiKeyTemplate" when {
+  "ApiKeyTemplateService on removePermissionsFromApiKeyTemplate" when {
 
     "everything works correctly" should {
 
@@ -591,7 +591,7 @@ class ApiKeyTemplateServiceSpec
     }
   }
 
-  "ApiKeyTemplatesPermissionsService on associateUsersWithApiKeyTemplate" when {
+  "ApiKeyTemplateService on associateUsersWithApiKeyTemplate" when {
 
     "everything works correctly" should {
 

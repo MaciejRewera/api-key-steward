@@ -274,7 +274,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "everything works correctly" should {
 
-      "call TenantRepository and UserRepository" in {
+      "call ApiKeyTemplateRepository and UserRepository" in {
         apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
@@ -304,7 +304,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    "TenantRepository returns empty Option" should {
+    "ApiKeyTemplateRepository returns empty Option" should {
 
       "NOT call UserRepository" in {
         apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
