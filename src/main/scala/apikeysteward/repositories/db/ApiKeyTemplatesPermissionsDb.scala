@@ -5,7 +5,7 @@ import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
 import doobie.Fragments
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
@@ -23,14 +23,14 @@ class ApiKeyTemplatesPermissionsDb {
       entities: List[ApiKeyTemplatesPermissionsEntity.Write]
   ): doobie.ConnectionIO[
     Either[ApiKeyTemplatesPermissionsInsertionError, List[ApiKeyTemplatesPermissionsEntity.Read]]
-  ] = for {
-    eitherResult <- Queries
+  ] =
+    Queries
       .insertMany(entities)
       .attemptSql
       .map(_.left.map(recoverSqlException))
-
-    res <- eitherResult.traverse(_ => getAllThatExistFrom(entities).compile.toList)
-  } yield res
+      .compile
+      .toList
+      .map(_.sequence)
 
   private def recoverSqlException(
       sqlException: SQLException
@@ -110,10 +110,16 @@ class ApiKeyTemplatesPermissionsDb {
 
   private object Queries {
 
-    def insertMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write]): doobie.ConnectionIO[Int] = {
+    def insertMany(
+        entities: List[ApiKeyTemplatesPermissionsEntity.Write]
+    ): Stream[doobie.ConnectionIO, ApiKeyTemplatesPermissionsEntity.Read] = {
       val sql = s"INSERT INTO api_key_templates_permissions (api_key_template_id, permission_id) VALUES (?, ?)"
 
-      Update[ApiKeyTemplatesPermissionsEntity.Write](sql).updateMany(entities)
+      Update[ApiKeyTemplatesPermissionsEntity.Write](sql)
+        .updateManyWithGeneratedKeys[ApiKeyTemplatesPermissionsEntity.Read](
+          "api_key_template_id",
+          "permission_id"
+        )(entities)
     }
 
     def deleteAllForPermission(publicPermissionId: PermissionId): doobie.Update0 =

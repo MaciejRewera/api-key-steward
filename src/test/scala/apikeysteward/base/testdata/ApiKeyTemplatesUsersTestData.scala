@@ -23,5 +23,12 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
     ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_2.id),
     ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_3.id)
   )
+  val apiKeyTemplatesUsersEntitiesRead: List[ApiKeyTemplatesUsersEntity.Read] =
+    apiKeyTemplatesUsersEntitiesWrite.map { entityWrite =>
+      ApiKeyTemplatesUsersEntity.Read(
+        apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+        userId = entityWrite.userId
+      )
+    }
 
 }
