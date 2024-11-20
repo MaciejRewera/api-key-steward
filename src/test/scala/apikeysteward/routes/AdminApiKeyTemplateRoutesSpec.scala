@@ -1815,7 +1815,7 @@ class AdminApiKeyTemplateRoutesSpec
         apiKeyTemplateService.associateUsersWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[UserId]]
-        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1)))
+        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
 
         for {
           response <- adminRoutes.run(request)

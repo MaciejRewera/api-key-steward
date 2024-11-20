@@ -241,9 +241,9 @@ object RepositoryErrors {
     sealed abstract class UserInsertionError(override val message: String) extends UserDbError(message)
     object UserInsertionError {
 
-      case class UserAlreadyExistsForThisTenantError(userId: UserId, tenantId: Long)
+      case class UserAlreadyExistsForThisTenantError(publicUserId: UserId, tenantId: Long)
           extends UserInsertionError(
-            message = s"User with userId = $userId already exists for Tenant with ID = [$tenantId]."
+            message = s"User with publicUserId = $publicUserId already exists for Tenant with ID = [$tenantId]."
           )
 
       trait ReferencedTenantDoesNotExistError extends UserInsertionError { val errorMessage: String }
@@ -431,9 +431,10 @@ object RepositoryErrors {
           ReferencedUserDoesNotExistErrorImpl(
             errorMessage = s"User with ID = [$userId] does not exist."
           )
-        def apply(publicUserId: UserId): ReferencedUserDoesNotExistError =
+        def apply(publicUserId: UserId, publicTenantId: TenantId): ReferencedUserDoesNotExistError =
           ReferencedUserDoesNotExistErrorImpl(
-            errorMessage = s"User with publicUserId = [$publicUserId] does not exist."
+            errorMessage =
+              s"User with publicUserId = [$publicUserId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
           )
       }
     }
