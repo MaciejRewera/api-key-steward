@@ -92,6 +92,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         apiKeyTemplateService = new ApiKeyTemplateService(
           uuidGenerator,
           apiKeyTemplateRepository,
+          userRepository,
           apiKeyTemplatesPermissionsRepository,
           apiKeyTemplatesUsersRepository
         )

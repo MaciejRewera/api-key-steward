@@ -1,6 +1,5 @@
 package apikeysteward.services
 
-import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
@@ -8,18 +7,22 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedUserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.repositories._
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
+import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 
 class ApiKeyTemplateService(
     uuidGenerator: UuidGenerator,
     apiKeyTemplateRepository: ApiKeyTemplateRepository,
+    userRepository: UserRepository,
     apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository,
     apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository
 ) extends Logging {
@@ -84,6 +87,20 @@ class ApiKeyTemplateService(
 
   def getAllForTenant(tenantId: TenantId): IO[List[ApiKeyTemplate]] =
     apiKeyTemplateRepository.getAllForTenant(tenantId)
+
+  def getAllForUser(
+      tenantId: TenantId,
+      userId: UserId
+  ): IO[Either[ReferencedUserDoesNotExistError, List[ApiKeyTemplate]]] =
+    (for {
+      _ <- EitherT(
+        userRepository.getBy(tenantId, userId).map(_.toRight(ReferencedUserDoesNotExistError(userId, tenantId)))
+      )
+
+      result <- EitherT.liftF[IO, ReferencedUserDoesNotExistError, List[ApiKeyTemplate]](
+        apiKeyTemplateRepository.getAllForUser(tenantId, userId)
+      )
+    } yield result).value
 
   def associatePermissionsWithApiKeyTemplate(
       templateId: ApiKeyTemplateId,

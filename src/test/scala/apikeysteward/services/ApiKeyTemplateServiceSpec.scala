@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, user_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
@@ -44,18 +44,26 @@ class ApiKeyTemplateServiceSpec
 
   private val uuidGenerator = mock[UuidGenerator]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
+  private val userRepository = mock[UserRepository]
   private val apiKeyTemplatesPermissionsRepository = mock[ApiKeyTemplatesPermissionsRepository]
   private val apiKeyTemplatesUsersRepository = mock[ApiKeyTemplatesUsersRepository]
 
   private val apiKeyTemplateService = new ApiKeyTemplateService(
     uuidGenerator,
     apiKeyTemplateRepository,
+    userRepository,
     apiKeyTemplatesPermissionsRepository,
     apiKeyTemplatesUsersRepository
   )
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, apiKeyTemplateRepository, apiKeyTemplatesPermissionsRepository, apiKeyTemplatesUsersRepository)
+    reset(
+      uuidGenerator,
+      apiKeyTemplateRepository,
+      userRepository,
+      apiKeyTemplatesPermissionsRepository,
+      apiKeyTemplatesUsersRepository
+    )
 
   private val testException = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
@@ -456,6 +464,80 @@ class ApiKeyTemplateServiceSpec
         apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
 
         apiKeyTemplateService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ApiKeyTemplateService on getAllForUser" when {
+
+    "everything works correctly" should {
+
+      "call UserRepository and ApiKeyTemplateRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+
+        for {
+          _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+          _ = verify(apiKeyTemplateRepository).getAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+        } yield ()
+      }
+
+      "return the value returns by ApiKeyTemplateRepository" when {
+
+        "ApiKeyTemplateRepository returns empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+
+          apiKeyTemplateService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List.empty))
+        }
+
+        "ApiKeyTemplateRepository returns non-empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+            List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+          )
+
+          apiKeyTemplateService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)))
+        }
+      }
+    }
+
+    "UserRepository returns empty Option" should {
+
+      "NOT call ApiKeyTemplateRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+
+        for {
+          _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verifyZeroInteractions(apiKeyTemplateRepository)
+        } yield ()
+      }
+
+      "return Left containing ReferencedUserDoesNotExistError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+
+        apiKeyTemplateService
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .asserting(_ shouldBe Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+      }
+    }
+
+    "ApiKeyTemplateRepository returns failed IO" should {
+      "return failed IO containing the same exception" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+
+        apiKeyTemplateService
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }
