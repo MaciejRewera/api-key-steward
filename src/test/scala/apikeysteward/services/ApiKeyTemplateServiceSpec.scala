@@ -678,7 +678,7 @@ class ApiKeyTemplateServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesUsersRepository" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
+        apiKeyTemplatesUsersRepository.insertManyUsers(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
           .pure(
             ().asRight
           )
@@ -690,7 +690,7 @@ class ApiKeyTemplateServiceSpec
             inputPublicUserIds
           )
 
-          _ = verify(apiKeyTemplatesUsersRepository).insertMany(
+          _ = verify(apiKeyTemplatesUsersRepository).insertManyUsers(
             eqTo(publicTenantId_1),
             eqTo(publicTemplateId_1),
             eqTo(inputPublicUserIds)
@@ -699,7 +699,7 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
+        apiKeyTemplatesUsersRepository.insertManyUsers(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
           .pure(
             ().asRight
           )
@@ -724,7 +724,7 @@ class ApiKeyTemplateServiceSpec
       s"ApiKeyTemplatesUsersRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
+          apiKeyTemplatesUsersRepository.insertManyUsers(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
             .pure(insertionError.asLeft)
 
           val result =
@@ -741,7 +741,7 @@ class ApiKeyTemplateServiceSpec
 
     "ApiKeyTemplatesUsersRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
+        apiKeyTemplatesUsersRepository.insertManyUsers(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
           .raiseError(testException)
 
         val result = apiKeyTemplateService

@@ -137,7 +137,7 @@ class ApiKeyTemplateService(
       templateId: ApiKeyTemplateId,
       userIds: List[UserId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
-    apiKeyTemplatesUsersRepository.insertMany(tenantId, templateId, userIds).flatTap {
+    apiKeyTemplatesUsersRepository.insertManyUsers(tenantId, templateId, userIds).flatTap {
       case Right(_) =>
         logger.info(
           s"Associated Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}] with Template with templateId: [$templateId]."
