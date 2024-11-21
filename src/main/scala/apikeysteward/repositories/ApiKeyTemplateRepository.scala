@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}
@@ -86,4 +87,11 @@ class ApiKeyTemplateRepository(
 
       resultTemplate = ApiKeyTemplate.from(templateEntity, permissionEntities)
     } yield resultTemplate
+
+  def getAllForUser(publicTenantId: TenantId, publicUserId: UserId): IO[List[ApiKeyTemplate]] =
+    (for {
+      templateEntityRead <- apiKeyTemplateDb.getAllForUser(publicTenantId, publicUserId)
+      resultTemplate <- Stream.eval(constructApiKeyTemplate(templateEntityRead))
+    } yield resultTemplate).compile.toList.transact(transactor)
+
 }
