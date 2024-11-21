@@ -1060,7 +1060,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
     "there is an exception returned for one of the subsequent entities" should {
 
-      "return Left containing appropriate ApiKeyTemplatesPermissionsNotFoundError" in {
+      "return Left containing ApiKeyTemplatesPermissionsNotFoundError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds) = dataIds
@@ -1083,8 +1083,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             preExistingEntities.head,
             preExistingEntities(2),
             preExistingEntities(3),
-            ApiKeyTemplatesPermissionsEntity
-              .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(2))
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(2))
           )
 
           res <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
