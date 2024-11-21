@@ -22,9 +22,7 @@ import cats.implicits.catsSyntaxEitherId
 class ApiKeyTemplateService(
     uuidGenerator: UuidGenerator,
     apiKeyTemplateRepository: ApiKeyTemplateRepository,
-    userRepository: UserRepository,
-    apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository,
-    apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository
+    userRepository: UserRepository
 ) extends Logging {
 
   def createApiKeyTemplate(
@@ -101,52 +99,5 @@ class ApiKeyTemplateService(
         apiKeyTemplateRepository.getAllForUser(tenantId, userId)
       )
     } yield result).value
-
-  def associatePermissionsWithApiKeyTemplate(
-      templateId: ApiKeyTemplateId,
-      permissionIds: List[PermissionId]
-  ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds).flatTap {
-      case Right(_) =>
-        logger.info(
-          s"Associated Permissions with permissionIds: [${permissionIds.mkString(", ")}] with Template with templateId: [$templateId]."
-        )
-      case Left(e) =>
-        logger.warn(s"Could not associate Permissions with permissionIds: [${permissionIds
-          .mkString(", ")}] with Template with templateId: [$templateId] because: ${e.message}")
-    }
-
-  def removePermissionsFromApiKeyTemplate(
-      templateId: ApiKeyTemplateId,
-      permissionIds: List[PermissionId]
-  ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds).flatTap {
-      case Right(_) =>
-        logger.info(
-          s"Removed associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}] and Template with templateId: [$templateId]."
-        )
-      case Left(e) =>
-        logger.warn(
-          s"""Could not remove associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}]
-             | and Template with templateId: [$templateId] because: ${e.message}""".stripMargin
-        )
-    }
-
-  def associateUsersWithApiKeyTemplate(
-      tenantId: TenantId,
-      templateId: ApiKeyTemplateId,
-      userIds: List[UserId]
-  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
-    apiKeyTemplatesUsersRepository.insertManyUsers(tenantId, templateId, userIds).flatTap {
-      case Right(_) =>
-        logger.info(
-          s"Associated Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}] with Template with templateId: [$templateId]."
-        )
-      case Left(e) =>
-        logger.warn(
-          s"""Could not associate Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}]
-             | with Template with templateId: [$templateId] because: ${e.message}""".stripMargin
-        )
-    }
 
 }
