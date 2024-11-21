@@ -612,7 +612,7 @@ class UserDbSpec
       }
 
       "there is a single ApiKeyTemplatesUsers for given publicTemplateId" should {
-        "return this single ApiKeyTemplatesUsers" in {
+        "return single ApiKeyTemplate" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
             (tenantId, templateIds, userIds) = dataIds
@@ -640,7 +640,7 @@ class UserDbSpec
       }
 
       "there are several ApiKeyTemplatesUsers got given publicTemplateId" should {
-        "return all these ApiKeyTemplatesUsers" in {
+        "return all these ApiKeyTemplates" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
             (tenantId, templateIds, userIds) = dataIds
