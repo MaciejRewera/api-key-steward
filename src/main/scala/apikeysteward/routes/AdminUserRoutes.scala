@@ -117,14 +117,14 @@ class AdminUserRoutes(
 
               case Left(_: ReferencedUserDoesNotExistError) =>
                 ErrorInfo
-                  .badRequestErrorInfo(
+                  .notFoundErrorInfo(
                     Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
                   )
                   .asLeft
 
               case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
                 ErrorInfo
-                  .notFoundErrorInfo(
+                  .badRequestErrorInfo(
                     Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
                   )
                   .asLeft
@@ -148,14 +148,14 @@ class AdminUserRoutes(
 
             case Left(_: ReferencedUserDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(
+                .notFoundErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
                 )
                 .asLeft
 
             case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
-                .notFoundErrorInfo(
+                .badRequestErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
                 )
                 .asLeft
@@ -186,7 +186,9 @@ class AdminUserRoutes(
 
             case Left(_: ReferencedUserDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound))
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                )
                 .asLeft
           }
         }

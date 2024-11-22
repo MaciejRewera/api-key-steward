@@ -609,7 +609,7 @@ class AdminUserRoutesSpec
         } yield ()
       }
 
-      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
           any[TenantId],
           any[UserId],
@@ -620,18 +620,18 @@ class AdminUserRoutesSpec
 
         for {
           response <- adminUserRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
+          _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
                 Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
           any[TenantId],
           any[UserId],
@@ -640,11 +640,11 @@ class AdminUserRoutesSpec
 
         for {
           response <- adminUserRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
+          _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
                 Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
               )
             )
@@ -821,7 +821,7 @@ class AdminUserRoutesSpec
         } yield ()
       }
 
-      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
           any[TenantId],
           any[UserId],
@@ -832,18 +832,18 @@ class AdminUserRoutesSpec
 
         for {
           response <- adminUserRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
+          _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
                 Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
           any[TenantId],
           any[UserId],
@@ -852,18 +852,18 @@ class AdminUserRoutesSpec
 
         for {
           response <- adminUserRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
+          _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
                 Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
               )
             )
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsNotFoundError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersNotFoundError" in authorizedFixture {
         apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
           any[TenantId],
           any[UserId],
@@ -962,7 +962,7 @@ class AdminUserRoutesSpec
         }
       }
 
-      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
           Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))
         )
