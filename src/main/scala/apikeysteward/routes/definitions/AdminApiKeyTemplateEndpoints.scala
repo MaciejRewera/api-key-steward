@@ -11,7 +11,7 @@ import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
   CreateApiKeyTemplatesPermissionsRequest,
   DeleteApiKeyTemplatesPermissionsRequest
 }
-import apikeysteward.routes.model.admin.apikeytemplatesusers.CreateApiKeyTemplatesUsersRequest
+import apikeysteward.routes.model.admin.apikeytemplatesusers.AssociateUsersWithApiKeyTemplateRequest
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
 import apikeysteward.routes.model.admin.user.GetMultipleUsersResponse
 import sttp.model.StatusCode
@@ -122,7 +122,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       : Endpoint[AccessToken, (ApiKeyTemplateId, CreateApiKeyTemplatesPermissionsRequest), ErrorInfo, StatusCode, Any] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("""Associate Permissions with a Template.
-                     |Add one or more Permissions to a specified Template.
+                     |Add one or more Permissions to the specified Template.
           """.stripMargin)
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .in(
@@ -146,7 +146,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
         """Remove Permissions from a Template.
-          |Remove one or more Permissions from a specified Template.""".stripMargin
+          |Remove one or more Permissions from the specified Template.""".stripMargin
       )
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .in(
@@ -168,7 +168,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
   val getAllPermissionsForTemplateEndpoint
       : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetMultiplePermissionsResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all Permissions associated with a specified Template.")
+      .description("Get all Permissions associated with the specified Template.")
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .out(statusCode.description(StatusCode.Ok, "Permissions found."))
       .out(
@@ -179,21 +179,22 @@ private[routes] object AdminApiKeyTemplateEndpoints {
 
   val associateUsersWithApiKeyTemplateEndpoint: Endpoint[
     AccessToken,
-    (TenantId, ApiKeyTemplateId, CreateApiKeyTemplatesUsersRequest),
+    (TenantId, ApiKeyTemplateId, AssociateUsersWithApiKeyTemplateRequest),
     ErrorInfo,
     StatusCode,
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.post
-      .description("""Associate Users with a Template.
-                     |Add one or more Users to a specified Template.
-          """.stripMargin)
+      .description(
+        """Associate Users with a Template.
+          |Add one or more Users to the specified Template.""".stripMargin
+      )
       .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "users")
       .in(
-        jsonBody[CreateApiKeyTemplatesUsersRequest]
+        jsonBody[AssociateUsersWithApiKeyTemplateRequest]
           .example(
-            CreateApiKeyTemplatesUsersRequest(
+            AssociateUsersWithApiKeyTemplateRequest(
               List(
                 UserExample_1.userId,
                 UserExample_2.userId,
@@ -209,7 +210,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
   val getAllUsersForTemplateEndpoint
       : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetMultipleUsersResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
-      .description("Get all Users associated with a specified Template.")
+      .description("Get all Users associated with the specified Template.")
       .in("admin" / "templates" / templateIdPathParameter / "users")
       .out(statusCode.description(StatusCode.Ok, "Users found."))
       .out(

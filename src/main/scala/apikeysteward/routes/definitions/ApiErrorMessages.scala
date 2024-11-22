@@ -36,6 +36,9 @@ private[routes] object ApiErrorMessages {
       "At least one of provided userIds is already associated with given Template."
     val ReferencedApiKeyTemplateNotFound = "No Template found for provided templateId."
     val ReferencedUserNotFound = "At least one User cannot be found for provided combination of tenantId and userIds."
+
+    val ApiKeyTemplatesUsersNotFound =
+      "At least one Template-User association does not exist for provided combination of templateId and userIds."
   }
 
   object AdminTenant {

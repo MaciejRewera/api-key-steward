@@ -1,20 +1,35 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
+  apiKeyTemplate_1,
+  apiKeyTemplate_2,
+  apiKeyTemplate_3,
+  publicTemplateId_1,
+  publicTemplateId_2,
+  publicTemplateId_3
+}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.base.testdata.UsersTestData._
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
+import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
+import apikeysteward.routes.auth.JwtAuthorizer
+import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
+import apikeysteward.routes.model.admin.apikeytemplate.GetMultipleApiKeyTemplatesResponse
+import apikeysteward.routes.model.admin.apikeytemplatesusers._
 import apikeysteward.routes.model.admin.user._
-import apikeysteward.services.UserService
+import apikeysteward.services.{ApiKeyTemplateAssociationsService, ApiKeyTemplateService, UserService}
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.implicits.http4sLiteralsSyntax
@@ -39,25 +54,41 @@ class AdminUserRoutesSpec
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
   private val userService = mock[UserService]
+  private val apiKeyTemplateService = mock[ApiKeyTemplateService]
+  private val apiKeyTemplateAssociationsService = mock[ApiKeyTemplateAssociationsService]
 
-  private val adminUserRoutes: HttpApp[IO] = new AdminUserRoutes(jwtAuthorizer, userService).allRoutes.orNotFound
+  private val adminUserRoutes: HttpApp[IO] =
+    new AdminUserRoutes(
+      jwtAuthorizer,
+      userService,
+      apiKeyTemplateService,
+      apiKeyTemplateAssociationsService
+    ).allRoutes.orNotFound
 
   private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, userService)
+    reset(jwtAuthorizer, userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
     authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
-    runCommonJwtTests(adminUserRoutes, jwtAuthorizer, userService)(request, requiredPermissions)
+    runCommonJwtTests(
+      adminUserRoutes,
+      jwtAuthorizer,
+      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
+    )(request, requiredPermissions)
 
   private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
-    runCommonTenantIdHeaderTests(adminUserRoutes, jwtAuthorizer, userService)(request)
+    runCommonTenantIdHeaderTests(
+      adminUserRoutes,
+      jwtAuthorizer,
+      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
+    )(request)
 
   "AdminUserRoutes on POST /admin/users" when {
 
@@ -419,4 +450,545 @@ class AdminUserRoutesSpec
     }
   }
 
+  "AdminUserRoutes on POST /admin/users/{userId}/templates" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
+    val requestBody = AssociateApiKeyTemplatesWithUserRequest(templateIds =
+      List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
+    )
+
+    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+      .withEntity(requestBody.asJson)
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+
+      "request body is provided with empty List" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(templateIds = List.empty))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some("Invalid value for: body (expected size of templateIds to be greater than or equal to 1, but got 0)")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+
+      "request body contains TemplateId which is an empty String" should {
+
+        val requestWithIncorrectPermissionId = request.withEntity(
+          Map(
+            "templateIds" -> List(
+              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
+              "",
+              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
+            )
+          ).asJson
+        )
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some("Invalid value for: body (Got value '\"\"' with wrong type, expecting string at 'templateIds[1]')")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+
+      "request body contains TemplateId which is not an UUID" should {
+
+        val requestWithIncorrectPermissionId = request.withEntity(
+          Map(
+            "templateIds" -> List(
+              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
+              "this-is-not-a-valid-uuid",
+              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
+            )
+          ).asJson
+        )
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (Got value '\"this-is-not-a-valid-uuid\"' with wrong type, expecting string at 'templateIds[1]')"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+
+      "call ApiKeyTemplateAssociationsService" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(().asRight)
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(apiKeyTemplateAssociationsService).associateApiKeyTemplatesWithUser(
+            eqTo(publicTenantId_1),
+            eqTo(publicUserId_1),
+            eqTo(requestBody.templateIds)
+          )
+        } yield ()
+      }
+
+      "return Created status and empty body" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(().asRight)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.Created
+          _ = response.body shouldBe Stream.empty
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersAlreadyExistsError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(101L, 102L)))
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersAlreadyExists)
+              )
+            )
+        } yield ()
+      }
+
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(
+          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersInsertionErrorImpl" in authorizedFixture {
+        val testSqlException = new SQLException("Test SQL Exception")
+        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)))
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
+        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[UserId]]
+        ) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminUserRoutes on DELETE /admin/users/{userId}/templates" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
+    val requestBody = DeleteApiKeyTemplatesFromUserRequest(
+      templateIds = List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
+    )
+
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+      .withEntity(requestBody.asJson)
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+
+      "request body is provided with empty List" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(templateIds = List.empty))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some("Invalid value for: body (expected size of templateIds to be greater than or equal to 1, but got 0)")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+
+      "request body contains TemplateId which is an empty String" should {
+
+        val requestWithIncorrectPermissionId = request.withEntity(
+          Map(
+            "templateIds" -> List(
+              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
+              "",
+              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
+            )
+          ).asJson
+        )
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some("Invalid value for: body (Got value '\"\"' with wrong type, expecting string at 'templateIds[1]')")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+
+      "request body contains TemplateId which is not an UUID" should {
+
+        val requestWithIncorrectPermissionId = request.withEntity(
+          Map(
+            "templateIds" -> List(
+              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
+              "this-is-not-a-valid-uuid",
+              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
+            )
+          ).asJson
+        )
+
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            "Invalid value for: body (Got value '\"this-is-not-a-valid-uuid\"' with wrong type, expecting string at 'templateIds[1]')"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+          for {
+            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+          } yield ()
+        }
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+
+      "call ApiKeyTemplateAssociationsService" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(().asRight)
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(apiKeyTemplateAssociationsService).removeApiKeyTemplatesFromUser(
+            eqTo(publicTenantId_1),
+            eqTo(publicUserId_1),
+            eqTo(requestBody.templateIds)
+          )
+        } yield ()
+      }
+
+      "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(().asRight)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ = response.body shouldBe Stream.empty
+        } yield ()
+      }
+
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(
+          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsNotFoundError" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.pure(
+          Left(
+            ApiKeyTemplatesUsersNotFoundError(
+              List(
+                ApiKeyTemplatesUsersEntity.Write(101L, 102L),
+                ApiKeyTemplatesUsersEntity.Write(201L, 202L),
+                ApiKeyTemplatesUsersEntity.Write(301L, 302L)
+              )
+            )
+          )
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
+        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
+          any[TenantId],
+          any[UserId],
+          any[List[ApiKeyTemplateId]]
+        ) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminUserRoutes on GET /admin/users/{userId}/templates" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ApiKeyTemplateService" in authorizedFixture {
+        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(apiKeyTemplateService).getAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+        } yield ()
+      }
+
+      "return successful value returned by UserService" when {
+
+        "ApiKeyTemplateService returns an empty List" in authorizedFixture {
+          apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+
+          for {
+            response <- adminUserRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[GetMultipleApiKeyTemplatesResponse]
+              .asserting(_ shouldBe GetMultipleApiKeyTemplatesResponse(templates = List.empty))
+          } yield ()
+        }
+
+        "ApiKeyTemplateService returns a List with several elements" in authorizedFixture {
+          apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+            Right(List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3))
+          )
+
+          for {
+            response <- adminUserRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[GetMultipleApiKeyTemplatesResponse]
+              .asserting(
+                _ shouldBe GetMultipleApiKeyTemplatesResponse(
+                  List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+                )
+              )
+          } yield ()
+        }
+      }
+
+      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+          Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
+        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
 }

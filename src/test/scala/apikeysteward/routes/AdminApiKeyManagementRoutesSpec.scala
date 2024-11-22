@@ -54,7 +54,7 @@ class AdminApiKeyManagementRoutesSpec
     authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit =
-    runCommonJwtTests(adminRoutes, jwtAuthorizer, managementService)(request, requiredPermissions)
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, List(managementService))(request, requiredPermissions)
 
   "AdminApiKeyRoutes on POST /admin/api-keys" when {
 

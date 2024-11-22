@@ -29,7 +29,11 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
     )
   }.flatMap(_ => test)
 
-  def runCommonJwtTests[Service <: AnyRef](routes: HttpApp[IO], jwtAuthorizer: JwtAuthorizer, mockedService: Service)(
+  def runCommonJwtTests[Service <: AnyRef](
+      routes: HttpApp[IO],
+      jwtAuthorizer: JwtAuthorizer,
+      mockedServices: List[Service]
+  )(
       request: Request[IO],
       requiredPermissions: Set[Permission]
   ): Unit = {
@@ -50,10 +54,11 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
         } yield ()
       }
 
-      s"NOT call either JwtAuthorizer or ${mockedService.getClass.getSimpleName}" in {
+      "NOT call either JwtAuthorizer or the Services" in {
         for {
           _ <- routes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtAuthorizer, mockedService)
+          _ = verifyZeroInteractions(jwtAuthorizer)
+          _ = verifyZeroInteractions(mockedServices: _*)
         } yield ()
       }
     }
@@ -87,14 +92,14 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
         } yield ()
       }
 
-      s"NOT call ${mockedService.getClass.getSimpleName}" in {
+      "NOT call the Services" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
           jwtValidatorError.asLeft
         )
 
         for {
           _ <- routes.run(request)
-          _ = verifyZeroInteractions(mockedService)
+          _ = verifyZeroInteractions(mockedServices: _*)
         } yield ()
       }
     }
@@ -113,14 +118,14 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
         } yield ()
       }
 
-      s"NOT call ${mockedService.getClass.getSimpleName}" in {
+      "NOT call the Services" in {
         jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
           testException
         )
 
         for {
           _ <- routes.run(request)
-          _ = verifyZeroInteractions(mockedService)
+          _ = verifyZeroInteractions(mockedServices: _*)
         } yield ()
       }
     }
@@ -129,7 +134,7 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
   def runCommonTenantIdHeaderTests[Service <: AnyRef](
       routes: HttpApp[IO],
       jwtAuthorizer: JwtAuthorizer,
-      mockedService: Service
+      mockedServices: List[Service]
   )(
       request: Request[IO]
   ): Unit = {
@@ -151,10 +156,33 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
         } yield ()
       }
 
-      "NOT call ApplicationService" in authorizedInnerFixture {
+      "NOT call the Services" in authorizedInnerFixture {
         for {
           _ <- routes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(mockedService)
+          _ = verifyZeroInteractions(mockedServices: _*)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT present" should {
+
+      val requestWithIncorrectHeader = request.removeHeader(tenantIdHeaderName)
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+        Some(s"""Invalid value for: header ApiKeySteward-TenantId (missing)""")
+      )
+
+      "return Bad Request" in authorizedInnerFixture {
+        for {
+          response <- routes.run(requestWithIncorrectHeader)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call the Services" in authorizedInnerFixture {
+        for {
+          _ <- routes.run(requestWithIncorrectHeader)
+          _ = verifyZeroInteractions(mockedServices: _*)
         } yield ()
       }
     }
