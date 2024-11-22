@@ -62,4 +62,5 @@ class UserRepository(tenantDb: TenantDb, userDb: UserDb)(transactor: Transactor[
       userEntityRead <- userDb.getAllForTemplate(publicTemplateId)
       resultUser = User.from(userEntityRead)
     } yield resultUser).compile.toList.transact(transactor)
+
 }

@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
@@ -89,13 +90,30 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
   ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
     Queries.getByPublicTemplateId(publicTemplateId).option
 
-  def getAllForTenant(tenantId: TenantId): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
-    Queries.getAllForTenant(tenantId).stream
+  def getAllForUser(
+      publicTenantId: TenantId,
+      publicUserId: UserId
+  ): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
+    Queries.getAllForUser(publicTenantId, publicUserId).stream
+
+  def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
+    Queries.getAllForTenant(publicTenantId).stream
 
   private object Queries {
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at"
+      fr"""SELECT
+            api_key_template.id,
+            api_key_template.tenant_id,
+            api_key_template.public_template_id,
+            api_key_template.name,
+            api_key_template.description,
+            api_key_template.is_default,
+            api_key_template.api_key_max_expiry_period,
+            api_key_template.api_key_prefix,
+            api_key_template.created_at,
+            api_key_template.updated_at
+          """
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key_template(tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
@@ -132,6 +150,16 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
                 WHERE api_key_template.public_template_id = $publicTemplateId
                 """.stripMargin
       ).query[ApiKeyTemplateEntity.Read]
+
+    def getAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.Query0[ApiKeyTemplateEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM api_key_template
+              JOIN api_key_templates_users ON api_key_template.id = api_key_templates_users.api_key_template_id
+              JOIN tenant_user ON tenant_user.id = api_key_templates_users.user_id
+              JOIN tenant ON tenant.id = tenant_user.tenant_id
+              WHERE tenant.public_tenant_id = ${publicTenantId.toString}
+                AND tenant_user.public_user_id = ${publicUserId.toString}
+             """.stripMargin).query[ApiKeyTemplateEntity.Read]
 
     def getAllForTenant(publicTenantId: TenantId): doobie.Query0[ApiKeyTemplateEntity.Read] =
       sql"""SELECT

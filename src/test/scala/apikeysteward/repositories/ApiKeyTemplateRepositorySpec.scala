@@ -4,10 +4,12 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{publicTemplateId_1, _}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
+import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}
@@ -508,15 +510,14 @@ class ApiKeyTemplateRepositorySpec
 
   "ApiKeyTemplateRepository on getAllForTenant" when {
 
-    "should always call ApiKeyTemplateDb and PermissionDb" in {
+    "should always call ApiKeyTemplateDb" in {
       apiKeyTemplateDb.getAllForTenant(any[TenantId]) returns Stream(apiKeyTemplateEntityRead_1)
-      permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
+      permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
 
       for {
         _ <- apiKeyTemplateRepository.getAllForTenant(publicTenantId_1)
 
         _ = verify(apiKeyTemplateDb).getAllForTenant(eqTo(publicTenantId_1))
-        _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_1))
       } yield ()
     }
 
@@ -617,6 +618,126 @@ class ApiKeyTemplateRepositorySpec
         )
 
         apiKeyTemplateRepository.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "ApiKeyTemplateRepository on getAllForUser" when {
+
+    "should always call ApiKeyTemplateDb" in {
+      apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(apiKeyTemplateEntityRead_1)
+      permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+
+      for {
+        _ <- apiKeyTemplateRepository.getAllForUser(publicTenantId_1, publicUserId_1)
+
+        _ = verify(apiKeyTemplateDb).getAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+      } yield ()
+    }
+
+    "ApiKeyTemplateDb returns empty Stream" should {
+
+      "NOT call PermissionDb" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream.empty
+
+        for {
+          _ <- apiKeyTemplateRepository.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verifyZeroInteractions(permissionDb)
+        } yield ()
+      }
+
+      "return empty List" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream.empty
+
+        apiKeyTemplateRepository.getAllForUser(publicTenantId_1, publicUserId_1).asserting(_ shouldBe List.empty)
+      }
+    }
+
+    "ApiKeyTemplateDb returns ApiKeyTemplateEntities in Stream" should {
+
+      "call PermissionDb for each ApiKeyTemplateEntity" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(
+          apiKeyTemplateEntityRead_1,
+          apiKeyTemplateEntityRead_2,
+          apiKeyTemplateEntityRead_3
+        )
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns (
+          Stream(permissionEntityRead_1),
+          Stream(permissionEntityRead_2),
+          Stream(permissionEntityRead_3)
+        )
+
+        for {
+          _ <- apiKeyTemplateRepository.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_1))
+          _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_2))
+          _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_3))
+        } yield ()
+      }
+
+      "return List containing ApiKeyTemplates" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(
+          apiKeyTemplateEntityRead_1,
+          apiKeyTemplateEntityRead_2,
+          apiKeyTemplateEntityRead_3
+        )
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns (
+          Stream(permissionEntityRead_1),
+          Stream(permissionEntityRead_2),
+          Stream(permissionEntityRead_3)
+        )
+
+        apiKeyTemplateRepository
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .asserting(_ should contain theSameElementsAs List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3))
+      }
+    }
+
+    "ApiKeyTemplateDb returns exception in the middle of the Stream" should {
+
+      "only call PermissionDb for elements before the exception" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(apiKeyTemplateEntityRead_1) ++ Stream
+          .raiseError[doobie.ConnectionIO](testException)
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
+
+        for {
+          _ <- apiKeyTemplateRepository.getAllForUser(publicTenantId_1, publicUserId_1).attempt
+
+          _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_1))
+          _ = verifyNoMoreInteractions(permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(apiKeyTemplateEntityRead_1) ++ Stream
+          .raiseError[doobie.ConnectionIO](testException)
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
+
+        apiKeyTemplateRepository
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "PermissionDb returns exception for one of subsequent calls" should {
+      "return failed IO containing this exception" in {
+        apiKeyTemplateDb.getAllForUser(any[TenantId], any[UserId]) returns Stream(
+          apiKeyTemplateEntityRead_1,
+          apiKeyTemplateEntityRead_2,
+          apiKeyTemplateEntityRead_3
+        )
+        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns (
+          Stream(permissionEntityRead_1),
+          Stream.raiseError[doobie.ConnectionIO](testException)
+        )
+
+        apiKeyTemplateRepository
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

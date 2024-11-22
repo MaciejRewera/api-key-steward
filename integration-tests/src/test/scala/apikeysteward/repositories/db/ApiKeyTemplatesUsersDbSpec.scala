@@ -5,6 +5,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.apiKeyTemplateEntityW
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.base.testdata.UsersTestData.userEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
@@ -395,6 +396,301 @@ class ApiKeyTemplatesUsersDbSpec
         result.asserting { case (res, preExistingEntities) =>
           val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
           res shouldBe expectedEntities
+        }
+      }
+    }
+  }
+
+  "ApiKeyTemplatesUsersDb on deleteMany" when {
+
+    "provided with an empty List" should {
+
+      "return Right containing empty List" in {
+        apiKeyTemplatesUsersDb.deleteMany(List.empty).transact(transactor).asserting(_ shouldBe Right(List.empty))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          entitiesToDelete = List.empty
+
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(2), userId = userIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 2
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there are no rows in the DB" should {
+
+      "return Left containing ApiKeyTemplatesUsersNotFoundError" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+
+          res <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+        } yield (res, entitiesToDelete.head)).transact(transactor)
+
+        result.asserting { case (res, entityToDelete) =>
+          res shouldBe Left(ApiKeyTemplatesUsersNotFoundError(List(entityToDelete)))
+        }
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesUsersEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with provided apiKeyTemplateId, but different userId" should {
+
+      "return Left containing ApiKeyTemplatesUsersNotFoundError" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1))
+          )
+
+          res <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+        } yield (res, entitiesToDelete.head)).transact(transactor)
+
+        result.asserting { case (res, entityToDelete) =>
+          res shouldBe Left(ApiKeyTemplatesUsersNotFoundError(List(entityToDelete)))
+        }
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1))
+          )
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, preExistingEntities)).transact(transactor)
+
+        result.asserting { case (allEntities, preExistingEntities) =>
+          allEntities.size shouldBe 1
+          val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there is a row in the DB with a different apiKeyTemplateId, but provided userId" should {
+
+      "return Left containing ApiKeyTemplatesUsersNotFoundError" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+          )
+
+          res <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+        } yield (res, entitiesToDelete.head)).transact(transactor)
+
+        result.asserting { case (res, entityToDelete) =>
+          res shouldBe Left(ApiKeyTemplatesUsersNotFoundError(List(entityToDelete)))
+        }
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+          )
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, preExistingEntities)).transact(transactor)
+
+        result.asserting { case (allEntities, preExistingEntities) =>
+          allEntities.size shouldBe 1
+          val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there are rows in the DB with provided both apiKeyTemplateId and userId" should {
+
+      "return Right containing deleted entities" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(2))
+          )
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(2), userId = userIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+        } yield (res, entitiesToDelete)).transact(transactor)
+
+        result.asserting { case (res, entitiesToDelete) =>
+          val expectedEntities = convertEntitiesWriteToRead(entitiesToDelete)
+          res.value should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "delete these rows from the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          entitiesToDelete = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(2))
+          )
+          entitiesExpectedNotToBeDeleted = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(2), userId = userIds(1))
+          )
+
+          preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 2
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
+        }
+      }
+    }
+
+    "there is an exception returned for one of the subsequent entities" should {
+
+      "return Left containing ApiKeyTemplatesUsersNotFoundError" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(2)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(2), userId = userIds(1))
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            preExistingEntities.head,
+            preExistingEntities(2),
+            preExistingEntities(3),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(2))
+          )
+
+          res <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+        } yield (res, entitiesToDelete.last)).transact(transactor)
+
+        result.asserting { case (res, incorrectEntityToDelete) =>
+          res shouldBe Left(ApiKeyTemplatesUsersNotFoundError(List(incorrectEntityToDelete)))
+        }
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          dataIds <- insertPrerequisiteData()
+          (_, templateIds, userIds) = dataIds
+
+          preExistingEntities = List(
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(2)),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(2), userId = userIds(1))
+          )
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          entitiesToDelete = List(
+            preExistingEntities.head,
+            preExistingEntities(2),
+            preExistingEntities(3),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(2))
+          )
+
+          _ <- apiKeyTemplatesUsersDb.deleteMany(entitiesToDelete)
+          res <- Queries.getAllAssociations
+        } yield (res, preExistingEntities)).transact(transactor)
+
+        result.asserting { case (allEntities, entitiesExpectedNotToBeDeleted) =>
+          allEntities.size shouldBe 5
+          val expectedEntities = convertEntitiesWriteToRead(entitiesExpectedNotToBeDeleted)
+          allEntities should contain theSameElementsAs expectedEntities
         }
       }
     }

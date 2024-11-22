@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, user_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
@@ -44,31 +44,14 @@ class ApiKeyTemplateServiceSpec
 
   private val uuidGenerator = mock[UuidGenerator]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
-  private val apiKeyTemplatesPermissionsRepository = mock[ApiKeyTemplatesPermissionsRepository]
-  private val apiKeyTemplatesUsersRepository = mock[ApiKeyTemplatesUsersRepository]
+  private val userRepository = mock[UserRepository]
 
-  private val apiKeyTemplateService = new ApiKeyTemplateService(
-    uuidGenerator,
-    apiKeyTemplateRepository,
-    apiKeyTemplatesPermissionsRepository,
-    apiKeyTemplatesUsersRepository
-  )
+  private val apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository, userRepository)
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, apiKeyTemplateRepository, apiKeyTemplatesPermissionsRepository, apiKeyTemplatesUsersRepository)
+    reset(uuidGenerator, apiKeyTemplateRepository, userRepository)
 
   private val testException = new RuntimeException("Test Exception")
-  private val testSqlException = new SQLException("Test SQL Exception")
-
-  private val apiKeyTemplatesPermissionsInsertionErrors = Seq(
-    ApiKeyTemplatesPermissionsAlreadyExistsError(101L, 102L),
-    ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1),
-    ReferencedPermissionDoesNotExistError(publicPermissionId_1),
-    ApiKeyTemplatesPermissionsInsertionErrorImpl(testSqlException)
-  )
-
-  private val inputPublicPermissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
-  private val inputPublicUserIds = List(publicUserId_1, publicUserId_2, publicUserId_3)
 
   "ApiKeyTemplateService on createApiKeyTemplate" when {
 
@@ -460,213 +443,76 @@ class ApiKeyTemplateServiceSpec
     }
   }
 
-  "ApiKeyTemplateService on associatePermissionsWithApiKeyTemplate" when {
+  "ApiKeyTemplateService on getAllForUser" when {
 
     "everything works correctly" should {
 
-      "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
-          ().asRight
-        )
+      "call UserRepository and ApiKeyTemplateRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
 
         for {
-          _ <- apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(
-            publicTemplateId_1,
-            inputPublicPermissionIds
-          )
+          _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
 
-          _ = verify(apiKeyTemplatesPermissionsRepository).insertMany(
-            eqTo(publicTemplateId_1),
-            eqTo(inputPublicPermissionIds)
-          )
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+          _ = verify(apiKeyTemplateRepository).getAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
         } yield ()
       }
 
-      "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
-          ().asRight
-        )
+      "return the value returns by ApiKeyTemplateRepository" when {
 
-        val result =
-          apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+        "ApiKeyTemplateRepository returns empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
 
-        result.asserting(_ shouldBe Right(()))
-      }
-    }
+          apiKeyTemplateService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List.empty))
+        }
 
-    apiKeyTemplatesPermissionsInsertionErrors.foreach { insertionError =>
-      s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
+        "ApiKeyTemplateRepository returns non-empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+            List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+          )
 
-        "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
-            .pure(insertionError.asLeft)
-
-          val result =
-            apiKeyTemplateService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
-
-          result.asserting(_ shouldBe Left(insertionError))
+          apiKeyTemplateService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)))
         }
       }
     }
 
-    "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
-      "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
-          .raiseError(testException)
+    "UserRepository returns empty Option" should {
 
-        val result = apiKeyTemplateService
-          .associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
-          .attempt
-
-        result.asserting(_ shouldBe Left(testException))
-      }
-    }
-  }
-
-  "ApiKeyTemplateService on removePermissionsFromApiKeyTemplate" when {
-
-    "everything works correctly" should {
-
-      "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
-          ().asRight
-        )
+      "NOT call ApiKeyTemplateRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
 
         for {
-          _ <- apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
 
-          _ = verify(apiKeyTemplatesPermissionsRepository).deleteMany(
-            eqTo(publicTemplateId_1),
-            eqTo(inputPublicPermissionIds)
-          )
+          _ = verifyZeroInteractions(apiKeyTemplateRepository)
         } yield ()
       }
 
-      "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
-          ().asRight
-        )
+      "return Left containing ReferencedUserDoesNotExistError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
 
-        val result =
-          apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
-
-        result.asserting(_ shouldBe Right(()))
+        apiKeyTemplateService
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .asserting(_ shouldBe Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
       }
     }
 
-    val allErrors = apiKeyTemplatesPermissionsInsertionErrors :+ ApiKeyTemplatesPermissionsNotFoundError(
-      List(
-        ApiKeyTemplatesPermissionsEntity.Write(101L, 102L),
-        ApiKeyTemplatesPermissionsEntity.Write(201L, 202L),
-        ApiKeyTemplatesPermissionsEntity.Write(301L, 302L)
-      )
-    )
+    "ApiKeyTemplateRepository returns failed IO" should {
+      "return failed IO containing the same exception" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
 
-    allErrors.foreach { insertionError =>
-      s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
-
-        "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
-            .pure(insertionError.asLeft)
-
-          val result =
-            apiKeyTemplateService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
-
-          result.asserting(_ shouldBe Left(insertionError))
-        }
-      }
-    }
-
-    "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
-      "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
-          .raiseError(testException)
-
-        val result = apiKeyTemplateService
-          .removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+        apiKeyTemplateService
+          .getAllForUser(publicTenantId_1, publicUserId_1)
           .attempt
-
-        result.asserting(_ shouldBe Left(testException))
-      }
-    }
-  }
-
-  "ApiKeyTemplateService on associateUsersWithApiKeyTemplate" when {
-
-    "everything works correctly" should {
-
-      "call ApiKeyTemplatesUsersRepository" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
-          .pure(
-            ().asRight
-          )
-
-        for {
-          _ <- apiKeyTemplateService.associateUsersWithApiKeyTemplate(
-            publicTenantId_1,
-            publicTemplateId_1,
-            inputPublicUserIds
-          )
-
-          _ = verify(apiKeyTemplatesUsersRepository).insertMany(
-            eqTo(publicTenantId_1),
-            eqTo(publicTemplateId_1),
-            eqTo(inputPublicUserIds)
-          )
-        } yield ()
-      }
-
-      "return Right containing Unit value" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
-          .pure(
-            ().asRight
-          )
-
-        val result =
-          apiKeyTemplateService.associateUsersWithApiKeyTemplate(
-            publicTenantId_1,
-            publicTemplateId_1,
-            inputPublicUserIds
-          )
-
-        result.asserting(_ shouldBe Right(()))
-      }
-    }
-
-    Seq(
-      ApiKeyTemplatesUsersAlreadyExistsError(101L, 202L),
-      ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1),
-      ApiKeyTemplatesUsersInsertionError.ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1),
-      ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)
-    ).foreach { insertionError =>
-      s"ApiKeyTemplatesUsersRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
-
-        "return Left containing this error" in {
-          apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
-            .pure(insertionError.asLeft)
-
-          val result =
-            apiKeyTemplateService.associateUsersWithApiKeyTemplate(
-              publicTenantId_1,
-              publicTemplateId_1,
-              inputPublicUserIds
-            )
-
-          result.asserting(_ shouldBe Left(insertionError))
-        }
-      }
-    }
-
-    "ApiKeyTemplatesUsersRepository returns failed IO" should {
-      "return failed IO containing this exception" in {
-        apiKeyTemplatesUsersRepository.insertMany(any[TenantId], any[ApiKeyTemplateId], any[List[UserId]]) returns IO
-          .raiseError(testException)
-
-        val result = apiKeyTemplateService
-          .associateUsersWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
-          .attempt
-
-        result.asserting(_ shouldBe Left(testException))
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

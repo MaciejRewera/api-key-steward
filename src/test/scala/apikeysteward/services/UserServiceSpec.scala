@@ -326,7 +326,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     }
 
     "UserRepository returns failed IO" should {
-      "return failed IO" in {
+      "return failed IO containing the same exception" in {
         apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 

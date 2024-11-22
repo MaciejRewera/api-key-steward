@@ -5,7 +5,7 @@ import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.NonEmptyList
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
 import doobie.Fragments
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
@@ -72,6 +72,18 @@ class ApiKeyTemplatesPermissionsDb {
   def deleteMany(
       entities: List[ApiKeyTemplatesPermissionsEntity.Write]
   ): doobie.ConnectionIO[Either[ApiKeyTemplatesPermissionsNotFoundError, List[ApiKeyTemplatesPermissionsEntity.Read]]] =
+    NonEmptyList.fromList(entities) match {
+      case Some(values) => performDeleteMany(values)
+      case None =>
+        List
+          .empty[ApiKeyTemplatesPermissionsEntity.Read]
+          .asRight[ApiKeyTemplatesPermissionsNotFoundError]
+          .pure[doobie.ConnectionIO]
+    }
+
+  private def performDeleteMany(
+      entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]
+  ): doobie.ConnectionIO[Either[ApiKeyTemplatesPermissionsNotFoundError, List[ApiKeyTemplatesPermissionsEntity.Read]]] =
     for {
       entitiesFound <- getAllThatExistFrom(entities).compile.toList
       missingEntities = filterMissingEntities(entities, entitiesFound)
@@ -86,11 +98,11 @@ class ApiKeyTemplatesPermissionsDb {
     } yield resultE
 
   private def filterMissingEntities(
-      entitiesToDelete: List[ApiKeyTemplatesPermissionsEntity.Write],
+      entitiesToDelete: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write],
       entitiesFound: List[ApiKeyTemplatesPermissionsEntity.Read]
   ): List[ApiKeyTemplatesPermissionsEntity.Write] = {
     val entitiesFoundWrite = convertEntitiesReadToWrite(entitiesFound)
-    entitiesToDelete.toSet.diff(entitiesFoundWrite.toSet).toList
+    entitiesToDelete.iterator.toSet.diff(entitiesFoundWrite.toSet).toList
   }
 
   private def convertEntitiesReadToWrite(
@@ -104,7 +116,7 @@ class ApiKeyTemplatesPermissionsDb {
     }
 
   private[db] def getAllThatExistFrom(
-      entitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write]
+      entitiesWrite: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]
   ): Stream[doobie.ConnectionIO, ApiKeyTemplatesPermissionsEntity.Read] =
     Queries.getAllThatExistFrom(entitiesWrite).stream
 
@@ -136,28 +148,20 @@ class ApiKeyTemplatesPermissionsDb {
               AND api_key_template.public_template_id = ${publicTemplateId.toString}
            """.stripMargin.update
 
-    def deleteMany(entities: List[ApiKeyTemplatesPermissionsEntity.Write]): doobie.Update0 = {
-      val values =
-        NonEmptyList.fromListUnsafe(entities.map(entity => (entity.apiKeyTemplateId, entity.permissionId)))
-
+    def deleteMany(entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]): doobie.Update0 =
       sql"""DELETE FROM api_key_templates_permissions
-            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
+            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(entities)})
            """.stripMargin.update
-    }
 
     def getAllThatExistFrom(
-        entities: List[ApiKeyTemplatesPermissionsEntity.Write]
-    ): doobie.Query0[ApiKeyTemplatesPermissionsEntity.Read] = {
-      val values =
-        NonEmptyList.fromListUnsafe(entities.map(entity => (entity.apiKeyTemplateId, entity.permissionId)))
-
+        entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]
+    ): doobie.Query0[ApiKeyTemplatesPermissionsEntity.Read] =
       sql"""SELECT
               api_key_template_id,
               permission_id
             FROM api_key_templates_permissions
-            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(values)})
+            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(entities)})
             """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]
-    }
 
   }
 }

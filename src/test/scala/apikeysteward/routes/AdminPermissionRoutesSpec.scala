@@ -51,7 +51,7 @@ class AdminPermissionRoutesSpec
     authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[JwtPermission]): Unit =
-    runCommonJwtTests(adminRoutes, jwtAuthorizer, permissionService)(request, requiredPermissions)
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, List(permissionService))(request, requiredPermissions)
 
   "AdminPermissionRoutes on POST /admin/applications/{applicationId}/permissions" when {
 

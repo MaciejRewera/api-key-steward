@@ -48,7 +48,7 @@ class AdminTenantRoutesSpec
     authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit =
-    runCommonJwtTests(adminRoutes, jwtAuthorizer, tenantService)(request, requiredPermissions)
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, List(tenantService))(request, requiredPermissions)
 
   "AdminTenantRoutes on POST /admin/tenants" when {
 
