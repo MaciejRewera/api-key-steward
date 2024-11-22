@@ -603,7 +603,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersAlreadyExists)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ApiKeyTemplatesUsersAlreadyExists)
               )
             )
         } yield ()
@@ -625,7 +625,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
@@ -645,7 +645,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -837,7 +837,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
@@ -857,7 +857,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -974,7 +974,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
               )
             )
         } yield ()
