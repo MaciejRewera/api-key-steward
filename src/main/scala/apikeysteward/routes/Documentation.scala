@@ -60,7 +60,10 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminUserEndpoints.createUserEndpoint,
     AdminUserEndpoints.deleteUserEndpoint,
     AdminUserEndpoints.getSingleUserEndpoint,
-    AdminUserEndpoints.searchUsersEndpoint
+    AdminUserEndpoints.searchUsersEndpoint,
+    AdminUserEndpoints.associateApiKeyTemplatesWithUserEndpoint,
+    AdminUserEndpoints.removeApiKeyTemplatesFromUserEndpoint,
+    AdminUserEndpoints.getAllApiKeyTemplatesForUserEndpoint
   ).map(_.withTag(Tags.AdminUsers))
 
   private val managementEndpoints = List(
