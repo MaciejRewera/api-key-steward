@@ -2,9 +2,9 @@ package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesPermissionsDbError, ApiKeyTemplatesUsersDbError}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesPermissionsDbError, ApiKeyTemplatesUsersDbError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.{ApiKeyTemplatesPermissionsRepository, ApiKeyTemplatesUsersRepository}
@@ -23,11 +23,14 @@ class ApiKeyTemplateAssociationsService(
     apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds).flatTap {
       case Right(_) =>
         logger.info(
-          s"Associated Permissions with permissionIds: [${permissionIds.mkString(", ")}] with Template with templateId: [$templateId]."
+          s"""Associated Permissions with permissionIds: [${permissionIds.mkString(", ")}]
+             | with Template with templateId: [$templateId].""".stripMargin
         )
       case Left(e) =>
-        logger.warn(s"Could not associate Permissions with permissionIds: [${permissionIds
-          .mkString(", ")}] with Template with templateId: [$templateId] because: ${e.message}")
+        logger.warn(
+          s"""Could not associate Permissions with permissionIds: [${permissionIds.mkString(", ")}]
+             | with Template with templateId: [$templateId] because: ${e.message}""".stripMargin
+        )
     }
 
   def removePermissionsFromApiKeyTemplate(
@@ -37,7 +40,8 @@ class ApiKeyTemplateAssociationsService(
     apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds).flatTap {
       case Right(_) =>
         logger.info(
-          s"Removed associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}] and Template with templateId: [$templateId]."
+          s"""Removed associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}]
+             | and Template with templateId: [$templateId].""".stripMargin
         )
       case Left(e) =>
         logger.warn(
@@ -54,7 +58,8 @@ class ApiKeyTemplateAssociationsService(
     apiKeyTemplatesUsersRepository.insertManyUsers(tenantId, templateId, userIds).flatTap {
       case Right(_) =>
         logger.info(
-          s"Associated Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}] with Template with templateId: [$templateId]."
+          s"""Associated Users for Tenant with tenantId: [$tenantId] and userIds: [${userIds.mkString(", ")}]
+             | with Template with templateId: [$templateId].""".stripMargin
         )
       case Left(e) =>
         logger.warn(
@@ -67,12 +72,36 @@ class ApiKeyTemplateAssociationsService(
       tenantId: TenantId,
       userId: UserId,
       templateIds: List[ApiKeyTemplateId]
-  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] = ???
+  ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
+    apiKeyTemplatesUsersRepository.insertManyTemplates(tenantId, userId, templateIds).flatTap {
+      case Right(_) =>
+        logger.info(
+          s"""Associated Templates with templateIds: [${templateIds.mkString(", ")}]
+             | with User for Tenant with tenantId: [$tenantId] and userId: [$userId].""".stripMargin
+        )
+      case Left(e) =>
+        logger.warn(
+          s"""Could not associate Templates with templateIds: [${templateIds.mkString(", ")}]
+             | with User for Tenant with tenantId: [$tenantId] and userId: [$userId] because: ${e.message}""".stripMargin
+        )
+    }
 
   def removeApiKeyTemplatesFromUser(
       tenantId: TenantId,
       userId: UserId,
       templateIds: List[ApiKeyTemplateId]
-  ): IO[Either[ApiKeyTemplatesUsersDbError, Unit]] = ???
+  ): IO[Either[ApiKeyTemplatesUsersDbError, Unit]] =
+    apiKeyTemplatesUsersRepository.deleteManyTemplates(tenantId, userId, templateIds).flatTap {
+      case Right(_) =>
+        logger.info(
+          s"""Removed associations between Templates with templateIds: [${templateIds.mkString(", ")}]
+             | and User for Tenant with tenantId: [$tenantId] and userId: [$userId].""".stripMargin
+        )
+      case Left(e) =>
+        logger.warn(
+          s"""Could not remove associations between Templates with templateIds: [${templateIds.mkString(", ")}]
+             | and User for Tenant with tenantId: [$tenantId] and userId: [$userId] because: ${e.message}""".stripMargin
+        )
+    }
 
 }
