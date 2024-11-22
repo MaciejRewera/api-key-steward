@@ -257,7 +257,9 @@ class AdminApiKeyTemplateRoutes(
 
             case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound))
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                )
                 .asLeft
           }
         }

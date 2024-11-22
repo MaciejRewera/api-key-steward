@@ -667,7 +667,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       }
     }
 
-    "there is a row in the DB, but for a different Permission" should {
+    "there is a row in the DB, but for a different ApiKeyTemplate" should {
 
       "return zero" in {
         val result = (for {
@@ -709,7 +709,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       }
     }
 
-    "there is a row in the DB for given Permission" should {
+    "there is a row in the DB for given ApiKeyTemplate" should {
 
       "return one" in {
         val result = (for {
@@ -747,7 +747,7 @@ class ApiKeyTemplatesPermissionsDbSpec
       }
     }
 
-    "there are several rows in the DB, some of which are for given Permission" should {
+    "there are several rows in the DB, some of which are for given ApiKeyTemplate" should {
 
       "return the number of deleted rows" in {
         val result = (for {

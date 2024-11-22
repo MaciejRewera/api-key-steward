@@ -61,7 +61,8 @@ class ApiKeyTemplatesUsersDb {
   def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Int] =
     Queries.deleteAllForUser(publicTenantId, publicUserId).run
 
-  def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.ConnectionIO[Int] = ???
+  def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.ConnectionIO[Int] =
+    Queries.deleteAllForApiKeyTemplate(publicTemplateId).run
 
   def deleteMany(
       entities: List[ApiKeyTemplatesUsersEntity.Write]
@@ -129,6 +130,13 @@ class ApiKeyTemplatesUsersDb {
               AND tenant_user.public_user_id = ${publicUserId.toString}
               AND tenant_user.tenant_id = tenant.id
               AND tenant.public_tenant_id = ${publicTenantId.toString}
+           """.stripMargin.update
+
+    def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
+      sql"""DELETE FROM api_key_templates_users
+            USING api_key_template
+            WHERE api_key_templates_users.api_key_template_id = api_key_template.id
+              AND api_key_template.public_template_id = ${publicTemplateId.toString}
            """.stripMargin.update
 
     def deleteMany(entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]): doobie.Update0 =
