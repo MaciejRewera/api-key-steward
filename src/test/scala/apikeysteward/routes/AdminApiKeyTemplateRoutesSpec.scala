@@ -1190,10 +1190,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplateService" in authorizedFixture {
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(apiKeyTemplateService)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
           } yield ()
         }
       }
@@ -1224,10 +1224,10 @@ class AdminApiKeyTemplateRoutesSpec
           } yield ()
         }
 
-        "NOT call ApiKeyTemplateService" in authorizedFixture {
+        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithIncorrectPermissionId)
-            _ = verifyZeroInteractions(apiKeyTemplateService)
+            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
           } yield ()
         }
       }
@@ -1235,7 +1235,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApiKeyTemplateService" in authorizedFixture {
+      "call ApiKeyTemplateAssociationsService" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
@@ -1250,7 +1250,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
+      "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
@@ -1263,7 +1263,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
@@ -1284,7 +1284,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
@@ -1305,7 +1305,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
@@ -1326,7 +1326,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplatesPermissionsInsertionErrorImpl" in authorizedFixture {
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
@@ -1340,7 +1340,7 @@ class AdminApiKeyTemplateRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
         apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
           any[ApiKeyTemplateId],
           any[List[PermissionId]]

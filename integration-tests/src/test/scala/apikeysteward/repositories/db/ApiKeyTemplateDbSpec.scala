@@ -531,7 +531,7 @@ class ApiKeyTemplateDbSpec
       }
     }
 
-    "there is a User in the DB, but there are no ApiKeyTemplatesUsers for this Template" should {
+    "there is a User in the DB, but there are no ApiKeyTemplatesUsers for this User" should {
       "return empty Stream" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
@@ -547,7 +547,7 @@ class ApiKeyTemplateDbSpec
     }
 
     "there is a User in the DB with a single ApiKeyTemplatesUsers" should {
-      "return this single ApiKeyTemplatesUsers" in {
+      "return this single ApiKeyTemplate" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
 
@@ -629,7 +629,7 @@ class ApiKeyTemplateDbSpec
       }
 
       "there is a single ApiKeyTemplatesUsers for given User" should {
-        "return single ApiKeyTemplate" in {
+        "return this single ApiKeyTemplate" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
             (tenantId, templateIds, userIds) = dataIds
@@ -657,7 +657,7 @@ class ApiKeyTemplateDbSpec
         }
       }
 
-      "there are several ApiKeyTemplatesUsers got given User" should {
+      "there are several ApiKeyTemplatesUsers for given User" should {
         "return all these ApiKeyTemplates" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()

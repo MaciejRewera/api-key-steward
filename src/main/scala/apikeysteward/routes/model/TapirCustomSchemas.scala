@@ -85,13 +85,11 @@ object TapirCustomSchemas {
     Schema
       .derived[AssociateApiKeyTemplatesWithUserRequest]
       .modify(_.templateIds)(validateListNotEmpty)
-//      .modify(_.templateIds)(_.validateList(userIdValidator))
 
   val deleteApiKeyTemplatesWithUserRequestSchema: Schema[DeleteApiKeyTemplatesFromUserRequest] =
     Schema
       .derived[DeleteApiKeyTemplatesFromUserRequest]
       .modify(_.templateIds)(validateListNotEmpty)
-//      .modify(_.templateIds)(_.validateList(userIdValidator))
 
   val createTenantRequestSchema: Schema[CreateTenantRequest] =
     Schema
