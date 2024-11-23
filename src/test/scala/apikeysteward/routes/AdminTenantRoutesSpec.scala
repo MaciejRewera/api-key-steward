@@ -1,8 +1,14 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
 import apikeysteward.base.testdata.TenantsTestData._
+import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationIsNotDeactivatedError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
+import apikeysteward.model.RepositoryErrors.TenantDbError.{
+  CannotDeleteDependencyError,
+  TenantIsNotDeactivatedError,
+  TenantNotFoundError
+}
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
@@ -628,6 +634,25 @@ class AdminTenantRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
                 Some(ApiErrorMessages.AdminTenant.TenantIsNotDeactivated(publicTenantId_1))
+              )
+            )
+        } yield ()
+      }
+
+      "return Bad Request when TenantService returns successful IO with Left containing CannotDeleteDependencyError" in authorizedFixture {
+        val dependencyError = ApplicationIsNotDeactivatedError(publicApplicationId_1)
+        tenantService.deleteTenant(any[UUID]) returns IO.pure(
+          Left(CannotDeleteDependencyError(publicTenantId_1, dependencyError))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminTenant.TenantDependencyCannotBeDeleted(publicTenantId_1))
               )
             )
         } yield ()
