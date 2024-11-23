@@ -13,7 +13,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.{TenantEntity, UserEntity}
-import apikeysteward.repositories.db.{TenantDb, UserDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesUsersDb, TenantDb, UserDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
 import fs2.Stream
@@ -37,11 +37,12 @@ class UserRepositorySpec
 
   private val tenantDb = mock[TenantDb]
   private val userDb = mock[UserDb]
+  private val apiKeyTemplatesUsersDb = mock[ApiKeyTemplatesUsersDb]
 
-  private val userRepository = new UserRepository(tenantDb, userDb)(noopTransactor)
+  private val userRepository = new UserRepository(tenantDb, userDb, apiKeyTemplatesUsersDb)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(tenantDb, userDb)
+    reset(tenantDb, userDb, apiKeyTemplatesUsersDb)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -149,17 +150,20 @@ class UserRepositorySpec
 
     "everything works correctly" should {
 
-      "call UserDb" in {
+      "call ApiKeyTemplatesUsersDb and UserDb" in {
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns 3.pure[doobie.ConnectionIO]
         userDb.delete(any[TenantId], any[UserId]) returns deletedUserEntityReadWrapped
 
         for {
           _ <- userRepository.delete(publicTenantId_1, publicUserId_1)
 
+          _ = verify(apiKeyTemplatesUsersDb).deleteAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
           _ = verify(userDb).delete(eqTo(publicTenantId_1), eqTo(publicUserId_1))
         } yield ()
       }
 
       "return Right containing deleted User" in {
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns 3.pure[doobie.ConnectionIO]
         userDb.delete(any[TenantId], any[UserId]) returns deletedUserEntityReadWrapped
 
         userRepository
@@ -168,8 +172,30 @@ class UserRepositorySpec
       }
     }
 
+    "ApiKeyTemplatesUsersDb returns exception" should {
+
+      "NOT call UserDb" in {
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns testException
+          .raiseError[doobie.ConnectionIO, Int]
+
+        for {
+          _ <- userRepository.delete(publicTenantId_1, publicUserId_1).attempt
+
+          _ = verifyZeroInteractions(userDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns testException
+          .raiseError[doobie.ConnectionIO, Int]
+
+        userRepository.delete(publicTenantId_1, publicUserId_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "UserDb returns Left containing UserNotFoundError" should {
       "return Left containing this error" in {
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns 3.pure[doobie.ConnectionIO]
         val userNotFoundError = UserNotFoundError(publicTenantId_1, publicUserId_1)
         userDb.delete(any[TenantId], any[UserId]) returns userNotFoundError
           .asLeft[UserEntity.Read]
@@ -183,8 +209,8 @@ class UserRepositorySpec
 
     "UserDb returns exception" should {
       "return failed IO containing this exception" in {
-        userDb
-          .delete(any[TenantId], any[UserId]) returns testExceptionWrappedE[UserNotFoundError]
+        apiKeyTemplatesUsersDb.deleteAllForUser(any[TenantId], any[UserId]) returns 3.pure[doobie.ConnectionIO]
+        userDb.delete(any[TenantId], any[UserId]) returns testExceptionWrappedE[UserNotFoundError]
 
         userRepository
           .delete(publicTenantId_1, publicUserId_1)

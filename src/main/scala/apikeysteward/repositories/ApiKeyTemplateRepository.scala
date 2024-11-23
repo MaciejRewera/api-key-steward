@@ -7,7 +7,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
-import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}
+import apikeysteward.repositories.db._
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.implicits._
@@ -20,7 +20,8 @@ class ApiKeyTemplateRepository(
     tenantDb: TenantDb,
     apiKeyTemplateDb: ApiKeyTemplateDb,
     permissionDb: PermissionDb,
-    apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
+    apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb,
+    apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb
 )(transactor: Transactor[IO]) {
 
   def insert(
@@ -55,12 +56,13 @@ class ApiKeyTemplateRepository(
       publicTemplateId: ApiKeyTemplateId
   ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     for {
-      permissionEntitiesToDelete <- permissionDb.getAllForTemplate(publicTemplateId).compile.toList
+      permissionEntitiesToDeleteAssociationWith <- permissionDb.getAllForTemplate(publicTemplateId).compile.toList
 
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
+      _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTemplateId)
 
-      deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDelete))
+      deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDeleteAssociationWith))
     } yield deletedTemplate
 
   def getBy(publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =

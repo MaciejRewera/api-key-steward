@@ -7,8 +7,8 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.TestDataInsertions._
-import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
+import apikeysteward.repositories.db._
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -34,6 +34,7 @@ class TenantRepositoryItSpec
   private val applicationDb = new ApplicationDb
   private val permissionDb = new PermissionDb
   private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+  private val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
   private val userDb = new UserDb
 
@@ -44,9 +45,15 @@ class TenantRepositoryItSpec
     new ApplicationRepository(tenantDb, applicationDb, permissionDb, permissionRepository)(transactor)
 
   private val apiKeyTemplateRepository =
-    new ApiKeyTemplateRepository(tenantDb, apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new ApiKeyTemplateRepository(
+      tenantDb,
+      apiKeyTemplateDb,
+      permissionDb,
+      apiKeyTemplatesPermissionsDb,
+      apiKeyTemplatesUsersDb
+    )(transactor)
 
-  private val userRepository = new UserRepository(tenantDb, userDb)(transactor)
+  private val userRepository = new UserRepository(tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
 
   private val repository =
     new TenantRepository(tenantDb, applicationRepository, apiKeyTemplateRepository, userRepository)(transactor)
@@ -70,12 +77,16 @@ class TenantRepositoryItSpec
     val getAllApiKeyTemplates: doobie.ConnectionIO[List[ApiKeyTemplateEntity.Read]] =
       sql"SELECT * FROM api_key_template".query[ApiKeyTemplateEntity.Read].stream.compile.toList
 
-    val getAllAssociations: ConnectionIO[List[ApiKeyTemplatesPermissionsEntity.Read]] =
+    val getAllPermissionTemplateAssociations: ConnectionIO[List[ApiKeyTemplatesPermissionsEntity.Read]] =
       sql"SELECT * FROM api_key_templates_permissions"
         .query[ApiKeyTemplatesPermissionsEntity.Read]
         .stream
         .compile
         .toList
+
+    val getAllUserTemplateAssociations: ConnectionIO[List[ApiKeyTemplatesUsersEntity.Read]] =
+      sql"SELECT * FROM api_key_templates_users".query[ApiKeyTemplatesUsersEntity.Read].stream.compile.toList
+
   }
 
   private type UserDbId = Long
@@ -104,8 +115,15 @@ class TenantRepositoryItSpec
       userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
       userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
       userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
-
       userIds = List(userId_1, userId_2, userId_3)
+
+      associationEntities = List(
+        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1))
+      )
+      _ <- apiKeyTemplatesUsersDb.insertMany(associationEntities)
+
     } yield (tenantId, applicationId, templateIds, permissionIds, userIds)).transact(transactor)
 
   "TenantRepository on delete" when {
@@ -121,7 +139,7 @@ class TenantRepositoryItSpec
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
-          res <- Queries.getAllAssociations.transact(transactor)
+          res <- Queries.getAllPermissionTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -130,6 +148,29 @@ class TenantRepositoryItSpec
               .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
               .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+          )
+        } yield (res, expectedEntities)
+
+        result.asserting { case (res, expectedEntities) =>
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete associations between these Users and ApiKeyTemplates" in {
+        val result = for {
+          dataIds <- insertPrerequisiteData()
+          (_, _, templateIds, _, userIds) = dataIds
+
+          _ <- applicationRepository.deactivate(publicApplicationId_1)
+          _ <- repository.activate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllUserTemplateAssociations.transact(transactor)
+
+          expectedEntities = List(
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds(1))
           )
         } yield (res, expectedEntities)
 
@@ -259,7 +300,7 @@ class TenantRepositoryItSpec
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
-          res <- Queries.getAllAssociations.transact(transactor)
+          res <- Queries.getAllPermissionTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
@@ -268,6 +309,29 @@ class TenantRepositoryItSpec
               .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
               .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+          )
+        } yield (res, expectedEntities)
+
+        result.asserting { case (res, expectedEntities) =>
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete associations between these Users and ApiKeyTemplates" in {
+        val result = for {
+          dataIds <- insertPrerequisiteData()
+          (_, _, templateIds, _, userIds) = dataIds
+
+          _ <- applicationRepository.activate(publicApplicationId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllUserTemplateAssociations.transact(transactor)
+
+          expectedEntities = List(
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds.head, userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds.head),
+            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds(1))
           )
         } yield (res, expectedEntities)
 
@@ -394,10 +458,25 @@ class TenantRepositoryItSpec
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
-          res <- Queries.getAllAssociations.transact(transactor)
+          res <- Queries.getAllPermissionTemplateAssociations.transact(transactor)
         } yield res
 
         result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+      }
+
+      "delete associations between these Users and ApiKeyTemplates" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- applicationRepository.deactivate(publicApplicationId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllUserTemplateAssociations.transact(transactor)
+
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesUsersEntity.Read])
       }
 
       "delete Permissions" in {

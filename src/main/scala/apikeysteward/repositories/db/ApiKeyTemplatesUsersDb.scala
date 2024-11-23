@@ -1,10 +1,10 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.{
-  ApiKeyTemplatesUsersInsertionError,
-  ApiKeyTemplatesUsersNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import cats.data.NonEmptyList
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
@@ -57,6 +57,12 @@ class ApiKeyTemplatesUsersDb {
 
   private def extractUserId(sqlException: SQLException): Long =
     ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("user_id")
+
+  def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Int] =
+    Queries.deleteAllForUser(publicTenantId, publicUserId).run
+
+  def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.ConnectionIO[Int] =
+    Queries.deleteAllForApiKeyTemplate(publicTemplateId).run
 
   def deleteMany(
       entities: List[ApiKeyTemplatesUsersEntity.Write]
@@ -116,6 +122,22 @@ class ApiKeyTemplatesUsersDb {
           "user_id"
         )(entities)
     }
+
+    def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.Update0 =
+      sql"""DELETE FROM api_key_templates_users
+            USING tenant_user, tenant
+            WHERE api_key_templates_users.user_id = tenant_user.id
+              AND tenant_user.public_user_id = ${publicUserId.toString}
+              AND tenant_user.tenant_id = tenant.id
+              AND tenant.public_tenant_id = ${publicTenantId.toString}
+           """.stripMargin.update
+
+    def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
+      sql"""DELETE FROM api_key_templates_users
+            USING api_key_template
+            WHERE api_key_templates_users.api_key_template_id = api_key_template.id
+              AND api_key_template.public_template_id = ${publicTemplateId.toString}
+           """.stripMargin.update
 
     def deleteMany(entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]): doobie.Update0 =
       sql"""DELETE FROM api_key_templates_users

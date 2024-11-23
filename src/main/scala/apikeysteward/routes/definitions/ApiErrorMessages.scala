@@ -1,5 +1,7 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.Tenant.TenantId
+
 import java.time.Instant
 import java.util.UUID
 
@@ -34,13 +36,15 @@ private[routes] object ApiErrorMessages {
   object AdminApiKeyTemplatesUsers {
 
     object MultipleUsers {
-      val ApiKeyTemplatesUsersAlreadyExists = "At least one of provided userIds is already associated with given Template."
+      val ApiKeyTemplatesUsersAlreadyExists =
+        "At least one of provided userIds is already associated with given Template."
       val ReferencedApiKeyTemplateNotFound = "No Template found for provided templateId."
       val ReferencedUserNotFound = "At least one User cannot be found for provided combination of tenantId and userIds."
     }
 
     object MultipleTemplates {
-      val ApiKeyTemplatesUsersAlreadyExists = "At least one of provided templateIds is already associated with given User."
+      val ApiKeyTemplatesUsersAlreadyExists =
+        "At least one of provided templateIds is already associated with given User."
       val ReferencedApiKeyTemplateNotFound = "At least one Template cannot be found for provided templateIds."
       val ReferencedUserNotFound = "No User found for provided combination of tenantId and userIds."
     }
@@ -52,12 +56,15 @@ private[routes] object ApiErrorMessages {
   object AdminTenant {
     val TenantNotFound = "No Tenant found for provided tenantId."
 
-    def TenantIsNotDeactivated(tenantId: UUID): String = {
+    def TenantIsNotDeactivated(tenantId: TenantId): String = {
       val method = AdminTenantEndpoints.deactivateTenantEndpoint.method.getOrElse("PUT")
       val path = AdminTenantEndpoints.deactivateTenantEndpoint.showPathTemplate()
 
       s"Could not delete Tenant with tenantId = [$tenantId] because it is active and only inactive Tenants can be permanently deleted. Deactivate the Tenant first, using $method $path API."
     }
+
+    def TenantDependencyCannotBeDeleted(tenantId: TenantId) =
+      s"Could not delete Tenant with tenantId = [$tenantId] because one of its dependencies cannot be deleted. See logs for more details."
   }
 
   object AdminApplication {
