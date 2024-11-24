@@ -88,7 +88,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           createApiKeyRequestValidator,
           apiKeyGenerator,
           uuidGenerator,
-          apiKeyRepository
+          apiKeyRepository,
+          userRepository
         )
 
         apiKeyTemplateService = new ApiKeyTemplateService(
@@ -132,7 +133,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           jwtAuthorizer,
           userService,
           apiKeyTemplateService,
-          apiKeyTemplateAssociationsService
+          apiKeyTemplateAssociationsService,
+          apiKeyManagementService
         ).allRoutes
 
         documentationRoutes = new DocumentationRoutes().allRoutes

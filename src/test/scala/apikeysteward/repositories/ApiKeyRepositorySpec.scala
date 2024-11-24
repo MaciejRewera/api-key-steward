@@ -513,7 +513,7 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId_1)
+        _ <- apiKeyRepository.getAllForUser(userId_1)
 
         _ = verify(apiKeyDataDb).getByUserId(eqTo(userId_1))
       } yield ()
@@ -523,7 +523,7 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId_1)
+        _ <- apiKeyRepository.getAllForUser(userId_1)
 
         _ = verifyZeroInteractions(apiKeyDb)
       } yield ()
@@ -533,7 +533,7 @@ class ApiKeyRepositorySpec
       "return empty List" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
-        apiKeyRepository.getAll(userId_1).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+        apiKeyRepository.getAllForUser(userId_1).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
       }
     }
 
@@ -541,7 +541,7 @@ class ApiKeyRepositorySpec
       "return ApiKeyData with empty scopes fields" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
 
-        apiKeyRepository.getAll(userId_1).asserting { result =>
+        apiKeyRepository.getAllForUser(userId_1).asserting { result =>
           result.size shouldBe 2
           result should contain theSameElementsAs List(apiKeyData_1, apiKeyData_2)
         }

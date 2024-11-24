@@ -222,21 +222,21 @@ class AdminApiKeyTemplateRoutes(
               case Left(_: ApiKeyTemplatesUsersAlreadyExistsError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ApiKeyTemplatesUsersAlreadyExists)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ApiKeyTemplatesUsersAlreadyExists)
                   )
                   .asLeft
 
               case Left(_: ReferencedUserDoesNotExistError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedUserNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedUserNotFound)
                   )
                   .asLeft
 
               case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
                 ErrorInfo
                   .notFoundErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
                   )
                   .asLeft
 
@@ -258,7 +258,7 @@ class AdminApiKeyTemplateRoutes(
             case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .badRequestErrorInfo(
-                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
                 )
                 .asLeft
           }

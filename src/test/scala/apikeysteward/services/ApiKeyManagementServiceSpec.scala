@@ -2,12 +2,17 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedUserDoesNotExistError
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
-import apikeysteward.repositories.ApiKeyRepository
+import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -20,7 +25,7 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.Mockito.verifyNoInteractions
-import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyNoMoreInteractions}
+import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyNoMoreInteractions, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
@@ -40,9 +45,16 @@ class ApiKeyManagementServiceSpec
   private val createApiKeyRequestValidator = mock[CreateApiKeyRequestValidator]
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
+  private val userRepository = mock[UserRepository]
 
   private val managementService =
-    new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository)
+    new ApiKeyManagementService(
+      createApiKeyRequestValidator,
+      apiKeyGenerator,
+      uuidGenerator,
+      apiKeyRepository,
+      userRepository
+    )
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,
@@ -51,7 +63,7 @@ class ApiKeyManagementServiceSpec
   )
 
   override def beforeEach(): Unit = {
-    reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository)
+    reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository, userRepository)
 
     createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
@@ -435,40 +447,74 @@ class ApiKeyManagementServiceSpec
     }
   }
 
-  "ManagementService on getAllApiKeysFor" should {
+  "ManagementService on getAllForUser" when {
 
-    "call ApiKeyRepository" in {
-      apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1))
+    "everything works correctly" should {
 
-      for {
-        _ <- managementService.getAllApiKeysFor(userId_1)
-        _ = verify(apiKeyRepository).getAll(eqTo(userId_1))
-      } yield ()
-    }
+      "call UserRepository and ApiKeyRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyRepository.getAllForUser(any[UserId]) returns IO.pure(List(apiKeyData_1))
 
-    "return the value returned by ApiKeyRepository" when {
+        for {
+          _ <- managementService.getAllForUser(publicTenantId_1, userId_1)
 
-      "ApiKeyRepository returns empty List" in {
-        apiKeyRepository.getAll(any[String]) returns IO.pure(List.empty)
-
-        managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List.empty[ApiKeyData])
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(userId_1))
+          _ = verify(apiKeyRepository).getAllForUser(eqTo(userId_1))
+        } yield ()
       }
 
-      "ApiKeyRepository returns List with elements" in {
-        apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      "return the value returned by ApiKeyRepository" when {
 
-        managementService
-          .getAllApiKeysFor(userId_1)
-          .asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+        "ApiKeyRepository returns empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyRepository.getAllForUser(any[UserId]) returns IO.pure(List.empty)
+
+          managementService
+            .getAllForUser(publicTenantId_1, userId_1)
+            .asserting(_ shouldBe Right(List.empty[ApiKeyData]))
+        }
+
+        "ApiKeyRepository returns List with elements" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyRepository.getAllForUser(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+
+          managementService
+            .getAllForUser(publicTenantId_1, userId_1)
+            .asserting(_ shouldBe Right(List(apiKeyData_1, apiKeyData_1, apiKeyData_1)))
+        }
       }
     }
 
-    "return failed IO" when {
-      "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.getAll(any[String]) returns IO.raiseError(testException)
+    "UserRepository returns empty Option" should {
+
+      "NOT call ApiKeyRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+
+        for {
+          _ <- managementService.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verifyZeroInteractions(apiKeyRepository)
+        } yield ()
+      }
+
+      "return Left containing ReferencedUserDoesNotExistError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
 
         managementService
-          .getAllApiKeysFor(userId_1)
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .asserting(
+            _ shouldBe Left(ApiKeyInsertionError.ReferencedUserDoesNotExistError(publicTenantId_1, publicUserId_1))
+          )
+      }
+    }
+
+    "ApiKeyRepository returns failed IO" should {
+      "return failed IO containing the same exception" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyRepository.getAllForUser(any[String]) returns IO.raiseError(testException)
+
+        managementService
+          .getAllForUser(publicTenantId_1, userId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

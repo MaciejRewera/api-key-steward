@@ -32,6 +32,26 @@ object RepositoryErrors {
 
       case class ApiKeyInsertionErrorImpl(cause: SQLException)
           extends ApiKeyInsertionError(message = s"An error occurred when inserting ApiKey: $cause")
+
+      trait ReferencedUserDoesNotExistError extends ApiKeyInsertionError {
+        val errorMessage: String
+      }
+      object ReferencedUserDoesNotExistError {
+
+        private case class ReferencedUserDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApiKeyInsertionError(errorMessage)
+            with ReferencedUserDoesNotExistError
+
+        def apply(userId: Long): ReferencedUserDoesNotExistError =
+          ReferencedUserDoesNotExistErrorImpl(
+            errorMessage = s"User with ID = [$userId] does not exist."
+          )
+        def apply(publicTenantId: TenantId, publicUserId: UserId): ReferencedUserDoesNotExistError =
+          ReferencedUserDoesNotExistErrorImpl(
+            errorMessage =
+              s"User with publicUserId = [$publicUserId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
+          )
+      }
     }
 
     def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =

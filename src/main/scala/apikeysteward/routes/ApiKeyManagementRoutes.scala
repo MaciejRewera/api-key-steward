@@ -2,15 +2,11 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedUserDoesNotExistError
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyManagementEndpoints}
-import apikeysteward.routes.model.apikey.{
-  CreateApiKeyResponse,
-  DeleteApiKeyResponse,
-  GetMultipleApiKeysResponse,
-  GetSingleApiKeyResponse
-}
+import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -29,7 +25,8 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
       .toRoutes(
         ApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
-          .serverLogic { jwt => request =>
+          .serverLogic { jwt => input =>
+            val (_, request) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
               result <- userIdE.flatTraverse(managementService.createApiKey(_, request).map {
@@ -51,14 +48,20 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
       .toRoutes(
         ApiKeyManagementEndpoints.getAllApiKeysEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
-          .serverLogic { jwt => _ =>
+          .serverLogic { jwt => tenantId =>
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              allApiKeyDataE <- userIdE.traverse(managementService.getAllApiKeysFor)
+              result <- userIdE.flatTraverse(
+                managementService.getAllForUser(tenantId, _).map {
 
-              result = allApiKeyDataE.flatMap { allApiKeyData =>
-                (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
-              }
+                  case Right(allApiKeyData) =>
+                    (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
+
+                  case Left(_: ReferencedUserDoesNotExistError) =>
+                    ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.UserNotFound)).asLeft
+
+                }
+              )
             } yield result
           }
       )
@@ -68,7 +71,8 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
       .toRoutes(
         ApiKeyManagementEndpoints.getSingleApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
-          .serverLogic { jwt => publicKeyId =>
+          .serverLogic { jwt => input =>
+            val (_, publicKeyId) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
               result <- userIdE.flatTraverse(managementService.getApiKey(_, publicKeyId).map {
@@ -86,7 +90,8 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
       .toRoutes(
         ApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
-          .serverLogic { jwt => publicKeyId =>
+          .serverLogic { jwt => input =>
+            val (_, publicKeyId) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
               result <- userIdE.flatTraverse(managementService.deleteApiKeyBelongingToUserWith(_, publicKeyId).map {

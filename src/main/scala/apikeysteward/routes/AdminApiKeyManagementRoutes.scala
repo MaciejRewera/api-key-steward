@@ -2,6 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedUserDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
@@ -58,20 +59,6 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
         }
     )
 
-  private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
-    serverInterpreter
-      .toRoutes(
-        AdminApiKeyManagementEndpoints.getAllApiKeysForUserEndpoint
-          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
-          .serverLogic { _ => userId =>
-            for {
-              allApiKeyData <- managementService.getAllApiKeysFor(userId)
-
-              result = (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
-            } yield result
-          }
-      )
-
   private val getApiKeyRoutes: HttpRoutes[IO] =
     serverInterpreter
       .toRoutes(
@@ -107,7 +94,6 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
   val allRoutes: HttpRoutes[IO] =
     createApiKeyRoutes <+>
       updateApiKeyRoutes <+>
-      getAllApiKeysForUserRoutes <+>
       getApiKeyRoutes <+>
       deleteApiKeyRoutes
 }

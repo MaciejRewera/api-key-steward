@@ -1801,7 +1801,7 @@ class AdminApiKeyTemplateRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ApiKeyTemplatesUsersAlreadyExists)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ApiKeyTemplatesUsersAlreadyExists)
               )
             )
         } yield ()
@@ -1823,7 +1823,7 @@ class AdminApiKeyTemplateRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
@@ -1843,7 +1843,7 @@ class AdminApiKeyTemplateRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -1965,7 +1965,7 @@ class AdminApiKeyTemplateRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()

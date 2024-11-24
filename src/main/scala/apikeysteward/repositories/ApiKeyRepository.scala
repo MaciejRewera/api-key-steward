@@ -80,7 +80,7 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def getAll(userId: String): IO[List[ApiKeyData]] =
+  def getAllForUser(userId: String): IO[List[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- apiKeyDataDb.getByUserId(userId)
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
