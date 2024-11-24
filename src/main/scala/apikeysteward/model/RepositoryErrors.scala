@@ -13,6 +13,15 @@ import java.util.UUID
 
 object RepositoryErrors {
 
+  sealed abstract class GenericError(override val message: String) extends CustomError
+  object GenericError {
+
+    case class ApiKeyTemplateDoesNotExist(publicApiKeyTemplateId: ApiKeyTemplateId)
+        extends GenericError(
+          message = s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist."
+        )
+  }
+
   sealed abstract class ApiKeyDbError(override val message: String) extends CustomError
   object ApiKeyDbError {
 

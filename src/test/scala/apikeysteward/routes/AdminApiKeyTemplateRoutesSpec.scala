@@ -6,12 +6,14 @@ import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicT
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.RepositoryErrors.GenericError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
@@ -1604,18 +1606,18 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+        permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).getAllFor(eqTo(publicTemplateId_1))
+          _ = verify(permissionService).getAllForTemplate(eqTo(publicTemplateId_1))
         } yield ()
       }
 
       "return successful value returned by PermissionService" when {
 
         "PermissionService returns an empty List" in authorizedFixture {
-          permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+          permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
 
           for {
             response <- adminRoutes.run(request)
@@ -1627,8 +1629,8 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "PermissionService returns a List with several elements" in authorizedFixture {
-          permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
-            List(permission_1, permission_2, permission_3)
+          permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
+            Right(List(permission_1, permission_2, permission_3))
           )
 
           for {
@@ -1643,8 +1645,26 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
+      "return Not Found when ApiKeyManagementService returns successful IO with Left containing ApiKeyTemplateDoesNotExist" in authorizedFixture {
+        permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
+          Left(GenericError.ApiKeyTemplateDoesNotExist(publicTemplateId_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.General.ApiKeyTemplateNotFound)
+              )
+            )
+        } yield ()
+      }
+
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getAllFor(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -1953,18 +1973,18 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "return Bad Request when UserService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+      "return Not Found when UserService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
           Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
         )
 
         for {
           response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
+          _ = response.status shouldBe Status.NotFound
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
                 Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
               )
             )

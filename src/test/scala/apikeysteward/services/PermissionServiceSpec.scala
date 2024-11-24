@@ -1,22 +1,23 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, publicTemplateId_1}
 import apikeysteward.base.testdata.ResourceServersTestData.{
-  resourceServer_1,
   publicResourceServerIdStr_1,
-  publicResourceServerId_1
+  publicResourceServerId_1,
+  resourceServer_1
 }
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.GenericError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.model.{ResourceServer, Permission}
-import apikeysteward.repositories.{ResourceServerRepository, PermissionRepository}
+import apikeysteward.model.{ApiKeyTemplate, Permission, ResourceServer}
+import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -40,11 +41,13 @@ class PermissionServiceSpec
   private val uuidGenerator = mock[UuidGenerator]
   private val permissionRepository = mock[PermissionRepository]
   private val resourceServerRepository = mock[ResourceServerRepository]
+  private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
 
-  private val permissionService = new PermissionService(uuidGenerator, permissionRepository, resourceServerRepository)
+  private val permissionService =
+    new PermissionService(uuidGenerator, permissionRepository, resourceServerRepository, apiKeyTemplateRepository)
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, permissionRepository, resourceServerRepository)
+    reset(uuidGenerator, permissionRepository, resourceServerRepository, apiKeyTemplateRepository)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -331,47 +334,76 @@ class PermissionServiceSpec
     }
   }
 
-  "PermissionService on getAllPermissionsForApiKeyTemplate" should {
+  "PermissionService on getAllForTemplate" when {
 
-    "call PermissionRepository" in {
-      permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
-        List(permission_1, permission_2, permission_3)
-      )
+    "everything works correctly" should {
 
-      for {
-        _ <- permissionService.getAllFor(publicTemplateId_1)
-
-        _ = verify(permissionRepository).getAllFor(eqTo(publicTemplateId_1))
-      } yield ()
-    }
-
-    "return the value returned by PermissionRepository" when {
-
-      "PermissionRepository returns empty List" in {
-        permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty[Permission])
-
-        permissionService
-          .getAllFor(publicTemplateId_1)
-          .asserting(_ shouldBe List.empty[Permission])
-      }
-
-      "PermissionRepository returns non-empty List" in {
+      "call ApiKeyTemplateRepository and PermissionRepository" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
           List(permission_1, permission_2, permission_3)
         )
 
-        permissionService
-          .getAllFor(publicTemplateId_1)
-          .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
+        for {
+          _ <- permissionService.getAllForTemplate(publicTemplateId_1)
+
+          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTemplateId_1))
+          _ = verify(permissionRepository).getAllFor(eqTo(publicTemplateId_1))
+        } yield ()
+      }
+
+      "return the value returned by PermissionRepository" when {
+
+        "PermissionRepository returns empty List" in {
+          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(List.empty[Permission])
+
+          permissionService
+            .getAllForTemplate(publicTemplateId_1)
+            .asserting(_ shouldBe Right(List.empty[Permission]))
+        }
+
+        "PermissionRepository returns non-empty List" in {
+          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.pure(
+            List(permission_1, permission_2, permission_3)
+          )
+
+          permissionService
+            .getAllForTemplate(publicTemplateId_1)
+            .asserting(_ shouldBe Right(List(permission_1, permission_2, permission_3)))
+        }
       }
     }
 
-    "return failed IO" when {
-      "PermissionRepository returns failed IO" in {
+    "ApiKeyTemplateRepository returns empty Option" should {
+
+      "NOT call PermissionRepository" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+
+        for {
+          _ <- permissionService.getAllForTemplate(publicTemplateId_1)
+
+          _ = verifyZeroInteractions(permissionRepository)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyTemplateDoesNotExist" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+
+        permissionService
+          .getAllForTemplate(publicTemplateId_1)
+          .asserting(_ shouldBe Left(GenericError.ApiKeyTemplateDoesNotExist(publicTemplateId_1)))
+      }
+    }
+
+    "PermissionRepository returns failed IO containing exception" should {
+      "return failed IO containing this exception" in {
+        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         permissionRepository.getAllFor(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         permissionService
-          .getAllFor(publicTemplateId_1)
+          .getAllForTemplate(publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

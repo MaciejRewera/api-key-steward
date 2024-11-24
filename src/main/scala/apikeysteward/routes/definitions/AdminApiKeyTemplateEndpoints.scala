@@ -175,7 +175,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
         jsonBody[GetMultiplePermissionsResponse]
           .example(GetMultiplePermissionsResponse(permissions = List.fill(3)(EndpointsBase.PermissionExample)))
       )
-      .errorOutVariantPrepend(errorOutVariantBadRequest)
+      .errorOutVariantPrepend(errorOutVariantNotFound)
 
   val associateUsersWithApiKeyTemplateEndpoint: Endpoint[
     AccessToken,
@@ -217,6 +217,6 @@ private[routes] object AdminApiKeyTemplateEndpoints {
         jsonBody[GetMultipleUsersResponse]
           .example(GetMultipleUsersResponse(List(UserExample_1, UserExample_2, UserExample_3)))
       )
-      .errorOutVariantPrepend(errorOutVariantBadRequest)
+      .errorOutVariantPrepend(errorOutVariantNotFound)
 
 }

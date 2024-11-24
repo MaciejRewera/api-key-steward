@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
+import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesPermissionsDbError, GenericError}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
   ApiKeyTemplatesPermissionsInsertionError,
@@ -200,8 +200,13 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
-          permissionService.getAllFor(apiKeyTemplateId).map { permissions =>
-            (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+          permissionService.getAllForTemplate(apiKeyTemplateId).map {
+
+            case Right(permissions) =>
+              (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+
+            case Left(_: GenericError.ApiKeyTemplateDoesNotExist) =>
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.General.ApiKeyTemplateNotFound)).asLeft
           }
         }
     )
@@ -257,7 +262,7 @@ class AdminApiKeyTemplateRoutes(
 
             case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(
+                .notFoundErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
                 )
                 .asLeft
