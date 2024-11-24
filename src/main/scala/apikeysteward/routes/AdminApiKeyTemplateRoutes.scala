@@ -77,7 +77,7 @@ class AdminApiKeyTemplateRoutes(
 
   private val deleteApiKeyTemplateRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
-      AdminApiKeyTemplateEndpoints.deleteApplicationEndpoint
+      AdminApiKeyTemplateEndpoints.deleteResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
           apiKeyTemplateService.deleteApiKeyTemplate(apiKeyTemplateId).map {

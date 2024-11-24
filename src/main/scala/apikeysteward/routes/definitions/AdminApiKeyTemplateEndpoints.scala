@@ -75,7 +75,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deleteApplicationEndpoint
+  val deleteResourceServerEndpoint
       : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, DeleteApiKeyTemplateResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(

@@ -1,8 +1,8 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
+import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationIsNotDeactivatedError
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerIsNotDeactivatedError
 import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.TenantDbError.{
   CannotDeleteDependencyError,
@@ -640,7 +640,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Bad Request when TenantService returns successful IO with Left containing CannotDeleteDependencyError" in authorizedFixture {
-        val dependencyError = ApplicationIsNotDeactivatedError(publicApplicationId_1)
+        val dependencyError = ResourceServerIsNotDeactivatedError(publicResourceServerId_1)
         tenantService.deleteTenant(any[UUID]) returns IO.pure(
           Left(CannotDeleteDependencyError(publicTenantId_1, dependencyError))
         )

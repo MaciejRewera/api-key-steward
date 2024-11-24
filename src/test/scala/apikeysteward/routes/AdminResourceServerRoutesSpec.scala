@@ -1,22 +1,22 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ApplicationsTestData._
 import apikeysteward.base.testdata.PermissionsTestData.{
   createPermissionRequest_1,
   createPermissionRequest_2,
   createPermissionRequest_3
 }
+import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
-import apikeysteward.model.Application.ApplicationId
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationInsertionError._
-import apikeysteward.model.RepositoryErrors.ApplicationDbError._
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.ApiErrorMessages
-import apikeysteward.routes.model.admin.application._
-import apikeysteward.services.ApplicationService
+import apikeysteward.routes.model.admin.resourceserver._
+import apikeysteward.services.ResourceServerService
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
@@ -34,7 +34,7 @@ import org.typelevel.ci.{CIString, CIStringSyntax}
 import java.sql.SQLException
 import java.util.UUID
 
-class AdminApplicationRoutesSpec
+class AdminResourceServerRoutesSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -42,31 +42,31 @@ class AdminApplicationRoutesSpec
     with RoutesSpecBase {
 
   private val jwtAuthorizer = mock[JwtAuthorizer]
-  private val applicationService = mock[ApplicationService]
+  private val resourceServerService = mock[ResourceServerService]
 
   private val adminRoutes: HttpApp[IO] =
-    new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes.orNotFound
+    new AdminResourceServerRoutes(jwtAuthorizer, resourceServerService).allRoutes.orNotFound
 
   private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, applicationService)
+    reset(jwtAuthorizer, resourceServerService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
     authorizedFixture(jwtAuthorizer)(test)
 
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
-    runCommonJwtTests(adminRoutes, jwtAuthorizer, List(applicationService))(request, requiredPermissions)
+    runCommonJwtTests(adminRoutes, jwtAuthorizer, List(resourceServerService))(request, requiredPermissions)
 
-  "AdminApplicationRoutes on POST /admin/applications" when {
+  "AdminResourceServerRoutes on POST /admin/resource-servers" when {
 
-    val uri = Uri.unsafeFromString("/admin/applications")
-    val requestBody = CreateApplicationRequest(
-      name = applicationName_1,
-      description = applicationDescription_1,
+    val uri = Uri.unsafeFromString("/admin/resource-servers")
+    val requestBody = CreateResourceServerRequest(
+      name = resourceServerName_1,
+      description = resourceServerDescription_1,
       permissions = List(createPermissionRequest_1, createPermissionRequest_2, createPermissionRequest_3)
     )
 
@@ -90,10 +90,10 @@ class AdminApplicationRoutesSpec
         } yield ()
       }
 
-      "NOT call ApplicationService" in authorizedFixture {
+      "NOT call ResourceServerService" in authorizedFixture {
         for {
           _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(applicationService)
+          _ = verifyZeroInteractions(resourceServerService)
         } yield ()
       }
     }
@@ -115,10 +115,10 @@ class AdminApplicationRoutesSpec
           } yield ()
         }
 
-        "NOT call ApplicationService" in authorizedFixture {
+        "NOT call ResourceServerService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
+            _ = verifyZeroInteractions(resourceServerService)
           } yield ()
         }
       }
@@ -138,10 +138,10 @@ class AdminApplicationRoutesSpec
           } yield ()
         }
 
-        "NOT call ApplicationService" in authorizedFixture {
+        "NOT call ResourceServerService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
+            _ = verifyZeroInteractions(resourceServerService)
           } yield ()
         }
       }
@@ -164,10 +164,10 @@ class AdminApplicationRoutesSpec
           } yield ()
         }
 
-        "NOT call ApplicationService" in authorizedFixture {
+        "NOT call ResourceServerService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(applicationService)
+            _ = verifyZeroInteractions(resourceServerService)
           } yield ()
         }
       }
@@ -187,10 +187,10 @@ class AdminApplicationRoutesSpec
           } yield ()
         }
 
-        "NOT call ApplicationService" in authorizedFixture {
+        "NOT call ResourceServerService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
+            _ = verifyZeroInteractions(resourceServerService)
           } yield ()
         }
       }
@@ -213,10 +213,10 @@ class AdminApplicationRoutesSpec
           } yield ()
         }
 
-        "NOT call ApplicationService" in authorizedFixture {
+        "NOT call ResourceServerService" in authorizedFixture {
           for {
             _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(applicationService)
+            _ = verifyZeroInteractions(resourceServerService)
           } yield ()
         }
       }
@@ -224,37 +224,37 @@ class AdminApplicationRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
-      "call ApplicationService" in authorizedFixture {
-        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-          application_1.asRight
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+          resourceServer_1.asRight
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(applicationService).createApplication(eqTo(publicTenantId_1), eqTo(requestBody))
+          _ = verify(resourceServerService).createResourceServer(eqTo(publicTenantId_1), eqTo(requestBody))
         } yield ()
       }
 
-      "return successful value returned by ApplicationService" when {
+      "return successful value returned by ResourceServerService" when {
 
         "provided with description" in authorizedFixture {
-          applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-            application_1.asRight
+          resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+            resourceServer_1.asRight
           )
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Created
             _ <- response
-              .as[CreateApplicationResponse]
-              .asserting(_ shouldBe CreateApplicationResponse(application_1))
+              .as[CreateResourceServerResponse]
+              .asserting(_ shouldBe CreateResourceServerResponse(resourceServer_1))
           } yield ()
         }
 
         "provided with NO description" in authorizedFixture {
-          val applicationWithoutDescription = application_1.copy(description = None)
-          applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-            applicationWithoutDescription.asRight
+          val resourceServerWithoutDescription = resourceServer_1.copy(description = None)
+          resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+            resourceServerWithoutDescription.asRight
           )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
@@ -263,15 +263,15 @@ class AdminApplicationRoutesSpec
             response <- adminRoutes.run(requestWithoutDescription)
             _ = response.status shouldBe Status.Created
             _ <- response
-              .as[CreateApplicationResponse]
-              .asserting(_ shouldBe CreateApplicationResponse(applicationWithoutDescription))
+              .as[CreateResourceServerResponse]
+              .asserting(_ shouldBe CreateResourceServerResponse(resourceServerWithoutDescription))
           } yield ()
         }
       }
 
-      "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationAlreadyExistsError" in authorizedFixture {
-        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-          Left(ApplicationAlreadyExistsError(publicApplicationIdStr_1))
+      "return Internal Server Error when ResourceServerService returns successful IO with Left containing ResourceServerAlreadyExistsError" in authorizedFixture {
+        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+          Left(ResourceServerAlreadyExistsError(publicResourceServerIdStr_1))
         )
 
         for {
@@ -281,10 +281,10 @@ class AdminApplicationRoutesSpec
         } yield ()
       }
 
-      "return Internal Server Error when ApplicationService returns successful IO with Left containing ApplicationInsertionErrorImpl" in authorizedFixture {
+      "return Internal Server Error when ResourceServerService returns successful IO with Left containing ResourceServerInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-          Left(ApplicationInsertionErrorImpl(testSqlException))
+        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+          Left(ResourceServerInsertionErrorImpl(testSqlException))
         )
 
         for {
@@ -294,480 +294,9 @@ class AdminApplicationRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when ApplicationService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicApplicationId_1))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminApplication.ReferencedTenantNotFound))
-            )
-        } yield ()
-      }
-
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.createApplication(any[TenantId], any[CreateApplicationRequest]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApplicationRoutes on PUT /admin/applications/{applicationId}" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1")
-    val requestBody = UpdateApplicationRequest(name = applicationName_1, description = applicationDescription_1)
-
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
-
-    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
-
-    "provided with applicationId which is not an UUID" should {
-
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApplicationId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-
-      "return Bad Request" in {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
-            )
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
-
-      "request body is provided with empty name" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = ""))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApplicationService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with name containing only white characters" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = "  \n   \n\n "))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApplicationService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with name longer than 250 characters" should {
-
-        val nameThatIsTooLong = List.fill(251)("A").mkString
-        val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(
-            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
-          )
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithLongName)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApplicationService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(applicationService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with description containing only white characters" should {
-
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApplicationService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(applicationService)
-          } yield ()
-        }
-      }
-
-      "request body is provided with description longer than 250 characters" should {
-
-        val descriptionThatIsTooLong = List.fill(251)("A").mkString
-        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(
-            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
-          )
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminRoutes.run(requestWithLongName)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApplicationService" in authorizedFixture {
-          for {
-            _ <- adminRoutes.run(requestWithLongName)
-            _ = verifyZeroInteractions(applicationService)
-          } yield ()
-        }
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
-
-      "call ApplicationService" in authorizedFixture {
-        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
-          application_1.asRight
-        )
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(applicationService).updateApplication(eqTo(publicApplicationId_1), eqTo(requestBody))
-        } yield ()
-      }
-
-      "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
-          application_1.asRight
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response
-            .as[UpdateApplicationResponse]
-            .asserting(_ shouldBe UpdateApplicationResponse(application_1))
-        } yield ()
-      }
-
-      "return Not Found when ApplicationService returns successful IO with Left containing ApplicationNotFoundError" in authorizedFixture {
-        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.pure(
-          Left(ApplicationNotFoundError(publicApplicationIdStr_1))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApplication.ApplicationNotFound))
-            )
-        } yield ()
-      }
-
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.updateApplication(any[ApplicationId], any[UpdateApplicationRequest]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApplicationRoutes on PUT /admin/applications/{applicationId}/reactivation" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/reactivation")
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
-
-    "provided with applicationId which is not an UUID" should {
-
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/reactivation")
-      val requestWithIncorrectApplicationId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-
-      "return Bad Request" in {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
-            )
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ApplicationService" in authorizedFixture {
-        applicationService.reactivateApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(applicationService).reactivateApplication(eqTo(publicApplicationId_1))
-        } yield ()
-      }
-
-      "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.reactivateApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response
-            .as[ReactivateApplicationResponse]
-            .asserting(_ shouldBe ReactivateApplicationResponse(application_1))
-        } yield ()
-      }
-
-      "return Not Found when ApplicationService returns successful IO with Left containing ApplicationNotFoundError" in authorizedFixture {
-        applicationService.reactivateApplication(any[UUID]) returns IO.pure(
-          Left(ApplicationNotFoundError(publicApplicationIdStr_1))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApplication.ApplicationNotFound))
-            )
-        } yield ()
-      }
-
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.reactivateApplication(any[UUID]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApplicationRoutes on PUT /admin/applications/{applicationId}/deactivation" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/deactivation")
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
-
-    "provided with applicationId which is not an UUID" should {
-
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/deactivation")
-      val requestWithIncorrectApplicationId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-
-      "return Bad Request" in {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
-            )
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ApplicationService" in authorizedFixture {
-        applicationService.deactivateApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(applicationService).deactivateApplication(eqTo(publicApplicationId_1))
-        } yield ()
-      }
-
-      "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.deactivateApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response
-            .as[DeactivateApplicationResponse]
-            .asserting(_ shouldBe DeactivateApplicationResponse(application_1))
-        } yield ()
-      }
-
-      "return Not Found when ApplicationService returns successful IO with Left containing ApplicationNotFoundError" in authorizedFixture {
-        applicationService.deactivateApplication(any[UUID]) returns IO.pure(
-          Left(ApplicationNotFoundError(publicApplicationIdStr_1))
-        )
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApplication.ApplicationNotFound))
-            )
-        } yield ()
-      }
-
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.deactivateApplication(any[UUID]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApplicationRoutes on DELETE /admin/applications/{applicationId}" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
-
-    "provided with applicationId which is not an UUID" should {
-
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApplicationId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
-
-      "return Bad Request" in {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
-            )
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = verifyZeroInteractions(applicationService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ApplicationService" in authorizedFixture {
-        applicationService.deleteApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(applicationService).deleteApplication(eqTo(publicApplicationId_1))
-        } yield ()
-      }
-
-      "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.deleteApplication(any[UUID]) returns IO.pure(application_1.asRight)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.Ok
-          _ <- response
-            .as[DeleteApplicationResponse]
-            .asserting(_ shouldBe DeleteApplicationResponse(application_1))
-        } yield ()
-      }
-
-      "return Bad Request when ApplicationService returns successful IO with Left containing ApplicationIsNotDeactivatedError" in authorizedFixture {
-        applicationService.deleteApplication(any[UUID]) returns IO.pure(
-          Left(ApplicationIsNotDeactivatedError(publicApplicationId_1))
+      "return Bad Request when ResourceServerService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
+        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
+          Left(ReferencedTenantDoesNotExistError(publicResourceServerId_1))
         )
 
         for {
@@ -777,15 +306,308 @@ class AdminApplicationRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApplication.ApplicationIsNotDeactivated(publicApplicationId_1))
+                Some(ApiErrorMessages.AdminResourceServer.ReferencedTenantNotFound)
               )
             )
         } yield ()
       }
 
-      "return Not Found when ApplicationService returns successful IO with Left containing ApplicationNotFoundError" in authorizedFixture {
-        applicationService.deleteApplication(any[UUID]) returns IO.pure(
-          Left(ApplicationNotFoundError(publicApplicationIdStr_1))
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO
+          .raiseError(
+            testException
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminResourceServerRoutes on PUT /admin/resource-servers/{resourceServerId}" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
+    val requestBody =
+      UpdateResourceServerRequest(name = resourceServerName_1, description = resourceServerDescription_1)
+
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      .withEntity(requestBody.asJson)
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    "provided with resourceServerId which is not an UUID" should {
+
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
+      val requestWithIncorrectResourceServerId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
+        for {
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
+            )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = verifyZeroInteractions(resourceServerService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+
+      "request body is provided with empty name" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = ""))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ResourceServerService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(resourceServerService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with name containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(name = "  \n   \n\n "))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"""Invalid value for: body (expected name to have length greater than or equal to 1, but got: "")""")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ResourceServerService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(resourceServerService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with name longer than 250 characters" should {
+
+        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ResourceServerService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(resourceServerService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description containing only white characters" should {
+
+        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(description = Some("  \n   \n\n ")))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(s"Invalid value for: body (expected description to pass validation, but got: Some())")
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ResourceServerService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithOnlyWhiteCharacters)
+            _ = verifyZeroInteractions(resourceServerService)
+          } yield ()
+        }
+      }
+
+      "request body is provided with description longer than 250 characters" should {
+
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
+        val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+          Some(
+            s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
+          )
+        )
+
+        "return Bad Request" in authorizedFixture {
+          for {
+            response <- adminRoutes.run(requestWithLongName)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+          } yield ()
+        }
+
+        "NOT call ResourceServerService" in authorizedFixture {
+          for {
+            _ <- adminRoutes.run(requestWithLongName)
+            _ = verifyZeroInteractions(resourceServerService)
+          } yield ()
+        }
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
+          .pure(
+            resourceServer_1.asRight
+          )
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(resourceServerService).updateResourceServer(eqTo(publicResourceServerId_1), eqTo(requestBody))
+        } yield ()
+      }
+
+      "return successful value returned by ResourceServerService" in authorizedFixture {
+        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
+          .pure(
+            resourceServer_1.asRight
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[UpdateResourceServerResponse]
+            .asserting(_ shouldBe UpdateResourceServerResponse(resourceServer_1))
+        } yield ()
+      }
+
+      "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
+        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
+          .pure(
+            Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
+          .raiseError(
+            testException
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminResourceServerRoutes on PUT /admin/resource-servers/{resourceServerId}/reactivation" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/reactivation")
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    "provided with resourceServerId which is not an UUID" should {
+
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/reactivation")
+      val requestWithIncorrectResourceServerId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
+        for {
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
+            )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = verifyZeroInteractions(resourceServerService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(resourceServerService).reactivateResourceServer(eqTo(publicResourceServerId_1))
+        } yield ()
+      }
+
+      "return successful value returned by ResourceServerService" in authorizedFixture {
+        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[ReactivateResourceServerResponse]
+            .asserting(_ shouldBe ReactivateResourceServerResponse(resourceServer_1))
+        } yield ()
+      }
+
+      "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
+        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(
+          Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
         for {
@@ -794,13 +616,13 @@ class AdminApplicationRoutesSpec
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApplication.ApplicationNotFound))
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound))
             )
         } yield ()
       }
 
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.deleteApplication(any[UUID]) returns IO.raiseError(testException)
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -811,64 +633,66 @@ class AdminApplicationRoutesSpec
     }
   }
 
-  "AdminApplicationRoutes on GET /admin/applications/{applicationId}" when {
+  "AdminResourceServerRoutes on PUT /admin/resource-servers/{resourceServerId}/deactivation" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/deactivation")
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
-    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "provided with applicationId which is not an UUID" should {
+    "provided with resourceServerId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApplicationId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/deactivation")
+      val requestWithIncorrectResourceServerId =
+        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
       "return Bad Request" in {
         for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
             )
         } yield ()
       }
 
       "NOT call ApiKeyTemplateService" in authorizedFixture {
         for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
-          _ = verifyZeroInteractions(applicationService)
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = verifyZeroInteractions(resourceServerService)
         } yield ()
       }
     }
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
-      "call ApplicationService" in authorizedFixture {
-        applicationService.getBy(any[UUID]) returns IO.pure(application_1.some)
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(applicationService).getBy(eqTo(publicApplicationId_1))
+          _ = verify(resourceServerService).deactivateResourceServer(eqTo(publicResourceServerId_1))
         } yield ()
       }
 
-      "return successful value returned by ApplicationService" in authorizedFixture {
-        applicationService.getBy(any[UUID]) returns IO.pure(application_1.some)
+      "return successful value returned by ResourceServerService" in authorizedFixture {
+        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
           _ = response.status shouldBe Status.Ok
           _ <- response
-            .as[GetSingleApplicationResponse]
-            .asserting(_ shouldBe GetSingleApplicationResponse(application_1))
+            .as[DeactivateResourceServerResponse]
+            .asserting(_ shouldBe DeactivateResourceServerResponse(resourceServer_1))
         } yield ()
       }
 
-      "return Not Found when ApplicationService returns empty Option" in authorizedFixture {
-        applicationService.getBy(any[UUID]) returns IO.pure(none)
+      "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
+        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(
+          Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
+        )
 
         for {
           response <- adminRoutes.run(request)
@@ -876,13 +700,13 @@ class AdminApplicationRoutesSpec
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApplication.ApplicationNotFound))
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound))
             )
         } yield ()
       }
 
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.getBy(any[UUID]) returns IO.raiseError(testException)
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -893,9 +717,193 @@ class AdminApplicationRoutesSpec
     }
   }
 
-  "AdminApplicationRoutes on GET /admin/applications" when {
+  "AdminResourceServerRoutes on DELETE /admin/resource-servers/{resourceServerId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/applications")
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    "provided with resourceServerId which is not an UUID" should {
+
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
+      val requestWithIncorrectResourceServerId =
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
+        for {
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
+            )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = verifyZeroInteractions(resourceServerService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(resourceServerService).deleteResourceServer(eqTo(publicResourceServerId_1))
+        } yield ()
+      }
+
+      "return successful value returned by ResourceServerService" in authorizedFixture {
+        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[DeleteResourceServerResponse]
+            .asserting(_ shouldBe DeleteResourceServerResponse(resourceServer_1))
+        } yield ()
+      }
+
+      "return Bad Request when ResourceServerService returns successful IO with Left containing ResourceServerIsNotDeactivatedError" in authorizedFixture {
+        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(
+          Left(ResourceServerIsNotDeactivatedError(publicResourceServerId_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminResourceServer.ResourceServerIsNotDeactivated(publicResourceServerId_1))
+              )
+            )
+        } yield ()
+      }
+
+      "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
+        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(
+          Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
+        )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.deleteResourceServer(any[UUID]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminResourceServerRoutes on GET /admin/resource-servers/{resourceServerId}" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    "provided with resourceServerId which is not an UUID" should {
+
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
+      val requestWithIncorrectResourceServerId =
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+
+      "return Bad Request" in {
+        for {
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
+            )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
+          _ = verifyZeroInteractions(resourceServerService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.getBy(any[UUID]) returns IO.pure(resourceServer_1.some)
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(resourceServerService).getBy(eqTo(publicResourceServerId_1))
+        } yield ()
+      }
+
+      "return successful value returned by ResourceServerService" in authorizedFixture {
+        resourceServerService.getBy(any[UUID]) returns IO.pure(resourceServer_1.some)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ <- response
+            .as[GetSingleResourceServerResponse]
+            .asserting(_ shouldBe GetSingleResourceServerResponse(resourceServer_1))
+        } yield ()
+      }
+
+      "return Not Found when ResourceServerService returns empty Option" in authorizedFixture {
+        resourceServerService.getBy(any[UUID]) returns IO.pure(none)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound))
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.getBy(any[UUID]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminResourceServerRoutes on GET /admin/resource-servers" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -915,60 +923,60 @@ class AdminApplicationRoutesSpec
         } yield ()
       }
 
-      "NOT call ApplicationService" in authorizedFixture {
+      "NOT call ResourceServerService" in authorizedFixture {
         for {
           _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(applicationService)
+          _ = verifyZeroInteractions(resourceServerService)
         } yield ()
       }
     }
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
-      "call ApplicationService" in authorizedFixture {
-        applicationService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+      "call ResourceServerService" in authorizedFixture {
+        resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(applicationService).getAllForTenant(eqTo(UUID.fromString(tenantIdHeader.value)))
+          _ = verify(resourceServerService).getAllForTenant(eqTo(UUID.fromString(tenantIdHeader.value)))
         } yield ()
       }
 
-      "return successful value returned by ApplicationService" when {
+      "return successful value returned by ResourceServerService" when {
 
-        "ApplicationService returns an empty List" in authorizedFixture {
-          applicationService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        "ResourceServerService returns an empty List" in authorizedFixture {
+          resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
             _ <- response
-              .as[GetMultipleApplicationsResponse]
-              .asserting(_ shouldBe GetMultipleApplicationsResponse(applications = List.empty))
+              .as[GetMultipleResourceServersResponse]
+              .asserting(_ shouldBe GetMultipleResourceServersResponse(resourceServers = List.empty))
           } yield ()
         }
 
-        "ApplicationService returns a List with several elements" in authorizedFixture {
-          applicationService.getAllForTenant(any[TenantId]) returns IO.pure(
-            List(application_1, application_2, application_3)
+        "ResourceServerService returns a List with several elements" in authorizedFixture {
+          resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(
+            List(resourceServer_1, resourceServer_2, resourceServer_3)
           )
 
           for {
             response <- adminRoutes.run(request)
             _ = response.status shouldBe Status.Ok
             _ <- response
-              .as[GetMultipleApplicationsResponse]
+              .as[GetMultipleResourceServersResponse]
               .asserting(
-                _ shouldBe GetMultipleApplicationsResponse(applications =
-                  List(application_1, application_2, application_3)
+                _ shouldBe GetMultipleResourceServersResponse(resourceServers =
+                  List(resourceServer_1, resourceServer_2, resourceServer_3)
                 )
               )
           } yield ()
         }
       }
 
-      "return Internal Server Error when ApplicationService returns failed IO" in authorizedFixture {
-        applicationService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+      "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
+        resourceServerService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

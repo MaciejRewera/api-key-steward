@@ -19,7 +19,7 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val adminApiKeyTemplateEndpoints = List(
     AdminApiKeyTemplateEndpoints.createApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.updateApiKeyTemplateEndpoint,
-    AdminApiKeyTemplateEndpoints.deleteApplicationEndpoint,
+    AdminApiKeyTemplateEndpoints.deleteResourceServerEndpoint,
     AdminApiKeyTemplateEndpoints.getSingleApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.searchApiKeyTemplatesEndpoint,
     AdminApiKeyTemplateEndpoints.associatePermissionsWithApiKeyTemplateEndpoint,
@@ -39,15 +39,15 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminTenantEndpoints.getAllTenantsEndpoint
   ).map(_.withTag(Tags.AdminTenants))
 
-  private val adminApplicationEndpoints = List(
-    AdminApplicationEndpoints.createApplicationEndpoint,
-    AdminApplicationEndpoints.updateApplicationEndpoint,
-    AdminApplicationEndpoints.reactivateApplicationEndpoint,
-    AdminApplicationEndpoints.deactivateApplicationEndpoint,
-    AdminApplicationEndpoints.deleteApplicationEndpoint,
-    AdminApplicationEndpoints.getSingleApplicationEndpoint,
-    AdminApplicationEndpoints.searchApplicationsEndpoint
-  ).map(_.withTag(Tags.AdminApplications))
+  private val adminResourceServerEndpoints = List(
+    AdminResourceServerEndpoints.createResourceServerEndpoint,
+    AdminResourceServerEndpoints.updateResourceServerEndpoint,
+    AdminResourceServerEndpoints.reactivateResourceServerEndpoint,
+    AdminResourceServerEndpoints.deactivateResourceServerEndpoint,
+    AdminResourceServerEndpoints.deleteResourceServerEndpoint,
+    AdminResourceServerEndpoints.getSingleResourceServerEndpoint,
+    AdminResourceServerEndpoints.searchResourceServersEndpoint
+  ).map(_.withTag(Tags.AdminResourceServers))
 
   private val adminPermissionEndpoints = List(
     AdminPermissionEndpoints.createPermissionEndpoint,
@@ -81,7 +81,7 @@ object Documentation extends OpenAPIDocsInterpreter {
     adminApiKeyManagementEndpoints ++
       adminApiKeyTemplateEndpoints ++
       adminTenantEndpoints ++
-      adminApplicationEndpoints ++
+      adminResourceServerEndpoints ++
       adminPermissionEndpoints ++
       adminUserEndpoints ++
       managementEndpoints ++
@@ -100,7 +100,7 @@ object Documentation extends OpenAPIDocsInterpreter {
     val AdminApiKeys = "API keys"
     val AdminApiKeyTemplates = "Templates"
     val AdminTenants = "Tenants"
-    val AdminApplications = "Applications"
+    val AdminResourceServers = "ResourceServers"
     val AdminPermissions = "Permissions"
     val AdminUsers = "Users"
 

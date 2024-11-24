@@ -19,15 +19,15 @@ END;
 $BODY$
     LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION copy_application() RETURNS TRIGGER AS
+CREATE OR REPLACE FUNCTION copy_resourceServer() RETURNS TRIGGER AS
 $BODY$
 BEGIN
-    INSERT INTO application_deleted (deleted_at, application_id, tenant_id, public_application_id, name, description,
+    INSERT INTO resourceServer_deleted (deleted_at, resourceServer_id, tenant_id, public_resourceServer_id, name, description,
                                      created_at, updated_at, deactivated_at)
     VALUES (now(),
             OLD.id,
             OLD.tenant_id,
-            OLD.public_application_id,
+            OLD.public_resourceServer_id,
             OLD.name,
             OLD.description,
             OLD.created_at,
@@ -66,11 +66,11 @@ CREATE OR REPLACE TRIGGER copy_tenant_on_deletion
     FOR EACH ROW
 EXECUTE PROCEDURE copy_tenant();
 
-CREATE OR REPLACE TRIGGER copy_application_on_deletion
+CREATE OR REPLACE TRIGGER copy_resourceServer_on_deletion
     BEFORE DELETE
-    ON application
+    ON resourceServer
     FOR EACH ROW
-EXECUTE PROCEDURE copy_application();
+EXECUTE PROCEDURE copy_resourceServer();
 
 CREATE OR REPLACE TRIGGER copy_api_key_data_on_deletion
     BEFORE DELETE

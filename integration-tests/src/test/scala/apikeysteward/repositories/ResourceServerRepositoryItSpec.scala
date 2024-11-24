@@ -2,11 +2,11 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ApplicationsTestData.{applicationEntityRead_1, publicApplicationId_1}
+import apikeysteward.base.testdata.ResourceServersTestData.{resourceServerEntityRead_1, publicResourceServerId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityRead_1
 import apikeysteward.model.ApiKeyTemplate
-import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
+import apikeysteward.repositories.TestDataInsertions.{ResourceServerDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
 import cats.effect.IO
@@ -17,7 +17,7 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-class ApplicationRepositoryItSpec
+class ResourceServerRepositoryItSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -27,20 +27,20 @@ class ApplicationRepositoryItSpec
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
     _ <-
-      sql"TRUNCATE tenant, application, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
+      sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
   } yield ()
 
   private val tenantDb = new TenantDb
-  private val applicationDb = new ApplicationDb
+  private val resourceServerDb = new ResourceServerDb
   private val permissionDb = new PermissionDb
   private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
 
   private val permissionRepository =
-    new PermissionRepository(applicationDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
 
   private val repository =
-    new ApplicationRepository(tenantDb, applicationDb, permissionDb, permissionRepository)(transactor)
+    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(transactor)
 
   private object Queries extends DoobieCustomMeta {
     import doobie.postgres._
@@ -49,8 +49,8 @@ class ApplicationRepositoryItSpec
     val getAllTenants: ConnectionIO[List[TenantEntity.Read]] =
       sql"SELECT * FROM tenant".query[TenantEntity.Read].stream.compile.toList
 
-    val getAllApplications: ConnectionIO[List[ApplicationEntity.Read]] =
-      sql"SELECT * FROM application".query[ApplicationEntity.Read].stream.compile.toList
+    val getAllResourceServers: ConnectionIO[List[ResourceServerEntity.Read]] =
+      sql"SELECT * FROM resource_server".query[ResourceServerEntity.Read].stream.compile.toList
 
     val getAllPermissions: ConnectionIO[List[PermissionEntity.Read]] =
       sql"SELECT * FROM permission".query[PermissionEntity.Read].stream.compile.toList
@@ -66,11 +66,11 @@ class ApplicationRepositoryItSpec
         .toList
   }
 
-  private def insertPrerequisiteData(): IO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
+  private def insertPrerequisiteData(): IO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[PermissionDbId])] =
     (for {
       dataIds <- TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
         tenantDb,
-        applicationDb,
+        resourceServerDb,
         permissionDb,
         apiKeyTemplateDb
       )
@@ -87,17 +87,17 @@ class ApplicationRepositoryItSpec
       _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
     } yield dataIds).transact(transactor)
 
-  "ApplicationRepository on delete" when {
+  "ResourceServerRepository on delete" when {
 
-    "given Application is active" should {
+    "given ResourceServer is active" should {
 
       "NOT delete associations between related Permissions and ApiKeyTemplates" in {
         val result = for {
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds) = dataIds
 
-          _ <- repository.activate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.activate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllAssociations.transact(transactor)
 
@@ -119,49 +119,49 @@ class ApplicationRepositoryItSpec
       "NOT delete related Permissions" in {
         val result = for {
           dataIds <- insertPrerequisiteData()
-          (_, applicationId, _, _) = dataIds
+          (_, resourceServerId, _, _) = dataIds
 
-          _ <- repository.activate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.activate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
-        } yield (res, applicationId)
+        } yield (res, resourceServerId)
 
-        result.asserting { case (res, applicationId) =>
+        result.asserting { case (res, resourceServerId) =>
           val expectedEntities = List(
-            permissionEntityRead_1.copy(id = res.head.id, applicationId = applicationId),
-            permissionEntityRead_2.copy(id = res(1).id, applicationId = applicationId),
-            permissionEntityRead_3.copy(id = res(2).id, applicationId = applicationId)
+            permissionEntityRead_1.copy(id = res.head.id, resourceServerId = resourceServerId),
+            permissionEntityRead_2.copy(id = res(1).id, resourceServerId = resourceServerId),
+            permissionEntityRead_3.copy(id = res(2).id, resourceServerId = resourceServerId)
           )
 
           res should contain theSameElementsAs expectedEntities
         }
       }
 
-      "NOT delete this Application" in {
+      "NOT delete this ResourceServer" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.activate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.activate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
-          res <- Queries.getAllApplications.transact(transactor)
+          res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
         result.asserting { res =>
-          res shouldBe List(applicationEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
+          res shouldBe List(resourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
         }
       }
     }
 
-    "there are entities in the DB for given inactive Application" should {
+    "there are entities in the DB for given inactive ResourceServer" should {
 
       "delete associations between these Permissions and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.deactivate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllAssociations.transact(transactor)
         } yield res
@@ -173,8 +173,8 @@ class ApplicationRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.deactivate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
         } yield res
@@ -182,25 +182,25 @@ class ApplicationRepositoryItSpec
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
       }
 
-      "delete this Application" in {
+      "delete this ResourceServer" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.deactivate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
-          res <- Queries.getAllApplications.transact(transactor)
+          res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
-        result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
       }
 
       "NOT delete ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.deactivate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllApiKeyTemplates.transact(transactor)
         } yield res
@@ -218,8 +218,8 @@ class ApplicationRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicApplicationId_1)
-          _ <- repository.delete(publicApplicationId_1)
+          _ <- repository.deactivate(publicResourceServerId_1)
+          _ <- repository.delete(publicResourceServerId_1)
 
           res <- Queries.getAllTenants.transact(transactor)
         } yield res

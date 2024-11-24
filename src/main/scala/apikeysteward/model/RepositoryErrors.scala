@@ -1,7 +1,7 @@
 package apikeysteward.model
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.Tenant.TenantId
@@ -110,22 +110,23 @@ object RepositoryErrors {
 
   }
 
-  sealed abstract class ApplicationDbError(override val message: String) extends CustomError
-  object ApplicationDbError {
+  sealed abstract class ResourceServerDbError(override val message: String) extends CustomError
+  object ResourceServerDbError {
 
-    sealed abstract class ApplicationInsertionError(override val message: String) extends ApplicationDbError(message)
-    object ApplicationInsertionError {
+    sealed abstract class ResourceServerInsertionError(override val message: String)
+        extends ResourceServerDbError(message)
+    object ResourceServerInsertionError {
 
-      case class ApplicationAlreadyExistsError(publicApplicationId: String)
-          extends ApplicationInsertionError(
-            message = s"Application with publicApplicationId = [$publicApplicationId] already exists."
+      case class ResourceServerAlreadyExistsError(publicResourceServerId: String)
+          extends ResourceServerInsertionError(
+            message = s"ResourceServer with publicResourceServerId = [$publicResourceServerId] already exists."
           )
 
-      trait ReferencedTenantDoesNotExistError extends ApplicationInsertionError { val errorMessage: String }
+      trait ReferencedTenantDoesNotExistError extends ResourceServerInsertionError { val errorMessage: String }
       object ReferencedTenantDoesNotExistError {
 
         private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
-            extends ApplicationInsertionError(errorMessage)
+            extends ResourceServerInsertionError(errorMessage)
             with ReferencedTenantDoesNotExistError
 
         def apply(tenantId: Long): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
@@ -137,55 +138,55 @@ object RepositoryErrors {
       }
 
       def cannotInsertPermissionError(
-          publicApplicationId: ApplicationId,
+          publicResourceServerId: ResourceServerId,
           permissionInsertionError: PermissionInsertionError
-      ): ApplicationInsertionError =
-        CannotInsertPermissionError(publicApplicationId, permissionInsertionError)
+      ): ResourceServerInsertionError =
+        CannotInsertPermissionError(publicResourceServerId, permissionInsertionError)
 
       case class CannotInsertPermissionError(
-          publicApplicationId: ApplicationId,
+          publicResourceServerId: ResourceServerId,
           permissionInsertionError: PermissionInsertionError
-      ) extends ApplicationInsertionError(
+      ) extends ResourceServerInsertionError(
             message =
-              s"Could not insert Permissions for Application with publicApplicationId = [$publicApplicationId], because: $permissionInsertionError"
+              s"Could not insert Permissions for ResourceServer with publicResourceServerId = [$publicResourceServerId], because: $permissionInsertionError"
           )
 
-      case class ApplicationInsertionErrorImpl(cause: SQLException)
-          extends ApplicationInsertionError(message = s"An error occurred when inserting Application: $cause")
+      case class ResourceServerInsertionErrorImpl(cause: SQLException)
+          extends ResourceServerInsertionError(message = s"An error occurred when inserting ResourceServer: $cause")
     }
 
-    def applicationNotFoundError(publicApplicationId: ApplicationId): ApplicationDbError =
-      applicationNotFoundError(publicApplicationId.toString)
+    def resourceServerNotFoundError(publicResourceServerId: ResourceServerId): ResourceServerDbError =
+      resourceServerNotFoundError(publicResourceServerId.toString)
 
-    def applicationNotFoundError(publicApplicationId: String): ApplicationDbError =
-      ApplicationNotFoundError(publicApplicationId)
+    def resourceServerNotFoundError(publicResourceServerId: String): ResourceServerDbError =
+      ResourceServerNotFoundError(publicResourceServerId)
 
-    case class ApplicationNotFoundError(publicApplicationId: String)
-        extends ApplicationDbError(
-          message = s"Could not find Application with publicApplicationId = [$publicApplicationId]."
+    case class ResourceServerNotFoundError(publicResourceServerId: String)
+        extends ResourceServerDbError(
+          message = s"Could not find ResourceServer with publicResourceServerId = [$publicResourceServerId]."
         )
 
-    def applicationIsNotDeactivatedError(publicApplicationId: ApplicationId): ApplicationDbError =
-      ApplicationIsNotDeactivatedError(publicApplicationId)
+    def resourceServerIsNotDeactivatedError(publicResourceServerId: ResourceServerId): ResourceServerDbError =
+      ResourceServerIsNotDeactivatedError(publicResourceServerId)
 
-    case class ApplicationIsNotDeactivatedError(publicApplicationId: ApplicationId)
-        extends ApplicationDbError(
+    case class ResourceServerIsNotDeactivatedError(publicResourceServerId: ResourceServerId)
+        extends ResourceServerDbError(
           message =
-            s"Could not delete Application with publicApplicationId = [${publicApplicationId.toString}] because it is not deactivated."
+            s"Could not delete ResourceServer with publicResourceServerId = [${publicResourceServerId.toString}] because it is not deactivated."
         )
 
     def cannotDeletePermissionError(
-        publicApplicationId: ApplicationId,
+        publicResourceServerId: ResourceServerId,
         permissionNotFoundError: PermissionNotFoundError
-    ): ApplicationDbError =
-      CannotDeletePermissionError(publicApplicationId, permissionNotFoundError)
+    ): ResourceServerDbError =
+      CannotDeletePermissionError(publicResourceServerId, permissionNotFoundError)
 
     case class CannotDeletePermissionError(
-        publicApplicationId: ApplicationId,
+        publicResourceServerId: ResourceServerId,
         permissionNotFoundError: PermissionNotFoundError
-    ) extends ApplicationDbError(
+    ) extends ResourceServerDbError(
           message =
-            s"Could not delete Permissions for Application with publicApplicationId = [$publicApplicationId], because: $permissionNotFoundError"
+            s"Could not delete Permissions for ResourceServer with publicResourceServerId = [$publicResourceServerId], because: $permissionNotFoundError"
         )
 
   }
@@ -201,26 +202,26 @@ object RepositoryErrors {
             message = s"Permission with publicPermissionId = [$publicPermissionId] already exists."
           )
 
-      case class PermissionAlreadyExistsForThisApplicationError(permissionName: String, applicationId: Long)
+      case class PermissionAlreadyExistsForThisResourceServerError(permissionName: String, resourceServerId: Long)
           extends PermissionInsertionError(
             message =
-              s"Permission with name = $permissionName already exists for Application with ID = [$applicationId]."
+              s"Permission with name = $permissionName already exists for ResourceServer with ID = [$resourceServerId]."
           )
 
-      trait ReferencedApplicationDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
-      object ReferencedApplicationDoesNotExistError {
+      trait ReferencedResourceServerDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
+      object ReferencedResourceServerDoesNotExistError {
 
-        private case class ReferencedApplicationDoesNotExistErrorImpl(override val errorMessage: String)
+        private case class ReferencedResourceServerDoesNotExistErrorImpl(override val errorMessage: String)
             extends PermissionInsertionError(errorMessage)
-            with ReferencedApplicationDoesNotExistError
+            with ReferencedResourceServerDoesNotExistError
 
-        def apply(applicationId: Long): ReferencedApplicationDoesNotExistError =
-          ReferencedApplicationDoesNotExistErrorImpl(
-            errorMessage = s"Application with ID = [$applicationId] does not exist."
+        def apply(resourceServerId: Long): ReferencedResourceServerDoesNotExistError =
+          ReferencedResourceServerDoesNotExistErrorImpl(
+            errorMessage = s"ResourceServer with ID = [$resourceServerId] does not exist."
           )
-        def apply(publicApplicationId: ApplicationId): ReferencedApplicationDoesNotExistError =
-          ReferencedApplicationDoesNotExistErrorImpl(
-            errorMessage = s"Application with publicApplicationId = [$publicApplicationId] does not exist."
+        def apply(publicResourceServerId: ResourceServerId): ReferencedResourceServerDoesNotExistError =
+          ReferencedResourceServerDoesNotExistErrorImpl(
+            errorMessage = s"ResourceServer with publicResourceServerId = [$publicResourceServerId] does not exist."
           )
       }
 
@@ -228,10 +229,10 @@ object RepositoryErrors {
           extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")
     }
 
-    case class PermissionNotFoundError(publicApplicationId: ApplicationId, publicPermissionId: PermissionId)
+    case class PermissionNotFoundError(publicResourceServerId: ResourceServerId, publicPermissionId: PermissionId)
         extends PermissionDbError(
           message =
-            s"Could not find Permission with publicPermissionId = [$publicPermissionId] for Application with publicApplicationId = [$publicApplicationId]."
+            s"Could not find Permission with publicPermissionId = [$publicPermissionId] for ResourceServer with publicResourceServerId = [$publicResourceServerId]."
         )
   }
 

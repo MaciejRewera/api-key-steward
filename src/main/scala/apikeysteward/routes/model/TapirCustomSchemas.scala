@@ -3,17 +3,10 @@ package apikeysteward.routes.model
 import apikeysteward.routes.model.TapirCustomValidators.{ValidateList, ValidateOption}
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminRequest, UpdateApiKeyAdminRequest}
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
-import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
-  CreateApiKeyTemplatesPermissionsRequest,
-  DeleteApiKeyTemplatesPermissionsRequest
-}
-import apikeysteward.routes.model.admin.apikeytemplatesusers.{
-  AssociateApiKeyTemplatesWithUserRequest,
-  AssociateUsersWithApiKeyTemplateRequest,
-  DeleteApiKeyTemplatesFromUserRequest
-}
-import apikeysteward.routes.model.admin.application.{CreateApplicationRequest, UpdateApplicationRequest}
+import apikeysteward.routes.model.admin.apikeytemplatespermissions._
+import apikeysteward.routes.model.admin.apikeytemplatesusers._
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
+import apikeysteward.routes.model.admin.resourceserver.{CreateResourceServerRequest, UpdateResourceServerRequest}
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
@@ -105,17 +98,17 @@ object TapirCustomSchemas {
       .modify(_.name)(validateNameLength250)
       .modify(_.description)(validateDescriptionLength250)
 
-  lazy val createApplicationRequestSchema: Schema[CreateApplicationRequest] =
+  lazy val createResourceServerRequestSchema: Schema[CreateResourceServerRequest] =
     Schema
-      .derived[CreateApplicationRequest]
+      .derived[CreateResourceServerRequest]
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateNameLength250)
       .modify(_.description)(validateDescriptionLength250)
       .modify(_.permissions)(_.validateList(createPermissionRequestSchema.validator))
 
-  val updateApplicationRequestSchema: Schema[UpdateApplicationRequest] =
+  val updateResourceServerRequestSchema: Schema[UpdateResourceServerRequest] =
     Schema
-      .derived[UpdateApplicationRequest]
+      .derived[UpdateResourceServerRequest]
       .map(Option(_))(trimStringFields)
       .modify(_.name)(validateNameLength250)
       .modify(_.description)(validateDescriptionLength250)
@@ -158,10 +151,10 @@ object TapirCustomSchemas {
   private def trimStringFields(request: UpdateTenantRequest): UpdateTenantRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
-  private def trimStringFields(request: CreateApplicationRequest): CreateApplicationRequest =
+  private def trimStringFields(request: CreateResourceServerRequest): CreateResourceServerRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
-  private def trimStringFields(request: UpdateApplicationRequest): UpdateApplicationRequest =
+  private def trimStringFields(request: UpdateResourceServerRequest): UpdateResourceServerRequest =
     request.copy(name = request.name.trim, description = request.description.map(_.trim))
 
   private def trimStringFields(request: CreatePermissionRequest): CreatePermissionRequest =

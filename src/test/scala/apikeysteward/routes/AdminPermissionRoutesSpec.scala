@@ -1,10 +1,10 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ApplicationsTestData.publicApplicationId_1
+import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.routes.auth.JwtAuthorizer
@@ -53,9 +53,9 @@ class AdminPermissionRoutesSpec
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[JwtPermission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, List(permissionService))(request, requiredPermissions)
 
-  "AdminPermissionRoutes on POST /admin/applications/{applicationId}/permissions" when {
+  "AdminPermissionRoutes on POST /admin/resource-servers/{resourceServerId}/permissions" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions")
+    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
     val requestBody = CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
@@ -63,27 +63,27 @@ class AdminPermissionRoutesSpec
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "provided with applicationId which is not an UUID" should {
+    "provided with resourceServerId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectApplicationId =
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/permissions")
+      val requestWithIncorrectResourceServerId =
         Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
 
       "return Bad Request" in {
         for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
             )
         } yield ()
       }
 
       "NOT call ApiKeyTemplateService" in authorizedFixture {
         for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = verifyZeroInteractions(permissionService)
         } yield ()
       }
@@ -222,7 +222,7 @@ class AdminPermissionRoutesSpec
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).createPermission(eqTo(publicApplicationId_1), eqTo(requestBody))
+          _ = verify(permissionService).createPermission(eqTo(publicResourceServerId_1), eqTo(requestBody))
         } yield ()
       }
 
@@ -285,10 +285,10 @@ class AdminPermissionRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisApplicationError" in authorizedFixture {
-        val applicationId = 13L
+      "return Bad Request when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisResourceServerError" in authorizedFixture {
+        val resourceServerId = 13L
         permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
-          Left(PermissionAlreadyExistsForThisApplicationError(permissionName_1, applicationId))
+          Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerId))
         )
 
         for {
@@ -298,15 +298,15 @@ class AdminPermissionRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisApplication)
+                Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisResourceServer)
               )
             )
         } yield ()
       }
 
-      "return Not Found when PermissionService returns successful IO with Left containing ReferencedApplicationDoesNotExistError" in authorizedFixture {
+      "return Not Found when PermissionService returns successful IO with Left containing ReferencedResourceServerDoesNotExistError" in authorizedFixture {
         permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
-          Left(ReferencedApplicationDoesNotExistError(publicApplicationId_1))
+          Left(ReferencedResourceServerDoesNotExistError(publicResourceServerId_1))
         )
 
         for {
@@ -316,7 +316,7 @@ class AdminPermissionRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)
+                Some(ApiErrorMessages.AdminPermission.ReferencedResourceServerNotFound)
               )
             )
         } yield ()
@@ -334,34 +334,36 @@ class AdminPermissionRoutesSpec
     }
   }
 
-  "AdminPermissionRoutes on DELETE /admin/applications/{applicationId}/permissions/{permissionId}" when {
+  "AdminPermissionRoutes on DELETE /admin/resource-servers/{resourceServerId}/permissions/{permissionId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions/$publicPermissionId_1")
+    val uri =
+      Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/$publicPermissionId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "provided with applicationId which is not an UUID" should {
+    "provided with resourceServerId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/applications/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
-      val requestWithIncorrectApplicationId =
+      val uri =
+        Uri.unsafeFromString(s"/admin/resource-servers/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
+      val requestWithIncorrectResourceServerId =
         Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
       "return Bad Request" in {
         for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
             )
         } yield ()
       }
 
       "NOT call ApiKeyTemplateService" in authorizedFixture {
         for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = verifyZeroInteractions(permissionService)
         } yield ()
       }
@@ -369,7 +371,8 @@ class AdminPermissionRoutesSpec
 
     "provided with permissionId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions/this-is-not-a-valid-uuid")
+      val uri =
+        Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/this-is-not-a-valid-uuid")
       val requestWithIncorrectPermissionId =
         Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
@@ -396,16 +399,20 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.asRight)
+        permissionService.deletePermission(any[ResourceServerId], any[PermissionId]) returns IO.pure(
+          permission_1.asRight
+        )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).deletePermission(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
+          _ = verify(permissionService).deletePermission(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.asRight)
+        permissionService.deletePermission(any[ResourceServerId], any[PermissionId]) returns IO.pure(
+          permission_1.asRight
+        )
 
         for {
           response <- adminRoutes.run(request)
@@ -417,8 +424,8 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns successful IO with Left containing PermissionNotFoundError" in authorizedFixture {
-        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.pure(
-          Left(PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1))
+        permissionService.deletePermission(any[ResourceServerId], any[PermissionId]) returns IO.pure(
+          Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1))
         )
 
         for {
@@ -433,7 +440,9 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.deletePermission(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
+        permissionService.deletePermission(any[ResourceServerId], any[PermissionId]) returns IO.raiseError(
+          testException
+        )
 
         for {
           response <- adminRoutes.run(request)
@@ -444,34 +453,36 @@ class AdminPermissionRoutesSpec
     }
   }
 
-  "AdminPermissionRoutes on GET /admin/applications/{applicationId}/permissions/{permissionId}" when {
+  "AdminPermissionRoutes on GET /admin/resource-servers/{resourceServerId}/permissions/{permissionId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions/$publicPermissionId_1")
+    val uri =
+      Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/$publicPermissionId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
-    "provided with applicationId which is not an UUID" should {
+    "provided with resourceServerId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/applications/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
-      val requestWithIncorrectApplicationId =
+      val uri =
+        Uri.unsafeFromString(s"/admin/resource-servers/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
+      val requestWithIncorrectResourceServerId =
         Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
       "return Bad Request" in {
         for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
             )
         } yield ()
       }
 
       "NOT call ApiKeyTemplateService" in authorizedFixture {
         for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = verifyZeroInteractions(permissionService)
         } yield ()
       }
@@ -479,7 +490,8 @@ class AdminPermissionRoutesSpec
 
     "provided with permissionId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions/this-is-not-a-valid-uuid")
+      val uri =
+        Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/this-is-not-a-valid-uuid")
       val requestWithIncorrectPermissionId =
         Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
@@ -506,16 +518,16 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.some)
+        permissionService.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(permission_1.some)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).getBy(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
+          _ = verify(permissionService).getBy(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
         } yield ()
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(permission_1.some)
+        permissionService.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(permission_1.some)
 
         for {
           response <- adminRoutes.run(request)
@@ -527,7 +539,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns empty Option" in authorizedFixture {
-        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(none)
+        permissionService.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(none)
 
         for {
           response <- adminRoutes.run(request)
@@ -541,7 +553,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getBy(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
+        permissionService.getBy(any[ResourceServerId], any[PermissionId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -552,38 +564,38 @@ class AdminPermissionRoutesSpec
     }
   }
 
-  "AdminPermissionRoutes on GET /admin/applications/{applicationId}/permissions" when {
+  "AdminPermissionRoutes on GET /admin/resource-servers/{resourceServerId}/permissions" when {
 
     val nameFragment = "test:name:fragment:123"
 
     val uri = Uri
-      .unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions")
+      .unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
       .withQueryParam("name", nameFragment)
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
-    "provided with applicationId which is not an UUID" should {
+    "provided with resourceServerId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/applications/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectApplicationId =
+      val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/permissions")
+      val requestWithIncorrectResourceServerId =
         Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
       "return Bad Request" in {
         for {
-          response <- adminRoutes.run(requestWithIncorrectApplicationId)
+          response <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = response.status shouldBe Status.BadRequest
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter applicationId"))
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter resourceServerId"))
             )
         } yield ()
       }
 
       "NOT call ApiKeyTemplateService" in authorizedFixture {
         for {
-          _ <- adminRoutes.run(requestWithIncorrectApplicationId)
+          _ <- adminRoutes.run(requestWithIncorrectResourceServerId)
           _ = verifyZeroInteractions(permissionService)
         } yield ()
       }
@@ -592,30 +604,30 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService providing nameFragment when request contains 'name' query param" in authorizedFixture {
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
+        permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).getAllBy(eqTo(publicApplicationId_1))(eqTo(Some(nameFragment)))
+          _ = verify(permissionService).getAllBy(eqTo(publicResourceServerId_1))(eqTo(Some(nameFragment)))
         } yield ()
       }
 
       "call PermissionService providing empty Option when request contains NO query param" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/applications/$publicApplicationId_1/permissions")
+        val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
         val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
+        permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(permissionService).getAllBy(eqTo(publicApplicationId_1))(eqTo(none[String]))
+          _ = verify(permissionService).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
         } yield ()
       }
 
       "return successful value returned by PermissionService" when {
 
         "PermissionService returns an empty List" in authorizedFixture {
-          permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
+          permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 
           for {
             response <- adminRoutes.run(request)
@@ -627,7 +639,7 @@ class AdminPermissionRoutesSpec
         }
 
         "PermissionService returns a List with several elements" in authorizedFixture {
-          permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
+          permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(
             List(permission_1, permission_2, permission_3).asRight
           )
 
@@ -643,9 +655,9 @@ class AdminPermissionRoutesSpec
         }
       }
 
-      "return Not Found when PermissionService returns ApplicationNotFoundError" in authorizedFixture {
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
-          ApplicationNotFoundError(publicApplicationId_1.toString).asLeft
+      "return Not Found when PermissionService returns ResourceServerNotFoundError" in authorizedFixture {
+        permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(
+          ResourceServerNotFoundError(publicResourceServerId_1.toString).asLeft
         )
 
         for {
@@ -655,14 +667,14 @@ class AdminPermissionRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)
+                Some(ApiErrorMessages.AdminPermission.ReferencedResourceServerNotFound)
               )
             )
         } yield ()
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.raiseError(testException)
+        permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

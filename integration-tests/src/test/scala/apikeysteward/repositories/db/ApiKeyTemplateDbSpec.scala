@@ -7,7 +7,7 @@ import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
-import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesUsersEntity, ApplicationEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesUsersEntity, ResourceServerEntity}
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -172,7 +172,7 @@ class ApiKeyTemplateDbSpec
           res <- Queries.getAllApiKeyTemplates.transact(transactor)
         } yield res
 
-        result.asserting(_ shouldBe List.empty[ApplicationEntity.Read])
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
       }
     }
   }

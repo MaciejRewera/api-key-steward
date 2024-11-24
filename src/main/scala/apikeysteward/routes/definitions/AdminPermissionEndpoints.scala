@@ -1,6 +1,6 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
@@ -8,7 +8,7 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.definitions.EndpointsBase.applicationIdPathParameter
+import apikeysteward.routes.definitions.EndpointsBase.resourceServerIdPathParameter
 import apikeysteward.routes.model.admin.permission._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -24,14 +24,14 @@ private[routes] object AdminPermissionEndpoints {
 
   val createPermissionEndpoint: Endpoint[
     AccessToken,
-    (ApplicationId, CreatePermissionRequest),
+    (ResourceServerId, CreatePermissionRequest),
     ErrorInfo,
     (StatusCode, CreatePermissionResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("Create a new Permission with provided details.")
-      .in("admin" / "applications" / applicationIdPathParameter / "permissions")
+      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions")
       .in(
         jsonBody[CreatePermissionRequest]
           .description("Details of the Permission to create.")
@@ -45,15 +45,20 @@ private[routes] object AdminPermissionEndpoints {
       .errorOutVariantPrepend(errorOutVariantBadRequest)
       .errorOutVariantPrepend(errorOutVariantNotFound)
 
-  val deletePermissionEndpoint
-      : Endpoint[AccessToken, (ApplicationId, PermissionId), ErrorInfo, (StatusCode, DeletePermissionResponse), Any] =
+  val deletePermissionEndpoint: Endpoint[
+    AccessToken,
+    (ResourceServerId, PermissionId),
+    ErrorInfo,
+    (StatusCode, DeletePermissionResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
         """Delete a Permission.
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
-      .in("admin" / "applications" / applicationIdPathParameter / "permissions" / permissionIdPathParameter)
+      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions" / permissionIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Permission deleted"))
       .out(
         jsonBody[DeletePermissionResponse]
@@ -64,14 +69,14 @@ private[routes] object AdminPermissionEndpoints {
 
   val getSinglePermissionEndpoint: Endpoint[
     AccessToken,
-    (ApplicationId, PermissionId),
+    (ResourceServerId, PermissionId),
     ErrorInfo,
     (StatusCode, GetSinglePermissionResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Permission for provided permissionId.")
-      .in("admin" / "applications" / applicationIdPathParameter / "permissions" / permissionIdPathParameter)
+      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions" / permissionIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Permission found"))
       .out(
         jsonBody[GetSinglePermissionResponse]
@@ -82,16 +87,16 @@ private[routes] object AdminPermissionEndpoints {
 
   val searchPermissionsEndpoint: Endpoint[
     AccessToken,
-    (ApplicationId, Option[String]),
+    (ResourceServerId, Option[String]),
     ErrorInfo,
     (StatusCode, GetMultiplePermissionsResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description(
-        "Search for Permissions based on provided query parameters. Search is scoped to Application with provided applicationId."
+        "Search for Permissions based on provided query parameters. Search is scoped to ResourceServer with provided resourceServerId."
       )
-      .in("admin" / "applications" / applicationIdPathParameter / "permissions")
+      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions")
       .in(nameFragmentQueryParam)
       .out(statusCode.description(StatusCode.Ok, "Permissions found"))
       .out(
