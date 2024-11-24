@@ -71,10 +71,12 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           buildApiKeyTemplatesPermissionsRepository(transactor)
         apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository = buildApiKeyTemplatesUsersRepository(transactor)
         permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
-        applicationRepository: ApplicationRepository = buildApplicationRepository(permissionRepository)(transactor)
+        resourceServerRepository: ResourceServerRepository = buildResourceServerRepository(permissionRepository)(
+          transactor
+        )
         userRepository: UserRepository = buildUserRepository(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(
-          applicationRepository,
+          resourceServerRepository,
           apiKeyTemplateRepository,
           userRepository
         )(transactor)
@@ -100,8 +102,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         )
 
         tenantService = new TenantService(uuidGenerator, tenantRepository)
-        applicationService = new ApplicationService(uuidGenerator, applicationRepository)
-        permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
+        resourceServerService = new ResourceServerService(uuidGenerator, resourceServerRepository)
+        permissionService = new PermissionService(uuidGenerator, permissionRepository, resourceServerRepository)
         userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
@@ -124,7 +126,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         ).allRoutes
 
         tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
-        applicationRoutes = new AdminApplicationRoutes(jwtAuthorizer, applicationService).allRoutes
+        resourceServerRoutes = new AdminResourceServerRoutes(jwtAuthorizer, resourceServerService).allRoutes
         permissionRoutes = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
         userRoutes = new AdminUserRoutes(
           jwtAuthorizer,
@@ -143,7 +145,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
               apiKeyManagementRoutes <+>
               apiKeyTemplateRoutes <+>
               tenantRoutes <+>
-              applicationRoutes <+>
+              resourceServerRoutes <+>
               permissionRoutes <+>
               userRoutes
           )
@@ -209,31 +211,31 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildTenantRepository(
-      applicationRepository: ApplicationRepository,
+      resourceServerRepository: ResourceServerRepository,
       apiKeyTemplateRepository: ApiKeyTemplateRepository,
       userRepository: UserRepository
   )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
 
-    new TenantRepository(tenantDb, applicationRepository, apiKeyTemplateRepository, userRepository)(transactor)
+    new TenantRepository(tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(transactor)
   }
 
-  private def buildApplicationRepository(
+  private def buildResourceServerRepository(
       permissionRepository: PermissionRepository
   )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
-    val applicationDb = new ApplicationDb
+    val resourceServerDb = new ResourceServerDb
     val permissionDb = new PermissionDb
 
-    new ApplicationRepository(tenantDb, applicationDb, permissionDb, permissionRepository)(transactor)
+    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(transactor)
   }
 
   private def buildPermissionRepository(transactor: HikariTransactor[IO]) = {
-    val applicationDb = new ApplicationDb
+    val resourceServerDb = new ResourceServerDb
     val permissionDb = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
-    new PermissionRepository(applicationDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
   }
 
   private def buildUserRepository(transactor: HikariTransactor[IO]) = {

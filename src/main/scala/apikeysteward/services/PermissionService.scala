@@ -1,13 +1,13 @@
 package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.repositories.{ApplicationRepository, PermissionRepository}
+import apikeysteward.repositories.{ResourceServerRepository, PermissionRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
@@ -18,17 +18,17 @@ import cats.implicits.catsSyntaxEitherId
 class PermissionService(
     uuidGenerator: UuidGenerator,
     permissionRepository: PermissionRepository,
-    applicationRepository: ApplicationRepository
+    resourceServerRepository: ResourceServerRepository
 ) extends Logging {
 
   def createPermission(
-      applicationId: ApplicationId,
+      resourceServerId: ResourceServerId,
       createPermissionRequest: CreatePermissionRequest
   ): IO[Either[PermissionInsertionError, Permission]] =
-    createPermissionWithRetry(applicationId, createPermissionRequest)
+    createPermissionWithRetry(resourceServerId, createPermissionRequest)
 
   private def createPermissionWithRetry(
-      applicationId: ApplicationId,
+      resourceServerId: ResourceServerId,
       createPermissionRequest: CreatePermissionRequest
   ): IO[Either[PermissionInsertionError, Permission]] = {
 
@@ -45,7 +45,7 @@ class PermissionService(
 
         _ <- logger.info("Inserting Permission into database...")
         newPermission <- permissionRepository
-          .insert(applicationId, Permission.from(permissionId, createPermissionRequest))
+          .insert(resourceServerId, Permission.from(permissionId, createPermissionRequest))
           .flatTap {
             case Right(_) => logger.info(s"Inserted Permission with permissionId: [$permissionId] into database.")
             case Left(e)  => logger.warn(s"Could not insert Permission into database because: ${e.message}")
@@ -59,33 +59,33 @@ class PermissionService(
   }
 
   def deletePermission(
-      applicationId: ApplicationId,
+      resourceServerId: ResourceServerId,
       permissionId: PermissionId
   ): IO[Either[PermissionNotFoundError, Permission]] =
-    permissionRepository.delete(applicationId, permissionId).flatTap {
+    permissionRepository.delete(resourceServerId, permissionId).flatTap {
       case Right(_) => logger.info(s"Deleted Permission with permissionId: [$permissionId].")
       case Left(e) =>
         logger.warn(s"Could not delete Permission with permissionId: [$permissionId] because: ${e.message}")
     }
 
-  def getBy(applicationId: ApplicationId, permissionId: PermissionId): IO[Option[Permission]] =
-    permissionRepository.getBy(applicationId, permissionId)
+  def getBy(resourceServerId: ResourceServerId, permissionId: PermissionId): IO[Option[Permission]] =
+    permissionRepository.getBy(resourceServerId, permissionId)
 
   def getAllFor(templateId: ApiKeyTemplateId): IO[List[Permission]] =
     permissionRepository.getAllFor(templateId)
 
   def getAllBy(
-      applicationId: ApplicationId
-  )(nameFragment: Option[String]): IO[Either[ApplicationNotFoundError, List[Permission]]] =
+      resourceServerId: ResourceServerId
+  )(nameFragment: Option[String]): IO[Either[ResourceServerNotFoundError, List[Permission]]] =
     (for {
       _ <- EitherT(
-        applicationRepository
-          .getBy(applicationId)
-          .map(_.toRight(ApplicationNotFoundError(applicationId.toString)))
+        resourceServerRepository
+          .getBy(resourceServerId)
+          .map(_.toRight(ResourceServerNotFoundError(resourceServerId.toString)))
       )
 
-      result <- EitherT.liftF[IO, ApplicationNotFoundError, List[Permission]](
-        permissionRepository.getAllBy(applicationId)(nameFragment)
+      result <- EitherT.liftF[IO, ResourceServerNotFoundError, List[Permission]](
+        permissionRepository.getAllBy(resourceServerId)(nameFragment)
       )
     } yield result).value
 

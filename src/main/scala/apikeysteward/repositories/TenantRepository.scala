@@ -14,7 +14,7 @@ import doobie.implicits._
 
 class TenantRepository(
     tenantDb: TenantDb,
-    applicationRepository: ApplicationRepository,
+    resourceServerRepository: ResourceServerRepository,
     apiKeyTemplateRepository: ApiKeyTemplateRepository,
     userRepository: UserRepository
 )(transactor: Transactor[IO]) {
@@ -60,7 +60,7 @@ class TenantRepository(
       _ <- verifyAllDependenciesAreDeactivated(publicTenantId)
       _ <- verifyTenantIsDeactivated(publicTenantId)
 
-      _ <- deleteApplications(publicTenantId)
+      _ <- deleteResourceServers(publicTenantId)
       _ <- deleteApiKeyTemplates(publicTenantId)
       _ <- deleteUsers(publicTenantId)
 
@@ -72,16 +72,16 @@ class TenantRepository(
       publicTenantId: TenantId
   ): EitherT[doobie.ConnectionIO, TenantDbError, Unit] =
     for {
-      publicApplicationIds <- EitherT.liftF(
-        applicationRepository
+      publicResourceServerIds <- EitherT.liftF(
+        resourceServerRepository
           .getAllForTenantOp(publicTenantId)
-          .map(_.applicationId)
+          .map(_.resourceServerId)
           .compile
           .toList
       )
-      _ <- publicApplicationIds.traverse { publicApplicationId =>
-        applicationRepository
-          .verifyApplicationIsDeactivatedOp(publicApplicationId)
+      _ <- publicResourceServerIds.traverse { publicResourceServerId =>
+        resourceServerRepository
+          .verifyResourceServerIsDeactivatedOp(publicResourceServerId)
           .leftMap(cannotDeleteDependencyError(publicTenantId, _))
       }
     } yield ()
@@ -102,18 +102,18 @@ class TenantRepository(
       )
     } yield ()
 
-  private def deleteApplications(
+  private def deleteResourceServers(
       publicTenantId: TenantId
-  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[Application]] =
+  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[ResourceServer]] =
     EitherT {
       for {
-        applicationIdsToDelete <- applicationRepository
+        resourceServerIdsToDelete <- resourceServerRepository
           .getAllForTenantOp(publicTenantId)
-          .map(_.applicationId)
+          .map(_.resourceServerId)
           .compile
           .toList
-        deletedApplications <- applicationIdsToDelete.traverse(applicationRepository.deleteOp)
-      } yield deletedApplications
+        deletedResourceServers <- resourceServerIdsToDelete.traverse(resourceServerRepository.deleteOp)
+      } yield deletedResourceServers
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence
     }

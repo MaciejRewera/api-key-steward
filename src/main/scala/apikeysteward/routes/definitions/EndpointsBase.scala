@@ -1,6 +1,6 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model._
 import apikeysteward.routes.ErrorInfo
@@ -8,8 +8,8 @@ import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
-import apikeysteward.routes.model.admin.application.CreateApplicationRequest
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
+import apikeysteward.routes.model.admin.resourceserver.CreateResourceServerRequest
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
@@ -28,8 +28,8 @@ private[routes] object EndpointsBase {
   val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
     .description("Unique ID of the Tenant for which to scope this request.")
 
-  val applicationIdPathParameter: EndpointInput.PathCapture[ApplicationId] =
-    path[ApplicationId]("applicationId").description("Unique ID of the Application.")
+  val resourceServerIdPathParameter: EndpointInput.PathCapture[ResourceServerId] =
+    path[ResourceServerId]("resourceServerId").description("Unique ID of the Resource Server.")
 
   val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
     name = "Basic API key",
@@ -51,9 +51,9 @@ private[routes] object EndpointsBase {
     description = Some("A description what this Permission is for.")
   )
 
-  val createApplicationRequest: CreateApplicationRequest = CreateApplicationRequest(
-    name = "My new Application",
-    description = Some("A description what this Application is for."),
+  val createResourceServerRequest: CreateResourceServerRequest = CreateResourceServerRequest(
+    name = "My new ResourceServer",
+    description = Some("A description what this ResourceServer is for."),
     permissions = List(EndpointsBase.createPermissionRequest)
   )
 
@@ -92,10 +92,10 @@ private[routes] object EndpointsBase {
     isActive = true
   )
 
-  val ApplicationExample: Application = Application(
-    applicationId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "My new Application",
-    description = Some("A description what this Application is for."),
+  val ResourceServerExample: ResourceServer = ResourceServer(
+    resourceServerId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "My new Resource Server",
+    description = Some("A description what this Resource Server is for."),
     isActive = true,
     permissions = List(PermissionExample, PermissionExample)
   )

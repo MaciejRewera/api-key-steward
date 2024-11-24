@@ -26,7 +26,7 @@ JWT and JWKS settings have to be configured in order to start up the service. Th
 - `AUTH_JWT_ISSUER` - This is your trusted issuer of the JWT (`iss` claim inside JWT). For Auth0 the variable should be: `https://<your-tenant-id>.auth0.com/`
 - `AUTH_JWT_AUDIENCE` - This is the audience this JWT is created for (one of `aud` claim values inside JWT). The JWT has to contain the audience provided here, but can also contain others.
 
-*Note: Only a single issuer and audience is currently supported with the use of environment variables. If you need to configure more, provide additional variables in [application.conf](src/main/resources/application.conf) file under `auth.jwt` settings. Also add them to [docker-compose.yaml](docker-compose.yaml) file.*
+*Note: Only a single issuer and audience is currently supported with the use of environment variables. If you need to configure more, provide additional variables in [resourceServer.conf](src/main/resources/resourceServer.conf) file under `auth.jwt` settings. Also add them to [docker-compose.yaml](docker-compose.yaml) file.*
 
 ### JWT Permissions
 

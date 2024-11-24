@@ -2,12 +2,12 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ApplicationsTestData.applicationEntityWrite_1
+import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsNotFoundError
-import apikeysteward.repositories.TestDataInsertions.{ApplicationDbId, PermissionDbId, TemplateDbId, TenantDbId}
+import apikeysteward.repositories.TestDataInsertions.{ResourceServerDbId, PermissionDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.data.NonEmptyList
@@ -28,11 +28,11 @@ class ApiKeyTemplatesPermissionsDbSpec
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
     _ <-
-      sql"TRUNCATE tenant, application, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
+      sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
   } yield ()
 
   private val tenantDb = new TenantDb
-  private val applicationDb = new ApplicationDb
+  private val resourceServerDb = new ResourceServerDb
   private val permissionDb = new PermissionDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
 
@@ -51,10 +51,10 @@ class ApiKeyTemplatesPermissionsDbSpec
   }
 
   private def insertPrerequisiteData()
-      : ConnectionIO[(TenantDbId, ApplicationDbId, List[TemplateDbId], List[PermissionDbId])] =
+      : ConnectionIO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[PermissionDbId])] =
     TestDataInsertions.insertPrerequisiteTemplatesAndPermissions(
       tenantDb,
-      applicationDb,
+      resourceServerDb,
       permissionDb,
       apiKeyTemplateDb
     )
@@ -361,11 +361,11 @@ class ApiKeyTemplatesPermissionsDbSpec
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
+          resourceServerId <- resourceServerDb
+            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
             .map(_.value.id)
           permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+            .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
             .map(_.value.id)
 
           entitiesToInsert = List(
@@ -383,12 +383,12 @@ class ApiKeyTemplatesPermissionsDbSpec
       "NOT insert any entity into the DB" in {
         val result = for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
-          applicationId <- applicationDb
-            .insert(applicationEntityWrite_1.copy(tenantId = tenantId))
+          resourceServerId <- resourceServerDb
+            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
             .map(_.value.id)
             .transact(transactor)
           permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(applicationId = applicationId))
+            .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
             .map(_.value.id)
             .transact(transactor)
 

@@ -1,9 +1,9 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.{
-  PermissionAlreadyExistsForThisApplicationError,
-  ReferencedApplicationDoesNotExistError
+  PermissionAlreadyExistsForThisResourceServerError,
+  ReferencedResourceServerDoesNotExistError
 }
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
@@ -27,18 +27,22 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.createPermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (applicationId, request) = input
-          permissionService.createPermission(applicationId, request).map {
+          val (resourceServerId, request) = input
+          permissionService.createPermission(resourceServerId, request).map {
 
             case Right(newPermission) =>
               (StatusCode.Created, CreatePermissionResponse(newPermission)).asRight
 
-            case Left(_: ReferencedApplicationDoesNotExistError) =>
-              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
-
-            case Left(_: PermissionAlreadyExistsForThisApplicationError) =>
+            case Left(_: ReferencedResourceServerDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisApplication))
+                .notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedResourceServerNotFound))
+                .asLeft
+
+            case Left(_: PermissionAlreadyExistsForThisResourceServerError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminPermission.PermissionAlreadyExistsForThisResourceServer)
+                )
                 .asLeft
 
             case Left(_: PermissionInsertionError) =>
@@ -52,8 +56,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.deletePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (applicationId, permissionId) = input
-          permissionService.deletePermission(applicationId, permissionId).map {
+          val (resourceServerId, permissionId) = input
+          permissionService.deletePermission(resourceServerId, permissionId).map {
 
             case Right(deletedPermission) =>
               (StatusCode.Ok, DeletePermissionResponse(deletedPermission)).asRight
@@ -69,8 +73,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.getSinglePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (applicationId, permissionId) = input
-          permissionService.getBy(applicationId, permissionId).map {
+          val (resourceServerId, permissionId) = input
+          permissionService.getBy(resourceServerId, permissionId).map {
             case Some(permission) => (StatusCode.Ok, GetSinglePermissionResponse(permission)).asRight
             case None =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.PermissionNotFound)).asLeft
@@ -83,14 +87,16 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.searchPermissionsEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (applicationId, nameFragment) = input
-          permissionService.getAllBy(applicationId)(nameFragment).map {
+          val (resourceServerId, nameFragment) = input
+          permissionService.getAllBy(resourceServerId)(nameFragment).map {
 
             case Right(permissions) =>
               (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
 
-            case Left(_: ApplicationNotFoundError) =>
-              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedApplicationNotFound)).asLeft
+            case Left(_: ResourceServerNotFoundError) =>
+              ErrorInfo
+                .notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.ReferencedResourceServerNotFound))
+                .asLeft
           }
         }
     )

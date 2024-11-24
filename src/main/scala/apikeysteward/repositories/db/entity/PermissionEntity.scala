@@ -8,7 +8,7 @@ object PermissionEntity {
 
   case class Read(
       id: Long,
-      applicationId: Long,
+      resourceServerId: Long,
       publicPermissionId: String,
       name: String,
       description: Option[String],
@@ -17,16 +17,16 @@ object PermissionEntity {
   ) extends TimestampedEntity
 
   case class Write(
-      applicationId: Long,
+      resourceServerId: Long,
       publicPermissionId: String,
       name: String,
       description: Option[String]
   )
 
   object Write {
-    def from(applicationId: Long, permission: Permission): PermissionEntity.Write =
+    def from(resourceServerId: Long, permission: Permission): PermissionEntity.Write =
       PermissionEntity.Write(
-        applicationId = applicationId,
+        resourceServerId = resourceServerId,
         publicPermissionId = permission.publicPermissionId.toString,
         name = permission.name,
         description = permission.description

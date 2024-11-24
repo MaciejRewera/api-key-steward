@@ -67,24 +67,24 @@ private[routes] object ApiErrorMessages {
       s"Could not delete Tenant with tenantId = [$tenantId] because one of its dependencies cannot be deleted. See logs for more details."
   }
 
-  object AdminApplication {
-    val ApplicationNotFound = "No Application found for provided applicationId."
+  object AdminResourceServer {
+    val ResourceServerNotFound = "No ResourceServer found for provided resourceServerId."
     val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
 
-    def ApplicationIsNotDeactivated(applicationId: UUID): String = {
-      val method = AdminApplicationEndpoints.deactivateApplicationEndpoint.method.getOrElse("PUT")
-      val path = AdminApplicationEndpoints.deactivateApplicationEndpoint.showPathTemplate()
+    def ResourceServerIsNotDeactivated(resourceServerId: UUID): String = {
+      val method = AdminResourceServerEndpoints.deactivateResourceServerEndpoint.method.getOrElse("PUT")
+      val path = AdminResourceServerEndpoints.deactivateResourceServerEndpoint.showPathTemplate()
 
-      s"Could not delete Application with applicationId = [$applicationId] because it is active and only inactive Applications can be permanently deleted. Deactivate the Application first, using $method $path API."
+      s"Could not delete ResourceServer with resourceServerId = [$resourceServerId] because it is active and only inactive ResourceServers can be permanently deleted. Deactivate the ResourceServer first, using $method $path API."
     }
   }
 
   object AdminPermission {
-    val PermissionNotFound = "No Permission found for provided combination of applicationId and permissionId."
-    val ReferencedApplicationNotFound = "No Application found for provided applicationId."
+    val PermissionNotFound = "No Permission found for provided combination of resourceServerId and permissionId."
+    val ReferencedResourceServerNotFound = "No ResourceServer found for provided resourceServerId."
 
-    val PermissionAlreadyExistsForThisApplication =
-      "Permission with this name already exists for Application with provided ID"
+    val PermissionAlreadyExistsForThisResourceServer =
+      "Permission with this name already exists for ResourceServer with provided ID"
   }
 
   object AdminUser {

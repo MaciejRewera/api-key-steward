@@ -2,17 +2,21 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
-import apikeysteward.base.testdata.ApplicationsTestData.{application_1, publicApplicationIdStr_1, publicApplicationId_1}
+import apikeysteward.base.testdata.ResourceServersTestData.{
+  resourceServer_1,
+  publicResourceServerIdStr_1,
+  publicResourceServerId_1
+}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Application.ApplicationId
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApplicationDbError.ApplicationNotFoundError
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.model.{Application, Permission}
-import apikeysteward.repositories.{ApplicationRepository, PermissionRepository}
+import apikeysteward.model.{ResourceServer, Permission}
+import apikeysteward.repositories.{ResourceServerRepository, PermissionRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -35,12 +39,12 @@ class PermissionServiceSpec
 
   private val uuidGenerator = mock[UuidGenerator]
   private val permissionRepository = mock[PermissionRepository]
-  private val applicationRepository = mock[ApplicationRepository]
+  private val resourceServerRepository = mock[ResourceServerRepository]
 
-  private val permissionService = new PermissionService(uuidGenerator, permissionRepository, applicationRepository)
+  private val permissionService = new PermissionService(uuidGenerator, permissionRepository, resourceServerRepository)
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, permissionRepository, applicationRepository)
+    reset(uuidGenerator, permissionRepository, resourceServerRepository)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -55,7 +59,7 @@ class PermissionServiceSpec
 
       "call UuidGenerator and PermissionRepository" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(Right(permission_1))
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(Right(permission_1))
 
         for {
           _ <- permissionService.createPermission(publicTenantId_1, createPermissionRequest)
@@ -67,7 +71,7 @@ class PermissionServiceSpec
 
       "return the newly created Permission returned by PermissionRepository" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(Right(permission_1))
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(Right(permission_1))
 
         permissionService
           .createPermission(publicTenantId_1, createPermissionRequest)
@@ -102,7 +106,7 @@ class PermissionServiceSpec
       "call UuidGenerator and PermissionRepository again" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
         val insertedPermission = permission_1.copy(publicPermissionId = publicPermissionId_2)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
         )
@@ -119,7 +123,7 @@ class PermissionServiceSpec
       "return the second created Permission returned by PermissionRepository" in {
         uuidGenerator.generateUuid returns (IO.pure(publicPermissionId_1), IO.pure(publicPermissionId_2))
         val insertedPermission = permission_1.copy(publicPermissionId = publicPermissionId_2)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns (
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns (
           IO.pure(Left(permissionAlreadyExistsError)),
           IO.pure(Right(insertedPermission))
         )
@@ -139,7 +143,7 @@ class PermissionServiceSpec
           IO.pure(publicPermissionId_3),
           IO.pure(publicPermissionId_4)
         )
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(
           Left(permissionAlreadyExistsError)
         )
 
@@ -170,7 +174,7 @@ class PermissionServiceSpec
           IO.pure(publicPermissionId_3),
           IO.pure(publicPermissionId_4)
         )
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(
           Left(permissionAlreadyExistsError)
         )
 
@@ -180,19 +184,19 @@ class PermissionServiceSpec
       }
     }
 
-    val applicationId = 13L
+    val resourceServerId = 13L
     val testSqlException = new SQLException("Test SQL Exception")
 
     Seq(
-      PermissionAlreadyExistsForThisApplicationError(permissionName_1, applicationId),
-      ReferencedApplicationDoesNotExistError(publicTenantId_1),
+      PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerId),
+      ReferencedResourceServerDoesNotExistError(publicTenantId_1),
       PermissionInsertionErrorImpl(testSqlException)
     ).foreach { insertionError =>
       s"PermissionRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "NOT call UuidGenerator or PermissionRepository again" in {
           uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-          permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+          permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(
             Left(insertionError)
           )
 
@@ -206,7 +210,7 @@ class PermissionServiceSpec
 
         "return failed IO containing this error" in {
           uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-          permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.pure(
+          permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.pure(
             Left(insertionError)
           )
 
@@ -221,7 +225,7 @@ class PermissionServiceSpec
 
       "NOT call UuidGenerator or PermissionRepository again" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.raiseError(testException)
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.raiseError(testException)
 
         for {
           _ <- permissionService.createPermission(publicTenantId_1, createPermissionRequest).attempt
@@ -233,7 +237,7 @@ class PermissionServiceSpec
 
       "return failed IO containing this exception" in {
         uuidGenerator.generateUuid returns IO.pure(publicPermissionId_1)
-        permissionRepository.insert(any[ApplicationId], any[Permission]) returns IO.raiseError(testException)
+        permissionRepository.insert(any[ResourceServerId], any[Permission]) returns IO.raiseError(testException)
 
         permissionService
           .createPermission(publicTenantId_1, createPermissionRequest)
@@ -246,81 +250,81 @@ class PermissionServiceSpec
   "PermissionService on deletePermission" should {
 
     "call PermissionRepository" in {
-      permissionRepository.delete(any[ApplicationId], any[PermissionId]) returns IO.pure(Right(permission_1))
+      permissionRepository.delete(any[ResourceServerId], any[PermissionId]) returns IO.pure(Right(permission_1))
 
       for {
-        _ <- permissionService.deletePermission(publicApplicationId_1, publicPermissionId_1)
+        _ <- permissionService.deletePermission(publicResourceServerId_1, publicPermissionId_1)
 
-        _ = verify(permissionRepository).delete(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
+        _ = verify(permissionRepository).delete(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
       } yield ()
     }
 
     "return value returned by PermissionRepository" when {
 
       "PermissionRepository returns Right" in {
-        permissionRepository.delete(any[ApplicationId], any[PermissionId]) returns IO.pure(Right(permission_1))
+        permissionRepository.delete(any[ResourceServerId], any[PermissionId]) returns IO.pure(Right(permission_1))
 
         permissionService
-          .deletePermission(publicApplicationId_1, publicPermissionId_1)
+          .deletePermission(publicResourceServerId_1, publicPermissionId_1)
           .asserting(_ shouldBe Right(permission_1))
       }
 
       "PermissionRepository returns Left" in {
-        permissionRepository.delete(any[ApplicationId], any[PermissionId]) returns IO.pure(
-          Left(PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1))
+        permissionRepository.delete(any[ResourceServerId], any[PermissionId]) returns IO.pure(
+          Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1))
         )
 
         permissionService
-          .deletePermission(publicApplicationId_1, publicPermissionId_1)
-          .asserting(_ shouldBe Left(PermissionNotFoundError(publicApplicationId_1, publicPermissionId_1)))
+          .deletePermission(publicResourceServerId_1, publicPermissionId_1)
+          .asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)))
       }
     }
 
     "return failed IO" when {
       "PermissionRepository returns failed IO" in {
-        permissionRepository.delete(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
+        permissionRepository.delete(any[ResourceServerId], any[PermissionId]) returns IO.raiseError(testException)
 
         permissionService
-          .deletePermission(publicApplicationId_1, publicPermissionId_1)
+          .deletePermission(publicResourceServerId_1, publicPermissionId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
     }
   }
 
-  "PermissionService on getBy(:applicationId, :permissionId)" should {
+  "PermissionService on getBy(:resourceServerId, :permissionId)" should {
 
     "call PermissionRepository" in {
-      permissionRepository.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(Some(permission_1))
+      permissionRepository.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(Some(permission_1))
 
       for {
-        _ <- permissionService.getBy(publicApplicationId_1, publicPermissionId_1)
+        _ <- permissionService.getBy(publicResourceServerId_1, publicPermissionId_1)
 
-        _ = verify(permissionRepository).getBy(eqTo(publicApplicationId_1), eqTo(publicPermissionId_1))
+        _ = verify(permissionRepository).getBy(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
       } yield ()
     }
 
     "return the value returned by PermissionRepository" when {
 
       "PermissionRepository returns empty Option" in {
-        permissionRepository.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(None)
+        permissionRepository.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(None)
 
-        permissionService.getBy(publicApplicationId_1, publicPermissionId_1).asserting(_ shouldBe None)
+        permissionService.getBy(publicResourceServerId_1, publicPermissionId_1).asserting(_ shouldBe None)
       }
 
       "PermissionRepository returns non-empty Option" in {
-        permissionRepository.getBy(any[ApplicationId], any[PermissionId]) returns IO.pure(Some(permission_1))
+        permissionRepository.getBy(any[ResourceServerId], any[PermissionId]) returns IO.pure(Some(permission_1))
 
-        permissionService.getBy(publicApplicationId_1, publicPermissionId_1).asserting(_ shouldBe Some(permission_1))
+        permissionService.getBy(publicResourceServerId_1, publicPermissionId_1).asserting(_ shouldBe Some(permission_1))
       }
     }
 
     "return failed IO" when {
       "PermissionRepository returns failed IO" in {
-        permissionRepository.getBy(any[ApplicationId], any[PermissionId]) returns IO.raiseError(testException)
+        permissionRepository.getBy(any[ResourceServerId], any[PermissionId]) returns IO.raiseError(testException)
 
         permissionService
-          .getBy(publicApplicationId_1, publicPermissionId_1)
+          .getBy(publicResourceServerId_1, publicPermissionId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -380,70 +384,70 @@ class PermissionServiceSpec
 
     "everything works correctly" should {
 
-      "call ApplicationRepository and PermissionRepository" in {
-        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
-        permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+      "call ResourceServerRepository and PermissionRepository" in {
+        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+        permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty)
 
         for {
-          _ <- permissionService.getAllBy(publicApplicationId_1)(nameFragment)
+          _ <- permissionService.getAllBy(publicResourceServerId_1)(nameFragment)
 
-          _ = verify(applicationRepository).getBy(eqTo(publicApplicationId_1))
-          _ = verify(permissionRepository).getAllBy(eqTo(publicApplicationId_1))(eqTo(nameFragment))
+          _ = verify(resourceServerRepository).getBy(eqTo(publicResourceServerId_1))
+          _ = verify(permissionRepository).getAllBy(eqTo(publicResourceServerId_1))(eqTo(nameFragment))
         } yield ()
       }
 
       "return the value returned by PermissionRepository" when {
 
         "PermissionRepository returns empty List" in {
-          applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
-          permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(List.empty)
+          resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+          permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty)
 
           permissionService
-            .getAllBy(publicApplicationId_1)(nameFragment)
+            .getAllBy(publicResourceServerId_1)(nameFragment)
             .asserting(_ shouldBe Right(List.empty[Permission]))
         }
 
         "PermissionRepository returns non-empty List" in {
-          applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
-          permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.pure(
+          resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+          permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(
             List(permission_1, permission_2, permission_3)
           )
 
           permissionService
-            .getAllBy(publicApplicationId_1)(nameFragment)
+            .getAllBy(publicResourceServerId_1)(nameFragment)
             .asserting(_ shouldBe Right(List(permission_1, permission_2, permission_3)))
         }
       }
     }
 
-    "ApplicationRepository returns empty Option" should {
+    "ResourceServerRepository returns empty Option" should {
 
       "NOT call PermissionRepository" in {
-        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(none[Application])
+        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(none[ResourceServer])
 
         for {
-          _ <- permissionService.getAllBy(publicApplicationId_1)(nameFragment)
+          _ <- permissionService.getAllBy(publicResourceServerId_1)(nameFragment)
 
           _ = verifyZeroInteractions(permissionRepository)
         } yield ()
       }
 
-      "return Left containing ApplicationNotFoundError" in {
-        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(none[Application])
+      "return Left containing ResourceServerNotFoundError" in {
+        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(none[ResourceServer])
 
         permissionService
-          .getAllBy(publicApplicationId_1)(nameFragment)
-          .asserting(_ shouldBe Left(ApplicationNotFoundError(publicApplicationIdStr_1)))
+          .getAllBy(publicResourceServerId_1)(nameFragment)
+          .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
       }
     }
 
     "PermissionRepository returns failed IO" should {
       "return failed IO" in {
-        applicationRepository.getBy(any[ApplicationId]) returns IO.pure(Option(application_1))
-        permissionRepository.getAllBy(any[ApplicationId])(any[Option[String]]) returns IO.raiseError(testException)
+        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+        permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.raiseError(testException)
 
         permissionService
-          .getAllBy(publicApplicationId_1)(nameFragment)
+          .getAllBy(publicResourceServerId_1)(nameFragment)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
