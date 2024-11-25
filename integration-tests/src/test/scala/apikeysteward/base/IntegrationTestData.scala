@@ -1,6 +1,7 @@
 package apikeysteward.base
 
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 
 import java.util.concurrent.TimeUnit
@@ -20,7 +21,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_1,
       name = "Test API Key name no. 1",
       description = Some("Test key description no. 1"),
-      userId = userId_1,
+      userId = publicUserId_1,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
     )
     val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
@@ -29,7 +30,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_1,
       name = "Test API Key name no. 1",
       description = Some("Test key description no. 1"),
-      userId = userId_1,
+      userId = publicUserId_1,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
       createdAt = nowInstant,
       updatedAt = nowInstant
@@ -40,7 +41,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_2,
       name = "Test API Key name no. 2",
       description = Some("Test key description no. 2"),
-      userId = userId_2,
+      userId = publicUserId_2,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
     )
     val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
@@ -49,7 +50,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_2,
       name = "Test API Key name no. 2",
       description = Some("Test key description no. 2"),
-      userId = userId_2,
+      userId = publicUserId_2,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
       createdAt = nowInstant,
       updatedAt = nowInstant
@@ -60,7 +61,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_3,
       name = "Test API Key name no. 3",
       description = Some("Test key description no. 3"),
-      userId = userId_3,
+      userId = publicUserId_3,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
     )
     val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
@@ -69,7 +70,7 @@ trait IntegrationTestData {
       publicKeyId = publicKeyIdStr_3,
       name = "Test API Key name no. 3",
       description = Some("Test key description no. 3"),
-      userId = userId_3,
+      userId = publicUserId_3,
       expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
       createdAt = nowInstant,
       updatedAt = nowInstant

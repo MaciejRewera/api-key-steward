@@ -825,7 +825,7 @@ class ApiKeyManagementRoutesSpec
 
         "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
           managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
-            Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
+            Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
           )
 
           for {

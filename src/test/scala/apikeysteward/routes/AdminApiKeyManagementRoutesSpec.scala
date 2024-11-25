@@ -1,6 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
@@ -60,7 +61,7 @@ class AdminApiKeyManagementRoutesSpec
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys")
     val requestBody = CreateApiKeyAdminRequest(
-      userId = userId_1,
+      userId = publicUserId_1,
       name = name,
       description = description,
       ttl = ttlMinutes
@@ -305,7 +306,7 @@ class AdminApiKeyManagementRoutesSpec
             description = requestBody.description,
             ttl = requestBody.ttl
           )
-          _ = verify(managementService).createApiKey(eqTo(userId_1), eqTo(expectedRequest))
+          _ = verify(managementService).createApiKey(eqTo(publicUserId_1), eqTo(expectedRequest))
         } yield ()
       }
 
@@ -585,7 +586,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        val error = ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+        val error = ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1)
         managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
           Left(error)
         )
@@ -744,7 +745,7 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Not Found when ManagementService returns Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         managementService.deleteApiKey(any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
         )
 
         for {
