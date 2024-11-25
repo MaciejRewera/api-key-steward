@@ -5,9 +5,9 @@ import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, 
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
@@ -962,7 +962,7 @@ class AdminUserRoutesSpec
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))
+          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
         )
 
         for {
@@ -1039,7 +1039,7 @@ class AdminUserRoutesSpec
 
       "return Not Found when ApiKeyManagementService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(ApiKeyInsertionError.ReferencedUserDoesNotExistError(publicTenantId_1, publicUserId_1))
+          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
         )
 
         for {

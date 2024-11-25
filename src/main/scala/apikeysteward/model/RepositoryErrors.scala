@@ -16,10 +16,17 @@ object RepositoryErrors {
   sealed abstract class GenericError(override val message: String) extends CustomError
   object GenericError {
 
-    case class ApiKeyTemplateDoesNotExist(publicApiKeyTemplateId: ApiKeyTemplateId)
+    case class ApiKeyTemplateDoesNotExistError(publicApiKeyTemplateId: ApiKeyTemplateId)
         extends GenericError(
           message = s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist."
         )
+
+    case class UserDoesNotExistError(publicTenantId: TenantId, publicUserId: UserId)
+        extends GenericError(
+          message =
+            s"User with publicUserId = [$publicUserId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
+        )
+
   }
 
   sealed abstract class ApiKeyDbError(override val message: String) extends CustomError
@@ -41,26 +48,6 @@ object RepositoryErrors {
 
       case class ApiKeyInsertionErrorImpl(cause: SQLException)
           extends ApiKeyInsertionError(message = s"An error occurred when inserting ApiKey: $cause")
-
-      trait ReferencedUserDoesNotExistError extends ApiKeyInsertionError {
-        val errorMessage: String
-      }
-      object ReferencedUserDoesNotExistError {
-
-        private case class ReferencedUserDoesNotExistErrorImpl(override val errorMessage: String)
-            extends ApiKeyInsertionError(errorMessage)
-            with ReferencedUserDoesNotExistError
-
-        def apply(userId: Long): ReferencedUserDoesNotExistError =
-          ReferencedUserDoesNotExistErrorImpl(
-            errorMessage = s"User with ID = [$userId] does not exist."
-          )
-        def apply(publicTenantId: TenantId, publicUserId: UserId): ReferencedUserDoesNotExistError =
-          ReferencedUserDoesNotExistErrorImpl(
-            errorMessage =
-              s"User with publicUserId = [$publicUserId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
-          )
-      }
     }
 
     def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =

@@ -1647,7 +1647,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Not Found when ApiKeyManagementService returns successful IO with Left containing ApiKeyTemplateDoesNotExist" in authorizedFixture {
         permissionService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
-          Left(GenericError.ApiKeyTemplateDoesNotExist(publicTemplateId_1))
+          Left(GenericError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
         )
 
         for {

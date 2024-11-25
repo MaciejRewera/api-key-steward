@@ -1,9 +1,10 @@
 package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError
+import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesUsersDbError, GenericError}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
@@ -192,7 +193,7 @@ class AdminUserRoutes(
             case Right(allApiKeyTemplates) =>
               (StatusCode.Ok, GetMultipleApiKeyTemplatesResponse(allApiKeyTemplates)).asRight
 
-            case Left(_: ReferencedUserDoesNotExistError) =>
+            case Left(_: UserDoesNotExistError) =>
               ErrorInfo
                 .badRequestErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
@@ -213,7 +214,7 @@ class AdminUserRoutes(
 
               case Right(allApiKeyData) => (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
 
-              case Left(_: ApiKeyInsertionError.ReferencedUserDoesNotExistError) =>
+              case Left(_: UserDoesNotExistError) =>
                 ErrorInfo
                   .notFoundErrorInfo(
                     Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)

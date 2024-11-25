@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedUserDoesNotExistError
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyManagementEndpoints}
@@ -57,7 +57,7 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
                   case Right(allApiKeyData) =>
                     (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
 
-                  case Left(_: ReferencedUserDoesNotExistError) =>
+                  case Left(_: UserDoesNotExistError) =>
                     ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.UserNotFound)).asLeft
 
                 }

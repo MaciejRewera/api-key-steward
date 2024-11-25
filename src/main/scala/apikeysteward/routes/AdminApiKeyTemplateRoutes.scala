@@ -205,7 +205,7 @@ class AdminApiKeyTemplateRoutes(
             case Right(permissions) =>
               (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
 
-            case Left(_: GenericError.ApiKeyTemplateDoesNotExist) =>
+            case Left(_: GenericError.ApiKeyTemplateDoesNotExistError) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.General.ApiKeyTemplateNotFound)).asLeft
           }
         }

@@ -2,8 +2,8 @@ package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedUserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model._
@@ -122,13 +122,11 @@ class ApiKeyManagementService(
       }
     } yield resE
 
-  def getAllForUser(tenantId: TenantId, userId: UserId): IO[Either[ReferencedUserDoesNotExistError, List[ApiKeyData]]] =
+  def getAllForUser(tenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
     (for {
-      _ <- EitherT(
-        userRepository.getBy(tenantId, userId).map(_.toRight(ReferencedUserDoesNotExistError(tenantId, userId)))
-      )
+      _ <- EitherT(userRepository.getBy(tenantId, userId).map(_.toRight(UserDoesNotExistError(tenantId, userId))))
 
-      result <- EitherT.liftF[IO, ReferencedUserDoesNotExistError, List[ApiKeyData]](
+      result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyData]](
         apiKeyRepository.getAllForUser(userId)
       )
     } yield result).value

@@ -2,12 +2,11 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedUserDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyManagementEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikey.{CreateApiKeyAdminResponse, UpdateApiKeyAdminResponse}
-import apikeysteward.routes.model.apikey.{DeleteApiKeyResponse, GetMultipleApiKeysResponse, GetSingleApiKeyResponse}
+import apikeysteward.routes.model.apikey.{DeleteApiKeyResponse, GetSingleApiKeyResponse}
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import cats.effect.IO
@@ -66,7 +65,9 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => publicKeyId =>
             managementService.getApiKey(publicKeyId).map {
+
               case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
+
               case None =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
             }
@@ -80,11 +81,13 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => publicKeyId =>
             managementService.deleteApiKey(publicKeyId).map {
+
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
               case Left(_: ApiKeyDataNotFoundError) =>
                 ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKey.ApiKeyNotFound)).asLeft
+
               case Left(_: ApiKeyDbError) =>
                 ErrorInfo.internalServerErrorInfo().asLeft
             }

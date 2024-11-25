@@ -76,13 +76,15 @@ class PermissionService(
 
   def getAllForTemplate(
       templateId: ApiKeyTemplateId
-  ): IO[Either[GenericError.ApiKeyTemplateDoesNotExist, List[Permission]]] =
+  ): IO[Either[GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]]] =
     (for {
       _ <- EitherT(
-        apiKeyTemplateRepository.getBy(templateId).map(_.toRight(GenericError.ApiKeyTemplateDoesNotExist(templateId)))
+        apiKeyTemplateRepository
+          .getBy(templateId)
+          .map(_.toRight(GenericError.ApiKeyTemplateDoesNotExistError(templateId)))
       )
 
-      result <- EitherT.liftF[IO, GenericError.ApiKeyTemplateDoesNotExist, List[Permission]](
+      result <- EitherT.liftF[IO, GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]](
         permissionRepository.getAllFor(templateId)
       )
     } yield result).value

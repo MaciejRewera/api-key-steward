@@ -4,11 +4,8 @@ import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{
-  ApiKeyDataNotFoundError,
-  ApiKeyInsertionError,
-  ApiKeyNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
@@ -23,10 +20,8 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
 import io.circe.syntax.EncoderOps
-import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Header, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
@@ -520,7 +515,7 @@ class ApiKeyManagementRoutesSpec
 
         "return Bad Request when ManagementService returns ReferencedUserDoesNotExistError" in authorizedFixture {
           managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            Left(ApiKeyInsertionError.ReferencedUserDoesNotExistError(publicTenantId_1, publicUserId_1))
+            Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
           )
 
           for {
