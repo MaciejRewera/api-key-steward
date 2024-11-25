@@ -1,18 +1,13 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
-  apiKeyTemplate_1,
-  apiKeyTemplate_2,
-  apiKeyTemplate_3,
-  publicTemplateId_1,
-  publicTemplateId_2,
-  publicTemplateId_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
@@ -25,7 +20,8 @@ import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.apikeytemplate.GetMultipleApiKeyTemplatesResponse
 import apikeysteward.routes.model.admin.apikeytemplatesusers._
 import apikeysteward.routes.model.admin.user._
-import apikeysteward.services.{ApiKeyTemplateAssociationsService, ApiKeyTemplateService, UserService}
+import apikeysteward.routes.model.apikey.GetMultipleApiKeysResponse
+import apikeysteward.services._
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
@@ -56,13 +52,15 @@ class AdminUserRoutesSpec
   private val userService = mock[UserService]
   private val apiKeyTemplateService = mock[ApiKeyTemplateService]
   private val apiKeyTemplateAssociationsService = mock[ApiKeyTemplateAssociationsService]
+  private val apiKeyManagementService = mock[ApiKeyManagementService]
 
   private val adminUserRoutes: HttpApp[IO] =
     new AdminUserRoutes(
       jwtAuthorizer,
       userService,
       apiKeyTemplateService,
-      apiKeyTemplateAssociationsService
+      apiKeyTemplateAssociationsService,
+      apiKeyManagementService
     ).allRoutes.orNotFound
 
   private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
@@ -70,7 +68,7 @@ class AdminUserRoutesSpec
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(jwtAuthorizer, userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
+    reset(jwtAuthorizer, userService, apiKeyTemplateService, apiKeyTemplateAssociationsService, apiKeyManagementService)
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] =
@@ -80,14 +78,14 @@ class AdminUserRoutesSpec
     runCommonJwtTests(
       adminUserRoutes,
       jwtAuthorizer,
-      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
+      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService, apiKeyManagementService)
     )(request, requiredPermissions)
 
   private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
     runCommonTenantIdHeaderTests(
       adminUserRoutes,
       jwtAuthorizer,
-      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService)
+      List(userService, apiKeyTemplateService, apiKeyTemplateAssociationsService, apiKeyManagementService)
     )(request)
 
   "AdminUserRoutes on POST /admin/users" when {
@@ -603,7 +601,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ApiKeyTemplatesUsersAlreadyExists)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ApiKeyTemplatesUsersAlreadyExists)
               )
             )
         } yield ()
@@ -625,7 +623,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
@@ -645,7 +643,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -837,7 +835,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
               )
             )
         } yield ()
@@ -857,7 +855,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -964,7 +962,7 @@ class AdminUserRoutesSpec
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))
+          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
         )
 
         for {
@@ -974,7 +972,7 @@ class AdminUserRoutesSpec
             .as[ErrorInfo]
             .asserting(
               _ shouldBe ErrorInfo.badRequestErrorInfo(
-                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
               )
             )
         } yield ()
@@ -991,4 +989,82 @@ class AdminUserRoutesSpec
       }
     }
   }
+
+  "AdminUserRoutes on GET /admin/users/{userId}/api-keys" when {
+
+    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/api-keys")
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+
+    runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken" should {
+
+      "call ApiKeyManagementService" in authorizedFixture {
+        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+
+        for {
+          _ <- adminUserRoutes.run(request)
+          _ = verify(apiKeyManagementService).getAllForUser(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+        } yield ()
+      }
+
+      "return successful value returned by ManagementService" when {
+
+        "ApiKeyManagementService returns empty List" in authorizedFixture {
+          apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+
+          for {
+            response <- adminUserRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response.as[GetMultipleApiKeysResponse].asserting(_ shouldBe GetMultipleApiKeysResponse(List.empty))
+          } yield ()
+        }
+
+        "ApiKeyManagementService returns a List with several elements" in authorizedFixture {
+          apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+            Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
+          )
+
+          for {
+            response <- adminUserRoutes.run(request)
+            _ = response.status shouldBe Status.Ok
+            _ <- response
+              .as[GetMultipleApiKeysResponse]
+              .asserting(_ shouldBe GetMultipleApiKeysResponse(List(apiKeyData_1, apiKeyData_2, apiKeyData_3)))
+          } yield ()
+        }
+      }
+
+      "return Not Found when ApiKeyManagementService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
+        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyManagementService returns an exception" in authorizedFixture {
+        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
 }

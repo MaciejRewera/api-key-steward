@@ -86,12 +86,6 @@ private[routes] object AdminApiKeyManagementEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getAllApiKeysForUserEndpoint
-      : Endpoint[AccessToken, String, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
-    ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase
-      .description("Get all API keys data for given user ID.")
-      .in("admin" / "users" / userIdPathParameter / "api-keys")
-
   val getSingleApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given key ID.")

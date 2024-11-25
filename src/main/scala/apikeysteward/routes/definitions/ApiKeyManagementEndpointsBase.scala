@@ -2,10 +2,7 @@ package apikeysteward.routes.definitions
 
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
-  errorOutVariantBadRequest,
-  errorOutVariantNotFound
-}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.model.apikey._
 import sttp.model.StatusCode
 import sttp.tapir._

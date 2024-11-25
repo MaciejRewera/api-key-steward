@@ -12,6 +12,9 @@ private[routes] object ApiErrorMessages {
     val Unauthorized = "Credentials are invalid."
     val BadRequest = "Invalid input value provided."
     val NotFound = "The requested object does not exist."
+
+    val UserNotFound = "No User found for provided combination of tenantId and userId."
+    val ApiKeyTemplateNotFound = "No Template found for provided templateId."
   }
 
   object AdminApiKey {
@@ -35,14 +38,14 @@ private[routes] object ApiErrorMessages {
 
   object AdminApiKeyTemplatesUsers {
 
-    object MultipleUsers {
+    object SingleTemplate {
       val ApiKeyTemplatesUsersAlreadyExists =
         "At least one of provided userIds is already associated with given Template."
       val ReferencedApiKeyTemplateNotFound = "No Template found for provided templateId."
       val ReferencedUserNotFound = "At least one User cannot be found for provided combination of tenantId and userIds."
     }
 
-    object MultipleTemplates {
+    object SingleUser {
       val ApiKeyTemplatesUsersAlreadyExists =
         "At least one of provided templateIds is already associated with given User."
       val ReferencedApiKeyTemplateNotFound = "At least one Template cannot be found for provided templateIds."

@@ -1,8 +1,13 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
@@ -15,16 +20,15 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
 import io.circe.syntax.EncoderOps
-import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import org.typelevel.ci.{CIString, CIStringSyntax}
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -46,6 +50,9 @@ class ApiKeyManagementRoutesSpec
 
   private val jwtOpsTestError = ErrorInfo.unauthorizedErrorInfo(Some("JwtOps encountered an error."))
 
+  private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
+  private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
+
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(jwtOps, jwtAuthorizer, managementService)
@@ -56,97 +63,11 @@ class ApiKeyManagementRoutesSpec
     authorizedFixture(jwtAuthorizer)(test)
   }
 
-  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit = {
+  private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit =
+    runCommonJwtTests(managementRoutes, jwtAuthorizer, List(managementService))(request, requiredPermissions)
 
-    "the JWT is NOT provided" should {
-
-      val requestWithoutJwt = request.withHeaders(Headers.empty)
-
-      "return Unauthorized" in {
-        for {
-          response <- managementRoutes.run(requestWithoutJwt)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(
-              _ shouldBe ErrorInfo.unauthorizedErrorInfo(Some("Invalid value for: header Authorization (missing)"))
-            )
-        } yield ()
-      }
-
-      "NOT call either JwtOps, JwtAuthorizer or ManagementService" in {
-        for {
-          _ <- managementRoutes.run(requestWithoutJwt)
-          _ = verifyZeroInteractions(jwtOps, jwtAuthorizer, managementService)
-        } yield ()
-      }
-    }
-
-    "the JWT is provided should call JwtAuthorizer providing access token" in {
-      jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-        ErrorInfo.unauthorizedErrorInfo().asLeft
-      )
-
-      for {
-        _ <- managementRoutes.run(request)
-        _ = verify(jwtAuthorizer).authorisedWithPermissions(eqTo(requiredPermissions))(eqTo(tokenString))
-      } yield ()
-    }
-
-    "JwtAuthorizer returns Left containing error" should {
-
-      val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
-
-      "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          response <- managementRoutes.run(request)
-          _ = response.status shouldBe Status.Unauthorized
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe jwtValidatorError)
-        } yield ()
-      }
-
-      "NOT call either JwtOps or ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
-
-        for {
-          _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(jwtOps, managementService)
-        } yield ()
-      }
-    }
-
-    "JwtAuthorizer returns failed IO" should {
-
-      "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          response <- managementRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-
-      "NOT call either JwtOps or ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
-
-        for {
-          _ <- managementRoutes.run(request)
-          _ = verifyZeroInteractions(jwtOps, managementService)
-        } yield ()
-      }
-    }
-  }
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    runCommonTenantIdHeaderTests(managementRoutes, jwtAuthorizer, List(managementService))(request)
 
   "ManagementRoutes on POST /api-keys" when {
 
@@ -157,10 +78,12 @@ class ApiKeyManagementRoutesSpec
       ttl = ttlMinutes
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
       .withEntity(requestBody.asJson)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteApiKey))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken" when {
 
@@ -470,9 +393,11 @@ class ApiKeyManagementRoutesSpec
   "ManagementRoutes on GET /api-keys" when {
 
     val uri = Uri.unsafeFromString("/api-keys")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken" when {
 
@@ -550,19 +475,19 @@ class ApiKeyManagementRoutesSpec
       "JwtOps returns Right containing user ID" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+          managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
-            _ = verify(managementService).getAllApiKeysFor(eqTo(expectedUserId))
+            _ = verify(managementService).getAllForUser(eqTo(publicTenantId_1), eqTo(expectedUserId))
           } yield ()
         }
 
         "return successful value returned by ManagementService" when {
 
           "ManagementService returns empty List" in authorizedFixture {
-            managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
+            managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
 
             for {
               response <- managementRoutes.run(request)
@@ -574,8 +499,8 @@ class ApiKeyManagementRoutesSpec
           }
 
           "ManagementService returns a List with several elements" in authorizedFixture {
-            managementService.getAllApiKeysFor(any[String]) returns IO.pure(
-              List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
+            managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+              Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
             )
 
             for {
@@ -588,8 +513,22 @@ class ApiKeyManagementRoutesSpec
           }
         }
 
+        "return Bad Request when ManagementService returns ReferencedUserDoesNotExistError" in authorizedFixture {
+          managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
+            Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
+          )
+
+          for {
+            response <- managementRoutes.run(request)
+            _ = response.status shouldBe Status.BadRequest
+            _ <- response
+              .as[ErrorInfo]
+              .asserting(_ shouldBe ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.UserNotFound)))
+          } yield ()
+        }
+
         "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
+          managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
 
           for {
             response <- managementRoutes.run(request)
@@ -604,15 +543,17 @@ class ApiKeyManagementRoutesSpec
   "ManagementRoutes on GET /api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with publicKeyId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
       "return Bad Request" in {
         for {
@@ -757,15 +698,17 @@ class ApiKeyManagementRoutesSpec
   "ManagementRoutes on DELETE /api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteApiKey))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with publicKeyId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
 
       "return Bad Request" in {
         for {
@@ -882,7 +825,7 @@ class ApiKeyManagementRoutesSpec
 
         "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
           managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
-            Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
+            Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
           )
 
           for {

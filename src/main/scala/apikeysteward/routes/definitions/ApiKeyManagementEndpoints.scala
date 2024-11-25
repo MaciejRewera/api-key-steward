@@ -1,9 +1,14 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.errorOutVariantBadRequest
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
+  errorOutVariantBadRequest,
+  errorOutVariantNotFound
+}
+import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
@@ -16,9 +21,10 @@ import java.util.UUID
 private[routes] object ApiKeyManagementEndpoints {
 
   val createApiKeyEndpoint
-      : Endpoint[AccessToken, CreateApiKeyRequest, ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
+      : Endpoint[AccessToken, (TenantId, CreateApiKeyRequest), ErrorInfo, (StatusCode, CreateApiKeyResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("Create new API key.")
+      .in(tenantIdHeaderInput)
       .in("api-keys")
       .in(
         jsonBody[CreateApiKeyRequest]
@@ -45,19 +51,25 @@ private[routes] object ApiKeyManagementEndpoints {
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getAllApiKeysEndpoint: Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
+  val getAllApiKeysEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
     ApiKeyManagementEndpointsBase.getAllApiKeysForUserEndpointBase
       .description("Get all API keys data.")
+      .in(tenantIdHeaderInput)
       .in("api-keys")
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
+  val getSingleApiKeyEndpoint
+      : Endpoint[AccessToken, (TenantId, UUID), ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given key ID.")
+      .in(tenantIdHeaderInput)
       .in("api-keys" / keyIdPathParameter)
 
-  val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
+  val deleteApiKeyEndpoint
+      : Endpoint[AccessToken, (TenantId, UUID), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase
       .description("Delete API key with given key ID.")
+      .in(tenantIdHeaderInput)
       .in("api-keys" / keyIdPathParameter)
 
 }

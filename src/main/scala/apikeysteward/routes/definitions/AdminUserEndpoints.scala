@@ -8,20 +8,14 @@ import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
   errorOutVariantBadRequest,
   errorOutVariantNotFound
 }
-import apikeysteward.routes.definitions.EndpointsBase.{
-  ApiKeyTemplateExample,
-  UserExample_1,
-  UserExample_2,
-  UserExample_3,
-  tenantIdHeaderInput
-}
+import apikeysteward.routes.definitions.EndpointsBase._
 import apikeysteward.routes.model.admin.apikeytemplate.GetMultipleApiKeyTemplatesResponse
 import apikeysteward.routes.model.admin.apikeytemplatesusers.{
   AssociateApiKeyTemplatesWithUserRequest,
-  AssociateUsersWithApiKeyTemplateRequest,
   DeleteApiKeyTemplatesFromUserRequest
 }
 import apikeysteward.routes.model.admin.user._
+import apikeysteward.routes.model.apikey.GetMultipleApiKeysResponse
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto._
@@ -83,7 +77,8 @@ private[routes] object AdminUserEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val searchUsersEndpoint: Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetMultipleUsersResponse), Any] =
+  val getAllUsersForTenantEndpoint
+      : Endpoint[AccessToken, TenantId, ErrorInfo, (StatusCode, GetMultipleUsersResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get all Users for provided tenantId.")
       .in(tenantIdHeaderInput)
@@ -161,5 +156,22 @@ private[routes] object AdminUserEndpoints {
           )
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val getAllApiKeysForUserEndpoint
+      : Endpoint[AccessToken, (TenantId, UserId), ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =
+    EndpointsBase.authenticatedEndpointBase.get
+      .description("Get all API keys data for given user ID.")
+      .in(tenantIdHeaderInput)
+      .in("admin" / "users" / userIdPathParameter / "api-keys")
+      .out(statusCode.description(StatusCode.Ok, "API keys found"))
+      .out(
+        jsonBody[GetMultipleApiKeysResponse]
+          .example(
+            GetMultipleApiKeysResponse(apiKeyData =
+              List(EndpointsBase.ApiKeyDataExample, EndpointsBase.ApiKeyDataExample)
+            )
+          )
+      )
+      .errorOutVariantPrepend(errorOutVariantNotFound)
 
 }

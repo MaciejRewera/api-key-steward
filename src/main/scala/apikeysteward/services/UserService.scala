@@ -2,6 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError
+import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
@@ -60,13 +61,13 @@ class UserService(
 
   def getAllForTemplate(
       templateId: ApiKeyTemplateId
-  ): IO[Either[ReferencedApiKeyTemplateDoesNotExistError, List[User]]] =
+  ): IO[Either[ApiKeyTemplateDoesNotExistError, List[User]]] =
     (for {
       _ <- EitherT(
-        apiKeyTemplateRepository.getBy(templateId).map(_.toRight(ReferencedApiKeyTemplateDoesNotExistError(templateId)))
+        apiKeyTemplateRepository.getBy(templateId).map(_.toRight(ApiKeyTemplateDoesNotExistError(templateId)))
       )
 
-      result <- EitherT.liftF[IO, ReferencedApiKeyTemplateDoesNotExistError, List[User]](
+      result <- EitherT.liftF[IO, ApiKeyTemplateDoesNotExistError, List[User]](
         userRepository.getAllForTemplate(templateId)
       )
     } yield result).value

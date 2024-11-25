@@ -4,10 +4,12 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
+import apikeysteward.model.RepositoryErrors.GenericError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.repositories.{ResourceServerRepository, PermissionRepository}
+import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
@@ -18,7 +20,8 @@ import cats.implicits.catsSyntaxEitherId
 class PermissionService(
     uuidGenerator: UuidGenerator,
     permissionRepository: PermissionRepository,
-    resourceServerRepository: ResourceServerRepository
+    resourceServerRepository: ResourceServerRepository,
+    apiKeyTemplateRepository: ApiKeyTemplateRepository
 ) extends Logging {
 
   def createPermission(
@@ -71,8 +74,20 @@ class PermissionService(
   def getBy(resourceServerId: ResourceServerId, permissionId: PermissionId): IO[Option[Permission]] =
     permissionRepository.getBy(resourceServerId, permissionId)
 
-  def getAllFor(templateId: ApiKeyTemplateId): IO[List[Permission]] =
-    permissionRepository.getAllFor(templateId)
+  def getAllForTemplate(
+      templateId: ApiKeyTemplateId
+  ): IO[Either[GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]]] =
+    (for {
+      _ <- EitherT(
+        apiKeyTemplateRepository
+          .getBy(templateId)
+          .map(_.toRight(GenericError.ApiKeyTemplateDoesNotExistError(templateId)))
+      )
+
+      result <- EitherT.liftF[IO, GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]](
+        permissionRepository.getAllFor(templateId)
+      )
+    } yield result).value
 
   def getAllBy(
       resourceServerId: ResourceServerId

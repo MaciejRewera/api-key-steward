@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
+import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesPermissionsDbError, GenericError}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
   ApiKeyTemplatesPermissionsInsertionError,
@@ -14,6 +14,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTe
   ReferencedApiKeyTemplateDoesNotExistError,
   ReferencedUserDoesNotExistError
 }
+import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}
@@ -200,8 +201,13 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => apiKeyTemplateId =>
-          permissionService.getAllFor(apiKeyTemplateId).map { permissions =>
-            (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+          permissionService.getAllForTemplate(apiKeyTemplateId).map {
+
+            case Right(permissions) =>
+              (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
+
+            case Left(_: ApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.General.ApiKeyTemplateNotFound)).asLeft
           }
         }
     )
@@ -222,21 +228,21 @@ class AdminApiKeyTemplateRoutes(
               case Left(_: ApiKeyTemplatesUsersAlreadyExistsError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ApiKeyTemplatesUsersAlreadyExists)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ApiKeyTemplatesUsersAlreadyExists)
                   )
                   .asLeft
 
               case Left(_: ReferencedUserDoesNotExistError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedUserNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedUserNotFound)
                   )
                   .asLeft
 
               case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
                 ErrorInfo
                   .notFoundErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
                   )
                   .asLeft
 
@@ -255,10 +261,10 @@ class AdminApiKeyTemplateRoutes(
 
             case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
 
-            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
-                .badRequestErrorInfo(
-                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleUsers.ReferencedApiKeyTemplateNotFound)
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)
                 )
                 .asLeft
           }

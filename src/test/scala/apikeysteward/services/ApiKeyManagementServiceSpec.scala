@@ -2,12 +2,17 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
-import apikeysteward.repositories.ApiKeyRepository
+import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
@@ -20,7 +25,7 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.Mockito.verifyNoInteractions
-import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyNoMoreInteractions}
+import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyNoMoreInteractions, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
@@ -40,9 +45,16 @@ class ApiKeyManagementServiceSpec
   private val createApiKeyRequestValidator = mock[CreateApiKeyRequestValidator]
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
+  private val userRepository = mock[UserRepository]
 
   private val managementService =
-    new ApiKeyManagementService(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository)
+    new ApiKeyManagementService(
+      createApiKeyRequestValidator,
+      apiKeyGenerator,
+      uuidGenerator,
+      apiKeyRepository,
+      userRepository
+    )
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name,
@@ -51,7 +63,7 @@ class ApiKeyManagementServiceSpec
   )
 
   override def beforeEach(): Unit = {
-    reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository)
+    reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository, userRepository)
 
     createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
@@ -67,7 +79,7 @@ class ApiKeyManagementServiceSpec
 
       "call CreateApiKeyRequestValidator, ApiKeyGenerator, UuidGenerator and ApiKeyRepository providing correct ApiKeyData" in {
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest)
 
           _ = verify(createApiKeyRequestValidator).validateCreateRequest(eqTo(createApiKeyRequest))
           _ = verify(apiKeyGenerator).generateApiKey
@@ -83,7 +95,7 @@ class ApiKeyManagementServiceSpec
 
       "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
         managementService
-          .createApiKey(userId_1, createApiKeyRequest)
+          .createApiKey(publicUserId_1, createApiKeyRequest)
           .asserting(_ shouldBe Right(apiKey_1 -> apiKeyData_1))
       }
     }
@@ -96,7 +108,7 @@ class ApiKeyManagementServiceSpec
         )
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest)
 
           _ = verifyNoInteractions(apiKeyGenerator, uuidGenerator, apiKeyRepository)
         } yield ()
@@ -109,7 +121,7 @@ class ApiKeyManagementServiceSpec
         )
 
         managementService
-          .createApiKey(userId_1, createApiKeyRequest)
+          .createApiKey(publicUserId_1, createApiKeyRequest)
           .asserting(_ shouldBe Left(ValidationError(Seq(error))))
       }
     }
@@ -120,7 +132,7 @@ class ApiKeyManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest).attempt
           _ = verify(apiKeyGenerator).generateApiKey
           _ = verifyNoMoreInteractions(apiKeyGenerator)
         } yield ()
@@ -130,7 +142,7 @@ class ApiKeyManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest).attempt
           _ = verifyNoInteractions(uuidGenerator, apiKeyRepository)
         } yield ()
       }
@@ -139,7 +151,7 @@ class ApiKeyManagementServiceSpec
         apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
 
         managementService
-          .createApiKey(userId_1, createApiKeyRequest)
+          .createApiKey(publicUserId_1, createApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -151,7 +163,7 @@ class ApiKeyManagementServiceSpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest).attempt
           _ = verify(uuidGenerator).generateUuid
           _ = verifyNoMoreInteractions(uuidGenerator)
         } yield ()
@@ -161,7 +173,7 @@ class ApiKeyManagementServiceSpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         for {
-          _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
+          _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest).attempt
           _ = verifyNoInteractions(apiKeyRepository)
         } yield ()
       }
@@ -170,7 +182,7 @@ class ApiKeyManagementServiceSpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         managementService
-          .createApiKey(userId_1, createApiKeyRequest)
+          .createApiKey(publicUserId_1, createApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -188,7 +200,7 @@ class ApiKeyManagementServiceSpec
           )
 
           for {
-            _ <- managementService.createApiKey(userId_1, createApiKeyRequest)
+            _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest)
             _ = verify(apiKeyGenerator, times(2)).generateApiKey
             _ = verify(uuidGenerator, times(2)).generateUuid
 
@@ -215,7 +227,7 @@ class ApiKeyManagementServiceSpec
           )
 
           managementService
-            .createApiKey(userId_1, createApiKeyRequest)
+            .createApiKey(publicUserId_1, createApiKeyRequest)
             .asserting(_ shouldBe Right(apiKey_2 -> apiKeyData_1))
         }
       }
@@ -234,7 +246,7 @@ class ApiKeyManagementServiceSpec
           apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
 
           for {
-            _ <- managementService.createApiKey(userId_1, createApiKeyRequest).attempt
+            _ <- managementService.createApiKey(publicUserId_1, createApiKeyRequest).attempt
             _ = verify(apiKeyGenerator, times(4)).generateApiKey
             _ = verify(uuidGenerator, times(4)).generateUuid
 
@@ -271,7 +283,7 @@ class ApiKeyManagementServiceSpec
           )
           apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
 
-          managementService.createApiKey(userId_1, createApiKeyRequest).asserting { result =>
+          managementService.createApiKey(publicUserId_1, createApiKeyRequest).asserting { result =>
             result shouldBe Left(InsertionError(dbInsertionError))
           }
         }
@@ -284,7 +296,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.insert(any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
 
         managementService
-          .createApiKey(userId_1, createApiKeyRequest)
+          .createApiKey(publicUserId_1, createApiKeyRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -299,7 +311,7 @@ class ApiKeyManagementServiceSpec
       publicKeyId = publicKeyId_1,
       name = nameUpdated,
       description = descriptionUpdated,
-      userId = userId_1,
+      userId = publicUserId_1,
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42)
     )
 
@@ -326,13 +338,13 @@ class ApiKeyManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.update(any[ApiKeyDataUpdate]) returns IO.pure(
-          Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
+          Left(ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1))
         )
 
         managementService
           .updateApiKey(publicKeyId_1, updateApiKeyRequest)
           .asserting(
-            _ shouldBe Left(ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1))
+            _ shouldBe Left(ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1))
           )
       }
     }
@@ -355,8 +367,8 @@ class ApiKeyManagementServiceSpec
       apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
       for {
-        _ <- managementService.deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
-        _ = verify(apiKeyRepository).delete(eqTo(userId_1), eqTo(publicKeyId_1))
+        _ <- managementService.deleteApiKeyBelongingToUserWith(publicUserId_1, publicKeyId_1)
+        _ = verify(apiKeyRepository).delete(eqTo(publicUserId_1), eqTo(publicKeyId_1))
       } yield ()
     }
 
@@ -366,18 +378,18 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
 
         managementService
-          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(publicUserId_1, publicKeyId_1)
           .asserting(_ shouldBe Right(apiKeyData_1))
       }
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.pure(
-          Left(ApiKeyDbError.apiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
         )
 
         managementService
-          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+          .deleteApiKeyBelongingToUserWith(publicUserId_1, publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)))
       }
     }
 
@@ -386,7 +398,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.delete(any[String], any[UUID]) returns IO.raiseError(testException)
 
         managementService
-          .deleteApiKeyBelongingToUserWith(userId_1, publicKeyId_1)
+          .deleteApiKeyBelongingToUserWith(publicUserId_1, publicKeyId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -435,40 +447,72 @@ class ApiKeyManagementServiceSpec
     }
   }
 
-  "ManagementService on getAllApiKeysFor" should {
+  "ManagementService on getAllForUser" when {
 
-    "call ApiKeyRepository" in {
-      apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1))
+    "everything works correctly" should {
 
-      for {
-        _ <- managementService.getAllApiKeysFor(userId_1)
-        _ = verify(apiKeyRepository).getAll(eqTo(userId_1))
-      } yield ()
-    }
+      "call UserRepository and ApiKeyRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyRepository.getAllForUser(any[UserId]) returns IO.pure(List(apiKeyData_1))
 
-    "return the value returned by ApiKeyRepository" when {
+        for {
+          _ <- managementService.getAllForUser(publicTenantId_1, publicUserId_1)
 
-      "ApiKeyRepository returns empty List" in {
-        apiKeyRepository.getAll(any[String]) returns IO.pure(List.empty)
-
-        managementService.getAllApiKeysFor(userId_1).asserting(_ shouldBe List.empty[ApiKeyData])
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
+          _ = verify(apiKeyRepository).getAllForUser(eqTo(publicUserId_1))
+        } yield ()
       }
 
-      "ApiKeyRepository returns List with elements" in {
-        apiKeyRepository.getAll(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+      "return the value returned by ApiKeyRepository" when {
 
-        managementService
-          .getAllApiKeysFor(userId_1)
-          .asserting(_ shouldBe List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+        "ApiKeyRepository returns empty List" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyRepository.getAllForUser(any[UserId]) returns IO.pure(List.empty)
+
+          managementService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List.empty[ApiKeyData]))
+        }
+
+        "ApiKeyRepository returns List with elements" in {
+          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+          apiKeyRepository.getAllForUser(any[String]) returns IO.pure(List(apiKeyData_1, apiKeyData_1, apiKeyData_1))
+
+          managementService
+            .getAllForUser(publicTenantId_1, publicUserId_1)
+            .asserting(_ shouldBe Right(List(apiKeyData_1, apiKeyData_1, apiKeyData_1)))
+        }
       }
     }
 
-    "return failed IO" when {
-      "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.getAll(any[String]) returns IO.raiseError(testException)
+    "UserRepository returns empty Option" should {
+
+      "NOT call ApiKeyRepository" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+
+        for {
+          _ <- managementService.getAllForUser(publicTenantId_1, publicUserId_1)
+
+          _ = verifyZeroInteractions(apiKeyRepository)
+        } yield ()
+      }
+
+      "return Left containing ReferencedUserDoesNotExistError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
 
         managementService
-          .getAllApiKeysFor(userId_1)
+          .getAllForUser(publicTenantId_1, publicUserId_1)
+          .asserting(_ shouldBe Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1)))
+      }
+    }
+
+    "ApiKeyRepository returns failed IO" should {
+      "return failed IO containing the same exception" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
+        apiKeyRepository.getAllForUser(any[String]) returns IO.raiseError(testException)
+
+        managementService
+          .getAllForUser(publicTenantId_1, publicUserId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -481,8 +525,8 @@ class ApiKeyManagementServiceSpec
       apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
       for {
-        _ <- managementService.getApiKey(userId_1, publicKeyId_1)
-        _ = verify(apiKeyRepository).get(eqTo(userId_1), eqTo(publicKeyId_1))
+        _ <- managementService.getApiKey(publicUserId_1, publicKeyId_1)
+        _ = verify(apiKeyRepository).get(eqTo(publicUserId_1), eqTo(publicKeyId_1))
       } yield ()
     }
 
@@ -491,13 +535,13 @@ class ApiKeyManagementServiceSpec
       "ApiKeyRepository returns empty Option" in {
         apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(None)
 
-        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
+        managementService.getApiKey(publicUserId_1, publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
       }
 
       "ApiKeyRepository returns Option containing ApiKeyData" in {
         apiKeyRepository.get(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
 
-        managementService.getApiKey(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+        managementService.getApiKey(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
     }
 
@@ -506,7 +550,7 @@ class ApiKeyManagementServiceSpec
         apiKeyRepository.get(any[String], any[UUID]) returns IO.raiseError(testException)
 
         managementService
-          .getApiKey(userId_1, publicKeyId_1)
+          .getApiKey(publicUserId_1, publicKeyId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

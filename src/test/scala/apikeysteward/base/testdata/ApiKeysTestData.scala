@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.model._
 
 import java.util.UUID
@@ -45,10 +46,6 @@ object ApiKeysTestData extends FixedClock {
   val description: Option[String] = Some("Test key description")
   val descriptionUpdated: Option[String] = Some("Updated test key description")
 
-  val userId_1 = "test-user-id-001"
-  val userId_2 = "test-user-id-002"
-  val userId_3 = "test-user-id-003"
-
   val ttlMinutes = 60
 
   val scopeRead_1 = "read:scope-1"
@@ -66,21 +63,21 @@ object ApiKeysTestData extends FixedClock {
     publicKeyId = publicKeyId_1,
     name = name,
     description = description,
-    userId = userId_1,
+    userId = publicUserId_1,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name,
     description = description,
-    userId = userId_1,
+    userId = publicUserId_2,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name,
     description = description,
-    userId = userId_1,
+    userId = publicUserId_3,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
 

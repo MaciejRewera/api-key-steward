@@ -1,6 +1,7 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
@@ -60,7 +61,7 @@ class AdminApiKeyManagementRoutesSpec
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys")
     val requestBody = CreateApiKeyAdminRequest(
-      userId = userId_1,
+      userId = publicUserId_1,
       name = name,
       description = description,
       ttl = ttlMinutes
@@ -305,7 +306,7 @@ class AdminApiKeyManagementRoutesSpec
             description = requestBody.description,
             ttl = requestBody.ttl
           )
-          _ = verify(managementService).createApiKey(eqTo(userId_1), eqTo(expectedRequest))
+          _ = verify(managementService).createApiKey(eqTo(publicUserId_1), eqTo(expectedRequest))
         } yield ()
       }
 
@@ -585,7 +586,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        val error = ApiKeyDbError.ApiKeyDataNotFoundError(userId_1, publicKeyIdStr_1)
+        val error = ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1)
         managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
           Left(error)
         )
@@ -601,63 +602,6 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
         managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.raiseError(testException)
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.InternalServerError
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
-        } yield ()
-      }
-    }
-  }
-
-  "AdminApiKeyRoutes on GET /admin/users/{userId}/api-keys" when {
-
-    val uri = Uri.unsafeFromString(s"/admin/users/$userId_1/api-keys")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
-
-    runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
-
-    "JwtAuthorizer returns Right containing JsonWebToken" should {
-
-      "call ManagementService" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
-
-        for {
-          _ <- adminRoutes.run(request)
-          _ = verify(managementService).getAllApiKeysFor(eqTo(userId_1))
-        } yield ()
-      }
-
-      "return successful value returned by ManagementService" when {
-
-        "ManagementService returns empty List" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.pure(List.empty)
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response.as[GetMultipleApiKeysResponse].asserting(_ shouldBe GetMultipleApiKeysResponse(List.empty))
-          } yield ()
-        }
-
-        "ManagementService returns a List with several elements" in authorizedFixture {
-          managementService.getAllApiKeysFor(any[String]) returns IO.pure(
-            List(apiKeyData_1, apiKeyData_2, apiKeyData_3)
-          )
-
-          for {
-            response <- adminRoutes.run(request)
-            _ = response.status shouldBe Status.Ok
-            _ <- response
-              .as[GetMultipleApiKeysResponse]
-              .asserting(_ shouldBe GetMultipleApiKeysResponse(List(apiKeyData_1, apiKeyData_2, apiKeyData_3)))
-          } yield ()
-        }
-      }
-
-      "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllApiKeysFor(any[String]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -801,7 +745,7 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Not Found when ManagementService returns Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         managementService.deleteApiKey(any[UUID]) returns IO.pure(
-          Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1))
+          Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
         )
 
         for {

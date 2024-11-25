@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedUserDoesNotExistError
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
@@ -85,13 +86,11 @@ class ApiKeyTemplateService(
   def getAllForUser(
       tenantId: TenantId,
       userId: UserId
-  ): IO[Either[ReferencedUserDoesNotExistError, List[ApiKeyTemplate]]] =
+  ): IO[Either[UserDoesNotExistError, List[ApiKeyTemplate]]] =
     (for {
-      _ <- EitherT(
-        userRepository.getBy(tenantId, userId).map(_.toRight(ReferencedUserDoesNotExistError(userId, tenantId)))
-      )
+      _ <- EitherT(userRepository.getBy(tenantId, userId).map(_.toRight(UserDoesNotExistError(tenantId, userId))))
 
-      result <- EitherT.liftF[IO, ReferencedUserDoesNotExistError, List[ApiKeyTemplate]](
+      result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyTemplate]](
         apiKeyTemplateRepository.getAllForUser(tenantId, userId)
       )
     } yield result).value

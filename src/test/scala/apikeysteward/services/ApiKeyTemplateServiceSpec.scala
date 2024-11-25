@@ -16,6 +16,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
 }
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
@@ -495,12 +496,12 @@ class ApiKeyTemplateServiceSpec
         } yield ()
       }
 
-      "return Left containing ReferencedUserDoesNotExistError" in {
+      "return Left containing UserDoesNotExist" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
 
         apiKeyTemplateService
           .getAllForUser(publicTenantId_1, publicUserId_1)
-          .asserting(_ shouldBe Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+          .asserting(_ shouldBe Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1)))
       }
     }
 

@@ -1,8 +1,10 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
+import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesUsersDbError, GenericError}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
@@ -10,7 +12,13 @@ import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminUserEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikeytemplate.GetMultipleApiKeyTemplatesResponse
 import apikeysteward.routes.model.admin.user._
-import apikeysteward.services.{ApiKeyTemplateAssociationsService, ApiKeyTemplateService, UserService}
+import apikeysteward.routes.model.apikey.GetMultipleApiKeysResponse
+import apikeysteward.services.{
+  ApiKeyManagementService,
+  ApiKeyTemplateAssociationsService,
+  ApiKeyTemplateService,
+  UserService
+}
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -21,7 +29,8 @@ class AdminUserRoutes(
     jwtAuthorizer: JwtAuthorizer,
     userService: UserService,
     apiKeyTemplateService: ApiKeyTemplateService,
-    apiKeyTemplateAssociationsService: ApiKeyTemplateAssociationsService
+    apiKeyTemplateAssociationsService: ApiKeyTemplateAssociationsService,
+    apiKeyService: ApiKeyManagementService
 ) {
 
   private val serverInterpreter =
@@ -80,9 +89,9 @@ class AdminUserRoutes(
         }
     )
 
-  private val searchUsersRoutes: HttpRoutes[IO] =
+  private val getAllUsersForTenantRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
-      AdminUserEndpoints.searchUsersEndpoint
+      AdminUserEndpoints.getAllUsersForTenantEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => tenantId =>
           userService.getAllForTenant(tenantId).map {
@@ -111,21 +120,21 @@ class AdminUserRoutes(
               case Left(_: ApiKeyTemplatesUsersAlreadyExistsError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ApiKeyTemplatesUsersAlreadyExists)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ApiKeyTemplatesUsersAlreadyExists)
                   )
                   .asLeft
 
               case Left(_: ReferencedUserDoesNotExistError) =>
                 ErrorInfo
                   .notFoundErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
                   )
                   .asLeft
 
               case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
                 ErrorInfo
                   .badRequestErrorInfo(
-                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
                   )
                   .asLeft
 
@@ -149,14 +158,14 @@ class AdminUserRoutes(
             case Left(_: ReferencedUserDoesNotExistError) =>
               ErrorInfo
                 .notFoundErrorInfo(
-                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
                 )
                 .asLeft
 
             case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .badRequestErrorInfo(
-                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedApiKeyTemplateNotFound)
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
                 )
                 .asLeft
 
@@ -184,23 +193,45 @@ class AdminUserRoutes(
             case Right(allApiKeyTemplates) =>
               (StatusCode.Ok, GetMultipleApiKeyTemplatesResponse(allApiKeyTemplates)).asRight
 
-            case Left(_: ReferencedUserDoesNotExistError) =>
+            case Left(_: UserDoesNotExistError) =>
               ErrorInfo
                 .badRequestErrorInfo(
-                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.MultipleTemplates.ReferencedUserNotFound)
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
                 )
                 .asLeft
           }
         }
     )
 
+  private val getAllApiKeysForUserRoutes: HttpRoutes[IO] =
+    serverInterpreter
+      .toRoutes(
+        AdminUserEndpoints.getAllApiKeysForUserEndpoint
+          .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
+          .serverLogic { _ => input =>
+            val (tenantId, userId) = input
+            apiKeyService.getAllForUser(tenantId, userId).map {
+
+              case Right(allApiKeyData) => (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
+
+              case Left(_: UserDoesNotExistError) =>
+                ErrorInfo
+                  .notFoundErrorInfo(
+                    Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
+                  )
+                  .asLeft
+            }
+          }
+      )
+
   val allRoutes: HttpRoutes[IO] =
     createUserRoutes <+>
       deleteUserRoutes <+>
       getSingleUserRoutes <+>
-      searchUsersRoutes <+>
+      getAllUsersForTenantRoutes <+>
       associateApiKeyTemplatesWithUserRoutes <+>
       removeApiKeyTemplatesFromUserRoutes <+>
-      getAllApiKeyTemplatesForUserRoutes
+      getAllApiKeyTemplatesForUserRoutes <+>
+      getAllApiKeysForUserRoutes
 
 }

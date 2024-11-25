@@ -3,8 +3,11 @@ package apikeysteward.services
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
+import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model._
-import apikeysteward.repositories.ApiKeyRepository
+import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
@@ -23,12 +26,13 @@ class ApiKeyManagementService(
     createApiKeyRequestValidator: CreateApiKeyRequestValidator,
     apiKeyGenerator: ApiKeyGenerator,
     uuidGenerator: UuidGenerator,
-    apiKeyRepository: ApiKeyRepository
+    apiKeyRepository: ApiKeyRepository,
+    userRepository: UserRepository
 )(implicit clock: Clock)
     extends Logging {
 
   def createApiKey(
-      userId: String,
+      userId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
@@ -67,7 +71,7 @@ class ApiKeyManagementService(
   }
 
   private def buildCreateApiKeyAction(
-      userId: String,
+      userId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
@@ -102,7 +106,7 @@ class ApiKeyManagementService(
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
-  def deleteApiKeyBelongingToUserWith(userId: String, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+  def deleteApiKeyBelongingToUserWith(userId: UserId, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
     delete(publicKeyId)(apiKeyRepository.delete(userId, publicKeyId))
 
   def deleteApiKey(publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
@@ -118,10 +122,16 @@ class ApiKeyManagementService(
       }
     } yield resE
 
-  def getAllApiKeysFor(userId: String): IO[List[ApiKeyData]] =
-    apiKeyRepository.getAll(userId)
+  def getAllForUser(tenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
+    (for {
+      _ <- EitherT(userRepository.getBy(tenantId, userId).map(_.toRight(UserDoesNotExistError(tenantId, userId))))
 
-  def getApiKey(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
+      result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyData]](
+        apiKeyRepository.getAllForUser(userId)
+      )
+    } yield result).value
+
+  def getApiKey(userId: UserId, publicKeyId: UUID): IO[Option[ApiKeyData]] =
     apiKeyRepository.get(userId, publicKeyId)
 
   def getApiKey(publicKeyId: UUID): IO[Option[ApiKeyData]] =

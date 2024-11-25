@@ -2,6 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2}
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
@@ -54,7 +55,7 @@ class ApiKeyRepositorySpec
     publicKeyId = publicKeyId_1.toString,
     name = name,
     description = description,
-    userId = userId_1,
+    userId = publicUserId_1,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
@@ -65,7 +66,7 @@ class ApiKeyRepositorySpec
     publicKeyId = publicKeyId_2.toString,
     name = name,
     description = description,
-    userId = userId_1,
+    userId = publicUserId_2,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
@@ -106,7 +107,7 @@ class ApiKeyRepositorySpec
           publicKeyId = publicKeyId_1.toString,
           name = name,
           description = description,
-          userId = userId_1,
+          userId = publicUserId_1,
           expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
         )
 
@@ -435,9 +436,9 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
       for {
-        _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+        _ <- apiKeyRepository.get(publicUserId_1, publicKeyId_1)
 
-        _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
+        _ = verify(apiKeyDataDb).getBy(eqTo(publicUserId_1), eqTo(publicKeyId_1))
       } yield ()
     }
 
@@ -445,7 +446,7 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
       for {
-        _ <- apiKeyRepository.get(userId_1, publicKeyId_1)
+        _ <- apiKeyRepository.get(publicUserId_1, publicKeyId_1)
 
         _ = verifyZeroInteractions(apiKeyDb)
       } yield ()
@@ -455,7 +456,7 @@ class ApiKeyRepositorySpec
       "return empty Option" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
-        apiKeyRepository.get(userId_1, publicKeyId_1).asserting(_ shouldBe Option.empty[ApiKeyDataEntity.Read])
+        apiKeyRepository.get(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Option.empty[ApiKeyDataEntity.Read])
       }
     }
 
@@ -463,7 +464,7 @@ class ApiKeyRepositorySpec
       "return Option containing ApiKeyData" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
 
-        apiKeyRepository.get(userId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
+        apiKeyRepository.get(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
     }
   }
@@ -513,9 +514,9 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId_1)
+        _ <- apiKeyRepository.getAllForUser(publicUserId_1)
 
-        _ = verify(apiKeyDataDb).getByUserId(eqTo(userId_1))
+        _ = verify(apiKeyDataDb).getByUserId(eqTo(publicUserId_1))
       } yield ()
     }
 
@@ -523,7 +524,7 @@ class ApiKeyRepositorySpec
       apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
       for {
-        _ <- apiKeyRepository.getAll(userId_1)
+        _ <- apiKeyRepository.getAllForUser(publicUserId_1)
 
         _ = verifyZeroInteractions(apiKeyDb)
       } yield ()
@@ -533,7 +534,7 @@ class ApiKeyRepositorySpec
       "return empty List" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream.empty
 
-        apiKeyRepository.getAll(userId_1).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
+        apiKeyRepository.getAllForUser(publicUserId_1).asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
       }
     }
 
@@ -541,7 +542,7 @@ class ApiKeyRepositorySpec
       "return ApiKeyData with empty scopes fields" in {
         apiKeyDataDb.getByUserId(any[String]) returns Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
 
-        apiKeyRepository.getAll(userId_1).asserting { result =>
+        apiKeyRepository.getAllForUser(publicUserId_1).asserting { result =>
           result.size shouldBe 2
           result should contain theSameElementsAs List(apiKeyData_1, apiKeyData_2)
         }
@@ -566,9 +567,9 @@ class ApiKeyRepositorySpec
         initMocks()
 
         for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyRepository.delete(publicUserId_1, publicKeyId_1)
 
-          _ = verify(apiKeyDataDb).getBy(eqTo(userId_1), eqTo(publicKeyId_1))
+          _ = verify(apiKeyDataDb).getBy(eqTo(publicUserId_1), eqTo(publicKeyId_1))
           _ = verify(apiKeyDataDb).delete(eqTo(publicKeyId_1))
           _ = verify(apiKeyDb).delete(apiKeyDataEntityRead_1.apiKeyId)
 
@@ -578,7 +579,7 @@ class ApiKeyRepositorySpec
       "return Right containing deleted ApiKeyData" in {
         initMocks()
 
-        apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
+        apiKeyRepository.delete(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
       }
 
     }
@@ -589,7 +590,7 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyRepository.delete(publicUserId_1, publicKeyId_1)
 
           _ = verify(apiKeyDataDb, never).delete(any[UUID])
           _ = verifyZeroInteractions(apiKeyDb)
@@ -600,8 +601,8 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+          .delete(publicUserId_1, publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)))
       }
     }
 
@@ -610,12 +611,12 @@ class ApiKeyRepositorySpec
       "NOT call ApiKeyDb" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.delete(userId_1, publicKeyId_1)
+          _ <- apiKeyRepository.delete(publicUserId_1, publicKeyId_1)
 
           _ = verifyZeroInteractions(apiKeyDb)
         } yield ()
@@ -624,13 +625,13 @@ class ApiKeyRepositorySpec
       "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .delete(userId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+          .delete(publicUserId_1, publicKeyId_1)
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)))
       }
     }
 
@@ -642,7 +643,7 @@ class ApiKeyRepositorySpec
           .pure[doobie.ConnectionIO]
         apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
-        apiKeyRepository.delete(userId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
+        apiKeyRepository.delete(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
     }
   }
@@ -707,7 +708,7 @@ class ApiKeyRepositorySpec
       "NOT call ApiKeyDb" in {
         apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
@@ -721,13 +722,13 @@ class ApiKeyRepositorySpec
       "return Left containing ApiKeyDataNotFoundError" in {
         apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(userId_1, publicKeyId_1)
+          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
           .asLeft[ApiKeyDataEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyRepository
           .delete(publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(userId_1, publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)))
       }
     }
 
