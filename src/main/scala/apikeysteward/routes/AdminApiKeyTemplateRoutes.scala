@@ -14,6 +14,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTe
   ReferencedApiKeyTemplateDoesNotExistError,
   ReferencedUserDoesNotExistError
 }
+import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}
@@ -205,7 +206,7 @@ class AdminApiKeyTemplateRoutes(
             case Right(permissions) =>
               (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
 
-            case Left(_: GenericError.ApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplateDoesNotExistError) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.General.ApiKeyTemplateNotFound)).asLeft
           }
         }
@@ -260,7 +261,7 @@ class AdminApiKeyTemplateRoutes(
 
             case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
 
-            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+            case Left(_: ApiKeyTemplateDoesNotExistError) =>
               ErrorInfo
                 .notFoundErrorInfo(
                   Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleTemplate.ReferencedApiKeyTemplateNotFound)

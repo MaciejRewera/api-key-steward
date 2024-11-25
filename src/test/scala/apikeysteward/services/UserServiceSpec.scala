@@ -5,7 +5,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, pu
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenant_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError
+import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
@@ -316,12 +316,12 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         } yield ()
       }
 
-      "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
+      "return Left containing ApiKeyTemplateDoesNotExistError" in {
         apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
 
         userService
           .getAllForTemplate(publicTemplateId_1)
-          .asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
+          .asserting(_ shouldBe Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
       }
     }
 

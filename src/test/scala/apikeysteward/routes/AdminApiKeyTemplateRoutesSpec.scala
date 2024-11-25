@@ -14,6 +14,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.GenericError
+import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
@@ -1975,7 +1976,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Not Found when UserService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
         userService.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+          Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
         )
 
         for {
