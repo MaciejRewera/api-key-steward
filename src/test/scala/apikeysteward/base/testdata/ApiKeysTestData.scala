@@ -3,6 +3,7 @@ package apikeysteward.base.testdata
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.model._
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -32,6 +33,14 @@ object ApiKeysTestData extends FixedClock {
   val hashedApiKey_3: HashedApiKey = HashedApiKey("test-hashed-api-key-3")
   val hashedApiKey_4: HashedApiKey = HashedApiKey("test-hashed-api-key-4")
 
+  val apiKeyDbId_1: UUID = UUID.randomUUID()
+  val apiKeyDbId_2: UUID = UUID.randomUUID()
+  val apiKeyDbId_3: UUID = UUID.randomUUID()
+
+  val apiKeyDataDbId_1: UUID = UUID.randomUUID()
+  val apiKeyDataDbId_2: UUID = UUID.randomUUID()
+  val apiKeyDataDbId_3: UUID = UUID.randomUUID()
+
   val publicKeyId_1: UUID = UUID.randomUUID()
   val publicKeyId_2: UUID = UUID.randomUUID()
   val publicKeyId_3: UUID = UUID.randomUUID()
@@ -41,48 +50,133 @@ object ApiKeysTestData extends FixedClock {
   val publicKeyIdStr_3: String = publicKeyId_3.toString
   val publicKeyIdStr_4: String = publicKeyId_4.toString
 
-  val name = "Test API Key Name"
+  val name_1 = "Test API Key Name no. 1"
+  val name_2 = "Test API Key Name no. 2"
+  val name_3 = "Test API Key Name no. 3"
+
+  val description_1: Option[String] = Some("Test key description no. 1")
+  val description_2: Option[String] = Some("Test key description no. 2")
+  val description_3: Option[String] = Some("Test key description no. 3")
+
   val nameUpdated = "Updated Test APi Key Name"
-  val description: Option[String] = Some("Test key description")
   val descriptionUpdated: Option[String] = Some("Updated test key description")
 
   val ttlMinutes = 60
 
-  val scopeRead_1 = "read:scope-1"
-  val scopeRead_2 = "read:scope-2"
-  val scopeRead_3 = "read:scope-3"
-  val scopeWrite_1 = "write:scope-1"
-  val scopeWrite_2 = "write:scope-2"
-  val scopeWrite_3 = "write:scope-3"
-
-  val scopes_1: List[String] = List(scopeRead_1, scopeWrite_1)
-  val scopes_2: List[String] = List(scopeRead_2, scopeWrite_2)
-  val scopes_3: List[String] = List(scopeRead_3, scopeWrite_3)
-
   val apiKeyData_1: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,
-    name = name,
-    description = description,
+    name = name_1,
+    description = description_1,
     userId = publicUserId_1,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
-    name = name,
-    description = description,
+    name = name_2,
+    description = description_2,
     userId = publicUserId_2,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
-    name = name,
-    description = description,
+    name = name_3,
+    description = description_3,
     userId = publicUserId_3,
     expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
   )
 
   val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
     publicKeyId = publicKeyId_1,
+    name = nameUpdated,
+    description = descriptionUpdated
+  )
+
+  val apiKeyEntityWrite_1: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_1, apiKey = apiKey_1.value)
+  val apiKeyEntityRead_1: ApiKeyEntity.Read = ApiKeyEntity.Read(
+    id = apiKeyDbId_1,
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyEntityWrite_2: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_2, apiKey = apiKey_2.value)
+  val apiKeyEntityRead_2: ApiKeyEntity.Read = ApiKeyEntity.Read(
+    id = apiKeyDbId_2,
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyEntityWrite_3: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_3, apiKey = apiKey_3.value)
+  val apiKeyEntityRead_3: ApiKeyEntity.Read = ApiKeyEntity.Read(
+    id = apiKeyDbId_3,
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyDataEntityWrite_1: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
+    id = apiKeyDataDbId_1,
+    apiKeyId = apiKeyDbId_1,
+    publicKeyId = publicKeyIdStr_1,
+    name = name_1,
+    description = description_1,
+    userId = publicUserId_1,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+  )
+  val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
+    id = apiKeyDataDbId_1,
+    apiKeyId = apiKeyDbId_1,
+    publicKeyId = publicKeyIdStr_1,
+    name = name_1,
+    description = description_1,
+    userId = publicUserId_1,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyDataEntityWrite_2: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
+    id = apiKeyDataDbId_2,
+    apiKeyId = apiKeyDbId_2,
+    publicKeyId = publicKeyIdStr_2,
+    name = name_2,
+    description = description_2,
+    userId = publicUserId_2,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+  )
+  val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
+    id = apiKeyDataDbId_2,
+    apiKeyId = apiKeyDbId_2,
+    publicKeyId = publicKeyIdStr_2,
+    name = name_2,
+    description = description_2,
+    userId = publicUserId_2,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyDataEntityWrite_3: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
+    id = apiKeyDataDbId_3,
+    apiKeyId = apiKeyDbId_3,
+    publicKeyId = publicKeyIdStr_3,
+    name = name_3,
+    description = description_3,
+    userId = publicUserId_3,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+  )
+  val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
+    id = apiKeyDataDbId_3,
+    apiKeyId = apiKeyDbId_3,
+    publicKeyId = publicKeyIdStr_3,
+    name = name_3,
+    description = description_3,
+    userId = publicUserId_3,
+    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    createdAt = nowInstant,
+    updatedAt = nowInstant
+  )
+
+  val apiKeyDataEntityUpdate_1: ApiKeyDataEntity.Update = ApiKeyDataEntity.Update(
+    publicKeyId = publicKeyIdStr_1,
     name = nameUpdated,
     description = descriptionUpdated
   )

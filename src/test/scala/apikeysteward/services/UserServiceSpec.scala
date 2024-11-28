@@ -2,7 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, publicTemplateId_1}
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenant_1}
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1, tenant_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
@@ -63,7 +63,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    val tenantId = 13L
+    val tenantId = tenantDbId_1
     val testSqlException = new SQLException("Test SQL Exception")
 
     Seq(

@@ -6,8 +6,9 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
-import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
 import apikeysteward.repositories.db._
+import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.implicits._
@@ -17,6 +18,7 @@ import fs2.Stream
 import java.util.UUID
 
 class ApiKeyTemplateRepository(
+    uuidGenerator: UuidGenerator,
     tenantDb: TenantDb,
     apiKeyTemplateDb: ApiKeyTemplateDb,
     permissionDb: PermissionDb,
@@ -28,12 +30,24 @@ class ApiKeyTemplateRepository(
       publicTenantId: TenantId,
       apiKeyTemplate: ApiKeyTemplate
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
+    for {
+      apiKeyTemplateDbId <- uuidGenerator.generateUuid
+      result <- insert(apiKeyTemplateDbId, publicTenantId, apiKeyTemplate)
+    } yield result
+
+  private def insert(
+      apiKeyTemplateDbId: UUID,
+      publicTenantId: TenantId,
+      apiKeyTemplate: ApiKeyTemplate
+  ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
     (for {
       tenantId <- EitherT
         .fromOptionF(tenantDb.getByPublicTenantId(publicTenantId), ReferencedTenantDoesNotExistError(publicTenantId))
         .map(_.id)
 
-      templateEntityRead <- EitherT(apiKeyTemplateDb.insert(ApiKeyTemplateEntity.Write.from(tenantId, apiKeyTemplate)))
+      templateEntityRead <- EitherT(
+        apiKeyTemplateDb.insert(ApiKeyTemplateEntity.Write.from(apiKeyTemplateDbId, tenantId, apiKeyTemplate))
+      )
 
       resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateInsertionError, ApiKeyTemplate](
         constructApiKeyTemplate(templateEntityRead)

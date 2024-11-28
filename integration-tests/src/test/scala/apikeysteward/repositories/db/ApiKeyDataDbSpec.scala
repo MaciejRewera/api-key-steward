@@ -1,7 +1,6 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.IntegrationTestData.ApiKeys._
 import apikeysteward.base.testdata.ApiKeysTestData
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2}
@@ -16,6 +15,8 @@ import doobie.implicits._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+
+import java.util.UUID
 
 class ApiKeyDataDbSpec
     extends AsyncWordSpec
@@ -80,49 +81,44 @@ class ApiKeyDataDbSpec
 
       "return inserted entity" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
           inserted <- apiKeyDataDb.insert(
-            apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2, publicKeyId = publicKeyIdStr_2)
+            apiKeyDataEntityWrite_1.copy(id = apiKeyDataDbId_2, apiKeyId = apiKeyDbId_2, publicKeyId = publicKeyIdStr_2)
           )
         } yield inserted).transact(transactor)
 
         result.asserting { res =>
-          res.isRight shouldBe true
-          res.value shouldBe apiKeyDataEntityRead_1.copy(
-            id = res.value.id,
-            apiKeyId = res.value.apiKeyId,
-            publicKeyId = publicKeyIdStr_2
+          res shouldBe Right(
+            apiKeyDataEntityRead_1.copy(
+              id = apiKeyDataDbId_2,
+              apiKeyId = apiKeyDbId_2,
+              publicKeyId = publicKeyIdStr_2
+            )
           )
         }
       }
 
       "insert entity into DB" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2, publicKeyId = publicKeyIdStr_2))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          _ <- apiKeyDataDb.insert(
+            apiKeyDataEntityWrite_1.copy(id = apiKeyDataDbId_2, apiKeyId = apiKeyDbId_2, publicKeyId = publicKeyIdStr_2)
+          )
           resApiKeysData <- Queries.getAllApiKeysData
         } yield resApiKeysData).transact(transactor)
 
         result.asserting { resApiKeysData =>
           resApiKeysData.size shouldBe 2
 
-          val resApiKeyData_1 = resApiKeysData.head
-          resApiKeysData.head shouldBe apiKeyDataEntityRead_1.copy(
-            id = resApiKeyData_1.id,
-            apiKeyId = resApiKeyData_1.apiKeyId
-          )
-
-          val resApiKeyData_2 = resApiKeysData(1)
-          resApiKeysData(1) shouldBe apiKeyDataEntityRead_1.copy(
-            id = resApiKeyData_2.id,
-            apiKeyId = resApiKeyData_2.apiKeyId,
-            publicKeyId = publicKeyIdStr_2
+          resApiKeysData should contain theSameElementsAs List(
+            apiKeyDataEntityRead_1,
+            apiKeyDataEntityRead_1.copy(id = apiKeyDataDbId_2, apiKeyId = apiKeyDbId_2, publicKeyId = publicKeyIdStr_2)
           )
         }
       }
@@ -132,10 +128,10 @@ class ApiKeyDataDbSpec
 
       "return Left containing ApiKeyInsertionError" in {
         val result = (for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
-          res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId, publicKeyId = publicKeyIdStr_2))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyDbId_1))
         } yield res).transact(transactor)
 
         result.asserting { exc =>
@@ -147,12 +143,10 @@ class ApiKeyDataDbSpec
 
       "NOT insert the second entity into DB" in {
         val result = for {
-          apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id).transact(transactor)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id).transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId)).transact(transactor)
-          _ <- apiKeyDataDb
-            .insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId, publicKeyId = publicKeyIdStr_2))
-            .transact(transactor)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyDbId_1)).transact(transactor)
 
           resApiKeysData <- Queries.getAllApiKeysData.transact(transactor)
         } yield resApiKeysData
@@ -173,11 +167,11 @@ class ApiKeyDataDbSpec
 
       "return Left containing ApiKeyInsertionError" in {
         val result = (for {
-          apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
-          apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
+          _ <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1))
-          res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2))
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(publicKeyId = publicKeyIdStr_1))
 
         } yield res).transact(transactor)
 
@@ -193,8 +187,8 @@ class ApiKeyDataDbSpec
           apiKeyId_1 <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id).transact(transactor)
           apiKeyId_2 <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id).transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_1)).transact(transactor)
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId_2)).transact(transactor)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(publicKeyId = publicKeyIdStr_1)).transact(transactor)
 
           resApiKeysData <- Queries.getAllApiKeysData.transact(transactor)
         } yield resApiKeysData
@@ -374,7 +368,8 @@ class ApiKeyDataDbSpec
 
     "there are no rows in the DB" should {
       "return empty Option" in {
-        val result = apiKeyDataDb.getByApiKeyId(123L).transact(transactor)
+        val apiKeyDbId = UUID.randomUUID()
+        val result = apiKeyDataDb.getByApiKeyId(apiKeyDbId).transact(transactor)
 
         result.asserting(_ shouldBe None)
       }
@@ -386,7 +381,8 @@ class ApiKeyDataDbSpec
           apiKeyId <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyId))
 
-          res <- apiKeyDataDb.getByApiKeyId(apiKeyId + 1)
+          apiKeyDbId = UUID.randomUUID()
+          res <- apiKeyDataDb.getByApiKeyId(apiKeyDbId)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe None)

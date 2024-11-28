@@ -73,8 +73,8 @@ class ApiKeyManagementRoutesSpec
 
     val uri = Uri.unsafeFromString("/api-keys")
     val requestBody = CreateApiKeyRequest(
-      name = name,
-      description = description,
+      name = name_1,
+      description = description_1,
       ttl = ttlMinutes
     )
 

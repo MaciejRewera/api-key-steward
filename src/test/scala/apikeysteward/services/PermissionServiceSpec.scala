@@ -5,6 +5,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, pu
 import apikeysteward.base.testdata.ResourceServersTestData.{
   publicResourceServerIdStr_1,
   publicResourceServerId_1,
+  resourceServerDbId_1,
   resourceServer_1
 }
 import apikeysteward.base.testdata.PermissionsTestData._
@@ -187,7 +188,7 @@ class PermissionServiceSpec
       }
     }
 
-    val resourceServerId = 13L
+    val resourceServerId = resourceServerDbId_1
     val testSqlException = new SQLException("Test SQL Exception")
 
     Seq(

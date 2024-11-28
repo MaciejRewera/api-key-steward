@@ -1,28 +1,22 @@
 package apikeysteward.repositories
 
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
-  apiKeyTemplateEntityWrite_1,
-  apiKeyTemplateEntityWrite_2,
-  apiKeyTemplateEntityWrite_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
-import apikeysteward.base.testdata.PermissionsTestData.{
-  permissionEntityWrite_1,
-  permissionEntityWrite_2,
-  permissionEntityWrite_3
-}
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
-import apikeysteward.base.testdata.UsersTestData.{userEntityWrite_1, userEntityWrite_2, userEntityWrite_3}
+import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.db._
 import org.scalatest.EitherValues
 
+import java.util.UUID
+
 private[repositories] object TestDataInsertions extends EitherValues {
 
-  type TenantDbId = Long
-  type ResourceServerDbId = Long
-  type PermissionDbId = Long
-  type TemplateDbId = Long
-  type UserDbId = Long
+  type TenantDbId = UUID
+  type ResourceServerDbId = UUID
+  type PermissionDbId = UUID
+  type TemplateDbId = UUID
+  type UserDbId = UUID
 
   def insertPrerequisiteTemplatesAndPermissions(
       tenantDb: TenantDb,
@@ -34,22 +28,16 @@ private[repositories] object TestDataInsertions extends EitherValues {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
-      permissionId_1 <- permissionDb
-        .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-        .map(_.value.id)
-      permissionId_2 <- permissionDb
-        .insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
-        .map(_.value.id)
-      permissionId_3 <- permissionDb
-        .insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
-        .map(_.value.id)
+      _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+      _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
+      _ <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
 
-      templateId_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-      templateId_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
-      templateId_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-      templateIds = List(templateId_1, templateId_2, templateId_3)
-      permissionIds = List(permissionId_1, permissionId_2, permissionId_3)
+      templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
+      permissionIds = List(permissionDbId_1, permissionDbId_2, permissionDbId_3)
     } yield (tenantId, resourceServerId, templateIds, permissionIds)
 
   def insertPrerequisiteTemplatesAndUsers(
@@ -60,15 +48,15 @@ private[repositories] object TestDataInsertions extends EitherValues {
     for {
       tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
 
-      templateId_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-      templateId_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
-      templateId_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-      userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-      userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
-      userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
+      _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+      _ <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId))
+      _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId))
 
-      templateIds = List(templateId_1, templateId_2, templateId_3)
-      userIds = List(userId_1, userId_2, userId_3)
+      templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
+      userIds = List(userDbId_1, userDbId_2, userDbId_3)
     } yield (tenantId, templateIds, userIds)
 }

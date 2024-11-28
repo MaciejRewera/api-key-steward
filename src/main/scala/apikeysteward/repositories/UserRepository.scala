@@ -8,19 +8,29 @@ import apikeysteward.model.User
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.UserEntity
 import apikeysteward.repositories.db.{ApiKeyTemplatesUsersDb, TenantDb, UserDb}
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import doobie.implicits._
 import doobie.{ConnectionIO, Transactor}
 import fs2.Stream
 
+import java.util.UUID
+
 class UserRepository(
+    uuidGenerator: UuidGenerator,
     tenantDb: TenantDb,
     userDb: UserDb,
     apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb
 )(transactor: Transactor[IO]) {
 
   def insert(publicTenantId: TenantId, user: User): IO[Either[UserInsertionError, User]] =
+    for {
+      userDbId <- uuidGenerator.generateUuid
+      result <- insert(userDbId, publicTenantId, user)
+    } yield result
+
+  private def insert(userDbId: UUID, publicTenantId: TenantId, user: User): IO[Either[UserInsertionError, User]] =
     (for {
       tenantId <- EitherT
         .fromOptionF(
@@ -29,7 +39,7 @@ class UserRepository(
         )
         .map(_.id)
 
-      userEntityRead <- EitherT(userDb.insert(UserEntity.Write.from(tenantId, user)))
+      userEntityRead <- EitherT(userDb.insert(UserEntity.Write.from(userDbId, tenantId, user)))
 
       resultUser = User.from(userEntityRead)
     } yield resultUser).value.transact(transactor)

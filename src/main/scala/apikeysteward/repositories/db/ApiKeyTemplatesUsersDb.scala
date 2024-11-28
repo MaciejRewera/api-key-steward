@@ -16,6 +16,7 @@ import doobie.{Fragments, Update}
 import fs2.Stream
 
 import java.sql.SQLException
+import java.util.UUID
 
 class ApiKeyTemplatesUsersDb {
 
@@ -38,25 +39,25 @@ class ApiKeyTemplatesUsersDb {
         val (apiKeyTemplateId, userId) = extractBothIds(sqlException)
         ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId, userId)
 
-      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_api_key_template_id") =>
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_template_id") =>
         val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
-        ReferencedApiKeyTemplateDoesNotExistError(apiKeyTemplateId)
+        ReferencedApiKeyTemplateDoesNotExistError.fromDbId(apiKeyTemplateId)
 
-      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_user_id") =>
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_user_id") =>
         val userId = extractUserId(sqlException)
-        ReferencedUserDoesNotExistError(userId)
+        ReferencedUserDoesNotExistError.fromDbId(userId)
 
       case _ => ApiKeyTemplatesUsersInsertionErrorImpl(sqlException)
     }
 
-  private def extractBothIds(sqlException: SQLException): (Long, Long) =
-    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsLongValues(sqlException)("api_key_template_id", "user_id")
+  private def extractBothIds(sqlException: SQLException): (UUID, UUID) =
+    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsUuidValues(sqlException)("api_key_template_id", "user_id")
 
-  private def extractApiKeyTemplateId(sqlException: SQLException): Long =
-    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("api_key_template_id")
+  private def extractApiKeyTemplateId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("api_key_template_id")
 
-  private def extractUserId(sqlException: SQLException): Long =
-    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("user_id")
+  private def extractUserId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("user_id")
 
   def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Int] =
     Queries.deleteAllForUser(publicTenantId, publicUserId).run

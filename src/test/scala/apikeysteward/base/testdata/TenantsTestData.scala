@@ -8,6 +8,10 @@ import java.util.UUID
 
 object TenantsTestData extends FixedClock {
 
+  val tenantDbId_1: UUID = UUID.randomUUID()
+  val tenantDbId_2: UUID = UUID.randomUUID()
+  val tenantDbId_3: UUID = UUID.randomUUID()
+
   val publicTenantId_1: UUID = UUID.randomUUID()
   val publicTenantId_2: UUID = UUID.randomUUID()
   val publicTenantId_3: UUID = UUID.randomUUID()
@@ -38,9 +42,14 @@ object TenantsTestData extends FixedClock {
     TenantUpdate(tenantId = publicTenantId_1, name = tenantNameUpdated, description = tenantDescriptionUpdated)
 
   val tenantEntityWrite_1: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_1, name = tenantName_1, description = tenantDescription_1)
+    TenantEntity.Write(
+      id = tenantDbId_1,
+      publicTenantId = publicTenantIdStr_1,
+      name = tenantName_1,
+      description = tenantDescription_1
+    )
   val tenantEntityRead_1: TenantEntity.Read = TenantEntity.Read(
-    id = 1L,
+    id = tenantDbId_1,
     publicTenantId = publicTenantIdStr_1,
     name = tenantName_1,
     description = tenantDescription_1,
@@ -50,9 +59,14 @@ object TenantsTestData extends FixedClock {
   )
 
   val tenantEntityWrite_2: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_2, name = tenantName_2, description = tenantDescription_2)
+    TenantEntity.Write(
+      id = tenantDbId_2,
+      publicTenantId = publicTenantIdStr_2,
+      name = tenantName_2,
+      description = tenantDescription_2
+    )
   val tenantEntityRead_2: TenantEntity.Read = TenantEntity.Read(
-    id = 2L,
+    id = tenantDbId_2,
     publicTenantId = publicTenantIdStr_2,
     name = tenantName_2,
     description = tenantDescription_2,
@@ -62,9 +76,14 @@ object TenantsTestData extends FixedClock {
   )
 
   val tenantEntityWrite_3: TenantEntity.Write =
-    TenantEntity.Write(publicTenantId = publicTenantIdStr_3, name = tenantName_3, description = tenantDescription_3)
+    TenantEntity.Write(
+      id = tenantDbId_3,
+      publicTenantId = publicTenantIdStr_3,
+      name = tenantName_3,
+      description = tenantDescription_3
+    )
   val tenantEntityRead_3: TenantEntity.Read = TenantEntity.Read(
-    id = 2L,
+    id = tenantDbId_3,
     publicTenantId = publicTenantIdStr_3,
     name = tenantName_3,
     description = tenantDescription_3,

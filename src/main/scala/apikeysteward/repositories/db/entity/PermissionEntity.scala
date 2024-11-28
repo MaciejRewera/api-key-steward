@@ -3,12 +3,13 @@ package apikeysteward.repositories.db.entity
 import apikeysteward.model.Permission
 
 import java.time.Instant
+import java.util.UUID
 
 object PermissionEntity {
 
   case class Read(
-      id: Long,
-      resourceServerId: Long,
+      id: UUID,
+      resourceServerId: UUID,
       publicPermissionId: String,
       name: String,
       description: Option[String],
@@ -17,15 +18,17 @@ object PermissionEntity {
   ) extends TimestampedEntity
 
   case class Write(
-      resourceServerId: Long,
+      id: UUID,
+      resourceServerId: UUID,
       publicPermissionId: String,
       name: String,
       description: Option[String]
   )
 
   object Write {
-    def from(resourceServerId: Long, permission: Permission): PermissionEntity.Write =
+    def from(id: UUID, resourceServerId: UUID, permission: Permission): PermissionEntity.Write =
       PermissionEntity.Write(
+        id = id,
         resourceServerId = resourceServerId,
         publicPermissionId = permission.publicPermissionId.toString,
         name = permission.name,

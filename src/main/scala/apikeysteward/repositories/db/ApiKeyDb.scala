@@ -12,6 +12,7 @@ import doobie.postgres.sqlstate.class23.UNIQUE_VIOLATION
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
+import java.util.UUID
 
 class ApiKeyDb()(implicit clock: Clock) {
 
@@ -37,7 +38,7 @@ class ApiKeyDb()(implicit clock: Clock) {
   def getByApiKey(hashedApiKey: HashedApiKey): doobie.ConnectionIO[Option[ApiKeyEntity.Read]] =
     Queries.getByApiKey(hashedApiKey.value).option
 
-  def delete(id: Long): doobie.ConnectionIO[Either[ApiKeyNotFoundError.type, ApiKeyEntity.Read]] =
+  def delete(id: UUID): doobie.ConnectionIO[Either[ApiKeyNotFoundError.type, ApiKeyEntity.Read]] =
     for {
       apiKeyToDeleteE <- Queries.getBy(id).option.map(_.toRight(ApiKeyNotFoundError))
       resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(id).run.map(_ => result))
@@ -46,23 +47,21 @@ class ApiKeyDb()(implicit clock: Clock) {
   private object Queries {
 
     def insert(apiKeyEntityWrite: ApiKeyEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key(
-           api_key,
-           created_at,
-           updated_at
-         ) VALUES (
-            ${apiKeyEntityWrite.apiKey},
-            $now,
-            $now
-         )""".stripMargin.update
+      sql"""INSERT INTO api_key(id, api_key, created_at, updated_at)
+            VALUES (
+              ${apiKeyEntityWrite.id},
+              ${apiKeyEntityWrite.apiKey},
+              $now,
+              $now
+            )""".stripMargin.update
 
     def getByApiKey(apiKey: String): doobie.Query0[ApiKeyEntity.Read] =
       sql"""SELECT id, created_at, updated_at FROM api_key WHERE api_key = $apiKey""".query[ApiKeyEntity.Read]
 
-    def getBy(id: Long): doobie.Query0[ApiKeyEntity.Read] =
+    def getBy(id: UUID): doobie.Query0[ApiKeyEntity.Read] =
       sql"""SELECT id, created_at, updated_at FROM api_key WHERE id = $id""".query[ApiKeyEntity.Read]
 
-    def delete(id: Long): doobie.Update0 =
+    def delete(id: UUID): doobie.Update0 =
       sql"""DELETE FROM api_key WHERE api_key.id = $id """.stripMargin.update
   }
 }

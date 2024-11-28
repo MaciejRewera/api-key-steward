@@ -19,6 +19,8 @@ import apikeysteward.repositories.db.{
   PermissionDb,
   TenantDb
 }
+import apikeysteward.services.UuidGenerator
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
 import doobie.ConnectionIO
@@ -41,6 +43,7 @@ class ApiKeyTemplateRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val tenantDb = mock[TenantDb]
   private val apiKeyTemplateDb = mock[ApiKeyTemplateDb]
   private val permissionDb = mock[PermissionDb]
@@ -49,6 +52,7 @@ class ApiKeyTemplateRepositorySpec
 
   private val apiKeyTemplateRepository =
     new ApiKeyTemplateRepository(
+      uuidGenerator,
       tenantDb,
       apiKeyTemplateDb,
       permissionDb,
@@ -57,7 +61,7 @@ class ApiKeyTemplateRepositorySpec
     )(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(tenantDb, apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb, apiKeyTemplatesUsersDb)
+    reset(uuidGenerator, tenantDb, apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb, apiKeyTemplatesUsersDb)
 
   private val apiKeyTemplateNotFoundError = ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)
   private val apiKeyTemplateNotFoundErrorWrapped =
@@ -70,8 +74,7 @@ class ApiKeyTemplateRepositorySpec
 
   "ApiKeyTemplateRepository on insert" when {
 
-    val tenantId = 13L
-    val tenantEntityReadWrapped = Option(tenantEntityRead_1.copy(id = tenantId)).pure[doobie.ConnectionIO]
+    val tenantEntityReadWrapped = Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
 
     val apiKeyTemplateEntityReadWrapped =
       apiKeyTemplateEntityRead_1.asRight[ApiKeyTemplateInsertionError].pure[doobie.ConnectionIO]
@@ -84,7 +87,8 @@ class ApiKeyTemplateRepositorySpec
 
     "everything works correctly" should {
 
-      "call TenantDb, ApiKeyTemplateDb and PermissionDb" in {
+      "call UuidGenerator, TenantDb, ApiKeyTemplateDb and PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb.insert(any[ApiKeyTemplateEntity.Write]) returns apiKeyTemplateEntityReadWrapped
         permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
@@ -92,14 +96,15 @@ class ApiKeyTemplateRepositorySpec
         for {
           _ <- apiKeyTemplateRepository.insert(publicTenantId_1, apiKeyTemplate_1)
 
+          _ = verify(uuidGenerator).generateUuid
           _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
-          expectedApiKeyTemplateEntityWrite = apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)
-          _ = verify(apiKeyTemplateDb).insert(eqTo(expectedApiKeyTemplateEntityWrite))
+          _ = verify(apiKeyTemplateDb).insert(eqTo(apiKeyTemplateEntityWrite_1))
           _ = verify(permissionDb).getAllForTemplate(eqTo(apiKeyTemplate_1.publicTemplateId))
         } yield ()
       }
 
       "return Right containing ApiKeyTemplate" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb.insert(any[ApiKeyTemplateEntity.Write]) returns apiKeyTemplateEntityReadWrapped
         permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
@@ -110,9 +115,32 @@ class ApiKeyTemplateRepositorySpec
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call TenantDb, ApiKeyTemplateDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- apiKeyTemplateRepository.insert(publicTenantId_1, apiKeyTemplate_1).attempt
+
+          _ = verifyZeroInteractions(tenantDb, apiKeyTemplateDb, permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        apiKeyTemplateRepository
+          .insert(publicTenantId_1, apiKeyTemplate_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "TenantDb returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         for {
@@ -123,6 +151,7 @@ class ApiKeyTemplateRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyTemplateRepository
@@ -134,6 +163,7 @@ class ApiKeyTemplateRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call ApiKeyTemplateDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -145,6 +175,7 @@ class ApiKeyTemplateRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -158,6 +189,7 @@ class ApiKeyTemplateRepositorySpec
     "ApiKeyTemplateDb returns Left containing ApiKeyTemplateInsertionError" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb.insert(any[ApiKeyTemplateEntity.Write]) returns apiKeyTemplateInsertionErrorWrapped
 
@@ -169,6 +201,7 @@ class ApiKeyTemplateRepositorySpec
       }
 
       "return Left containing this error" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb.insert(any[ApiKeyTemplateEntity.Write]) returns apiKeyTemplateInsertionErrorWrapped
 
@@ -181,6 +214,7 @@ class ApiKeyTemplateRepositorySpec
     "ApiKeyTemplateDb returns different exception" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb
           .insert(any[ApiKeyTemplateEntity.Write]) returns testExceptionWrappedE[ApiKeyTemplateInsertionError]
@@ -193,6 +227,7 @@ class ApiKeyTemplateRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb
           .insert(any[ApiKeyTemplateEntity.Write]) returns testExceptionWrappedE[ApiKeyTemplateInsertionError]
@@ -206,6 +241,7 @@ class ApiKeyTemplateRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(templateDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyTemplateDb.insert(any[ApiKeyTemplateEntity.Write]) returns apiKeyTemplateEntityReadWrapped
         permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream

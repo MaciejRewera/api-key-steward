@@ -45,7 +45,7 @@ class UserDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("tenant_id, public_user_id") =>
         UserAlreadyExistsForThisTenantError(userEntity.publicUserId, userEntity.tenantId)
 
-      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError(userEntity.tenantId)
+      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError.fromDbId(userEntity.tenantId)
 
       case _ => UserInsertionErrorImpl(sqlException)
     }
@@ -82,8 +82,9 @@ class UserDb()(implicit clock: Clock) {
           """
 
     def insert(userEntity: UserEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO tenant_user(tenant_id, public_user_id, created_at, updated_at)
+      sql"""INSERT INTO tenant_user(id, tenant_id, public_user_id, created_at, updated_at)
             VALUES (
+              ${userEntity.id},
               ${userEntity.tenantId},
               ${userEntity.publicUserId},
               $now,

@@ -6,13 +6,17 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model._
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits._
 import doobie.Transactor
 import doobie.implicits._
 
+import java.util.UUID
+
 class TenantRepository(
+    uuidGenerator: UuidGenerator,
     tenantDb: TenantDb,
     resourceServerRepository: ResourceServerRepository,
     apiKeyTemplateRepository: ApiKeyTemplateRepository,
@@ -20,8 +24,14 @@ class TenantRepository(
 )(transactor: Transactor[IO]) {
 
   def insert(tenant: Tenant): IO[Either[TenantInsertionError, Tenant]] =
+    for {
+      tenantDbId <- uuidGenerator.generateUuid
+      result <- insert(tenantDbId, tenant)
+    } yield result
+
+  private def insert(tenantDbId: UUID, tenant: Tenant): IO[Either[TenantInsertionError, Tenant]] =
     (for {
-      tenantEntityRead <- EitherT(tenantDb.insert(TenantEntity.Write.from(tenant)))
+      tenantEntityRead <- EitherT(tenantDb.insert(TenantEntity.Write.from(tenantDbId, tenant)))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
 

@@ -1,14 +1,28 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{publicTemplateId_1, publicTemplateId_2, publicTemplateId_3}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
+  publicTemplateId_1,
+  publicTemplateId_2,
+  publicTemplateId_3,
+  templateDbId_1,
+  templateDbId_2,
+  templateDbId_3
+}
 import apikeysteward.base.testdata.PermissionsTestData.{
   publicPermissionId_1,
   publicPermissionId_2,
   publicPermissionId_3
 }
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
+import apikeysteward.base.testdata.UsersTestData.{
+  publicUserId_1,
+  publicUserId_2,
+  publicUserId_3,
+  userDbId_1,
+  userDbId_2,
+  userDbId_3
+}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
@@ -56,14 +70,14 @@ class ApiKeyTemplateAssociationsServiceSpec
   private val testSqlException = new SQLException("Test SQL Exception")
 
   private val apiKeyTemplatesPermissionsInsertionErrors = Seq(
-    ApiKeyTemplatesPermissionsAlreadyExistsError(101L, 102L),
+    ApiKeyTemplatesPermissionsAlreadyExistsError(templateDbId_1, userDbId_1),
     ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1),
     ReferencedPermissionDoesNotExistError(publicPermissionId_1),
     ApiKeyTemplatesPermissionsInsertionErrorImpl(testSqlException)
   )
 
   private val apiKeyTemplatesUsersInsertionErrors = Seq(
-    ApiKeyTemplatesUsersAlreadyExistsError(101L, 202L),
+    ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_2),
     ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1),
     ApiKeyTemplatesUsersInsertionError.ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1),
     ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)
@@ -162,9 +176,9 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     val allErrors = apiKeyTemplatesPermissionsInsertionErrors :+ ApiKeyTemplatesPermissionsNotFoundError(
       List(
-        ApiKeyTemplatesPermissionsEntity.Write(101L, 102L),
-        ApiKeyTemplatesPermissionsEntity.Write(201L, 202L),
-        ApiKeyTemplatesPermissionsEntity.Write(301L, 302L)
+        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_1, userDbId_1),
+        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_2, userDbId_2),
+        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_3, userDbId_3)
       )
     )
 
@@ -379,9 +393,9 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     val allErrors = apiKeyTemplatesUsersInsertionErrors :+ ApiKeyTemplatesUsersNotFoundError(
       List(
-        ApiKeyTemplatesUsersEntity.Write(101L, 102L),
-        ApiKeyTemplatesUsersEntity.Write(201L, 202L),
-        ApiKeyTemplatesUsersEntity.Write(301L, 302L)
+        ApiKeyTemplatesUsersEntity.Write(templateDbId_1, userDbId_1),
+        ApiKeyTemplatesUsersEntity.Write(templateDbId_2, userDbId_2),
+        ApiKeyTemplatesUsersEntity.Write(templateDbId_3, userDbId_3)
       )
     )
 

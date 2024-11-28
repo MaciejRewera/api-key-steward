@@ -1271,7 +1271,7 @@ class AdminApiKeyTemplateRoutesSpec
           any[ApiKeyTemplateId],
           any[List[PermissionId]]
         ) returns IO.pure(
-          Left(ApiKeyTemplatesPermissionsAlreadyExistsError(101L, 102L))
+          Left(ApiKeyTemplatesPermissionsAlreadyExistsError(templateDbId_1, permissionDbId_1))
         )
 
         for {
@@ -1535,9 +1535,9 @@ class AdminApiKeyTemplateRoutesSpec
           Left(
             ApiKeyTemplatesPermissionsNotFoundError(
               List(
-                ApiKeyTemplatesPermissionsEntity.Write(101L, 102L),
-                ApiKeyTemplatesPermissionsEntity.Write(201L, 202L),
-                ApiKeyTemplatesPermissionsEntity.Write(301L, 302L)
+                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_1, permissionDbId_1),
+                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_2, permissionDbId_2),
+                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_3, permissionDbId_3)
               )
             )
           )
@@ -1813,7 +1813,7 @@ class AdminApiKeyTemplateRoutesSpec
           any[TenantId],
           any[ApiKeyTemplateId],
           any[List[UserId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(101L, 102L)))
+        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1)))
 
         for {
           response <- adminRoutes.run(request)

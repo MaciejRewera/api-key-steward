@@ -28,8 +28,8 @@ class CreateApiKeyRequestValidatorSpec extends AnyWordSpec with Matchers with Be
   }
 
   private val createRequest: CreateApiKeyRequest = CreateApiKeyRequest(
-    name = name,
-    description = description,
+    name = name_1,
+    description = description_1,
     ttl = ttlMinutes
   )
 

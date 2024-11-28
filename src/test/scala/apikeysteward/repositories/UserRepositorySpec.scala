@@ -1,7 +1,8 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, templateDbId_1}
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1, tenantEntityRead_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.{
@@ -14,6 +15,8 @@ import apikeysteward.model.User
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.{TenantEntity, UserEntity}
 import apikeysteward.repositories.db.{ApiKeyTemplatesUsersDb, TenantDb, UserDb}
+import apikeysteward.services.UuidGenerator
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
 import fs2.Stream
@@ -35,14 +38,17 @@ class UserRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val tenantDb = mock[TenantDb]
   private val userDb = mock[UserDb]
   private val apiKeyTemplatesUsersDb = mock[ApiKeyTemplatesUsersDb]
 
-  private val userRepository = new UserRepository(tenantDb, userDb, apiKeyTemplatesUsersDb)(noopTransactor)
+  private val userRepository = new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)(
+    noopTransactor
+  )
 
   override def beforeEach(): Unit =
-    reset(tenantDb, userDb, apiKeyTemplatesUsersDb)
+    reset(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -51,8 +57,7 @@ class UserRepositorySpec
 
   "UserRepository on insert" when {
 
-    val tenantId = 13L
-    val tenantEntityReadWrapped = Option(tenantEntityRead_1.copy(id = tenantId)).pure[doobie.ConnectionIO]
+    val tenantEntityReadWrapped = Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
 
     val userEntityReadWrapped = userEntityRead_1.asRight[UserInsertionError].pure[doobie.ConnectionIO]
 
@@ -62,20 +67,22 @@ class UserRepositorySpec
 
     "everything works correctly" should {
 
-      "call TenantDb and UserDb" in {
+      "call UuidGenerator, TenantDb and UserDb" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.insert(any[UserEntity.Write]) returns userEntityReadWrapped
 
         for {
           _ <- userRepository.insert(publicTenantId_1, user_1)
 
+          _ = verify(uuidGenerator).generateUuid
           _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
-          expectedUserEntityWrite = UserEntity.Write(tenantId = tenantId, publicUserId = publicUserId_1)
-          _ = verify(userDb).insert(eqTo(expectedUserEntityWrite))
+          _ = verify(userDb).insert(eqTo(userEntityWrite_1))
         } yield ()
       }
 
       "return Right containing User" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.insert(any[UserEntity.Write]) returns userEntityReadWrapped
 
@@ -83,9 +90,28 @@ class UserRepositorySpec
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call TenantDb or UserDb" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- userRepository.insert(publicTenantId_1, user_1).attempt
+
+          _ = verifyZeroInteractions(tenantDb, userDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        userRepository.insert(publicTenantId_1, user_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
     "TenantDb returns empty Option" should {
 
       "NOT call UserDb" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         for {
@@ -96,6 +122,7 @@ class UserRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         userRepository
@@ -107,6 +134,7 @@ class UserRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call UserDb" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -118,6 +146,7 @@ class UserRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -127,6 +156,7 @@ class UserRepositorySpec
 
     "UserDb returns Left containing UserInsertionError" should {
       "return Left containing this error" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.insert(any[UserEntity.Write]) returns userInsertionErrorWrapped
 
@@ -136,6 +166,7 @@ class UserRepositorySpec
 
     "UserDb returns exception" should {
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(userDbId_1)
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.insert(any[UserEntity.Write]) returns testExceptionWrappedE[UserInsertionError]
 

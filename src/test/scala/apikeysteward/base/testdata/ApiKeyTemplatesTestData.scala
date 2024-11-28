@@ -2,6 +2,7 @@ package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3, permission_4}
+import apikeysteward.base.testdata.TenantsTestData.{tenantDbId_1, tenantDbId_2, tenantDbId_3}
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.repositories.db.entity.ApiKeyTemplateEntity
@@ -11,6 +12,10 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object ApiKeyTemplatesTestData extends FixedClock {
+
+  val templateDbId_1: UUID = UUID.randomUUID()
+  val templateDbId_2: UUID = UUID.randomUUID()
+  val templateDbId_3: UUID = UUID.randomUUID()
 
   val publicTemplateId_1: ApiKeyTemplateId = UUID.randomUUID()
   val publicTemplateId_2: ApiKeyTemplateId = UUID.randomUUID()
@@ -80,7 +85,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
   )
 
   val apiKeyTemplateEntityWrite_1: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
-    tenantId = 1L,
+    id = templateDbId_1,
+    tenantId = tenantDbId_1,
     publicTemplateId = publicTemplateIdStr_1,
     isDefault = false,
     name = apiKeyTemplateName_1,
@@ -89,8 +95,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_1
   )
   val apiKeyTemplateEntityRead_1: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
-    id = 1L,
-    tenantId = 1L,
+    id = templateDbId_1,
+    tenantId = tenantDbId_1,
     publicTemplateId = publicTemplateIdStr_1,
     isDefault = false,
     name = apiKeyTemplateName_1,
@@ -102,7 +108,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
   )
 
   val apiKeyTemplateEntityWrite_2: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
-    tenantId = 2L,
+    id = templateDbId_2,
+    tenantId = tenantDbId_2,
     publicTemplateId = publicTemplateIdStr_2,
     isDefault = false,
     name = apiKeyTemplateName_2,
@@ -111,8 +118,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_2
   )
   val apiKeyTemplateEntityRead_2: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
-    id = 2L,
-    tenantId = 2L,
+    id = templateDbId_2,
+    tenantId = tenantDbId_2,
     publicTemplateId = publicTemplateIdStr_2,
     isDefault = false,
     name = apiKeyTemplateName_2,
@@ -124,7 +131,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
   )
 
   val apiKeyTemplateEntityWrite_3: ApiKeyTemplateEntity.Write = ApiKeyTemplateEntity.Write(
-    tenantId = 3L,
+    id = templateDbId_3,
+    tenantId = tenantDbId_3,
     publicTemplateId = publicTemplateIdStr_3,
     isDefault = false,
     name = apiKeyTemplateName_3,
@@ -133,8 +141,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_3
   )
   val apiKeyTemplateEntityRead_3: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
-    id = 3L,
-    tenantId = 3L,
+    id = templateDbId_3,
+    tenantId = tenantDbId_3,
     publicTemplateId = publicTemplateIdStr_3,
     isDefault = false,
     name = apiKeyTemplateName_3,

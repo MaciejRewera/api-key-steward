@@ -1,25 +1,39 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.ReferencedResourceServerDoesNotExistError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.repositories.db.entity.PermissionEntity
-import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ResourceServerDb, PermissionDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb}
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import doobie.{ConnectionIO, Transactor}
 import doobie.implicits._
+import doobie.{ConnectionIO, Transactor}
+
+import java.util.UUID
 
 class PermissionRepository(
+    uuidGenerator: UuidGenerator,
     resourceServerDb: ResourceServerDb,
     permissionDb: PermissionDb,
     apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
 )(transactor: Transactor[IO]) {
 
   def insert(
+      publicResourceServerId: ResourceServerId,
+      permission: Permission
+  ): IO[Either[PermissionInsertionError, Permission]] =
+    for {
+      permissionDbId <- uuidGenerator.generateUuid
+      result <- insert(permissionDbId, publicResourceServerId, permission)
+    } yield result
+
+  private def insert(
+      permissionDbId: UUID,
       publicResourceServerId: ResourceServerId,
       permission: Permission
   ): IO[Either[PermissionInsertionError, Permission]] =
@@ -31,7 +45,9 @@ class PermissionRepository(
         )
         .map(_.id)
 
-      permissionEntityRead <- EitherT(permissionDb.insert(PermissionEntity.Write.from(resourceServerId, permission)))
+      permissionEntityRead <- EitherT(
+        permissionDb.insert(PermissionEntity.Write.from(permissionDbId, resourceServerId, permission))
+      )
 
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)

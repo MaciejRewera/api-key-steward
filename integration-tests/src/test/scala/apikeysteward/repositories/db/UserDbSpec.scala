@@ -159,34 +159,32 @@ class UserDbSpec
 
       "return inserted entity" in {
         val result = (for {
-          tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- tenantDb.insert(tenantEntityWrite_2)
+          _ <- userDb.insert(userEntityWrite_1)
 
-          res <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_2))
-        } yield (res, tenantId_2)).transact(transactor)
+          res <- userDb.insert(userEntityWrite_2.copy(publicUserId = publicUserIdStr_1))
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, tenantId_2) =>
-          res shouldBe Right(userEntityRead_1.copy(id = res.value.id, tenantId = tenantId_2))
-        }
+        result.asserting(res => res shouldBe Right(userEntityRead_2.copy(publicUserId = publicUserIdStr_1)))
       }
 
       "insert entity into DB" in {
         val result = (for {
-          tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-          entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- tenantDb.insert(tenantEntityWrite_2)
+          _ <- userDb.insert(userEntityWrite_1)
 
-          entityRead_2 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_2))
+          _ <- userDb.insert(userEntityWrite_2.copy(publicUserId = publicUserIdStr_1))
           res <- Queries.getAllUsers
-        } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
+        } yield res).transact(transactor)
 
-        result.asserting { case (allUsers, entityRead_1, entityRead_2) =>
+        result.asserting { allUsers =>
           allUsers.size shouldBe 2
 
           val expectedUsers = Seq(
-            userEntityRead_1.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
-            userEntityRead_1.copy(id = entityRead_2.id, tenantId = entityRead_2.tenantId)
+            userEntityRead_1,
+            userEntityRead_2.copy(publicUserId = publicUserIdStr_1)
           )
           allUsers should contain theSameElementsAs expectedUsers
         }
@@ -197,33 +195,30 @@ class UserDbSpec
 
       "return Left containing UserAlreadyExistsForThisTenantError" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- userDb.insert(userEntityWrite_1)
 
-          res <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
-        } yield (res, tenantId)).transact(transactor)
+          res <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantDbId_1, publicUserId = publicUserId_1))
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, tenantId) =>
-          res shouldBe Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantId))
-          res.left.value.message shouldBe s"User with publicUserId = $publicUserId_1 already exists for Tenant with ID = [$tenantId]."
+        result.asserting { res =>
+          res shouldBe Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantDbId_1))
+          res.left.value.message shouldBe s"User with publicUserId = $publicUserId_1 already exists for Tenant with ID = [$tenantDbId_1]."
         }
       }
 
       "NOT insert the second entity into DB" in {
         val result = for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+          _ <- userDb.insert(userEntityWrite_1).transact(transactor)
 
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).transact(transactor)
+          _ <- userDb
+            .insert(userEntityWrite_2.copy(tenantId = tenantDbId_1, publicUserId = publicUserId_1))
+            .transact(transactor)
           res <- Queries.getAllUsers.transact(transactor)
-        } yield (res, tenantId)
+        } yield res
 
-        result.asserting { case (allUsers, expectedTenantId) =>
-          allUsers.size shouldBe 1
-
-          val resultUser = allUsers.head
-          resultUser shouldBe userEntityRead_1.copy(id = resultUser.id, tenantId = expectedTenantId)
-        }
+        result.asserting(_ shouldBe List(userEntityRead_1))
       }
     }
 
@@ -233,7 +228,7 @@ class UserDbSpec
         userDb
           .insert(userEntityWrite_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(userEntityWrite_1.tenantId)))
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(userEntityWrite_1.tenantId)))
       }
 
       "NOT insert any entity into the DB" in {

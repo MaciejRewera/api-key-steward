@@ -15,6 +15,7 @@ import fs2._
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
+import java.util.UUID
 
 class ResourceServerDb()(implicit clock: Clock) {
 
@@ -47,13 +48,13 @@ class ResourceServerDb()(implicit clock: Clock) {
   private def recoverSqlException(
       sqlException: SQLException,
       publicResourceServerId: String,
-      tenantId: Long
+      tenantId: UUID
   ): ResourceServerInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_resource_server_id") =>
         ResourceServerAlreadyExistsError(publicResourceServerId)
 
-      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError(tenantId)
+      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError.fromDbId(tenantId)
 
       case _ => ResourceServerInsertionErrorImpl(sqlException)
     }
@@ -133,8 +134,9 @@ class ResourceServerDb()(implicit clock: Clock) {
       fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at, deactivated_at"
 
     def insert(resourceServerEntity: ResourceServerEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO resource_server(tenant_id, public_resource_server_id, name, description, created_at, updated_at)
+      sql"""INSERT INTO resource_server(id, tenant_id, public_resource_server_id, name, description, created_at, updated_at)
             VALUES(
+              ${resourceServerEntity.id},
               ${resourceServerEntity.tenantId},
               ${resourceServerEntity.publicResourceServerId},
               ${resourceServerEntity.name},

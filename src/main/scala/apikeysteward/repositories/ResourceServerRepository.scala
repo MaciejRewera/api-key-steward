@@ -1,13 +1,14 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ResourceServer, ResourceServerUpdate}
-import apikeysteward.repositories.db.entity.{ResourceServerEntity, PermissionEntity}
-import apikeysteward.repositories.db.{ResourceServerDb, PermissionDb, TenantDb}
+import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity}
+import apikeysteward.repositories.db.{PermissionDb, ResourceServerDb, TenantDb}
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits.toTraverseOps
@@ -18,15 +19,26 @@ import fs2.Stream
 import java.util.UUID
 
 class ResourceServerRepository(
+    uuidGenerator: UuidGenerator,
     tenantDb: TenantDb,
     resourceServerDb: ResourceServerDb,
     permissionDb: PermissionDb,
     permissionRepository: PermissionRepository
-)(
-    transactor: Transactor[IO]
-) {
+)(transactor: Transactor[IO]) {
 
   def insert(
+      publicTenantId: TenantId,
+      resourceServer: ResourceServer
+  ): IO[Either[ResourceServerInsertionError, ResourceServer]] =
+    for {
+      resourceServerDbId <- uuidGenerator.generateUuid
+      permissionDbIds <- resourceServer.permissions.traverse(_ => uuidGenerator.generateUuid)
+      result <- insert(resourceServerDbId, permissionDbIds, publicTenantId, resourceServer)
+    } yield result
+
+  private def insert(
+      resourceServerDbId: UUID,
+      permissionDbIds: List[UUID],
       publicTenantId: TenantId,
       resourceServer: ResourceServer
   ): IO[Either[ResourceServerInsertionError, ResourceServer]] =
@@ -36,19 +48,24 @@ class ResourceServerRepository(
         .map(_.id)
 
       resourceServerEntityRead <- EitherT(
-        resourceServerDb.insert(ResourceServerEntity.Write.from(tenantId, resourceServer))
+        resourceServerDb.insert(ResourceServerEntity.Write.from(resourceServerDbId, tenantId, resourceServer))
       )
-      permissionEntities <- insertPermissions(resourceServerEntityRead.id, resourceServer)
+      permissionEntities <- insertPermissions(resourceServerEntityRead.id, permissionDbIds, resourceServer)
 
       resultResourceServer = ResourceServer.from(resourceServerEntityRead, permissionEntities)
     } yield resultResourceServer).value.transact(transactor)
 
   private def insertPermissions(
-      resourceServerId: Long,
+      resourceServerDbId: UUID,
+      permissionDbIds: List[UUID],
       resourceServer: ResourceServer
   ): EitherT[doobie.ConnectionIO, ResourceServerInsertionError, List[PermissionEntity.Read]] =
     EitherT {
-      val permissionsToInsert = resourceServer.permissions.map(PermissionEntity.Write.from(resourceServerId, _))
+      val permissionsToInsert = (resourceServer.permissions zip permissionDbIds).map {
+        case (permission, permissionDbId) =>
+          PermissionEntity.Write.from(permissionDbId, resourceServerDbId, permission)
+      }
+
       for {
         permissionEntities <- permissionsToInsert.traverse(permissionDb.insert).map(_.sequence)
 

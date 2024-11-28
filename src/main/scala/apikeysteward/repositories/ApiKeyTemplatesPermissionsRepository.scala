@@ -13,6 +13,8 @@ import cats.implicits.toTraverseOps
 import doobie.Transactor
 import doobie.implicits._
 
+import java.util.UUID
+
 class ApiKeyTemplatesPermissionsRepository(
     apiKeyTemplateDb: ApiKeyTemplateDb,
     permissionDb: PermissionDb,
@@ -51,7 +53,7 @@ class ApiKeyTemplatesPermissionsRepository(
 
   private def getTemplateId(
       publicTemplateId: ApiKeyTemplateId
-  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, Long] =
+  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, UUID] =
     EitherT
       .fromOptionF(
         apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId),
@@ -61,7 +63,7 @@ class ApiKeyTemplatesPermissionsRepository(
 
   private def getPermissionIds(
       publicPermissionIds: List[PermissionId]
-  ): EitherT[doobie.ConnectionIO, ReferencedPermissionDoesNotExistError, List[Long]] =
+  ): EitherT[doobie.ConnectionIO, ReferencedPermissionDoesNotExistError, List[UUID]] =
     publicPermissionIds.traverse { permissionId =>
       EitherT
         .fromOptionF(

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS tenant_user
 (
-    id             INTEGER PRIMARY key generated always as identity,
-    tenant_id      INTEGER      NOT NULL,
+    id             UUID PRIMARY KEY,
+    tenant_id      UUID         NOT NULL,
 
     public_user_id VARCHAR(256) NOT NULL,
 
@@ -9,5 +9,5 @@ CREATE TABLE IF NOT EXISTS tenant_user
     updated_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE (tenant_id, public_user_id),
-    constraint fk_tenant_id foreign key (tenant_id) references tenant (id)
+    CONSTRAINT fkey_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)
 );

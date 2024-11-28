@@ -2,13 +2,14 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ResourceServersTestData.{resourceServerEntityRead_1, publicResourceServerId_1}
+import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity._
 import apikeysteward.repositories.db._
+import apikeysteward.services.UuidGenerator
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -16,6 +17,8 @@ import doobie.implicits._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+
+import java.util.UUID
 
 class TenantRepositoryItSpec
     extends AsyncWordSpec
@@ -30,6 +33,7 @@ class TenantRepositoryItSpec
       sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
   } yield ()
 
+  private val uuidGenerator = new UuidGenerator
   private val tenantDb = new TenantDb
   private val resourceServerDb = new ResourceServerDb
   private val permissionDb = new PermissionDb
@@ -39,13 +43,16 @@ class TenantRepositoryItSpec
   private val userDb = new UserDb
 
   private val permissionRepository =
-    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
 
   private val resourceServerRepository =
-    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(transactor)
+    new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
+      transactor
+    )
 
   private val apiKeyTemplateRepository =
     new ApiKeyTemplateRepository(
+      uuidGenerator,
       tenantDb,
       apiKeyTemplateDb,
       permissionDb,
@@ -53,10 +60,12 @@ class TenantRepositoryItSpec
       apiKeyTemplatesUsersDb
     )(transactor)
 
-  private val userRepository = new UserRepository(tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+  private val userRepository = new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
 
   private val repository =
-    new TenantRepository(tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(transactor)
+    new TenantRepository(uuidGenerator, tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(
+      transactor
+    )
 
   private object Queries extends DoobieCustomMeta {
     import doobie.postgres._
@@ -88,8 +97,6 @@ class TenantRepositoryItSpec
       sql"SELECT * FROM api_key_templates_users".query[ApiKeyTemplatesUsersEntity.Read].stream.compile.toList
 
   }
-
-  private type UserDbId = Long
 
   private def insertPrerequisiteData()
       : IO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[PermissionDbId], List[UserDbId])] =
@@ -253,20 +260,19 @@ class TenantRepositoryItSpec
       "NOT delete related Users" in {
         val result = for {
           dataIds <- insertPrerequisiteData()
-          (tenantId, _, _, _, userIds) = dataIds
 
           _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllUsers.transact(transactor)
-        } yield (res, tenantId, userIds)
+        } yield res
 
-        result.asserting { case (res, tenantId, userIds) =>
+        result.asserting { res =>
           val expectedEntities = List(
-            userEntityRead_1.copy(tenantId = tenantId, id = userIds.head),
-            userEntityRead_2.copy(tenantId = tenantId, id = userIds(1)),
-            userEntityRead_3.copy(tenantId = tenantId, id = userIds(2))
+            userEntityRead_1.copy(tenantId = tenantDbId_1),
+            userEntityRead_2.copy(tenantId = tenantDbId_1),
+            userEntityRead_3.copy(tenantId = tenantDbId_1)
           )
 
           res should contain theSameElementsAs expectedEntities
@@ -411,21 +417,20 @@ class TenantRepositoryItSpec
 
       "NOT delete related Users" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (tenantId, _, _, _, userIds) = dataIds
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.activate(publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllUsers.transact(transactor)
-        } yield (res, tenantId, userIds)
+        } yield res
 
-        result.asserting { case (res, tenantId, userIds) =>
+        result.asserting { res =>
           val expectedEntities = List(
-            userEntityRead_1.copy(tenantId = tenantId, id = userIds.head),
-            userEntityRead_2.copy(tenantId = tenantId, id = userIds(1)),
-            userEntityRead_3.copy(tenantId = tenantId, id = userIds(2))
+            userEntityRead_1.copy(tenantId = tenantDbId_1),
+            userEntityRead_2.copy(tenantId = tenantDbId_1),
+            userEntityRead_3.copy(tenantId = tenantDbId_1)
           )
 
           res should contain theSameElementsAs expectedEntities
