@@ -148,13 +148,13 @@ class AdminUserRoutesSpec
         }
       }
 
-      "request body is provided with userId longer than 250 characters" should {
+      "request body is provided with userId longer than 255 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong = List.fill(256)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(userId = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
-            s"""Invalid value for: body (expected userId to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
+            s"""Invalid value for: body (expected userId to have length less than or equal to 255, but got: "$nameThatIsTooLong")"""
           )
         )
 
