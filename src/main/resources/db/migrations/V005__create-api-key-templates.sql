@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS api_key_template
     tenant_id                 UUID         NOT NULL,
 
     public_template_id        VARCHAR(128) NOT NULL,
-    name                      VARCHAR(280) NOT NULL,
-    description               VARCHAR(500),
+    name                      VARCHAR(256) NOT NULL,
+    description               VARCHAR(256),
     is_default                BOOLEAN      NOT NULL,
     api_key_max_expiry_period VARCHAR(128) NOT NULL,
     api_key_prefix            VARCHAR(128) NOT NULL,

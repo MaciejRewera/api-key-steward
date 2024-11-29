@@ -182,13 +182,13 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "request body is provided with name longer than 280 characters" should {
+      "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(281)("A").mkString
+        val nameThatIsTooLong = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
-            s"""Invalid value for: body (expected name to have length less than or equal to 280, but got: "$nameThatIsTooLong")"""
+            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
           )
         )
 
@@ -231,9 +231,9 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "request body is provided with description longer than 500 characters" should {
+      "request body is provided with description longer than 250 characters" should {
 
-        val descriptionThatIsTooLong = List.fill(501)("A").mkString
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
         val requestWithLongDescription =
           request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
@@ -644,13 +644,13 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "request body is provided with name longer than 280 characters" should {
+      "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(281)("A").mkString
+        val nameThatIsTooLong = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
-            s"""Invalid value for: body (expected name to have length less than or equal to 280, but got: "$nameThatIsTooLong")"""
+            s"""Invalid value for: body (expected name to have length less than or equal to 250, but got: "$nameThatIsTooLong")"""
           )
         )
 
@@ -693,9 +693,9 @@ class AdminApiKeyTemplateRoutesSpec
         }
       }
 
-      "request body is provided with description longer than 500 characters" should {
+      "request body is provided with description longer than 250 characters" should {
 
-        val descriptionThatIsTooLong = List.fill(501)("A").mkString
+        val descriptionThatIsTooLong = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
