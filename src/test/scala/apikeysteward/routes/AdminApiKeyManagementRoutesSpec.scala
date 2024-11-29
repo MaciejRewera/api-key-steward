@@ -62,8 +62,8 @@ class AdminApiKeyManagementRoutesSpec
     val uri = Uri.unsafeFromString(s"/admin/api-keys")
     val requestBody = CreateApiKeyAdminRequest(
       userId = publicUserId_1,
-      name = name,
-      description = description,
+      name = name_1,
+      description = description_1,
       ttl = ttlMinutes
     )
 
@@ -383,7 +383,7 @@ class AdminApiKeyManagementRoutesSpec
   "AdminApiKeyRoutes on PUT /admin/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
-    val requestBody = UpdateApiKeyAdminRequest(name = name, description = description)
+    val requestBody = UpdateApiKeyAdminRequest(name = name_1, description = description_1)
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
       .withEntity(requestBody.asJson)

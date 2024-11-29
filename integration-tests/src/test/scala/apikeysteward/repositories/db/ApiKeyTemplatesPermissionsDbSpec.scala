@@ -323,15 +323,15 @@ class ApiKeyTemplatesPermissionsDbSpec
             .map(_.value.id)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 101L),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 102L),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 103L)
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_1),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_2),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_3)
           )
 
           res <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(ReferencedPermissionDoesNotExistError(101L)))
+        result.asserting(res => res shouldBe Left(ReferencedPermissionDoesNotExistError.fromDbId(permissionDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
@@ -343,9 +343,9 @@ class ApiKeyTemplatesPermissionsDbSpec
             .transact(transactor)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 101L),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 102L),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = 103L)
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_1),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_2),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionDbId_3)
           )
 
           _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
@@ -369,15 +369,15 @@ class ApiKeyTemplatesPermissionsDbSpec
             .map(_.value.id)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 101L, permissionId = permissionId),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 102L, permissionId = permissionId),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 103L, permissionId = permissionId)
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_1, permissionId = permissionId),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_2, permissionId = permissionId),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_3, permissionId = permissionId)
           )
 
           res <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
         } yield res).transact(transactor)
 
-        result.asserting(res => res shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError(101L)))
+        result.asserting(res => res shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError.fromDbId(templateDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
@@ -393,9 +393,9 @@ class ApiKeyTemplatesPermissionsDbSpec
             .transact(transactor)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 101L, permissionId = permissionId),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 102L, permissionId = permissionId),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = 103L, permissionId = permissionId)
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_1, permissionId = permissionId),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_2, permissionId = permissionId),
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateDbId_3, permissionId = permissionId)
           )
 
           _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)

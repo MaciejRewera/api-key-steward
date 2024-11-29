@@ -52,7 +52,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_template_id") =>
         ApiKeyTemplateAlreadyExistsError(templateEntity.publicTemplateId)
 
-      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError(templateEntity.tenantId)
+      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError.fromDbId(templateEntity.tenantId)
 
       case _ => ApiKeyTemplateInsertionErrorImpl(sqlException)
     }
@@ -116,8 +116,9 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
           """
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key_template(tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
+      sql"""INSERT INTO api_key_template(id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
             VALUES(
+              ${templateEntity.id},
               ${templateEntity.tenantId},
               ${templateEntity.publicTemplateId},
               ${templateEntity.name},

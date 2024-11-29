@@ -16,6 +16,7 @@ import doobie.util.update.Update
 import fs2.Stream
 
 import java.sql.SQLException
+import java.util.UUID
 
 class ApiKeyTemplatesPermissionsDb {
 
@@ -40,28 +41,28 @@ class ApiKeyTemplatesPermissionsDb {
         val (apiKeyTemplateId, permissionId) = extractBothIds(sqlException)
         ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId, permissionId)
 
-      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_api_key_template_id") =>
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_template_id") =>
         val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
-        ReferencedApiKeyTemplateDoesNotExistError(apiKeyTemplateId)
+        ReferencedApiKeyTemplateDoesNotExistError.fromDbId(apiKeyTemplateId)
 
-      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fk_permission_id") =>
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_permission_id") =>
         val permissionId = extractPermissionId(sqlException)
-        ReferencedPermissionDoesNotExistError(permissionId)
+        ReferencedPermissionDoesNotExistError.fromDbId(permissionId)
 
       case _ => ApiKeyTemplatesPermissionsInsertionErrorImpl(sqlException)
     }
 
-  private def extractBothIds(sqlException: SQLException): (Long, Long) =
-    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsLongValues(sqlException)(
+  private def extractBothIds(sqlException: SQLException): (UUID, UUID) =
+    ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsUuidValues(sqlException)(
       "api_key_template_id",
       "permission_id"
     )
 
-  private def extractApiKeyTemplateId(sqlException: SQLException): Long =
-    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("api_key_template_id")
+  private def extractApiKeyTemplateId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("api_key_template_id")
 
-  private def extractPermissionId(sqlException: SQLException): Long =
-    ForeignKeyViolationSqlErrorExtractor.extractColumnLongValue(sqlException)("permission_id")
+  private def extractPermissionId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("permission_id")
 
   def deleteAllForPermission(publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
     Queries.deleteAllForPermission(publicPermissionId).run

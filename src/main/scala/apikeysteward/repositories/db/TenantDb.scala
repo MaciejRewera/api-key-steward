@@ -110,8 +110,9 @@ class TenantDb()(implicit clock: Clock) {
       fr"SELECT id, public_tenant_id, name, description, created_at, updated_at, deactivated_at"
 
     def insert(tenantEntity: TenantEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO tenant(public_tenant_id, name, description, created_at, updated_at)
+      sql"""INSERT INTO tenant(id, public_tenant_id, name, description, created_at, updated_at)
             VALUES (
+              ${tenantEntity.id},
               ${tenantEntity.publicTenantId},
               ${tenantEntity.name},
               ${tenantEntity.description},

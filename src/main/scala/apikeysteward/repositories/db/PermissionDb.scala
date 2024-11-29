@@ -53,7 +53,8 @@ class PermissionDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("resource_server_id, name") =>
         PermissionAlreadyExistsForThisResourceServerError(permissionEntity.name, permissionEntity.resourceServerId)
 
-      case FOREIGN_KEY_VIOLATION.value => ReferencedResourceServerDoesNotExistError(permissionEntity.resourceServerId)
+      case FOREIGN_KEY_VIOLATION.value =>
+        ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntity.resourceServerId)
 
       case _ => PermissionInsertionErrorImpl(sqlException)
     }
@@ -93,8 +94,9 @@ class PermissionDb()(implicit clock: Clock) {
   private object Queries {
 
     def insert(permissionEntity: PermissionEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO permission(resource_server_id, public_permission_id, name, description, created_at, updated_at)
+      sql"""INSERT INTO permission(id, resource_server_id, public_permission_id, name, description, created_at, updated_at)
             VALUES(
+              ${permissionEntity.id},
               ${permissionEntity.resourceServerId},
               ${permissionEntity.publicPermissionId},
               ${permissionEntity.name},

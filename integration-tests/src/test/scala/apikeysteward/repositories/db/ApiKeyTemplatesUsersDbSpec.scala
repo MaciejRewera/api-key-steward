@@ -4,10 +4,20 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
   apiKeyTemplateEntityWrite_1,
   publicTemplateId_1,
-  publicTemplateId_2
+  publicTemplateId_2,
+  templateDbId_1,
+  templateDbId_2,
+  templateDbId_3
 }
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, publicTenantId_2, tenantEntityWrite_1}
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, userEntityWrite_1}
+import apikeysteward.base.testdata.UsersTestData.{
+  publicUserId_1,
+  publicUserId_2,
+  userDbId_1,
+  userDbId_2,
+  userDbId_3,
+  userEntityWrite_1
+}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
@@ -71,7 +81,7 @@ class ApiKeyTemplatesUsersDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           entitiesToInsert = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
@@ -91,7 +101,7 @@ class ApiKeyTemplatesUsersDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           entitiesToInsert = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
@@ -116,7 +126,7 @@ class ApiKeyTemplatesUsersDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -140,7 +150,7 @@ class ApiKeyTemplatesUsersDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -169,7 +179,7 @@ class ApiKeyTemplatesUsersDbSpec
       "return inserted entities" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -193,7 +203,7 @@ class ApiKeyTemplatesUsersDbSpec
       "insert entities into DB" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -222,7 +232,7 @@ class ApiKeyTemplatesUsersDbSpec
       "return Left containing ApiKeyTemplatesUsersAlreadyExistsError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -245,7 +255,7 @@ class ApiKeyTemplatesUsersDbSpec
       "NOT insert any new entity into DB" in {
         val result = for {
           dataIds <- insertPrerequisiteData().transact(transactor)
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -278,15 +288,15 @@ class ApiKeyTemplatesUsersDbSpec
             .map(_.value.id)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 101L),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 102L),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 103L)
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_1),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_2),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_3)
           )
 
           res <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ReferencedUserDoesNotExistError(101L)))
+        result.asserting(_ shouldBe Left(ReferencedUserDoesNotExistError.fromDbId(userDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
@@ -298,9 +308,9 @@ class ApiKeyTemplatesUsersDbSpec
             .transact(transactor)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 101L),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 102L),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = 103L)
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_1),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_2),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userDbId_3)
           )
 
           _ <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert).transact(transactor)
@@ -319,15 +329,15 @@ class ApiKeyTemplatesUsersDbSpec
           userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 101L, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 102L, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 103L, userId = userId)
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_1, userId = userId),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_2, userId = userId),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_3, userId = userId)
           )
 
           res <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError(101L)))
+        result.asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError.fromDbId(templateDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
@@ -336,9 +346,9 @@ class ApiKeyTemplatesUsersDbSpec
           userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id).transact(transactor)
 
           entitiesToInsert = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 101L, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 102L, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = 103L, userId = userId)
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_1, userId = userId),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_2, userId = userId),
+            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_3, userId = userId)
           )
 
           _ <- apiKeyTemplatesUsersDb.insertMany(entitiesToInsert).transact(transactor)
@@ -354,7 +364,7 @@ class ApiKeyTemplatesUsersDbSpec
       "return Left containing appropriate ApiKeyTemplatesUsersInsertionError" in {
         val result = (for {
           dataIds <- insertPrerequisiteData()
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
@@ -379,7 +389,7 @@ class ApiKeyTemplatesUsersDbSpec
       "NOT insert any new entity into the DB" in {
         val result = for {
           dataIds <- insertPrerequisiteData().transact(transactor)
-          (_, userIds, templateIds) = dataIds
+          (_, templateIds, userIds) = dataIds
 
           preExistingEntities = List(
             ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)

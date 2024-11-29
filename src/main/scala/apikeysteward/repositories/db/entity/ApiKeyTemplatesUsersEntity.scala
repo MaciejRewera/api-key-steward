@@ -1,15 +1,17 @@
 package apikeysteward.repositories.db.entity
 
+import java.util.UUID
+
 object ApiKeyTemplatesUsersEntity {
 
   case class Read(
-      apiKeyTemplateId: Long,
-      userId: Long
+      apiKeyTemplateId: UUID,
+      userId: UUID
   )
 
   case class Write(
-      apiKeyTemplateId: Long,
-      userId: Long
+      apiKeyTemplateId: UUID,
+      userId: UUID
   )
 
 }

@@ -3,9 +3,9 @@ package apikeysteward.repositories
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.{
+  publicResourceServerId_1,
   resourceServer_1,
-  resourceServer_2,
-  publicResourceServerId_1
+  resourceServer_2
 }
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_3, user_1, user_2, user_3}
@@ -22,7 +22,9 @@ import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ResourceServer, Tenant, User}
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity
+import apikeysteward.services.UuidGenerator
 import cats.data.EitherT
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
 import fs2.Stream
@@ -45,16 +47,19 @@ class TenantRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val tenantDb = mock[TenantDb]
   private val resourceServerRepository = mock[ResourceServerRepository]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
   private val userRepository = mock[UserRepository]
 
   private val tenantRepository =
-    new TenantRepository(tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(noopTransactor)
+    new TenantRepository(uuidGenerator, tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(
+      noopTransactor
+    )
 
   override def beforeEach(): Unit =
-    reset(tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)
+    reset(uuidGenerator, tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)
 
   private val tenantNotFoundError = TenantNotFoundError(publicTenantIdStr_1)
   private val tenantNotFoundErrorWrapped = tenantNotFoundError.asLeft[TenantEntity.Read].pure[doobie.ConnectionIO]
@@ -77,30 +82,48 @@ class TenantRepositorySpec
 
     "everything works correctly" should {
 
-      "call TenantDb" in {
+      "call UuidGenerator and TenantDb" in {
+        uuidGenerator.generateUuid returns IO.pure(tenantDbId_1)
         tenantDb.insert(any[TenantEntity.Write]) returns tenantEntityReadWrapped
 
         for {
           _ <- tenantRepository.insert(tenant_1)
 
-          expectedTenantEntityWrite = TenantEntity.Write(
-            publicTenantId = publicTenantIdStr_1,
-            name = tenantName_1,
-            description = tenantDescription_1
-          )
-          _ = verify(tenantDb).insert(eqTo(expectedTenantEntityWrite))
+          _ = verify(uuidGenerator).generateUuid
+          _ = verify(tenantDb).insert(eqTo(tenantEntityWrite_1))
         } yield ()
       }
 
       "return Right containing Tenant" in {
+        uuidGenerator.generateUuid returns IO.pure(tenantDbId_1)
         tenantDb.insert(any[TenantEntity.Write]) returns tenantEntityReadWrapped
 
         tenantRepository.insert(tenant_1).asserting(_ shouldBe Right(tenant_1))
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call TenantDb" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- tenantRepository.insert(tenant_1).attempt
+
+          _ = verifyZeroInteractions(tenantDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        tenantRepository.insert(tenant_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "TenantDb returns Left containing TenantInsertionError" should {
       "return Left containing this error" in {
+        uuidGenerator.generateUuid returns IO.pure(tenantDbId_1)
         tenantDb.insert(any[TenantEntity.Write]) returns tenantInsertionErrorWrapped
 
         tenantRepository.insert(tenant_1).asserting(_ shouldBe Left(tenantInsertionError))
@@ -109,6 +132,7 @@ class TenantRepositorySpec
 
     "TenantDb returns different exception" should {
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(tenantDbId_1)
         tenantDb.insert(any[TenantEntity.Write]) returns testExceptionWrappedE[TenantInsertionError]
 
         tenantRepository.insert(tenant_1).attempt.asserting(_ shouldBe Left(testException))

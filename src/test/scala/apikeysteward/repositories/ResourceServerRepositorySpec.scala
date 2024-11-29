@@ -1,20 +1,22 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.ResourceServer
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionInsertionErrorImpl
+import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionInsertionErrorImpl
-import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.ResourceServer
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.repositories.db.entity.{ResourceServerEntity, PermissionEntity, TenantEntity}
-import apikeysteward.repositories.db.{ResourceServerDb, PermissionDb, TenantDb}
+import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity, TenantEntity}
+import apikeysteward.repositories.db.{PermissionDb, ResourceServerDb, TenantDb}
+import apikeysteward.services.UuidGenerator
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
 import fs2.Stream
@@ -37,16 +39,19 @@ class ResourceServerRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val tenantDb = mock[TenantDb]
   private val resourceServerDb = mock[ResourceServerDb]
   private val permissionDb = mock[PermissionDb]
   private val permissionRepository = mock[PermissionRepository]
 
   private val resourceServerRepository =
-    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(noopTransactor)
+    new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
+      noopTransactor
+    )
 
   override def beforeEach(): Unit =
-    reset(tenantDb, resourceServerDb, permissionDb, permissionRepository)
+    reset(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)
 
   private val resourceServerNotFoundError = ResourceServerNotFoundError(publicResourceServerIdStr_1)
   private val resourceServerNotFoundErrorWrapped =
@@ -59,8 +64,7 @@ class ResourceServerRepositorySpec
 
   "ResourceServerRepository on insert" when {
 
-    val tenantId = 13L
-    val tenantEntityReadWrapped = Option(tenantEntityRead_1.copy(id = tenantId)).pure[doobie.ConnectionIO]
+    val tenantEntityReadWrapped = Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
 
     val resourceServerEntityReadWrapped =
       resourceServerEntityRead_1.asRight[ResourceServerInsertionError].pure[doobie.ConnectionIO]
@@ -79,7 +83,8 @@ class ResourceServerRepositorySpec
 
     "everything works correctly" should {
 
-      "call TenantDb, ResourceServerDb and PermissionDb" in {
+      "call UuidGenerator, TenantDb, ResourceServerDb and PermissionDb" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
@@ -87,15 +92,15 @@ class ResourceServerRepositorySpec
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1)
 
-          expectedResourceServerEntityWrite = resourceServerEntityWrite_1.copy(tenantId = tenantId)
-          _ = verify(resourceServerDb).insert(eqTo(expectedResourceServerEntityWrite))
-          _ = verify(permissionDb).insert(
-            eqTo(permissionEntityWrite_1.copy(resourceServerId = resourceServerEntityRead_1.id))
-          )
+          _ = verify(uuidGenerator, times(2)).generateUuid
+          _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
+          _ = verify(resourceServerDb).insert(eqTo(resourceServerEntityWrite_1))
+          _ = verify(permissionDb).insert(eqTo(permissionEntityWrite_1))
         } yield ()
       }
 
       "return Right containing ResourceServer" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
@@ -106,9 +111,31 @@ class ResourceServerRepositorySpec
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call TenantDb, ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1).attempt
+
+          _ = verifyZeroInteractions(tenantDb, resourceServerDb, permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        resourceServerRepository
+          .insert(publicTenantId_1, resourceServer_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
     "TenantDb returns empty Option" should {
 
       "NOT call either ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         for {
@@ -119,6 +146,7 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         resourceServerRepository
@@ -130,6 +158,7 @@ class ResourceServerRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call either ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -141,6 +170,7 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -154,6 +184,7 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns Left containing ResourceServerInsertionError" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerInsertionErrorWrapped
 
@@ -165,6 +196,7 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing this error" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerInsertionErrorWrapped
 
@@ -177,6 +209,7 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns different exception" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb
           .insert(any[ResourceServerEntity.Write]) returns testExceptionWrappedE[ResourceServerInsertionError]
@@ -189,6 +222,7 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb
           .insert(any[ResourceServerEntity.Write]) returns testExceptionWrappedE[ResourceServerInsertionError]
@@ -202,6 +236,7 @@ class ResourceServerRepositorySpec
 
     "PermissionDb.insert returns PermissionInsertionError" should {
       "return Left containing CannotInsertPermissionError" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionInsertionErrorWrapped
@@ -214,6 +249,7 @@ class ResourceServerRepositorySpec
 
     "PermissionDb.insert returns different exception" should {
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns testException

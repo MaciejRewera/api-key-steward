@@ -162,7 +162,7 @@ class ResourceServerDbSpec
         resourceServerDb
           .insert(resourceServerEntityWrite_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(resourceServerEntityWrite_1.tenantId)))
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(resourceServerEntityWrite_1.tenantId)))
       }
 
       "NOT insert any entity into the DB" in {

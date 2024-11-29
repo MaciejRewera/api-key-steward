@@ -308,7 +308,9 @@ class PermissionDbSpec
           .insert(permissionEntityWrite_1)
           .transact(transactor)
           .asserting(
-            _ shouldBe Left(ReferencedResourceServerDoesNotExistError(permissionEntityWrite_1.resourceServerId))
+            _ shouldBe Left(
+              ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntityWrite_1.resourceServerId)
+            )
           )
       }
 

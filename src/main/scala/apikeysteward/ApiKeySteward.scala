@@ -65,24 +65,28 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           checksumCodec
         )
 
-        apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(config, transactor)
-        apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(transactor)
+        uuidGenerator = new UuidGenerator
+
+        apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(uuidGenerator, config)(transactor)
+        apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(uuidGenerator)(transactor)
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
         apiKeyTemplatesUsersRepository: ApiKeyTemplatesUsersRepository = buildApiKeyTemplatesUsersRepository(transactor)
-        permissionRepository: PermissionRepository = buildPermissionRepository(transactor)
-        resourceServerRepository: ResourceServerRepository = buildResourceServerRepository(permissionRepository)(
-          transactor
-        )
-        userRepository: UserRepository = buildUserRepository(transactor)
+        permissionRepository: PermissionRepository = buildPermissionRepository(uuidGenerator)(transactor)
+        resourceServerRepository: ResourceServerRepository = buildResourceServerRepository(
+          uuidGenerator,
+          permissionRepository
+        )(transactor)
+        userRepository: UserRepository = buildUserRepository(uuidGenerator)(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(
+          uuidGenerator,
           resourceServerRepository,
           apiKeyTemplateRepository,
           userRepository
         )(transactor)
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
-        uuidGenerator = new UuidGenerator
+
         createApiKeyRequestValidator = new CreateApiKeyRequestValidator(config.apiKey)
         apiKeyManagementService = new ApiKeyManagementService(
           createApiKeyRequestValidator,
@@ -176,16 +180,19 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     Resource.eval(threadPoolSize).flatMap(ExecutionContexts.fixedThreadPool[IO])
   }
 
-  private def buildApiKeyRepository(config: AppConfig, transactor: HikariTransactor[IO]) = {
+  private def buildApiKeyRepository(
+      uuidGenerator: UuidGenerator,
+      config: AppConfig
+  )(transactor: HikariTransactor[IO]) = {
     val apiKeyDb = new ApiKeyDb
     val apiKeyDataDb = new ApiKeyDataDb
 
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-    new ApiKeyRepository(apiKeyDb, apiKeyDataDb, secureHashGenerator)(transactor)
+    new ApiKeyRepository(uuidGenerator, apiKeyDb, apiKeyDataDb, secureHashGenerator)(transactor)
   }
 
-  private def buildApiKeyTemplateRepository(transactor: HikariTransactor[IO]) = {
+  private def buildApiKeyTemplateRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
     val apiKeyTemplateDb = new ApiKeyTemplateDb
     val permissionDb = new PermissionDb
@@ -193,6 +200,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
     new ApiKeyTemplateRepository(
+      uuidGenerator,
       tenantDb,
       apiKeyTemplateDb,
       permissionDb,
@@ -218,39 +226,45 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildTenantRepository(
+      uuidGenerator: UuidGenerator,
       resourceServerRepository: ResourceServerRepository,
       apiKeyTemplateRepository: ApiKeyTemplateRepository,
       userRepository: UserRepository
   )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
 
-    new TenantRepository(tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(transactor)
+    new TenantRepository(uuidGenerator, tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(
+      transactor
+    )
   }
 
   private def buildResourceServerRepository(
+      uuidGenerator: UuidGenerator,
       permissionRepository: PermissionRepository
   )(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
     val resourceServerDb = new ResourceServerDb
     val permissionDb = new PermissionDb
 
-    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(transactor)
+    new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
+      transactor
+    )
   }
 
-  private def buildPermissionRepository(transactor: HikariTransactor[IO]) = {
+  private def buildPermissionRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
     val resourceServerDb = new ResourceServerDb
     val permissionDb = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
-    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
   }
 
-  private def buildUserRepository(transactor: HikariTransactor[IO]) = {
+  private def buildUserRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
     val tenantDb = new TenantDb
     val userDb = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
-    new UserRepository(tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+    new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {

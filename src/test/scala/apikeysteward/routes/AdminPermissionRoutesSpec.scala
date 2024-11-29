@@ -1,6 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
+import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerDbId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
@@ -288,7 +288,7 @@ class AdminPermissionRoutesSpec
       "return Bad Request when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisResourceServerError" in authorizedFixture {
         val resourceServerId = 13L
         permissionService.createPermission(any[UUID], any[CreatePermissionRequest]) returns IO.pure(
-          Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerId))
+          Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerDbId_1))
         )
 
         for {

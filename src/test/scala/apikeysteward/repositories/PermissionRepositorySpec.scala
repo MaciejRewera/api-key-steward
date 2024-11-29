@@ -2,16 +2,18 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
-import apikeysteward.base.testdata.ResourceServersTestData.{resourceServerEntityRead_1, publicResourceServerId_1}
 import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.repositories.db.entity.{ResourceServerEntity, PermissionEntity}
-import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, ResourceServerDb, PermissionDb}
+import apikeysteward.model.ResourceServer.ResourceServerId
+import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb}
+import apikeysteward.services.UuidGenerator
+import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
 import fs2.Stream
@@ -33,15 +35,18 @@ class PermissionRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val resourceServerDb = mock[ResourceServerDb]
   private val permissionDb = mock[PermissionDb]
   private val apiKeyTemplatesPermissionsDb = mock[ApiKeyTemplatesPermissionsDb]
 
   private val permissionRepository =
-    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(noopTransactor)
+    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+      noopTransactor
+    )
 
   override def beforeEach(): Unit =
-    reset(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)
+    reset(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -50,9 +55,7 @@ class PermissionRepositorySpec
 
   "PermissionRepository on insert" when {
 
-    val resourceServerId = 13L
-    val resourceServerEntityReadWrapped =
-      Option(resourceServerEntityRead_1.copy(id = resourceServerId)).pure[doobie.ConnectionIO]
+    val resourceServerEntityReadWrapped = Option(resourceServerEntityRead_1).pure[doobie.ConnectionIO]
 
     val permissionEntityReadWrapped = permissionEntityRead_1.asRight[PermissionInsertionError].pure[doobie.ConnectionIO]
 
@@ -63,25 +66,22 @@ class PermissionRepositorySpec
 
     "everything works correctly" should {
 
-      "call ResourceServerDb and PermissionDb" in {
+      "call UuidGenerator, ResourceServerDb and PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
 
         for {
           _ <- permissionRepository.insert(publicResourceServerId_1, permission_1)
 
+          _ = verify(uuidGenerator).generateUuid
           _ = verify(resourceServerDb).getByPublicResourceServerId(eqTo(publicResourceServerId_1))
-          expectedPermissionEntityWrite = PermissionEntity.Write(
-            resourceServerId = resourceServerId,
-            publicPermissionId = publicPermissionIdStr_1,
-            name = permissionName_1,
-            description = permissionDescription_1
-          )
-          _ = verify(permissionDb).insert(eqTo(expectedPermissionEntityWrite))
+          _ = verify(permissionDb).insert(eqTo(permissionEntityWrite_1))
         } yield ()
       }
 
       "return Right containing Permission" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
 
@@ -89,9 +89,32 @@ class PermissionRepositorySpec
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- permissionRepository.insert(publicResourceServerId_1, permission_1).attempt
+
+          _ = verifyZeroInteractions(resourceServerDb, permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        permissionRepository
+          .insert(publicResourceServerId_1, permission_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "ResourceServerDb returns empty Option" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns none[ResourceServerEntity.Read]
           .pure[doobie.ConnectionIO]
 
@@ -103,6 +126,7 @@ class PermissionRepositorySpec
       }
 
       "return Left containing ReferencedResourceServerDoesNotExistError" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns none[ResourceServerEntity.Read]
           .pure[doobie.ConnectionIO]
 
@@ -115,6 +139,7 @@ class PermissionRepositorySpec
     "ResourceServerDb returns exception" should {
 
       "NOT call PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
 
@@ -126,6 +151,7 @@ class PermissionRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
 
@@ -138,6 +164,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns Left containing PermissionInsertionError" should {
       "return Left containing this error" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionInsertionErrorWrapped
 
@@ -149,6 +176,7 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
         resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns testExceptionWrappedE[PermissionInsertionError]
 

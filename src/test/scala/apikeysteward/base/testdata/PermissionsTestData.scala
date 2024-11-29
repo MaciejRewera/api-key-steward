@@ -1,6 +1,11 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ResourceServersTestData.{
+  resourceServerDbId_1,
+  resourceServerDbId_2,
+  resourceServerDbId_3
+}
 import apikeysteward.model.Permission
 import apikeysteward.repositories.db.entity.PermissionEntity
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
@@ -8,6 +13,10 @@ import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import java.util.UUID
 
 object PermissionsTestData extends FixedClock {
+
+  val permissionDbId_1: UUID = UUID.randomUUID()
+  val permissionDbId_2: UUID = UUID.randomUUID()
+  val permissionDbId_3: UUID = UUID.randomUUID()
 
   val publicPermissionId_1: UUID = UUID.randomUUID()
   val publicPermissionId_2: UUID = UUID.randomUUID()
@@ -57,14 +66,15 @@ object PermissionsTestData extends FixedClock {
   )
 
   val permissionEntityWrite_1: PermissionEntity.Write = PermissionEntity.Write(
-    resourceServerId = 1L,
+    id = permissionDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_1,
     name = permissionName_1,
     description = permissionDescription_1
   )
   val permissionEntityRead_1: PermissionEntity.Read = PermissionEntity.Read(
-    id = 1L,
-    resourceServerId = 1L,
+    id = permissionDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_1,
     name = permissionName_1,
     description = permissionDescription_1,
@@ -73,14 +83,15 @@ object PermissionsTestData extends FixedClock {
   )
 
   val permissionEntityWrite_2: PermissionEntity.Write = PermissionEntity.Write(
-    resourceServerId = 2L,
+    id = permissionDbId_2,
+    resourceServerId = resourceServerDbId_2,
     publicPermissionId = publicPermissionIdStr_2,
     name = permissionName_2,
     description = permissionDescription_2
   )
   val permissionEntityRead_2: PermissionEntity.Read = PermissionEntity.Read(
-    id = 2L,
-    resourceServerId = 2L,
+    id = permissionDbId_2,
+    resourceServerId = resourceServerDbId_2,
     publicPermissionId = publicPermissionIdStr_2,
     name = permissionName_2,
     description = permissionDescription_2,
@@ -89,14 +100,15 @@ object PermissionsTestData extends FixedClock {
   )
 
   val permissionEntityWrite_3: PermissionEntity.Write = PermissionEntity.Write(
-    resourceServerId = 3L,
+    id = permissionDbId_3,
+    resourceServerId = resourceServerDbId_3,
     publicPermissionId = publicPermissionIdStr_3,
     name = permissionName_3,
     description = permissionDescription_3
   )
   val permissionEntityRead_3: PermissionEntity.Read = PermissionEntity.Read(
-    id = 3L,
-    resourceServerId = 3L,
+    id = permissionDbId_3,
+    resourceServerId = resourceServerDbId_3,
     publicPermissionId = publicPermissionIdStr_3,
     name = permissionName_3,
     description = permissionDescription_3,

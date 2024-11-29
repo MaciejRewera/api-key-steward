@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3}
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
@@ -202,7 +202,7 @@ class AdminUserRoutesSpec
 
       "return Bad Request when UserService returns successful IO with Left containing UserAlreadyExistsForThisTenantError" in authorizedFixture {
         userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          Left(UserAlreadyExistsForThisTenantError(publicUserId_1, 13L))
+          Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantDbId_1))
         )
 
         for {
@@ -592,7 +592,7 @@ class AdminUserRoutesSpec
           any[TenantId],
           any[UserId],
           any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(101L, 102L)))
+        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1)))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -870,9 +870,9 @@ class AdminUserRoutesSpec
           Left(
             ApiKeyTemplatesUsersNotFoundError(
               List(
-                ApiKeyTemplatesUsersEntity.Write(101L, 102L),
-                ApiKeyTemplatesUsersEntity.Write(201L, 202L),
-                ApiKeyTemplatesUsersEntity.Write(301L, 302L)
+                ApiKeyTemplatesUsersEntity.Write(templateDbId_1, userDbId_1),
+                ApiKeyTemplatesUsersEntity.Write(templateDbId_2, userDbId_2),
+                ApiKeyTemplatesUsersEntity.Write(templateDbId_3, userDbId_3)
               )
             )
           )

@@ -14,6 +14,8 @@ import cats.implicits.toTraverseOps
 import doobie.Transactor
 import doobie.implicits._
 
+import java.util.UUID
+
 class ApiKeyTemplatesUsersRepository(
     apiKeyTemplateDb: ApiKeyTemplateDb,
     userDb: UserDb,
@@ -68,12 +70,12 @@ class ApiKeyTemplatesUsersRepository(
 
   private def getTemplateIds(
       publicTemplateIds: List[ApiKeyTemplateId]
-  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, List[Long]] =
+  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, List[UUID]] =
     publicTemplateIds.traverse(getSingleTemplateId)
 
   private def getSingleTemplateId(
       publicTemplateId: ApiKeyTemplateId
-  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, Long] =
+  ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, UUID] =
     EitherT
       .fromOptionF(
         apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId),
@@ -84,13 +86,13 @@ class ApiKeyTemplatesUsersRepository(
   private def getUserIds(
       publicTenantId: TenantId,
       publicUserIds: List[UserId]
-  ): EitherT[doobie.ConnectionIO, ReferencedUserDoesNotExistError, List[Long]] =
+  ): EitherT[doobie.ConnectionIO, ReferencedUserDoesNotExistError, List[UUID]] =
     publicUserIds.traverse(getSingleUserId(publicTenantId, _))
 
   private def getSingleUserId(
       publicTenantId: TenantId,
       publicUserId: UserId
-  ): EitherT[doobie.ConnectionIO, ReferencedUserDoesNotExistError, Long] =
+  ): EitherT[doobie.ConnectionIO, ReferencedUserDoesNotExistError, UUID] =
     EitherT
       .fromOptionF(
         userDb.getByPublicUserId(publicTenantId, publicUserId),

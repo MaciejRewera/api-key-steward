@@ -1,15 +1,24 @@
 package apikeysteward.repositories.db
 
 import java.sql.SQLException
+import java.util.UUID
 
 private[db] object ForeignKeyViolationSqlErrorExtractor {
 
-  def extractColumnLongValue(sqlException: SQLException)(columnName: String): Long =
-    sqlException.getMessage.split(s"\\($columnName\\)=\\(").apply(1).takeWhile(_.isDigit).toLong
+  def extractColumnUuidValue(sqlException: SQLException)(columnName: String): UUID = {
+    val rawId = sqlException.getMessage
+      .split(s"\\($columnName\\)=\\(")
+      .drop(1)
+      .head
+      .takeWhile(_ != ')')
+      .trim
 
-  def extractTwoColumnsLongValues(
+    UUID.fromString(rawId)
+  }
+
+  def extractTwoColumnsUuidValues(
       sqlException: SQLException
-  )(columnName_1: String, columnName_2: String): (Long, Long) = {
+  )(columnName_1: String, columnName_2: String): (UUID, UUID) = {
     val rawArray = sqlException.getMessage
       .split(s"\\($columnName_1, $columnName_2\\)=\\(")
       .drop(1)
@@ -18,9 +27,6 @@ private[db] object ForeignKeyViolationSqlErrorExtractor {
       .split(",")
       .map(_.trim)
 
-    val (columnValue_1, columnValue_2) =
-      (rawArray.head.takeWhile(_.isDigit).toLong, rawArray(1).takeWhile(_.isDigit).toLong)
-
-    (columnValue_1, columnValue_2)
+    (UUID.fromString(rawArray.head), UUID.fromString(rawArray(1)))
   }
 }

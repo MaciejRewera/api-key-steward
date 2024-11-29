@@ -9,6 +9,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.model.{ApiKey, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.services.UuidGenerator
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits._
@@ -33,44 +34,16 @@ class ApiKeyRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val uuidGenerator = mock[UuidGenerator]
   private val apiKeyDb = mock[ApiKeyDb]
   private val apiKeyDataDb = mock[ApiKeyDataDb]
   private val secureHashGenerator = mock[SecureHashGenerator]
 
   private val apiKeyRepository =
-    new ApiKeyRepository(apiKeyDb, apiKeyDataDb, secureHashGenerator)(noopTransactor)
+    new ApiKeyRepository(uuidGenerator, apiKeyDb, apiKeyDataDb, secureHashGenerator)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(apiKeyDb, apiKeyDataDb, secureHashGenerator)
-
-  private val apiKeyEntityRead = ApiKeyEntity.Read(
-    id = 13L,
-    createdAt = nowInstant,
-    updatedAt = nowInstant
-  )
-
-  private val apiKeyDataEntityRead_1 = ApiKeyDataEntity.Read(
-    id = 1L,
-    apiKeyId = 2L,
-    publicKeyId = publicKeyId_1.toString,
-    name = name,
-    description = description,
-    userId = publicUserId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
-    createdAt = nowInstant,
-    updatedAt = nowInstant
-  )
-  private val apiKeyDataEntityRead_2 = ApiKeyDataEntity.Read(
-    id = 2L,
-    apiKeyId = 3L,
-    publicKeyId = publicKeyId_2.toString,
-    name = name,
-    description = description,
-    userId = publicUserId_2,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
-    createdAt = nowInstant,
-    updatedAt = nowInstant
-  )
+    reset(uuidGenerator, apiKeyDb, apiKeyDataDb, secureHashGenerator)
 
   private val apiKeyIdAlreadyExistsErrorWrapped =
     ApiKeyIdAlreadyExistsError
@@ -88,7 +61,7 @@ class ApiKeyRepositorySpec
 
   "ApiKeyRepository on insert" when {
 
-    val apiKeyEntityReadWrapped = apiKeyEntityRead.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
+    val apiKeyEntityReadWrapped = apiKeyEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
     val apiKeyDataEntityReadWrapped = apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
 
     val apiKeyAlreadyExistsErrorWrapped =
@@ -96,31 +69,27 @@ class ApiKeyRepositorySpec
 
     "everything works correctly" should {
 
-      "call SecureHashGenerator, ApiKeyDb and ApiKeyDataDb once, providing correct entities" in {
+      "call SecureHashGenerator, UuidGenerator, ApiKeyDb and ApiKeyDataDb once, providing correct entities" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
 
-        val expectedEntityWrite = ApiKeyEntity.Write(hashedApiKey_1.value)
-        val expectedDataEntityWrite = ApiKeyDataEntity.Write(
-          apiKeyId = apiKeyEntityRead.id,
-          publicKeyId = publicKeyId_1.toString,
-          name = name,
-          description = description,
-          userId = publicUserId_1,
-          expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
-        )
+        val expectedEntityWrite = ApiKeyEntity.Write(id = apiKeyDbId_1, apiKey = hashedApiKey_1.value)
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1)
 
+          _ = verify(secureHashGenerator).generateHashFor(eqTo(apiKey_1))
+          _ = verify(uuidGenerator, times(2)).generateUuid
           _ = verify(apiKeyDb).insert(eqTo(expectedEntityWrite))
-          _ = verify(apiKeyDataDb).insert(eqTo(expectedDataEntityWrite))
+          _ = verify(apiKeyDataDb).insert(eqTo(apiKeyDataEntityWrite_1))
         } yield ()
       }
 
       "return Right containing ApiKeyData" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
         apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
 
@@ -130,14 +99,13 @@ class ApiKeyRepositorySpec
 
     "SecureHashGenerator returns failed IO" should {
 
-      "NOT call ApiKeyDb or ApiKeyDataDb" in {
+      "NOT call UuidGenerator, ApiKeyDb or ApiKeyDataDb" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
         for {
           _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
 
-          _ = verifyZeroInteractions(apiKeyDb)
-          _ = verifyZeroInteractions(apiKeyDataDb)
+          _ = verifyZeroInteractions(uuidGenerator, apiKeyDb, apiKeyDataDb)
         } yield ()
       }
 
@@ -148,10 +116,32 @@ class ApiKeyRepositorySpec
       }
     }
 
+    "UuidGenerator returns failed IO" should {
+
+      "NOT call ApiKeyDb or ApiKeyDataDb" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        for {
+          _ <- apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt
+
+          _ = verifyZeroInteractions(apiKeyDb, apiKeyDataDb)
+        } yield ()
+      }
+
+      "return failed IO containing the same exception" in {
+        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns IO.raiseError(testException)
+
+        apiKeyRepository.insert(apiKey_1, apiKeyData_1).attempt.asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "ApiKeyDb returns Left containing ApiKeyAlreadyExistsError" should {
 
       "NOT call ApiKeyDataDb" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         for {
@@ -163,6 +153,7 @@ class ApiKeyRepositorySpec
 
       "return Left containing ApiKeyAlreadyExistsError" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         apiKeyRepository.insert(apiKey_1, apiKeyData_1).asserting(_ shouldBe Left(ApiKeyAlreadyExistsError))
@@ -173,6 +164,7 @@ class ApiKeyRepositorySpec
 
       "NOT call ApiKeyDataDb" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
@@ -185,6 +177,7 @@ class ApiKeyRepositorySpec
 
       "return failed IO containing this exception" in {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
@@ -196,6 +189,7 @@ class ApiKeyRepositorySpec
 
       def fixture[T](test: => IO[T]): IO[T] = IO {
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
+        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
       }.flatMap(_ => test)
 
@@ -397,21 +391,21 @@ class ApiKeyRepositorySpec
 
         "should always call ApiKeyDataDb" in {
           secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-          apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+          apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead_1).pure[doobie.ConnectionIO]
+          apiKeyDataDb.getByApiKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
           for {
             _ <- apiKeyRepository.get(apiKey_1)
 
-            _ = verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead.id))
+            _ = verify(apiKeyDataDb).getByApiKeyId(eqTo(apiKeyEntityRead_1.id))
           } yield ()
         }
 
         "ApiKeyDataDb returns empty Option" should {
           "return empty Option" in {
             secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[Long]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead_1).pure[doobie.ConnectionIO]
+            apiKeyDataDb.getByApiKeyId(any[UUID]) returns none[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
             apiKeyRepository.get(apiKey_1).asserting(_ shouldBe None)
           }
@@ -420,8 +414,8 @@ class ApiKeyRepositorySpec
         "ApiKeyDataDb returns ApiKeyDataEntity" when {
           "return ApiKeyData" in {
             secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead).pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[Long]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
+            apiKeyDb.getByApiKey(any[HashedApiKey]) returns Option(apiKeyEntityRead_1).pure[doobie.ConnectionIO]
+            apiKeyDataDb.getByApiKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
 
             apiKeyRepository.get(apiKey_1).asserting(_ shouldBe Some(apiKeyData_1))
           }
@@ -552,7 +546,7 @@ class ApiKeyRepositorySpec
 
   "ApiKeyRepository on delete(:userId, :publicKeyId)" when {
 
-    val apiKeyEntityRead_1 = ApiKeyEntity.Read(1L, nowInstant, nowInstant)
+    val apiKeyEntityRead_1 = ApiKeyEntity.Read(apiKeyDbId_1, nowInstant, nowInstant)
 
     "everything works correctly" when {
 
@@ -560,7 +554,7 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getBy(any[String], any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
         apiKeyDb
-          .delete(any[Long]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+          .delete(any[UUID]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
       }
 
       "call ApiKeyDb and ApiKeyDataDb" in {
@@ -641,7 +635,7 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
           .asRight[ApiKeyDbError]
           .pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[UUID]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository.delete(publicUserId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
@@ -650,7 +644,7 @@ class ApiKeyRepositorySpec
 
   "ApiKeyRepository on delete(:publicKeyId)" when {
 
-    val apiKeyEntityRead_1 = ApiKeyEntity.Read(1L, nowInstant, nowInstant)
+    val apiKeyEntityRead_1 = ApiKeyEntity.Read(apiKeyDbId_1, nowInstant, nowInstant)
 
     "everything works correctly" when {
 
@@ -658,7 +652,7 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.getByPublicKeyId(any[UUID]) returns Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
         apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
         apiKeyDb
-          .delete(any[Long]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+          .delete(any[UUID]) returns apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
       }
 
       "call ApiKeyDb and ApiKeyDataDb" in {
@@ -738,7 +732,7 @@ class ApiKeyRepositorySpec
         apiKeyDataDb.delete(any[UUID]) returns apiKeyDataEntityRead_1
           .asRight[ApiKeyDbError]
           .pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[Long]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+        apiKeyDb.delete(any[UUID]) returns ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository.delete(publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }

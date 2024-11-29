@@ -26,7 +26,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     val now = Instant.now(clock)
     for {
       eitherResult <- Queries
-        .insertData(apiKeyDataEntity, now)
+        .insert(apiKeyDataEntity, now)
         .withUniqueGeneratedKeys[ApiKeyDataEntity.Read](
           "id",
           "api_key_id",
@@ -45,7 +45,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     } yield res
   }
 
-  private def recoverSqlException(sqlException: SQLException, apiKeyId: Long): ApiKeyInsertionError =
+  private def recoverSqlException(sqlException: SQLException, apiKeyId: UUID): ApiKeyInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key_id")    => ApiKeyIdAlreadyExistsError
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
@@ -68,7 +68,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     )
   }
 
-  def getByApiKeyId(apiKeyId: Long): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+  def getByApiKeyId(apiKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getByApiKeyId(apiKeyId).option
 
   def getByUserId(userId: String): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
@@ -95,23 +95,24 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   private object Queries {
 
     private val columnNamesInsertFragment =
-      fr"INSERT INTO api_key_data(api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
+      fr"INSERT INTO api_key_data(id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
 
     private val columnNamesSelectFragment =
       fr"SELECT id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at"
 
-    def insertData(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
+    def insert(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
       (columnNamesInsertFragment ++
         sql"""VALUES (
-            ${apiKeyDataEntityWrite.apiKeyId},
-            ${apiKeyDataEntityWrite.publicKeyId},
-            ${apiKeyDataEntityWrite.name},
-            ${apiKeyDataEntityWrite.description},
-            ${apiKeyDataEntityWrite.userId},
-            ${apiKeyDataEntityWrite.expiresAt},
-            $now,
-            $now
-         )""".stripMargin).update
+                ${apiKeyDataEntityWrite.id},
+                ${apiKeyDataEntityWrite.apiKeyId},
+                ${apiKeyDataEntityWrite.publicKeyId},
+                ${apiKeyDataEntityWrite.name},
+                ${apiKeyDataEntityWrite.description},
+                ${apiKeyDataEntityWrite.userId},
+                ${apiKeyDataEntityWrite.expiresAt},
+                $now,
+                $now
+             )""".stripMargin).update
 
     def update(apiKeyDataEntityUpdate: ApiKeyDataEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE api_key_data
@@ -121,7 +122,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             WHERE api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
            """.stripMargin.update
 
-    def getByApiKeyId(apiKeyId: Long): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getByApiKeyId(apiKeyId: UUID): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"FROM api_key_data WHERE api_key_id = $apiKeyId").query[ApiKeyDataEntity.Read]
 

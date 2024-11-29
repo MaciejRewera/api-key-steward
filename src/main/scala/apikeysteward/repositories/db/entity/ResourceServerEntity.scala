@@ -3,12 +3,13 @@ package apikeysteward.repositories.db.entity
 import apikeysteward.model.{ResourceServer, ResourceServerUpdate}
 
 import java.time.Instant
+import java.util.UUID
 
 object ResourceServerEntity {
 
   case class Read(
-      id: Long,
-      tenantId: Long,
+      id: UUID,
+      tenantId: UUID,
       publicResourceServerId: String,
       name: String,
       description: Option[String],
@@ -18,15 +19,17 @@ object ResourceServerEntity {
   ) extends TimestampedEntity
 
   case class Write(
-      tenantId: Long,
+      id: UUID,
+      tenantId: UUID,
       publicResourceServerId: String,
       name: String,
       description: Option[String]
   )
 
   object Write {
-    def from(tenantId: Long, resourceServer: ResourceServer): ResourceServerEntity.Write =
+    def from(id: UUID, tenantId: UUID, resourceServer: ResourceServer): ResourceServerEntity.Write =
       ResourceServerEntity.Write(
+        id = id,
         tenantId = tenantId,
         publicResourceServerId = resourceServer.resourceServerId.toString,
         name = resourceServer.name,

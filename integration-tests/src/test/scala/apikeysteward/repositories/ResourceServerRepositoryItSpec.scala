@@ -2,13 +2,14 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ResourceServersTestData.{resourceServerEntityRead_1, publicResourceServerId_1}
+import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantEntityRead_1
 import apikeysteward.model.ApiKeyTemplate
-import apikeysteward.repositories.TestDataInsertions.{ResourceServerDbId, PermissionDbId, TemplateDbId, TenantDbId}
+import apikeysteward.repositories.TestDataInsertions.{PermissionDbId, ResourceServerDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
+import apikeysteward.services.UuidGenerator
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.ConnectionIO
@@ -30,6 +31,7 @@ class ResourceServerRepositoryItSpec
       sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
   } yield ()
 
+  private val uuidGenerator = new UuidGenerator
   private val tenantDb = new TenantDb
   private val resourceServerDb = new ResourceServerDb
   private val permissionDb = new PermissionDb
@@ -37,10 +39,12 @@ class ResourceServerRepositoryItSpec
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
 
   private val permissionRepository =
-    new PermissionRepository(resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
 
   private val repository =
-    new ResourceServerRepository(tenantDb, resourceServerDb, permissionDb, permissionRepository)(transactor)
+    new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
+      transactor
+    )
 
   private object Queries extends DoobieCustomMeta {
     import doobie.postgres._

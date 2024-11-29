@@ -5,6 +5,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits._
@@ -16,6 +17,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.util.UUID
 
 class ApiKeyRepository(
+    uuidGenerator: UuidGenerator,
     apiKeyDb: ApiKeyDb,
     apiKeyDataDb: ApiKeyDataDb,
     secureHashGenerator: SecureHashGenerator
@@ -29,23 +31,30 @@ class ApiKeyRepository(
   ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     for {
       hashedApiKey <- secureHashGenerator.generateHashFor(apiKey)
-      apiKeyData <- insertHashed(hashedApiKey, apiKeyData)
-    } yield apiKeyData
+      apiKeyDbId <- uuidGenerator.generateUuid
+      apiKeyDataDbId <- uuidGenerator.generateUuid
+
+      result <- insertHashed(hashedApiKey, apiKeyDbId, apiKeyDataDbId, apiKeyData)
+    } yield result
 
   private def insertHashed(
       hashedApiKey: HashedApiKey,
+      apiKeyDbId: UUID,
+      apiKeyDataDbId: UUID,
       apiKeyData: ApiKeyData
   ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
       _ <- logInfoE("Inserting new API Key...")
-      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(hashedApiKey.value)))
+      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKeyDbId, hashedApiKey.value)))
         .leftSemiflatTap(e => logger.warn(s"Could not insert API Key because: ${e.message}"))
         .flatTap(_ => logInfoE("Inserted new API Key."))
 
       apiKeyId = apiKeyEntityRead.id
 
       _ <- logInfoE(s"Inserting API Key Data for publicKeyId: [${apiKeyData.publicKeyId}]...")
-      apiKeyDataEntityRead <- EitherT(apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyId, apiKeyData)))
+      apiKeyDataEntityRead <- EitherT(
+        apiKeyDataDb.insert(ApiKeyDataEntity.Write.from(apiKeyDataDbId, apiKeyId, apiKeyData))
+      )
         .flatTap(_ => logInfoE(s"Inserted API Key Data for publicKeyId: [${apiKeyData.publicKeyId}]."))
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
@@ -143,7 +152,7 @@ class ApiKeyRepository(
     } yield res)
 
   private def deleteApiKey(
-      apiKeyId: Long,
+      apiKeyId: UUID,
       publicKeyIdToDelete: UUID
   ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyEntity.Read] =
     EitherT(for {

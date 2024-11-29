@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeysTestData.{hashedApiKey_1, hashedApiKey_2}
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
@@ -14,6 +14,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
 import java.time.Instant
+import java.util.UUID
 
 class ApiKeyDbSpec
     extends AsyncWordSpec
@@ -33,17 +34,19 @@ class ApiKeyDbSpec
     import doobie.postgres._
     import doobie.postgres.implicits._
 
-    type ApiKeyEntityRaw = (Long, String, Instant, Instant)
+    type ApiKeyEntityRaw = (UUID, String, Instant, Instant)
 
-    val getAllApiKeys =
+    val getAllApiKeys: doobie.ConnectionIO[List[(UUID, String, Instant, Instant)]] =
       sql"SELECT * FROM api_key".query[ApiKeyEntityRaw].stream.compile.toList
   }
 
-  private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(hashedApiKey_1.value)
-  private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(hashedApiKey_2.value)
+  private val testApiKeyEntityWrite_1 = ApiKeyEntity.Write(id = apiKeyDbId_1, apiKey = hashedApiKey_1.value)
+  private val testApiKeyEntityWrite_2 = ApiKeyEntity.Write(id = apiKeyDbId_2, apiKey = hashedApiKey_2.value)
 
-  private val testApiKeyEntityRead_1 = ApiKeyEntity.Read(id = 1L, createdAt = nowInstant, updatedAt = nowInstant)
-  private val testApiKeyEntityRead_2 = ApiKeyEntity.Read(id = 2L, createdAt = nowInstant, updatedAt = nowInstant)
+  private val testApiKeyEntityRead_1 =
+    ApiKeyEntity.Read(id = apiKeyDbId_1, createdAt = nowInstant, updatedAt = nowInstant)
+  private val testApiKeyEntityRead_2 =
+    ApiKeyEntity.Read(id = apiKeyDbId_2, createdAt = nowInstant, updatedAt = nowInstant)
 
   "ApiKeyDb on insert" when {
 
@@ -179,13 +182,15 @@ class ApiKeyDbSpec
 
     "there are no API Keys in the DB" should {
 
+      val apiKeyDbIdToDelete = UUID.randomUUID()
+
       "return Left containing ApiKeyNotFound" in {
-        apiKeyDb.delete(1L).transact(transactor).asserting(_ shouldBe Left(ApiKeyNotFoundError))
+        apiKeyDb.delete(apiKeyDbIdToDelete).transact(transactor).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyDb.delete(1L)
+          _ <- apiKeyDb.delete(apiKeyDbIdToDelete)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -195,12 +200,14 @@ class ApiKeyDbSpec
 
     "there is an API Key in the DB with different ID" should {
 
+      val apiKeyDbIdToDelete = UUID.randomUUID()
+
       "return Left containing ApiKeyNotFound" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
+          _ <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
-          res <- apiKeyDb.delete(existingId + 1)
+          res <- apiKeyDb.delete(apiKeyDbIdToDelete)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(ApiKeyNotFoundError))
@@ -209,9 +216,9 @@ class ApiKeyDbSpec
       "make no changes to the DB" in {
         val result = (for {
           _ <- apiKeyDb.insert(testApiKeyEntityWrite_1)
-          existingId <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
+          _ <- apiKeyDb.getByApiKey(hashedApiKey_1).map(_.get.id)
 
-          _ <- apiKeyDb.delete(existingId + 1)
+          _ <- apiKeyDb.delete(apiKeyDbIdToDelete)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 

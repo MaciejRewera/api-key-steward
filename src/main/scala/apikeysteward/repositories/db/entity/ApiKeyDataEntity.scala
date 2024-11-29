@@ -3,12 +3,13 @@ package apikeysteward.repositories.db.entity
 import apikeysteward.model.{ApiKeyData, ApiKeyDataUpdate}
 
 import java.time.Instant
+import java.util.UUID
 
 object ApiKeyDataEntity {
 
   case class Read(
-      id: Long,
-      apiKeyId: Long,
+      id: UUID,
+      apiKeyId: UUID,
       publicKeyId: String,
       name: String,
       description: Option[String],
@@ -19,7 +20,8 @@ object ApiKeyDataEntity {
   ) extends TimestampedEntity
 
   case class Write(
-      apiKeyId: Long,
+      id: UUID,
+      apiKeyId: UUID,
       publicKeyId: String,
       name: String,
       description: Option[String],
@@ -28,8 +30,9 @@ object ApiKeyDataEntity {
   )
 
   object Write {
-    def from(apiKeyId: Long, apiKeyData: ApiKeyData): ApiKeyDataEntity.Write =
+    def from(id: UUID, apiKeyId: UUID, apiKeyData: ApiKeyData): ApiKeyDataEntity.Write =
       ApiKeyDataEntity.Write(
+        id = id,
         apiKeyId = apiKeyId,
         publicKeyId = apiKeyData.publicKeyId.toString,
         name = apiKeyData.name,

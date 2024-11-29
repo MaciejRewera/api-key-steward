@@ -43,8 +43,8 @@ object RepositoryErrors {
       case object PublicKeyIdAlreadyExistsError
           extends ApiKeyInsertionError(message = "API Key Data with the same publicKeyId already exists.")
 
-      case class ReferencedApiKeyDoesNotExistError(apiKeyId: Long)
-          extends ApiKeyInsertionError(message = s"ApiKey with id = [$apiKeyId] does not exist.")
+      case class ReferencedApiKeyDoesNotExistError(apiKeyId: UUID)
+          extends ApiKeyInsertionError(message = s"ApiKey with id = [${apiKeyId.toString}] does not exist.")
 
       case class ApiKeyInsertionErrorImpl(cause: SQLException)
           extends ApiKeyInsertionError(message = s"An error occurred when inserting ApiKey: $cause")
@@ -145,8 +145,8 @@ object RepositoryErrors {
             extends ResourceServerInsertionError(errorMessage)
             with ReferencedTenantDoesNotExistError
 
-        def apply(tenantId: Long): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
-          errorMessage = s"Tenant with ID = [$tenantId] does not exist."
+        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
+          errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
         )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
@@ -218,10 +218,10 @@ object RepositoryErrors {
             message = s"Permission with publicPermissionId = [$publicPermissionId] already exists."
           )
 
-      case class PermissionAlreadyExistsForThisResourceServerError(permissionName: String, resourceServerId: Long)
+      case class PermissionAlreadyExistsForThisResourceServerError(permissionName: String, resourceServerId: UUID)
           extends PermissionInsertionError(
             message =
-              s"Permission with name = $permissionName already exists for ResourceServer with ID = [$resourceServerId]."
+              s"Permission with name = $permissionName already exists for ResourceServer with ID = [${resourceServerId.toString}]."
           )
 
       trait ReferencedResourceServerDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
@@ -231,9 +231,9 @@ object RepositoryErrors {
             extends PermissionInsertionError(errorMessage)
             with ReferencedResourceServerDoesNotExistError
 
-        def apply(resourceServerId: Long): ReferencedResourceServerDoesNotExistError =
+        def fromDbId(resourceServerId: UUID): ReferencedResourceServerDoesNotExistError =
           ReferencedResourceServerDoesNotExistErrorImpl(
-            errorMessage = s"ResourceServer with ID = [$resourceServerId] does not exist."
+            errorMessage = s"ResourceServer with ID = [${resourceServerId.toString}] does not exist."
           )
         def apply(publicResourceServerId: ResourceServerId): ReferencedResourceServerDoesNotExistError =
           ReferencedResourceServerDoesNotExistErrorImpl(
@@ -258,9 +258,10 @@ object RepositoryErrors {
     sealed abstract class UserInsertionError(override val message: String) extends UserDbError(message)
     object UserInsertionError {
 
-      case class UserAlreadyExistsForThisTenantError(publicUserId: UserId, tenantId: Long)
+      case class UserAlreadyExistsForThisTenantError(publicUserId: UserId, tenantId: UUID)
           extends UserInsertionError(
-            message = s"User with publicUserId = $publicUserId already exists for Tenant with ID = [$tenantId]."
+            message =
+              s"User with publicUserId = $publicUserId already exists for Tenant with ID = [${tenantId.toString}]."
           )
 
       trait ReferencedTenantDoesNotExistError extends UserInsertionError { val errorMessage: String }
@@ -270,9 +271,9 @@ object RepositoryErrors {
             extends UserInsertionError(errorMessage)
             with ReferencedTenantDoesNotExistError
 
-        def apply(tenantId: Long): ReferencedTenantDoesNotExistError =
+        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
-            errorMessage = s"Tenant with ID = [$tenantId] does not exist."
+            errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
           )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
@@ -310,9 +311,9 @@ object RepositoryErrors {
             extends ApiKeyTemplateInsertionError(errorMessage)
             with ReferencedTenantDoesNotExistError
 
-        def apply(tenantId: Long): ReferencedTenantDoesNotExistError =
+        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
-            errorMessage = s"Tenant with ID = [$tenantId] does not exist."
+            errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
           )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
@@ -342,10 +343,10 @@ object RepositoryErrors {
             message = s"An error occurred when inserting ApiKeyTemplatesPermissions: $cause"
           )
 
-      case class ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId: Long, permissionId: Long)
+      case class ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId: UUID, permissionId: UUID)
           extends ApiKeyTemplatesPermissionsInsertionError(
             message =
-              s"ApiKeyTemplatesPermissions with apiKeyTemplateId = [$apiKeyTemplateId] and permissionId = [$permissionId] already exists."
+              s"ApiKeyTemplatesPermissions with apiKeyTemplateId = [${apiKeyTemplateId.toString}] and permissionId = [${permissionId.toString}] already exists."
           )
 
       trait ReferencedApiKeyTemplateDoesNotExistError extends ApiKeyTemplatesPermissionsInsertionError {
@@ -357,9 +358,9 @@ object RepositoryErrors {
             extends ApiKeyTemplatesPermissionsInsertionError(errorMessage)
             with ReferencedApiKeyTemplateDoesNotExistError
 
-        def apply(apiKeyTemplateId: Long): ReferencedApiKeyTemplateDoesNotExistError =
+        def fromDbId(apiKeyTemplateId: UUID): ReferencedApiKeyTemplateDoesNotExistError =
           ReferencedApiKeyTemplateDoesNotExistErrorImpl(
-            errorMessage = s"ApiKeyTemplate with ID = [$apiKeyTemplateId] does not exist."
+            errorMessage = s"ApiKeyTemplate with ID = [${apiKeyTemplateId.toString}] does not exist."
           )
         def apply(publicApiKeyTemplateId: ApiKeyTemplateId): ReferencedApiKeyTemplateDoesNotExistError =
           ReferencedApiKeyTemplateDoesNotExistErrorImpl(
@@ -376,9 +377,9 @@ object RepositoryErrors {
             extends ApiKeyTemplatesPermissionsInsertionError(errorMessage)
             with ReferencedPermissionDoesNotExistError
 
-        def apply(permissionId: Long): ReferencedPermissionDoesNotExistError =
+        def fromDbId(permissionId: UUID): ReferencedPermissionDoesNotExistError =
           ReferencedPermissionDoesNotExistErrorImpl(
-            errorMessage = s"Permission with ID = [$permissionId] does not exist."
+            errorMessage = s"Permission with ID = [${permissionId.toString}] does not exist."
           )
         def apply(publicPermissionId: PermissionId): ReferencedPermissionDoesNotExistError =
           ReferencedPermissionDoesNotExistErrorImpl(
@@ -410,10 +411,10 @@ object RepositoryErrors {
             message = s"An error occurred when inserting ApiKeyTemplatesUsers: $cause"
           )
 
-      case class ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId: Long, userId: Long)
+      case class ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId: UUID, userId: UUID)
           extends ApiKeyTemplatesUsersInsertionError(
             message =
-              s"ApiKeyTemplatesUsers with apiKeyTemplateId = [$apiKeyTemplateId] and userId = [$userId] already exists."
+              s"ApiKeyTemplatesUsers with apiKeyTemplateId = [${apiKeyTemplateId.toString}] and userId = [${userId.toString}] already exists."
           )
 
       trait ReferencedApiKeyTemplateDoesNotExistError extends ApiKeyTemplatesUsersInsertionError {
@@ -425,9 +426,9 @@ object RepositoryErrors {
             extends ApiKeyTemplatesUsersInsertionError(errorMessage)
             with ReferencedApiKeyTemplateDoesNotExistError
 
-        def apply(apiKeyTemplateId: Long): ReferencedApiKeyTemplateDoesNotExistError =
+        def fromDbId(apiKeyTemplateId: UUID): ReferencedApiKeyTemplateDoesNotExistError =
           ReferencedApiKeyTemplateDoesNotExistErrorImpl(
-            errorMessage = s"ApiKeyTemplate with ID = [$apiKeyTemplateId] does not exist."
+            errorMessage = s"ApiKeyTemplate with ID = [${apiKeyTemplateId.toString}] does not exist."
           )
         def apply(publicApiKeyTemplateId: ApiKeyTemplateId): ReferencedApiKeyTemplateDoesNotExistError =
           ReferencedApiKeyTemplateDoesNotExistErrorImpl(
@@ -444,9 +445,9 @@ object RepositoryErrors {
             extends ApiKeyTemplatesUsersInsertionError(errorMessage)
             with ReferencedUserDoesNotExistError
 
-        def apply(userId: Long): ReferencedUserDoesNotExistError =
+        def fromDbId(userId: UUID): ReferencedUserDoesNotExistError =
           ReferencedUserDoesNotExistErrorImpl(
-            errorMessage = s"User with ID = [$userId] does not exist."
+            errorMessage = s"User with ID = [${userId.toString}] does not exist."
           )
         def apply(publicUserId: UserId, publicTenantId: TenantId): ReferencedUserDoesNotExistError =
           ReferencedUserDoesNotExistErrorImpl(

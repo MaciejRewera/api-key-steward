@@ -163,7 +163,7 @@ class ApiKeyTemplateDbSpec
         apiKeyTemplateDb
           .insert(apiKeyTemplateEntityWrite_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(apiKeyTemplateEntityWrite_1.tenantId)))
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateEntityWrite_1.tenantId)))
       }
 
       "NOT insert any entity into the DB" in {

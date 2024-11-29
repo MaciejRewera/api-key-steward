@@ -3,11 +3,12 @@ package apikeysteward.repositories.db.entity
 import apikeysteward.model.{Tenant, TenantUpdate}
 
 import java.time.Instant
+import java.util.UUID
 
 object TenantEntity {
 
   case class Read(
-      id: Long,
+      id: UUID,
       publicTenantId: String,
       name: String,
       description: Option[String],
@@ -17,17 +18,20 @@ object TenantEntity {
   ) extends TimestampedEntity
 
   case class Write(
+      id: UUID,
       publicTenantId: String,
       name: String,
       description: Option[String]
   )
 
   object Write {
-    def from(tenant: Tenant): TenantEntity.Write = TenantEntity.Write(
-      publicTenantId = tenant.tenantId.toString,
-      name = tenant.name,
-      description = tenant.description
-    )
+    def from(id: UUID, tenant: Tenant): TenantEntity.Write =
+      TenantEntity.Write(
+        id = id,
+        publicTenantId = tenant.tenantId.toString,
+        name = tenant.name,
+        description = tenant.description
+      )
   }
 
   case class Update(
@@ -37,10 +41,11 @@ object TenantEntity {
   )
 
   object Update {
-    def from(tenantUpdate: TenantUpdate): TenantEntity.Update = TenantEntity.Update(
-      publicTenantId = tenantUpdate.tenantId.toString,
-      name = tenantUpdate.name,
-      description = tenantUpdate.description
-    )
+    def from(tenantUpdate: TenantUpdate): TenantEntity.Update =
+      TenantEntity.Update(
+        publicTenantId = tenantUpdate.tenantId.toString,
+        name = tenantUpdate.name,
+        description = tenantUpdate.description
+      )
   }
 }

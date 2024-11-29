@@ -2,12 +2,17 @@ package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.PermissionsTestData.{permission_1, permission_2, permission_3}
+import apikeysteward.base.testdata.TenantsTestData.{tenantDbId_1, tenantDbId_2, tenantDbId_3}
 import apikeysteward.model.{ResourceServer, ResourceServerUpdate}
 import apikeysteward.repositories.db.entity.ResourceServerEntity
 
 import java.util.UUID
 
 object ResourceServersTestData extends FixedClock {
+
+  val resourceServerDbId_1: UUID = UUID.randomUUID()
+  val resourceServerDbId_2: UUID = UUID.randomUUID()
+  val resourceServerDbId_3: UUID = UUID.randomUUID()
 
   val publicResourceServerId_1: UUID = UUID.randomUUID()
   val publicResourceServerId_2: UUID = UUID.randomUUID()
@@ -58,14 +63,15 @@ object ResourceServersTestData extends FixedClock {
     )
 
   val resourceServerEntityWrite_1: ResourceServerEntity.Write = ResourceServerEntity.Write(
-    tenantId = 1L,
+    id = resourceServerDbId_1,
+    tenantId = tenantDbId_1,
     publicResourceServerId = publicResourceServerIdStr_1,
     name = resourceServerName_1,
     description = resourceServerDescription_1
   )
   val resourceServerEntityRead_1: ResourceServerEntity.Read = ResourceServerEntity.Read(
-    id = 1L,
-    tenantId = 1L,
+    id = resourceServerDbId_1,
+    tenantId = tenantDbId_1,
     publicResourceServerId = publicResourceServerIdStr_1,
     name = resourceServerName_1,
     description = resourceServerDescription_1,
@@ -75,14 +81,15 @@ object ResourceServersTestData extends FixedClock {
   )
 
   val resourceServerEntityWrite_2: ResourceServerEntity.Write = ResourceServerEntity.Write(
-    tenantId = 2L,
+    id = resourceServerDbId_2,
+    tenantId = tenantDbId_2,
     publicResourceServerId = publicResourceServerIdStr_2,
     name = resourceServerName_2,
     description = resourceServerDescription_2
   )
   val resourceServerEntityRead_2: ResourceServerEntity.Read = ResourceServerEntity.Read(
-    id = 2L,
-    tenantId = 2L,
+    id = resourceServerDbId_2,
+    tenantId = tenantDbId_2,
     publicResourceServerId = publicResourceServerIdStr_2,
     name = resourceServerName_2,
     description = resourceServerDescription_2,
@@ -92,14 +99,15 @@ object ResourceServersTestData extends FixedClock {
   )
 
   val resourceServerEntityWrite_3: ResourceServerEntity.Write = ResourceServerEntity.Write(
-    tenantId = 3L,
+    id = resourceServerDbId_3,
+    tenantId = tenantDbId_3,
     publicResourceServerId = publicResourceServerIdStr_3,
     name = resourceServerName_3,
     description = resourceServerDescription_3
   )
   val resourceServerEntityRead_3: ResourceServerEntity.Read = ResourceServerEntity.Read(
-    id = 3L,
-    tenantId = 3L,
+    id = resourceServerDbId_3,
+    tenantId = tenantDbId_3,
     publicResourceServerId = publicResourceServerIdStr_3,
     name = resourceServerName_3,
     description = resourceServerDescription_3,

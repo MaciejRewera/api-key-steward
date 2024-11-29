@@ -1,15 +1,19 @@
 package apikeysteward.repositories.db.entity
 
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
+import apikeysteward.repositories.db.DoobieCustomMeta
+import doobie.postgres._
+import doobie.postgres.implicits._
 
 import java.time.Instant
+import java.util.UUID
 import scala.concurrent.duration.Duration
 
-object ApiKeyTemplateEntity {
+object ApiKeyTemplateEntity extends DoobieCustomMeta {
 
   case class Read(
-      id: Long,
-      tenantId: Long,
+      id: UUID,
+      tenantId: UUID,
       publicTemplateId: String,
       name: String,
       description: Option[String],
@@ -21,7 +25,8 @@ object ApiKeyTemplateEntity {
   ) extends TimestampedEntity
 
   case class Write(
-      tenantId: Long,
+      id: UUID,
+      tenantId: UUID,
       publicTemplateId: String,
       name: String,
       description: Option[String],
@@ -31,8 +36,9 @@ object ApiKeyTemplateEntity {
   )
 
   object Write {
-    def from(tenantId: Long, apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Write =
+    def from(id: UUID, tenantId: UUID, apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Write =
       ApiKeyTemplateEntity.Write(
+        id = id,
         tenantId = tenantId,
         publicTemplateId = apiKeyTemplate.publicTemplateId.toString,
         isDefault = apiKeyTemplate.isDefault,
