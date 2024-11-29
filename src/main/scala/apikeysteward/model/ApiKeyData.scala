@@ -21,6 +21,8 @@ object ApiKeyData {
   implicit val encoder: Encoder[ApiKeyData] = deriveEncoder[ApiKeyData].mapJson(_.deepDropNullValues)
   implicit val decoder: Decoder[ApiKeyData] = deriveDecoder[ApiKeyData]
 
+  type ApiKeyId = UUID
+
   def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read): ApiKeyData =
     ApiKeyData(
       publicKeyId = UUID.fromString(apiKeyDataEntityRead.publicKeyId),

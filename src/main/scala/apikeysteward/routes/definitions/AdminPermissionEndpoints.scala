@@ -1,14 +1,12 @@
 package apikeysteward.routes.definitions
 
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
+import apikeysteward.model.ResourceServer.ResourceServerId
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
-  errorOutVariantBadRequest,
-  errorOutVariantNotFound
-}
-import apikeysteward.routes.definitions.EndpointsBase.resourceServerIdPathParameter
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{errorOutVariantBadRequest, errorOutVariantNotFound}
+import apikeysteward.routes.definitions.EndpointsBase.{resourceServerIdPathParameter, tenantIdHeaderInput}
 import apikeysteward.routes.model.admin.permission._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -24,13 +22,14 @@ private[routes] object AdminPermissionEndpoints {
 
   val createPermissionEndpoint: Endpoint[
     AccessToken,
-    (ResourceServerId, CreatePermissionRequest),
+    (TenantId, ResourceServerId, CreatePermissionRequest),
     ErrorInfo,
     (StatusCode, CreatePermissionResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("Create a new Permission with provided details.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions")
       .in(
         jsonBody[CreatePermissionRequest]
@@ -47,7 +46,7 @@ private[routes] object AdminPermissionEndpoints {
 
   val deletePermissionEndpoint: Endpoint[
     AccessToken,
-    (ResourceServerId, PermissionId),
+    (TenantId, ResourceServerId, PermissionId),
     ErrorInfo,
     (StatusCode, DeletePermissionResponse),
     Any
@@ -58,6 +57,7 @@ private[routes] object AdminPermissionEndpoints {
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions" / permissionIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Permission deleted"))
       .out(
@@ -69,13 +69,14 @@ private[routes] object AdminPermissionEndpoints {
 
   val getSinglePermissionEndpoint: Endpoint[
     AccessToken,
-    (ResourceServerId, PermissionId),
+    (TenantId, ResourceServerId, PermissionId),
     ErrorInfo,
     (StatusCode, GetSinglePermissionResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Permission for provided permissionId.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions" / permissionIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Permission found"))
       .out(
@@ -87,7 +88,7 @@ private[routes] object AdminPermissionEndpoints {
 
   val searchPermissionsEndpoint: Endpoint[
     AccessToken,
-    (ResourceServerId, Option[String]),
+    (TenantId, ResourceServerId, Option[String]),
     ErrorInfo,
     (StatusCode, GetMultiplePermissionsResponse),
     Any
@@ -96,6 +97,7 @@ private[routes] object AdminPermissionEndpoints {
       .description(
         "Search for Permissions based on provided query parameters. Search is scoped to ResourceServer with provided resourceServerId."
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "permissions")
       .in(nameFragmentQueryParam)
       .out(statusCode.description(StatusCode.Ok, "Permissions found"))

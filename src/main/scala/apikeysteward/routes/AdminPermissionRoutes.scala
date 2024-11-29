@@ -27,7 +27,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.createPermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (resourceServerId, request) = input
+          val (_, resourceServerId, request) = input
           permissionService.createPermission(resourceServerId, request).map {
 
             case Right(newPermission) =>
@@ -56,7 +56,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.deletePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (resourceServerId, permissionId) = input
+          val (_, resourceServerId, permissionId) = input
           permissionService.deletePermission(resourceServerId, permissionId).map {
 
             case Right(deletedPermission) =>
@@ -73,7 +73,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.getSinglePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (resourceServerId, permissionId) = input
+          val (_, resourceServerId, permissionId) = input
           permissionService.getBy(resourceServerId, permissionId).map {
             case Some(permission) => (StatusCode.Ok, GetSinglePermissionResponse(permission)).asRight
             case None =>
@@ -87,7 +87,7 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.searchPermissionsEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (resourceServerId, nameFragment) = input
+          val (_, resourceServerId, nameFragment) = input
           permissionService.getAllBy(resourceServerId)(nameFragment).map {
 
             case Right(permissions) =>

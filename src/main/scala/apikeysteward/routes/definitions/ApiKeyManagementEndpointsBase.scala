@@ -1,5 +1,6 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
@@ -13,7 +14,8 @@ import java.util.UUID
 
 private[definitions] object ApiKeyManagementEndpointsBase {
 
-  val keyIdPathParameter: EndpointInput.PathCapture[UUID] = path[UUID]("keyId").description("Unique ID of the API Key.")
+  val keyIdPathParameter: EndpointInput.PathCapture[ApiKeyId] =
+    path[ApiKeyId]("keyId").description("Unique ID of the API Key.")
 
   val getAllApiKeysForUserEndpointBase
       : Endpoint[AccessToken, Unit, ErrorInfo, (StatusCode, GetMultipleApiKeysResponse), Any] =

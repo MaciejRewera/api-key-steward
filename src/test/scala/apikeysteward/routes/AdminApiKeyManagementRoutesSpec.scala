@@ -57,6 +57,9 @@ class AdminApiKeyManagementRoutesSpec
   private def runCommonJwtTests(request: Request[IO])(requiredPermissions: Set[Permission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, List(managementService))(request, requiredPermissions)
 
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    runCommonTenantIdHeaderTests(adminRoutes, jwtAuthorizer, List(managementService))(request)
+
   "AdminApiKeyRoutes on POST /admin/api-keys" when {
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys")
@@ -67,10 +70,11 @@ class AdminApiKeyManagementRoutesSpec
       ttl = ttlMinutes
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
 
@@ -385,16 +389,16 @@ class AdminApiKeyManagementRoutesSpec
     val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val requestBody = UpdateApiKeyAdminRequest(name = name_1, description = description_1)
 
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with publicKeyId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-      val requestWithIncorrectPublicKeyId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -615,15 +619,16 @@ class AdminApiKeyManagementRoutesSpec
   "AdminApiKeyRoutes on GET /admin/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with publicKeyId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-      val requestWithIncorrectPublicKeyId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -694,15 +699,16 @@ class AdminApiKeyManagementRoutesSpec
   "AdminApiKeyRoutes on DELETE /admin/api-keys/{publicKeyId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with publicKeyId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
-      val requestWithIncorrectPublicKeyId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
         for {

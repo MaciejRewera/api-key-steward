@@ -25,8 +25,10 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       .toRoutes(
         AdminApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-          .serverLogic { _ => adminRequest =>
+          .serverLogic { _ => input =>
+            val (_, adminRequest) = input
             val (userId, request) = adminRequest.toUserRequest
+
             managementService.createApiKey(userId, request).map {
 
               case Right((newApiKey, apiKeyData)) =>
@@ -46,7 +48,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       AdminApiKeyManagementEndpoints.updateApiKeyEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (publicKeyId, updateApiKeyRequest) = input
+          val (_, publicKeyId, updateApiKeyRequest) = input
           managementService.updateApiKey(publicKeyId, updateApiKeyRequest).map {
 
             case Right(apiKeyData) =>
@@ -63,7 +65,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       .toRoutes(
         AdminApiKeyManagementEndpoints.getSingleApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
-          .serverLogic { _ => publicKeyId =>
+          .serverLogic { _ => input =>
+            val (_, publicKeyId) = input
             managementService.getApiKey(publicKeyId).map {
 
               case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
@@ -79,7 +82,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       .toRoutes(
         AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-          .serverLogic { _ => publicKeyId =>
+          .serverLogic { _ => input =>
+            val (_, publicKeyId) = input
             managementService.deleteApiKey(publicKeyId).map {
 
               case Right(deletedApiKeyData) =>
