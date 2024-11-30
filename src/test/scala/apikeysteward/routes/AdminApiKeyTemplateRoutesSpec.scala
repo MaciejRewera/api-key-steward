@@ -2,11 +2,10 @@ package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
@@ -41,7 +40,6 @@ import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import org.typelevel.ci.{CIString, CIStringSyntax}
 
 import java.sql.SQLException
 import java.util.UUID
@@ -69,9 +67,6 @@ class AdminApiKeyTemplateRoutesSpec
       userService,
       apiKeyTemplateAssociationsService
     ).allRoutes.orNotFound
-
-  private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
-  private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -106,33 +101,11 @@ class AdminApiKeyTemplateRoutesSpec
       apiKeyPrefix = apiKeyPrefix_1
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
-
-      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
-      )
-
-      "return Bad Request" in authorizedFixture {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(apiKeyTemplateService)
-        } yield ()
-      }
-    }
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
 
@@ -565,16 +538,17 @@ class AdminApiKeyTemplateRoutesSpec
       apiKeyMaxExpiryPeriod = Duration(17, TimeUnit.DAYS)
     )
 
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders)
       .withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
+    runCommonTenantIdHeaderTests(request)
+
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with apiKeyTemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -889,15 +863,16 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with apiKeyTemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -973,15 +948,16 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with apiKeyTemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -1055,32 +1031,11 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on GET /admin/templates" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
-
-      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
-      )
-
-      "return Bad Request" in authorizedFixture {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-        } yield ()
-      }
-
-      "NOT call ApiKeyTemplateService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(apiKeyTemplateService)
-        } yield ()
-      }
-    }
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
@@ -1145,16 +1100,16 @@ class AdminApiKeyTemplateRoutesSpec
       permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -1366,16 +1321,16 @@ class AdminApiKeyTemplateRoutesSpec
       permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
     )
 
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -1574,15 +1529,16 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}/permissions" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -1682,7 +1638,7 @@ class AdminApiKeyTemplateRoutesSpec
     val requestBody =
       AssociateUsersWithApiKeyTemplateRequest(userIds = List(publicUserId_1, publicUserId_2, publicUserId_3))
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders)
       .withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
@@ -1692,8 +1648,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -1904,15 +1859,16 @@ class AdminApiKeyTemplateRoutesSpec
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}/users" when {
 
     val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
-      val requestWithIncorrectApiKeyTemplateId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
         for {

@@ -44,7 +44,7 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.updateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (resourceServerId, request) = input
+          val (_, resourceServerId, request) = input
           resourceServerService.updateResourceServer(resourceServerId, request).map {
 
             case Right(updatedResourceServer) =>
@@ -60,7 +60,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
     serverInterpreter.toRoutes(
       AdminResourceServerEndpoints.reactivateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-        .serverLogic { _ => resourceServerId =>
+        .serverLogic { _ => input =>
+          val (_, resourceServerId) = input
           resourceServerService.reactivateResourceServer(resourceServerId).map {
 
             case Right(reactivatedResourceServer) =>
@@ -76,7 +77,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
     serverInterpreter.toRoutes(
       AdminResourceServerEndpoints.deactivateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-        .serverLogic { _ => resourceServerId =>
+        .serverLogic { _ => input =>
+          val (_, resourceServerId) = input
           resourceServerService.deactivateResourceServer(resourceServerId).map {
 
             case Right(deactivatedResourceServer) =>
@@ -92,7 +94,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
     serverInterpreter.toRoutes(
       AdminResourceServerEndpoints.deleteResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-        .serverLogic { _ => resourceServerId =>
+        .serverLogic { _ => input =>
+          val (_, resourceServerId) = input
           resourceServerService.deleteResourceServer(resourceServerId).map {
 
             case Right(deletedResourceServer) =>
@@ -118,7 +121,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
     serverInterpreter.toRoutes(
       AdminResourceServerEndpoints.getSingleResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
-        .serverLogic { _ => resourceServerId =>
+        .serverLogic { _ => input =>
+          val (_, resourceServerId) = input
           resourceServerService.getBy(resourceServerId).map {
             case Some(resourceServer) => (StatusCode.Ok, GetSingleResourceServerResponse(resourceServer)).asRight
             case None =>

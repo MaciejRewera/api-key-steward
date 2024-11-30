@@ -63,9 +63,6 @@ class AdminUserRoutesSpec
       apiKeyManagementService
     ).allRoutes.orNotFound
 
-  private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
-  private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
-
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(jwtAuthorizer, userService, apiKeyTemplateService, apiKeyTemplateAssociationsService, apiKeyManagementService)
@@ -93,8 +90,7 @@ class AdminUserRoutesSpec
     val uri = Uri.unsafeFromString("/admin/users")
     val requestBody = CreateUserRequest(userId = publicUserId_1)
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
@@ -260,7 +256,7 @@ class AdminUserRoutesSpec
   "AdminUserRoutes on DELETE /admin/users/{userId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
@@ -320,7 +316,7 @@ class AdminUserRoutesSpec
   "AdminUserRoutes on GET /admin/users/{userId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
@@ -378,7 +374,7 @@ class AdminUserRoutesSpec
   "AdminUserRoutes on GET /admin/users" when {
 
     val uri = uri"/admin/users"
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
@@ -455,8 +451,7 @@ class AdminUserRoutesSpec
       List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
@@ -687,8 +682,7 @@ class AdminUserRoutesSpec
       templateIds = List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
     )
 
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
@@ -910,7 +904,7 @@ class AdminUserRoutesSpec
   "AdminUserRoutes on GET /admin/users/{userId}/templates" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
@@ -993,7 +987,7 @@ class AdminUserRoutesSpec
   "AdminUserRoutes on GET /admin/users/{userId}/api-keys" when {
 
     val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/api-keys")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 

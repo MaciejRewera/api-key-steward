@@ -53,21 +53,25 @@ class AdminPermissionRoutesSpec
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[JwtPermission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, List(permissionService))(request, requiredPermissions)
 
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    runCommonTenantIdHeaderTests(adminRoutes, jwtAuthorizer, List(permissionService))(request)
+
   "AdminPermissionRoutes on POST /admin/resource-servers/{resourceServerId}/permissions" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
     val requestBody = CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders)
       .withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
+    runCommonTenantIdHeaderTests(request)
+
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -338,16 +342,17 @@ class AdminPermissionRoutesSpec
 
     val uri =
       Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/$publicPermissionId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri =
         Uri.unsafeFromString(s"/admin/resource-servers/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -373,8 +378,7 @@ class AdminPermissionRoutesSpec
 
       val uri =
         Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/this-is-not-a-valid-uuid")
-      val requestWithIncorrectPermissionId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectPermissionId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -457,16 +461,17 @@ class AdminPermissionRoutesSpec
 
     val uri =
       Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/$publicPermissionId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri =
         Uri.unsafeFromString(s"/admin/resource-servers/this-is-not-a-valid-uuid/permissions/$publicPermissionId_1")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -492,8 +497,7 @@ class AdminPermissionRoutesSpec
 
       val uri =
         Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions/this-is-not-a-valid-uuid")
-      val requestWithIncorrectPermissionId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectPermissionId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -571,15 +575,16 @@ class AdminPermissionRoutesSpec
     val uri = Uri
       .unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
       .withQueryParam("name", nameFragment)
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/permissions")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -614,7 +619,7 @@ class AdminPermissionRoutesSpec
 
       "call PermissionService providing empty Option when request contains NO query param" in authorizedFixture {
         val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
-        val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+        val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
         permissionService.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty.asRight)
 

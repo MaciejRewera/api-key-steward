@@ -1,8 +1,8 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.TenantsTestData.publicTenantIdStr_1
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
-import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderName
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
@@ -15,6 +15,7 @@ import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{verify, verifyZeroInteractions}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
+import org.typelevel.ci.{CIString, CIStringSyntax}
 
 trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
@@ -22,6 +23,11 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
   val tokenString: AccessToken = "TOKEN"
   val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
+
+  val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
+  val tenantIdHeader: Header.Raw = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
+
+  val allHeaders: Headers = Headers(authorizationHeader, tenantIdHeader)
 
   def authorizedFixture[T](jwtAuthorizer: JwtAuthorizer)(test: => IO[T]): IO[T] = IO {
     jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
@@ -135,9 +141,7 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       routes: HttpApp[IO],
       jwtAuthorizer: JwtAuthorizer,
       mockedServices: List[Service]
-  )(
-      request: Request[IO]
-  ): Unit = {
+  )(request: Request[IO]): Unit = {
 
     def authorizedInnerFixture[T](test: => IO[T]): IO[T] = authorizedFixture(jwtAuthorizer)(test)
 
@@ -180,6 +184,58 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       }
 
       "NOT call the Services" in authorizedInnerFixture {
+        for {
+          _ <- routes.run(requestWithIncorrectHeader)
+          _ = verifyZeroInteractions(mockedServices: _*)
+        } yield ()
+      }
+    }
+  }
+
+  def runCommonTenantIdHeaderTests[Service <: AnyRef](
+      routes: HttpApp[IO],
+      mockedServices: List[Service]
+  )(request: Request[IO]): Unit = {
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
+
+      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
+      )
+
+      "return Bad Request" in {
+        for {
+          response <- routes.run(requestWithIncorrectHeader)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call the Services" in {
+        for {
+          _ <- routes.run(requestWithIncorrectHeader)
+          _ = verifyZeroInteractions(mockedServices: _*)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT present" should {
+
+      val requestWithIncorrectHeader = request.removeHeader(tenantIdHeaderName)
+      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+        Some(s"""Invalid value for: header ApiKeySteward-TenantId (missing)""")
+      )
+
+      "return Bad Request" in {
+        for {
+          response <- routes.run(requestWithIncorrectHeader)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+        } yield ()
+      }
+
+      "NOT call the Services" in {
         for {
           _ <- routes.run(requestWithIncorrectHeader)
           _ = verifyZeroInteractions(mockedServices: _*)

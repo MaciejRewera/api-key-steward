@@ -15,7 +15,8 @@ class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
-        ApiKeyValidationEndpoints.validateApiKeyEndpoint.serverLogic[IO] { request =>
+        ApiKeyValidationEndpoints.validateApiKeyEndpoint.serverLogic[IO] { input =>
+          val (_, request) = input
           apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map {
 
             case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))

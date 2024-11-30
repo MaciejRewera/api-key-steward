@@ -47,9 +47,6 @@ class AdminResourceServerRoutesSpec
   private val adminRoutes: HttpApp[IO] =
     new AdminResourceServerRoutes(jwtAuthorizer, resourceServerService).allRoutes.orNotFound
 
-  private val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
-  private val tenantIdHeader = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
-
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(jwtAuthorizer, resourceServerService)
@@ -61,6 +58,9 @@ class AdminResourceServerRoutesSpec
   private def runCommonJwtTests(request: Request[IO], requiredPermissions: Set[Permission]): Unit =
     runCommonJwtTests(adminRoutes, jwtAuthorizer, List(resourceServerService))(request, requiredPermissions)
 
+  private def runCommonTenantIdHeaderTests(request: Request[IO]): Unit =
+    runCommonTenantIdHeaderTests(adminRoutes, jwtAuthorizer, List(resourceServerService))(request)
+
   "AdminResourceServerRoutes on POST /admin/resource-servers" when {
 
     val uri = Uri.unsafeFromString("/admin/resource-servers")
@@ -70,33 +70,11 @@ class AdminResourceServerRoutesSpec
       permissions = List(createPermissionRequest_1, createPermissionRequest_2, createPermissionRequest_3)
     )
 
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
-
-      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
-      )
-
-      "return Bad Request" in authorizedFixture {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-        } yield ()
-      }
-
-      "NOT call ResourceServerService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(resourceServerService)
-        } yield ()
-      }
-    }
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
 
@@ -333,16 +311,16 @@ class AdminResourceServerRoutesSpec
     val requestBody =
       UpdateResourceServerRequest(name = resourceServerName_1, description = resourceServerDescription_1)
 
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
-      .withEntity(requestBody.asJson)
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -552,15 +530,16 @@ class AdminResourceServerRoutesSpec
   "AdminResourceServerRoutes on PUT /admin/resource-servers/{resourceServerId}/reactivation" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/reactivation")
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/reactivation")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -636,15 +615,16 @@ class AdminResourceServerRoutesSpec
   "AdminResourceServerRoutes on PUT /admin/resource-servers/{resourceServerId}/deactivation" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/deactivation")
-    val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid/deactivation")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -720,15 +700,16 @@ class AdminResourceServerRoutesSpec
   "AdminResourceServerRoutes on DELETE /admin/resource-servers/{resourceServerId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -822,15 +803,16 @@ class AdminResourceServerRoutesSpec
   "AdminResourceServerRoutes on GET /admin/resource-servers/{resourceServerId}" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
+
+    runCommonTenantIdHeaderTests(request)
 
     "provided with resourceServerId which is not an UUID" should {
 
       val uri = Uri.unsafeFromString("/admin/resource-servers/this-is-not-a-valid-uuid")
-      val requestWithIncorrectResourceServerId =
-        Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
+      val requestWithIncorrectResourceServerId = request.withUri(uri)
 
       "return Bad Request" in {
         for {
@@ -904,32 +886,11 @@ class AdminResourceServerRoutesSpec
   "AdminResourceServerRoutes on GET /admin/resource-servers" when {
 
     val uri = Uri.unsafeFromString(s"/admin/resource-servers")
-    val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader, tenantIdHeader))
+    val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but TenantId request header is NOT a UUID" should {
-
-      val requestWithIncorrectHeader = request.putHeaders(Header.Raw(tenantIdHeaderName, "this-is-not-a-valid-uuid"))
-      val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-        Some(s"""Invalid value for: header ApiKeySteward-TenantId""")
-      )
-
-      "return Bad Request" in authorizedFixture {
-        for {
-          response <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = response.status shouldBe Status.BadRequest
-          _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-        } yield ()
-      }
-
-      "NOT call ResourceServerService" in authorizedFixture {
-        for {
-          _ <- adminRoutes.run(requestWithIncorrectHeader)
-          _ = verifyZeroInteractions(resourceServerService)
-        } yield ()
-      }
-    }
+    runCommonTenantIdHeaderTests(request)
 
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 

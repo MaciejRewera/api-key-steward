@@ -51,7 +51,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
 
   val updateApiKeyTemplateEndpoint: Endpoint[
     AccessToken,
-    (ApiKeyTemplateId, UpdateApiKeyTemplateRequest),
+    (TenantId, ApiKeyTemplateId, UpdateApiKeyTemplateRequest),
     ErrorInfo,
     (StatusCode, UpdateApiKeyTemplateResponse),
     Any
@@ -61,6 +61,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
         """Update an existing Template. You have to specify all of the fields of the Template.
           |This API replaces the existing Template with your new data.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter)
       .in(
         jsonBody[UpdateApiKeyTemplateRequest]
@@ -75,14 +76,20 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deleteResourceServerEndpoint
-      : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, DeleteApiKeyTemplateResponse), Any] =
+  val deleteResourceServerEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId),
+    ErrorInfo,
+    (StatusCode, DeleteApiKeyTemplateResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
         """Delete a Template.
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Template deleted."))
       .out(
@@ -92,10 +99,16 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleApiKeyTemplateEndpoint
-      : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetSingleApiKeyTemplateResponse), Any] =
+  val getSingleApiKeyTemplateEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId),
+    ErrorInfo,
+    (StatusCode, GetSingleApiKeyTemplateResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Template for provided templateId.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Template found."))
       .out(
@@ -118,12 +131,18 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       )
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val associatePermissionsWithApiKeyTemplateEndpoint
-      : Endpoint[AccessToken, (ApiKeyTemplateId, CreateApiKeyTemplatesPermissionsRequest), ErrorInfo, StatusCode, Any] =
+  val associatePermissionsWithApiKeyTemplateEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId, CreateApiKeyTemplatesPermissionsRequest),
+    ErrorInfo,
+    StatusCode,
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("""Associate Permissions with a Template.
                      |Add one or more Permissions to the specified Template.
           """.stripMargin)
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .in(
         jsonBody[CreateApiKeyTemplatesPermissionsRequest]
@@ -141,13 +160,19 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val removePermissionsFromApiKeyTemplateEndpoint
-      : Endpoint[AccessToken, (ApiKeyTemplateId, DeleteApiKeyTemplatesPermissionsRequest), ErrorInfo, StatusCode, Any] =
+  val removePermissionsFromApiKeyTemplateEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId, DeleteApiKeyTemplatesPermissionsRequest),
+    ErrorInfo,
+    StatusCode,
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
         """Remove Permissions from a Template.
           |Remove one or more Permissions from the specified Template.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .in(
         jsonBody[DeleteApiKeyTemplatesPermissionsRequest]
@@ -165,10 +190,16 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getAllPermissionsForTemplateEndpoint
-      : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetMultiplePermissionsResponse), Any] =
+  val getAllPermissionsForTemplateEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ApiKeyTemplateId),
+    ErrorInfo,
+    (StatusCode, GetMultiplePermissionsResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get all Permissions associated with the specified Template.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "permissions")
       .out(statusCode.description(StatusCode.Ok, "Permissions found."))
       .out(
@@ -208,9 +239,10 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllUsersForTemplateEndpoint
-      : Endpoint[AccessToken, ApiKeyTemplateId, ErrorInfo, (StatusCode, GetMultipleUsersResponse), Any] =
+      : Endpoint[AccessToken, (TenantId, ApiKeyTemplateId), ErrorInfo, (StatusCode, GetMultipleUsersResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get all Users associated with the specified Template.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "templates" / templateIdPathParameter / "users")
       .out(statusCode.description(StatusCode.Ok, "Users found."))
       .out(

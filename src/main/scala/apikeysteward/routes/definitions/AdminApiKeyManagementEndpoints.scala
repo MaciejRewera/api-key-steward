@@ -1,12 +1,12 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
-  errorOutVariantBadRequest,
-  errorOutVariantNotFound
-}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{errorOutVariantBadRequest, errorOutVariantNotFound}
+import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
 import apikeysteward.routes.model.admin.apikey._
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyExpirationCalculator
@@ -15,16 +15,18 @@ import sttp.tapir._
 import sttp.tapir.generic.auto.schemaForCaseClass
 import sttp.tapir.json.circe.jsonBody
 
-import java.util.UUID
-
 private[routes] object AdminApiKeyManagementEndpoints {
 
-  private val userIdPathParameter = path[String]("userId").description("Unique ID of the user.")
-
-  val createApiKeyEndpoint
-      : Endpoint[AccessToken, CreateApiKeyAdminRequest, ErrorInfo, (StatusCode, CreateApiKeyAdminResponse), Any] =
+  val createApiKeyEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, CreateApiKeyAdminRequest),
+    ErrorInfo,
+    (StatusCode, CreateApiKeyAdminResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.post
       .description("Create new API key for a user.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "api-keys")
       .in(
         jsonBody[CreateApiKeyAdminRequest]
@@ -54,13 +56,14 @@ private[routes] object AdminApiKeyManagementEndpoints {
 
   val updateApiKeyEndpoint: Endpoint[
     AccessToken,
-    (UUID, UpdateApiKeyAdminRequest),
+    (TenantId, ApiKeyId, UpdateApiKeyAdminRequest),
     ErrorInfo,
     (StatusCode, UpdateApiKeyAdminResponse),
     Any
   ] =
     EndpointsBase.authenticatedEndpointBase.put
       .description("Update API key for given user ID and key ID.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "api-keys" / keyIdPathParameter)
       .in(
         jsonBody[UpdateApiKeyAdminRequest]
@@ -86,14 +89,18 @@ private[routes] object AdminApiKeyManagementEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
+  val getSingleApiKeyEndpoint
+      : Endpoint[AccessToken, (TenantId, ApiKeyId), ErrorInfo, (StatusCode, GetSingleApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.getSingleApiKeyEndpointBase
       .description("Get API key data for given key ID.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "api-keys" / keyIdPathParameter)
 
-  val deleteApiKeyEndpoint: Endpoint[AccessToken, UUID, ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
+  val deleteApiKeyEndpoint
+      : Endpoint[AccessToken, (TenantId, ApiKeyId), ErrorInfo, (StatusCode, DeleteApiKeyResponse), Any] =
     ApiKeyManagementEndpointsBase.deleteApiKeyEndpointBase
       .description("Delete API key for given key ID.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "api-keys" / keyIdPathParameter)
 
 }

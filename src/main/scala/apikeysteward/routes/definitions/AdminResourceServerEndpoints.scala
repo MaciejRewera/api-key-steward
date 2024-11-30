@@ -39,7 +39,7 @@ private[routes] object AdminResourceServerEndpoints {
 
   val updateResourceServerEndpoint: Endpoint[
     AccessToken,
-    (ResourceServerId, UpdateResourceServerRequest),
+    (TenantId, ResourceServerId, UpdateResourceServerRequest),
     ErrorInfo,
     (StatusCode, UpdateResourceServerResponse),
     Any
@@ -49,6 +49,7 @@ private[routes] object AdminResourceServerEndpoints {
         """Update an existing Resource Server. You have to specify all of the fields of the Resource Server.
           |This API replaces the existing Resource Server with your new data.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter)
       .in(
         jsonBody[UpdateResourceServerRequest]
@@ -68,12 +69,18 @@ private[routes] object AdminResourceServerEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val reactivateResourceServerEndpoint
-      : Endpoint[AccessToken, ResourceServerId, ErrorInfo, (StatusCode, ReactivateResourceServerResponse), Any] =
+  val reactivateResourceServerEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ResourceServerId),
+    ErrorInfo,
+    (StatusCode, ReactivateResourceServerResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.put
       .description(
         "Reactivate an inactive Resource Server. If the Resource Server is already active, this API has no effect."
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "reactivation")
       .out(statusCode.description(StatusCode.Ok, "Resource Server reactivated."))
       .out(
@@ -83,12 +90,18 @@ private[routes] object AdminResourceServerEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deactivateResourceServerEndpoint
-      : Endpoint[AccessToken, ResourceServerId, ErrorInfo, (StatusCode, DeactivateResourceServerResponse), Any] =
+  val deactivateResourceServerEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ResourceServerId),
+    ErrorInfo,
+    (StatusCode, DeactivateResourceServerResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.put
       .description(
         "Deactivate an active Resource Server. If the Resource Server is already inactive, this API has no effect."
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter / "deactivation")
       .out(statusCode.description(StatusCode.Ok, "Resource Server deactivated."))
       .out(
@@ -98,14 +111,20 @@ private[routes] object AdminResourceServerEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val deleteResourceServerEndpoint
-      : Endpoint[AccessToken, ResourceServerId, ErrorInfo, (StatusCode, DeleteResourceServerResponse), Any] =
+  val deleteResourceServerEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ResourceServerId),
+    ErrorInfo,
+    (StatusCode, DeleteResourceServerResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
         """Delete an inactive Resource Server. The Resource Server has to be inactive before using this API.
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Resource Server deleted."))
       .out(
@@ -115,10 +134,16 @@ private[routes] object AdminResourceServerEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val getSingleResourceServerEndpoint
-      : Endpoint[AccessToken, ResourceServerId, ErrorInfo, (StatusCode, GetSingleResourceServerResponse), Any] =
+  val getSingleResourceServerEndpoint: Endpoint[
+    AccessToken,
+    (TenantId, ResourceServerId),
+    ErrorInfo,
+    (StatusCode, GetSingleResourceServerResponse),
+    Any
+  ] =
     EndpointsBase.authenticatedEndpointBase.get
       .description("Get single Resource Server for provided resourceServerId.")
+      .in(tenantIdHeaderInput)
       .in("admin" / "resource-servers" / resourceServerIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Resource Server found."))
       .out(
