@@ -39,9 +39,9 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
         resourceServerId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated ResourceServer ID."))
 
         _ <- logger.info("Generating Permission IDs...")
-        permissionIds <- createResourceServerRequest.permissions.traverse { _ =>
-          uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Permission IDs."))
-        }
+        permissionIds <- createResourceServerRequest.permissions
+          .traverse(_ => uuidGenerator.generateUuid)
+          .flatTap(_ => logger.info("Generated Permission IDs."))
 
         _ <- logger.info("Inserting ResourceServer into database...")
         newResourceServer <- resourceServerRepository
