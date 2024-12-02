@@ -56,6 +56,7 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
         .buildFlywayConfigBase(dataSource, databaseConfig)
         .map(
           _.cleanDisabled(false)
+            .baselineOnMigrate(true)
             .load()
         )
 

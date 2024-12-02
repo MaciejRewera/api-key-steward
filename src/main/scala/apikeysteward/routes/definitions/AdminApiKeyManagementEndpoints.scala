@@ -5,7 +5,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{errorOutVariantBadRequest, errorOutVariantNotFound}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
 import apikeysteward.routes.model.admin.apikey._
 import apikeysteward.routes.model.apikey._

@@ -20,7 +20,8 @@ object DatabaseMigrator {
 
   def migrateDatabase(dataSource: HikariDataSource, databaseConfig: DatabaseConfig): IO[MigrateResult] =
     for {
-      flyway <- buildFlywayConfigBase(dataSource, databaseConfig)
+      flyway <- DatabaseMigrator
+        .buildFlywayConfigBase(dataSource, databaseConfig)
         .map(
           _.cleanDisabled(true)
             .validateMigrationNaming(true)
