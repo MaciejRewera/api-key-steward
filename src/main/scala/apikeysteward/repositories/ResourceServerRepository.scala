@@ -73,54 +73,68 @@ class ResourceServerRepository(
       } yield result
     }
 
-  def update(resourceServerUpdate: ResourceServerUpdate): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
+  def update(
+      publicTenantId: TenantId,
+      resourceServerUpdate: ResourceServerUpdate
+  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
     (for {
       resourceServerEntityRead <- EitherT(
-        resourceServerDb.update(ResourceServerEntity.Update.from(resourceServerUpdate))
+        resourceServerDb.update(publicTenantId, ResourceServerEntity.Update.from(resourceServerUpdate))
       )
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
         constructResourceServer(resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
-  def activate(publicResourceServerId: ResourceServerId): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
+  def activate(
+      publicTenantId: TenantId,
+      publicResourceServerId: ResourceServerId
+  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
     (for {
-      resourceServerEntityRead <- EitherT(resourceServerDb.activate(publicResourceServerId))
+      resourceServerEntityRead <- EitherT(resourceServerDb.activate(publicTenantId, publicResourceServerId))
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
         constructResourceServer(resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
-  def deactivate(publicResourceServerId: ResourceServerId): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
+  def deactivate(
+      publicTenantId: TenantId,
+      publicResourceServerId: ResourceServerId
+  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
     (for {
-      resourceServerEntityRead <- EitherT(resourceServerDb.deactivate(publicResourceServerId))
+      resourceServerEntityRead <- EitherT(resourceServerDb.deactivate(publicTenantId, publicResourceServerId))
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
         constructResourceServer(resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
-  def delete(publicResourceServerId: ResourceServerId): IO[Either[ResourceServerDbError, ResourceServer]] =
-    deleteOp(publicResourceServerId).transact(transactor)
+  def delete(
+      publicTenantId: TenantId,
+      publicResourceServerId: ResourceServerId
+  ): IO[Either[ResourceServerDbError, ResourceServer]] =
+    deleteOp(publicTenantId, publicResourceServerId).transact(transactor)
 
   private[repositories] def deleteOp(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerDbError, ResourceServer]] =
     (for {
-      _ <- verifyResourceServerIsDeactivatedOp(publicResourceServerId)
+      _ <- verifyResourceServerIsDeactivatedOp(publicTenantId, publicResourceServerId)
 
       permissionEntitiesDeleted <- deletePermissions(publicResourceServerId)
-      resourceServerEntityRead <- EitherT(resourceServerDb.deleteDeactivated(publicResourceServerId))
+      resourceServerEntityRead <- EitherT(resourceServerDb.deleteDeactivated(publicTenantId, publicResourceServerId))
 
       resultResourceServer = ResourceServer.from(resourceServerEntityRead, permissionEntitiesDeleted)
     } yield resultResourceServer).value
 
   private[repositories] def verifyResourceServerIsDeactivatedOp(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): EitherT[doobie.ConnectionIO, ResourceServerDbError, Unit] =
     for {
       resourceServerToDelete <- EitherT(
         resourceServerDb
-          .getByPublicResourceServerId(publicResourceServerId)
+          .getByPublicResourceServerId(publicTenantId, publicResourceServerId)
           .map(_.toRight(resourceServerNotFoundError(publicResourceServerId)))
       )
       _ <- EitherT.cond[doobie.ConnectionIO](
@@ -144,9 +158,11 @@ class ResourceServerRepository(
       } yield result
     }
 
-  def getBy(publicResourceServerId: ResourceServerId): IO[Option[ResourceServer]] =
+  def getBy(publicTenantId: TenantId, publicResourceServerId: ResourceServerId): IO[Option[ResourceServer]] =
     (for {
-      resourceServerEntityRead <- OptionT(resourceServerDb.getByPublicResourceServerId(publicResourceServerId))
+      resourceServerEntityRead <- OptionT(
+        resourceServerDb.getByPublicResourceServerId(publicTenantId, publicResourceServerId)
+      )
       resultResourceServer <- OptionT.liftF(constructResourceServer(resourceServerEntityRead))
     } yield resultResourceServer).value.transact(transactor)
 

@@ -142,7 +142,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -168,7 +168,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, _, userIds) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -191,7 +191,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -214,7 +214,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -239,7 +239,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, templateIds, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -261,7 +261,7 @@ class TenantRepositoryItSpec
         val result = for {
           dataIds <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -284,7 +284,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -306,7 +306,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -332,7 +332,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, _, userIds) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -355,7 +355,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -378,7 +378,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -397,7 +397,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, templateIds, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -419,7 +419,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -442,7 +442,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -463,7 +463,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -477,7 +477,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -492,7 +492,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -506,7 +506,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -520,7 +520,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -534,7 +534,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -548,7 +548,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 

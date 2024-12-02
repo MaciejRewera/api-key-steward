@@ -325,42 +325,50 @@ class ResourceServerServiceSpec
       resourceServer_1.copy(name = resourceServerNameUpdated, description = resourceServerDescriptionUpdated)
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.update(any[ResourceServerUpdate]) returns IO.pure(Right(updatedResourceServer))
+      resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
+        Right(updatedResourceServer)
+      )
 
       for {
-        _ <- resourceServerService.updateResourceServer(publicResourceServerId_1, updateResourceServerRequest)
+        _ <- resourceServerService.updateResourceServer(
+          publicTenantId_1,
+          publicResourceServerId_1,
+          updateResourceServerRequest
+        )
 
-        _ = verify(resourceServerRepository).update(eqTo(resourceServerUpdate_1))
+        _ = verify(resourceServerRepository).update(eqTo(publicTenantId_1), eqTo(resourceServerUpdate_1))
       } yield ()
     }
 
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.update(any[ResourceServerUpdate]) returns IO.pure(Right(updatedResourceServer))
+        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
+          Right(updatedResourceServer)
+        )
 
         resourceServerService
-          .updateResourceServer(publicResourceServerId_1, updateResourceServerRequest)
+          .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
           .asserting(_ shouldBe Right(updatedResourceServer))
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.update(any[ResourceServerUpdate]) returns IO.pure(
+        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
         resourceServerService
-          .updateResourceServer(publicResourceServerId_1, updateResourceServerRequest)
+          .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.update(any[ResourceServerUpdate]) returns IO.raiseError(testException)
+        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.raiseError(testException)
 
         resourceServerService
-          .updateResourceServer(publicResourceServerId_1, updateResourceServerRequest)
+          .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -372,42 +380,46 @@ class ResourceServerServiceSpec
     val reactivatedResourceServer = resourceServer_1.copy(isActive = true)
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.activate(any[UUID]) returns IO.pure(Right(reactivatedResourceServer))
+      resourceServerRepository.activate(any[TenantId], any[ResourceServerId]) returns IO.pure(
+        Right(reactivatedResourceServer)
+      )
 
       for {
-        _ <- resourceServerService.reactivateResourceServer(publicResourceServerId_1)
+        _ <- resourceServerService.reactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
 
-        _ = verify(resourceServerRepository).activate(eqTo(publicResourceServerId_1))
+        _ = verify(resourceServerRepository).activate(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
       } yield ()
     }
 
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.activate(any[UUID]) returns IO.pure(Right(reactivatedResourceServer))
+        resourceServerRepository.activate(any[TenantId], any[ResourceServerId]) returns IO.pure(
+          Right(reactivatedResourceServer)
+        )
 
         resourceServerService
-          .reactivateResourceServer(publicResourceServerId_1)
+          .reactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Right(reactivatedResourceServer))
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.activate(any[UUID]) returns IO.pure(
+        resourceServerRepository.activate(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
         resourceServerService
-          .reactivateResourceServer(publicResourceServerId_1)
+          .reactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.activate(any[UUID]) returns IO.raiseError(testException)
+        resourceServerRepository.activate(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
 
         resourceServerService
-          .reactivateResourceServer(publicResourceServerId_1)
+          .reactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -419,42 +431,46 @@ class ResourceServerServiceSpec
     val deactivatedResourceServer = resourceServer_1.copy(isActive = false)
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.deactivate(any[UUID]) returns IO.pure(Right(deactivatedResourceServer))
+      resourceServerRepository.deactivate(any[TenantId], any[ResourceServerId]) returns IO.pure(
+        Right(deactivatedResourceServer)
+      )
 
       for {
-        _ <- resourceServerService.deactivateResourceServer(publicResourceServerId_1)
+        _ <- resourceServerService.deactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
 
-        _ = verify(resourceServerRepository).deactivate(eqTo(publicResourceServerId_1))
+        _ = verify(resourceServerRepository).deactivate(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
       } yield ()
     }
 
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.deactivate(any[UUID]) returns IO.pure(Right(deactivatedResourceServer))
+        resourceServerRepository.deactivate(any[TenantId], any[ResourceServerId]) returns IO.pure(
+          Right(deactivatedResourceServer)
+        )
 
         resourceServerService
-          .deactivateResourceServer(publicResourceServerId_1)
+          .deactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Right(deactivatedResourceServer))
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.deactivate(any[UUID]) returns IO.pure(
+        resourceServerRepository.deactivate(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
         resourceServerService
-          .deactivateResourceServer(publicResourceServerId_1)
+          .deactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.deactivate(any[UUID]) returns IO.raiseError(testException)
+        resourceServerRepository.deactivate(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
 
         resourceServerService
-          .deactivateResourceServer(publicResourceServerId_1)
+          .deactivateResourceServer(publicTenantId_1, publicResourceServerId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -466,42 +482,46 @@ class ResourceServerServiceSpec
     val deletedResourceServer = resourceServer_1.copy(isActive = false)
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.delete(any[UUID]) returns IO.pure(Right(deletedResourceServer))
+      resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
+        Right(deletedResourceServer)
+      )
 
       for {
-        _ <- resourceServerService.deleteResourceServer(publicResourceServerId_1)
+        _ <- resourceServerService.deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
 
-        _ = verify(resourceServerRepository).delete(eqTo(publicResourceServerId_1))
+        _ = verify(resourceServerRepository).delete(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
       } yield ()
     }
 
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.delete(any[UUID]) returns IO.pure(Right(deletedResourceServer))
+        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
+          Right(deletedResourceServer)
+        )
 
         resourceServerService
-          .deleteResourceServer(publicResourceServerId_1)
+          .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Right(deletedResourceServer))
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.delete(any[UUID]) returns IO.pure(
+        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerDbError.resourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
         resourceServerService
-          .deleteResourceServer(publicResourceServerId_1)
+          .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.delete(any[UUID]) returns IO.raiseError(testException)
+        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
 
         resourceServerService
-          .deleteResourceServer(publicResourceServerId_1)
+          .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -511,35 +531,40 @@ class ResourceServerServiceSpec
   "ResourceServerService on getBy(:resourceServerId)" should {
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
+      resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
 
       for {
-        _ <- resourceServerService.getBy(publicResourceServerId_1)
+        _ <- resourceServerService.getBy(publicTenantId_1, publicResourceServerId_1)
 
-        _ = verify(resourceServerRepository).getBy(eqTo(publicResourceServerId_1))
+        _ = verify(resourceServerRepository).getBy(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
       } yield ()
     }
 
     "return the value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns empty Option" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(None)
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(None)
 
-        resourceServerService.getBy(publicResourceServerId_1).asserting(_ shouldBe None)
+        resourceServerService.getBy(publicTenantId_1, publicResourceServerId_1).asserting(_ shouldBe None)
       }
 
       "ResourceServerRepository returns non-empty Option" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
 
-        resourceServerService.getBy(publicResourceServerId_1).asserting(_ shouldBe Some(resourceServer_1))
+        resourceServerService
+          .getBy(publicTenantId_1, publicResourceServerId_1)
+          .asserting(_ shouldBe Some(resourceServer_1))
       }
     }
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.raiseError(testException)
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
 
-        resourceServerService.getBy(publicResourceServerId_1).attempt.asserting(_ shouldBe Left(testException))
+        resourceServerService
+          .getBy(publicTenantId_1, publicResourceServerId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

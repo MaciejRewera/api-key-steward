@@ -469,22 +469,28 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
-          .pure(
-            resourceServer_1.asRight
-          )
+        resourceServerService.updateResourceServer(
+          any[TenantId],
+          any[ResourceServerId],
+          any[UpdateResourceServerRequest]
+        ) returns IO.pure(resourceServer_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(resourceServerService).updateResourceServer(eqTo(publicResourceServerId_1), eqTo(requestBody))
+          _ = verify(resourceServerService).updateResourceServer(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1),
+            eqTo(requestBody)
+          )
         } yield ()
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
-          .pure(
-            resourceServer_1.asRight
-          )
+        resourceServerService.updateResourceServer(
+          any[TenantId],
+          any[ResourceServerId],
+          any[UpdateResourceServerRequest]
+        ) returns IO.pure(resourceServer_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
@@ -496,10 +502,11 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
-          .pure(
-            Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
-          )
+        resourceServerService.updateResourceServer(
+          any[TenantId],
+          any[ResourceServerId],
+          any[UpdateResourceServerRequest]
+        ) returns IO.pure(Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
 
         for {
           response <- adminRoutes.run(request)
@@ -513,10 +520,11 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.updateResourceServer(any[ResourceServerId], any[UpdateResourceServerRequest]) returns IO
-          .raiseError(
-            testException
-          )
+        resourceServerService.updateResourceServer(
+          any[TenantId],
+          any[ResourceServerId],
+          any[UpdateResourceServerRequest]
+        ) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -564,16 +572,21 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.reactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(resourceServerService).reactivateResourceServer(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerService).reactivateResourceServer(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )
         } yield ()
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.reactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
@@ -585,7 +598,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.pure(
+        resourceServerService.reactivateResourceServer(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
@@ -601,7 +614,8 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.reactivateResourceServer(any[UUID]) returns IO.raiseError(testException)
+        resourceServerService.reactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -649,16 +663,21 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.deactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(resourceServerService).deactivateResourceServer(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerService).deactivateResourceServer(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )
         } yield ()
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.deactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
@@ -670,7 +689,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.pure(
+        resourceServerService.deactivateResourceServer(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
@@ -686,7 +705,8 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.deactivateResourceServer(any[UUID]) returns IO.raiseError(testException)
+        resourceServerService.deactivateResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -734,16 +754,18 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(resourceServerService).deleteResourceServer(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerService).deleteResourceServer(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
         } yield ()
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.pure(resourceServer_1.asRight)
 
         for {
           response <- adminRoutes.run(request)
@@ -755,7 +777,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Bad Request when ResourceServerService returns successful IO with Left containing ResourceServerIsNotDeactivatedError" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(
+        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerIsNotDeactivatedError(publicResourceServerId_1))
         )
 
@@ -773,7 +795,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[UUID]) returns IO.pure(
+        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns IO.pure(
           Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
         )
 
@@ -789,7 +811,8 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[UUID]) returns IO.raiseError(testException)
+        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
+          IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -837,16 +860,16 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.getBy(any[UUID]) returns IO.pure(resourceServer_1.some)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(resourceServer_1.some)
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(resourceServerService).getBy(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerService).getBy(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
         } yield ()
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.getBy(any[UUID]) returns IO.pure(resourceServer_1.some)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(resourceServer_1.some)
 
         for {
           response <- adminRoutes.run(request)
@@ -858,7 +881,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns empty Option" in authorizedFixture {
-        resourceServerService.getBy(any[UUID]) returns IO.pure(none)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(none)
 
         for {
           response <- adminRoutes.run(request)
@@ -872,7 +895,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.getBy(any[UUID]) returns IO.raiseError(testException)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

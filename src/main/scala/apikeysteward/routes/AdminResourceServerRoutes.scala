@@ -44,8 +44,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.updateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId, request) = input
-          resourceServerService.updateResourceServer(resourceServerId, request).map {
+          val (tenantId, resourceServerId, request) = input
+          resourceServerService.updateResourceServer(tenantId, resourceServerId, request).map {
 
             case Right(updatedResourceServer) =>
               (StatusCode.Ok, UpdateResourceServerResponse(updatedResourceServer)).asRight
@@ -61,8 +61,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.reactivateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId) = input
-          resourceServerService.reactivateResourceServer(resourceServerId).map {
+          val (tenantId, resourceServerId) = input
+          resourceServerService.reactivateResourceServer(tenantId, resourceServerId).map {
 
             case Right(reactivatedResourceServer) =>
               (StatusCode.Ok, ReactivateResourceServerResponse(reactivatedResourceServer)).asRight
@@ -78,8 +78,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.deactivateResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId) = input
-          resourceServerService.deactivateResourceServer(resourceServerId).map {
+          val (tenantId, resourceServerId) = input
+          resourceServerService.deactivateResourceServer(tenantId, resourceServerId).map {
 
             case Right(deactivatedResourceServer) =>
               (StatusCode.Ok, DeactivateResourceServerResponse(deactivatedResourceServer)).asRight
@@ -95,8 +95,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.deleteResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId) = input
-          resourceServerService.deleteResourceServer(resourceServerId).map {
+          val (tenantId, resourceServerId) = input
+          resourceServerService.deleteResourceServer(tenantId, resourceServerId).map {
 
             case Right(deletedResourceServer) =>
               (StatusCode.Ok, DeleteResourceServerResponse(deletedResourceServer)).asRight
@@ -122,8 +122,8 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
       AdminResourceServerEndpoints.getSingleResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId) = input
-          resourceServerService.getBy(resourceServerId).map {
+          val (tenantId, resourceServerId) = input
+          resourceServerService.getBy(tenantId, resourceServerId).map {
             case Some(resourceServer) => (StatusCode.Ok, GetSingleResourceServerResponse(resourceServer)).asRight
             case None =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound)).asLeft

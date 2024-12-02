@@ -17,6 +17,7 @@ import apikeysteward.model.RepositoryErrors.GenericError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ApiKeyTemplate, Permission, ResourceServer}
 import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
@@ -418,13 +419,17 @@ class PermissionServiceSpec
     "everything works correctly" should {
 
       "call ResourceServerRepository and PermissionRepository" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
         permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty)
 
         for {
           _ <- permissionService.getAllBy(publicResourceServerId_1)(nameFragment)
 
-          _ = verify(resourceServerRepository).getBy(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerRepository).getBy(
+//            eqTo(publicTenantId_1),
+            any[TenantId],
+            eqTo(publicResourceServerId_1)
+          )
           _ = verify(permissionRepository).getAllBy(eqTo(publicResourceServerId_1))(eqTo(nameFragment))
         } yield ()
       }
@@ -432,7 +437,7 @@ class PermissionServiceSpec
       "return the value returned by PermissionRepository" when {
 
         "PermissionRepository returns empty List" in {
-          resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+          resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
           permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(List.empty)
 
           permissionService
@@ -441,7 +446,7 @@ class PermissionServiceSpec
         }
 
         "PermissionRepository returns non-empty List" in {
-          resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+          resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
           permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.pure(
             List(permission_1, permission_2, permission_3)
           )
@@ -456,7 +461,7 @@ class PermissionServiceSpec
     "ResourceServerRepository returns empty Option" should {
 
       "NOT call PermissionRepository" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(none[ResourceServer])
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(none[ResourceServer])
 
         for {
           _ <- permissionService.getAllBy(publicResourceServerId_1)(nameFragment)
@@ -466,7 +471,7 @@ class PermissionServiceSpec
       }
 
       "return Left containing ResourceServerNotFoundError" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(none[ResourceServer])
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(none[ResourceServer])
 
         permissionService
           .getAllBy(publicResourceServerId_1)(nameFragment)
@@ -476,7 +481,7 @@ class PermissionServiceSpec
 
     "PermissionRepository returns failed IO" should {
       "return failed IO" in {
-        resourceServerRepository.getBy(any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Option(resourceServer_1))
         permissionRepository.getAllBy(any[ResourceServerId])(any[Option[String]]) returns IO.raiseError(testException)
 
         permissionService

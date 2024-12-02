@@ -36,11 +36,12 @@ class PermissionRepository(
       permissionDbId: UUID,
       publicResourceServerId: ResourceServerId,
       permission: Permission
-  ): IO[Either[PermissionInsertionError, Permission]] =
+  ): IO[Either[PermissionInsertionError, Permission]] = {
+    val publicTenantId = UUID.randomUUID()
     (for {
       resourceServerId <- EitherT
         .fromOptionF(
-          resourceServerDb.getByPublicResourceServerId(publicResourceServerId),
+          resourceServerDb.getByPublicResourceServerId(publicTenantId, publicResourceServerId),
           ReferencedResourceServerDoesNotExistError(publicResourceServerId)
         )
         .map(_.id)
@@ -51,6 +52,7 @@ class PermissionRepository(
 
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
+  }
 
   def delete(
       publicResourceServerId: ResourceServerId,

@@ -1,14 +1,13 @@
 package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
 import apikeysteward.model.RepositoryErrors.GenericError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
@@ -16,6 +15,8 @@ import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
+
+import java.util.UUID
 
 class PermissionService(
     uuidGenerator: UuidGenerator,
@@ -91,11 +92,12 @@ class PermissionService(
 
   def getAllBy(
       resourceServerId: ResourceServerId
-  )(nameFragment: Option[String]): IO[Either[ResourceServerNotFoundError, List[Permission]]] =
+  )(nameFragment: Option[String]): IO[Either[ResourceServerNotFoundError, List[Permission]]] = {
+    val publicTenantId = UUID.randomUUID()
     (for {
       _ <- EitherT(
         resourceServerRepository
-          .getBy(resourceServerId)
+          .getBy(publicTenantId, resourceServerId)
           .map(_.toRight(ResourceServerNotFoundError(resourceServerId.toString)))
       )
 
@@ -103,5 +105,6 @@ class PermissionService(
         permissionRepository.getAllBy(resourceServerId)(nameFragment)
       )
     } yield result).value
+  }
 
 }

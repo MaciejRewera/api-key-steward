@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData.tenantEntityRead_1
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.repositories.TestDataInsertions.{PermissionDbId, ResourceServerDbId, TemplateDbId, TenantDbId}
 import apikeysteward.repositories.db._
@@ -100,8 +100,8 @@ class ResourceServerRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds) = dataIds
 
-          _ <- repository.activate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllAssociations.transact(transactor)
 
@@ -125,8 +125,8 @@ class ResourceServerRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, resourceServerId, _, _) = dataIds
 
-          _ <- repository.activate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
         } yield (res, resourceServerId)
@@ -146,8 +146,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.activate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
@@ -164,8 +164,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllAssociations.transact(transactor)
         } yield res
@@ -177,8 +177,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
         } yield res
@@ -190,8 +190,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
@@ -203,8 +203,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllApiKeyTemplates.transact(transactor)
         } yield res
@@ -222,8 +222,8 @@ class ResourceServerRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- repository.deactivate(publicResourceServerId_1)
-          _ <- repository.delete(publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
           res <- Queries.getAllTenants.transact(transactor)
         } yield res
