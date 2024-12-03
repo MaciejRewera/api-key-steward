@@ -2,30 +2,19 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, user_1}
+import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.{
-  ApiKeyTemplatesPermissionsInsertionError,
-  ApiKeyTemplatesPermissionsNotFoundError
-}
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
-import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import apikeysteward.repositories._
 import apikeysteward.routes.model.admin.apikeytemplate._
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.implicits.catsSyntaxEitherId
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyZeroInteractions}
@@ -281,42 +270,50 @@ class ApiKeyTemplateServiceSpec
     )
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(Right(apiKeyTemplateUpdated))
+      apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
+        Right(apiKeyTemplateUpdated)
+      )
 
       for {
-        _ <- apiKeyTemplateService.updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
+        _ <- apiKeyTemplateService.updateApiKeyTemplate(
+          publicTenantId_1,
+          publicTemplateId_1,
+          updateApiKeyTemplateRequest
+        )
 
-        _ = verify(apiKeyTemplateRepository).update(eqTo(apiKeyTemplateUpdate))
+        _ = verify(apiKeyTemplateRepository).update(eqTo(publicTenantId_1), eqTo(apiKeyTemplateUpdate))
       } yield ()
     }
 
     "return value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns Right" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(Right(apiKeyTemplateUpdated))
+        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
+          Right(apiKeyTemplateUpdated)
+        )
 
         apiKeyTemplateService
-          .updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
+          .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
           .asserting(_ shouldBe Right(apiKeyTemplateUpdated))
       }
 
       "ApiKeyTemplateRepository returns Left" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.pure(
+        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
           Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
         )
 
         apiKeyTemplateService
-          .updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
+          .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
           .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.update(any[ApiKeyTemplateUpdate]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.raiseError(testException)
 
         apiKeyTemplateService
-          .updateApiKeyTemplate(publicTemplateId_1, updateApiKeyTemplateRequest)
+          .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -326,42 +323,42 @@ class ApiKeyTemplateServiceSpec
   "ApiKeyTemplateService on deleteApiKeyTemplate" should {
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyTemplate_1))
+      apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyTemplate_1))
 
       for {
-        _ <- apiKeyTemplateService.deleteApiKeyTemplate(publicTemplateId_1)
+        _ <- apiKeyTemplateService.deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
 
-        _ = verify(apiKeyTemplateRepository).delete(eqTo(publicTemplateId_1))
+        _ = verify(apiKeyTemplateRepository).delete(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
       } yield ()
     }
 
     "return value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns Right" in {
-        apiKeyTemplateRepository.delete(any[UUID]) returns IO.pure(Right(apiKeyTemplate_1))
+        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyTemplate_1))
 
         apiKeyTemplateService
-          .deleteApiKeyTemplate(publicTemplateId_1)
+          .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           .asserting(_ shouldBe Right(apiKeyTemplate_1))
       }
 
       "ApiKeyTemplateRepository returns Left" in {
-        apiKeyTemplateRepository.delete(any[UUID]) returns IO.pure(
+        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
           Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
         )
 
         apiKeyTemplateService
-          .deleteApiKeyTemplate(publicTemplateId_1)
+          .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
       }
     }
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.delete(any[UUID]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         apiKeyTemplateService
-          .deleteApiKeyTemplate(publicTemplateId_1)
+          .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -371,35 +368,38 @@ class ApiKeyTemplateServiceSpec
   "ApiKeyTemplateService on getBy(:apiKeyTemplateId)" should {
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
+      apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
 
       for {
-        _ <- apiKeyTemplateService.getBy(publicTemplateId_1)
+        _ <- apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1)
 
-        _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTemplateId_1))
+        _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
       } yield ()
     }
 
     "return the value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns empty Option" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
 
-        apiKeyTemplateService.getBy(publicTemplateId_1).asserting(_ shouldBe None)
+        apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1).asserting(_ shouldBe None)
       }
 
       "ApiKeyTemplateRepository returns non-empty Option" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
 
-        apiKeyTemplateService.getBy(publicTemplateId_1).asserting(_ shouldBe Some(apiKeyTemplate_1))
+        apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1).asserting(_ shouldBe Some(apiKeyTemplate_1))
       }
     }
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
-        apiKeyTemplateService.getBy(publicTemplateId_1).attempt.asserting(_ shouldBe Left(testException))
+        apiKeyTemplateService
+          .getBy(publicTenantId_1, publicTemplateId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
   }

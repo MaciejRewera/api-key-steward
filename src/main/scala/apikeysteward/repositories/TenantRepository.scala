@@ -140,7 +140,9 @@ class TenantRepository(
           .map(_.publicTemplateId)
           .compile
           .toList
-        deletedApiKeyTemplates <- apiKeyTemplateIdsToDelete.traverse(apiKeyTemplateRepository.deleteOp)
+        deletedApiKeyTemplates <- apiKeyTemplateIdsToDelete.traverse(
+          apiKeyTemplateRepository.deleteOp(publicTenantId, _)
+        )
       } yield deletedApiKeyTemplates
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence

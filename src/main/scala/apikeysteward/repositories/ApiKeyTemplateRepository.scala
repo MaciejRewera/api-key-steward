@@ -50,27 +50,37 @@ class ApiKeyTemplateRepository(
       )
 
       resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateInsertionError, ApiKeyTemplate](
-        constructApiKeyTemplate(templateEntityRead)
+        constructApiKeyTemplate(publicTenantId, templateEntityRead)
       )
     } yield resultTemplate).value.transact(transactor)
 
-  def update(apiKeyTemplate: ApiKeyTemplateUpdate): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
+  def update(
+      publicTenantId: TenantId,
+      apiKeyTemplate: ApiKeyTemplateUpdate
+  ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
       templateEntityRead <- EitherT(apiKeyTemplateDb.update(ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
 
       resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
-        constructApiKeyTemplate(templateEntityRead)
+        constructApiKeyTemplate(publicTenantId, templateEntityRead)
       )
     } yield resultTemplate).value.transact(transactor)
 
-  def delete(publicTemplateId: ApiKeyTemplateId): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
-    deleteOp(publicTemplateId).transact(transactor)
+  def delete(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
+    deleteOp(publicTenantId, publicTemplateId).transact(transactor)
 
   private[repositories] def deleteOp(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     for {
-      permissionEntitiesToDeleteAssociationWith <- permissionDb.getAllForTemplate(publicTemplateId).compile.toList
+      permissionEntitiesToDeleteAssociationWith <- permissionDb
+        .getAllForTemplate(publicTenantId, publicTemplateId)
+        .compile
+        .toList
 
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
       _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTemplateId)
@@ -79,10 +89,10 @@ class ApiKeyTemplateRepository(
       deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDeleteAssociationWith))
     } yield deletedTemplate
 
-  def getBy(publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
+  def getBy(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
     (for {
       templateEntityRead <- OptionT(apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId))
-      resultTemplate <- OptionT.liftF(constructApiKeyTemplate(templateEntityRead))
+      resultTemplate <- OptionT.liftF(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate).value.transact(transactor)
 
   def getAllForTenant(publicTenantId: TenantId): IO[List[ApiKeyTemplate]] =
@@ -91,13 +101,16 @@ class ApiKeyTemplateRepository(
   private[repositories] def getAllForTenantOp(publicTenantId: TenantId): Stream[ConnectionIO, ApiKeyTemplate] =
     for {
       templateEntityRead <- apiKeyTemplateDb.getAllForTenant(publicTenantId)
-      resultTemplate <- Stream.eval(constructApiKeyTemplate(templateEntityRead))
+      resultTemplate <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate
 
-  private def constructApiKeyTemplate(templateEntity: ApiKeyTemplateEntity.Read): ConnectionIO[ApiKeyTemplate] =
+  private def constructApiKeyTemplate(
+      publicTenantId: TenantId,
+      templateEntity: ApiKeyTemplateEntity.Read
+  ): ConnectionIO[ApiKeyTemplate] =
     for {
       permissionEntities <- permissionDb
-        .getAllForTemplate(UUID.fromString(templateEntity.publicTemplateId))
+        .getAllForTemplate(publicTenantId, UUID.fromString(templateEntity.publicTemplateId))
         .compile
         .toList
 
@@ -107,7 +120,7 @@ class ApiKeyTemplateRepository(
   def getAllForUser(publicTenantId: TenantId, publicUserId: UserId): IO[List[ApiKeyTemplate]] =
     (for {
       templateEntityRead <- apiKeyTemplateDb.getAllForUser(publicTenantId, publicUserId)
-      resultTemplate <- Stream.eval(constructApiKeyTemplate(templateEntityRead))
+      resultTemplate <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate).compile.toList.transact(transactor)
 
 }

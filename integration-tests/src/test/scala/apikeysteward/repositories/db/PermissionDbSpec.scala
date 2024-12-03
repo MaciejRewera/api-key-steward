@@ -2,14 +2,19 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
+import apikeysteward.base.testdata.ResourceServersTestData._
+import apikeysteward.base.testdata.TenantsTestData.{
+  publicTenantId_1,
+  publicTenantId_2,
+  tenantDbId_1,
+  tenantEntityWrite_1
+}
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import apikeysteward.repositories.TestDataInsertions._
-import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ResourceServerEntity, PermissionEntity}
+import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, PermissionEntity, ResourceServerEntity}
+import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
 import doobie.ConnectionIO
@@ -51,45 +56,52 @@ class PermissionDbSpec
 
   "PermissionDb on insert" when {
 
+    "there is no ResourceServer with provided resourceServerId in the DB" should {
+
+      "return Left containing ReferencedResourceServerDoesNotExistError" in {
+        permissionDb
+          .insert(permissionEntityWrite_1)
+          .transact(transactor)
+          .asserting(
+            _ shouldBe Left(
+              ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntityWrite_1.resourceServerId)
+            )
+          )
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- permissionDb.insert(permissionEntityWrite_1).transact(transactor)
+          res <- Queries.getAllPermissions.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return inserted entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          res <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-        } yield (res, resourceServerId)).transact(transactor)
+          res <- permissionDb.insert(permissionEntityWrite_1)
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, expectedResourceServerId) =>
-          res shouldBe Right(
-            permissionEntityRead_1.copy(id = res.value.id, resourceServerId = expectedResourceServerId)
-          )
-        }
+        result.asserting(_ shouldBe Right(permissionEntityRead_1))
       }
 
       "insert entity into DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- permissionDb.insert(permissionEntityWrite_1)
           res <- Queries.getAllPermissions
-        } yield (res, resourceServerId)).transact(transactor)
+        } yield res).transact(transactor)
 
-        result.asserting { case (allPermissions, expectedResourceServerId) =>
-          allPermissions.size shouldBe 1
-
-          val resultPermission = allPermissions.head
-          resultPermission shouldBe permissionEntityRead_1.copy(
-            id = resultPermission.id,
-            resourceServerId = expectedResourceServerId
-          )
-        }
+        result.asserting(_ shouldBe List(permissionEntityRead_1))
       }
     }
 
@@ -98,53 +110,41 @@ class PermissionDbSpec
       "the row has the same name, but different resourceServerId" should {
 
         val firstEntity = permissionEntityWrite_1
-        val secondEntity = permissionEntityWrite_2.copy(name = firstEntity.name)
-        val expectedSecondEntity = permissionEntityRead_2.copy(name = firstEntity.name)
+        val secondEntity =
+          permissionEntityWrite_2.copy(resourceServerId = resourceServerDbId_2, name = firstEntity.name)
+        val expectedSecondEntity =
+          permissionEntityRead_2.copy(resourceServerId = resourceServerDbId_2, name = firstEntity.name)
 
         "return inserted entity" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId_1 <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            resourceServerId_2 <- resourceServerDb
-              .insert(resourceServerEntityWrite_2.copy(tenantId = tenantId))
-              .map(_.value.id)
-            _ <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId_1))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+            _ <- permissionDb.insert(firstEntity)
 
-            res <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId_2))
-          } yield (res, resourceServerId_2)).transact(transactor)
+            res <- permissionDb.insert(secondEntity)
+          } yield res).transact(transactor)
 
-          result.asserting { case (res, resourceServerId_2) =>
-            res shouldBe Right(expectedSecondEntity.copy(id = res.value.id, resourceServerId = resourceServerId_2))
-          }
+          result.asserting(_ shouldBe Right(expectedSecondEntity))
         }
 
         "insert entity into DB" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId_1 <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            resourceServerId_2 <- resourceServerDb
-              .insert(resourceServerEntityWrite_2.copy(tenantId = tenantId))
-              .map(_.value.id)
-            entityRead_1 <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId_1))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+            _ <- permissionDb.insert(firstEntity)
 
-            entityRead_2 <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId_2))
+            _ <- permissionDb.insert(secondEntity)
             res <- Queries.getAllPermissions
-          } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
+          } yield res).transact(transactor)
 
-          result.asserting { case (allPermissions, entityRead_1, entityRead_2) =>
+          result.asserting { allPermissions =>
             allPermissions.size shouldBe 2
 
             val expectedPermissions = Seq(
-              permissionEntityRead_1.copy(id = entityRead_1.id, resourceServerId = entityRead_1.resourceServerId),
-              permissionEntityRead_2.copy(
-                id = entityRead_2.id,
-                resourceServerId = entityRead_2.resourceServerId,
-                name = permissionEntityRead_1.name
-              )
+              permissionEntityRead_1,
+              permissionEntityRead_2.copy(resourceServerId = resourceServerDbId_2, name = firstEntity.name)
             )
             allPermissions should contain theSameElementsAs expectedPermissions
           }
@@ -154,42 +154,43 @@ class PermissionDbSpec
       "the row has the same resourceServerId, but different name" should {
 
         val firstEntity = permissionEntityWrite_1
-        val secondEntity = permissionEntityWrite_2
+        val secondEntity = permissionEntityWrite_2.copy(
+          tenantId = tenantDbId_1,
+          resourceServerId = resourceServerDbId_1
+        )
+        val expectedSecondEntity = permissionEntityRead_2.copy(
+          tenantId = tenantDbId_1,
+          resourceServerId = resourceServerDbId_1
+        )
 
         "return inserted entity" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            _ <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(firstEntity)
 
-            res <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId))
-          } yield (res, resourceServerId)).transact(transactor)
+            res <- permissionDb.insert(secondEntity)
+          } yield res).transact(transactor)
 
-          result.asserting { case (res, resourceServerId) =>
-            res shouldBe Right(permissionEntityRead_2.copy(id = res.value.id, resourceServerId = resourceServerId))
-          }
+          result.asserting(_ shouldBe Right(expectedSecondEntity))
         }
 
         "insert entity into DB" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            entityRead_1 <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(firstEntity)
 
-            entityRead_2 <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId))
+            _ <- permissionDb.insert(secondEntity)
             res <- Queries.getAllPermissions
-          } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
+          } yield res).transact(transactor)
 
-          result.asserting { case (allPermissions, entityRead_1, entityRead_2) =>
+          result.asserting { allPermissions =>
             allPermissions.size shouldBe 2
 
             val expectedPermissions = Seq(
-              permissionEntityRead_1.copy(id = entityRead_1.id, resourceServerId = entityRead_1.resourceServerId),
-              permissionEntityRead_2.copy(id = entityRead_2.id, resourceServerId = entityRead_2.resourceServerId)
+              permissionEntityRead_1,
+              permissionEntityRead_2.copy(tenantId = tenantDbId_1, resourceServerId = resourceServerDbId_1)
             )
             allPermissions should contain theSameElementsAs expectedPermissions
           }
@@ -199,48 +200,37 @@ class PermissionDbSpec
       "the row has the same both name and resourceServerId" should {
 
         val firstEntity = permissionEntityWrite_1
-        val secondEntity = permissionEntityWrite_2.copy(name = permissionEntityWrite_1.name)
+        val secondEntity = permissionEntityWrite_2.copy(
+          resourceServerId = resourceServerDbId_1,
+          name = permissionEntityWrite_1.name
+        )
 
         "return Left containing PermissionAlreadyExistsForThisResourceServerError" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            _ <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(firstEntity)
 
-            res <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId))
-          } yield (res, resourceServerId)).transact(transactor)
+            res <- permissionDb.insert(secondEntity)
+          } yield res).transact(transactor)
 
-          result.asserting { case (res, resourceServerId) =>
-            res shouldBe Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerId))
-            res.left.value.message shouldBe s"Permission with name = $permissionName_1 already exists for ResourceServer with ID = [$resourceServerId]."
+          result.asserting { res =>
+            res shouldBe Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerDbId_1))
+            res.left.value.message shouldBe s"Permission with name = $permissionName_1 already exists for ResourceServer with ID = [$resourceServerDbId_1]."
           }
         }
 
         "NOT insert the second entity into DB" in {
           val result = for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-              .transact(transactor)
+            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
+            _ <- permissionDb.insert(firstEntity).transact(transactor)
 
-            _ <- permissionDb.insert(firstEntity.copy(resourceServerId = resourceServerId)).transact(transactor)
-
-            _ <- permissionDb.insert(secondEntity.copy(resourceServerId = resourceServerId)).transact(transactor)
+            _ <- permissionDb.insert(secondEntity).transact(transactor)
             res <- Queries.getAllPermissions.transact(transactor)
-          } yield (res, resourceServerId)
+          } yield res
 
-          result.asserting { case (allPermissions, expectedResourceServerId) =>
-            allPermissions.size shouldBe 1
-
-            val resultPermission = allPermissions.head
-            resultPermission shouldBe permissionEntityRead_1.copy(
-              id = resultPermission.id,
-              resourceServerId = expectedResourceServerId
-            )
-          }
+          result.asserting(_ shouldBe List(permissionEntityRead_1))
         }
       }
     }
@@ -300,45 +290,50 @@ class PermissionDbSpec
         }
       }
     }
-
-    "there is no ResourceServer with provided resourceServerId in the DB" should {
-
-      "return Left containing ReferencedResourceServerDoesNotExistError" in {
-        permissionDb
-          .insert(permissionEntityWrite_1)
-          .transact(transactor)
-          .asserting(
-            _ shouldBe Left(
-              ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntityWrite_1.resourceServerId)
-            )
-          )
-      }
-
-      "NOT insert any entity into the DB" in {
-        val result = for {
-          _ <- permissionDb.insert(permissionEntityWrite_1).transact(transactor)
-          res <- Queries.getAllPermissions.transact(transactor)
-        } yield res
-
-        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
-      }
-    }
   }
 
   "PermissionDb on delete" when {
 
-    "there are no rows in the DB" should {
+    "there are no Tenants in the DB" should {
 
       "return Left containing PermissionNotFoundError" in {
         permissionDb
-          .delete(publicResourceServerId_1, publicPermissionId_1)
+          .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)))
       }
 
+      "make NO changes to the DB" in {
+        val result = for {
+          _ <- permissionDb
+            .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+            .transact(transactor)
+          res <- Queries.getAllResourceServers.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there are no Permissions in the DB" should {
+
+      "return Left containing PermissionNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)))
+      }
+
       "make no changes to the DB" in {
         val result = (for {
-          _ <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           res <- Queries.getAllPermissions
         } yield res).transact(transactor)
 
@@ -346,17 +341,45 @@ class PermissionDbSpec
       }
     }
 
-    "there is a row in the DB with a different publicPermissionId" should {
+    "there is a Permission in the DB for a different publicTenantId" should {
 
       "return Left containing PermissionNotFoundError" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_2)
+          res <- permissionDb.delete(publicTenantId_2, publicResourceServerId_1, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
+          _ <- permissionDb.insert(permissionEntityWrite_1).transact(transactor)
+
+          _ <- permissionDb
+            .delete(publicTenantId_2, publicResourceServerId_1, publicPermissionId_2)
+            .transact(transactor)
+          res <- Queries.getAllResourceServers.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List(resourceServerEntityRead_1))
+      }
+    }
+
+    "there is a Permission in the DB with a different publicPermissionId" should {
+
+      "return Left containing PermissionNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+
+          res <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_2)))
@@ -364,13 +387,11 @@ class PermissionDbSpec
 
       "make no changes to the DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          _ <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_2)
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_2)
           res <- Queries.getAllPermissions
         } yield res).transact(transactor)
 
@@ -386,17 +407,15 @@ class PermissionDbSpec
       }
     }
 
-    "there is a row in the DB with a different publicResourceServerId" should {
+    "there is a Permission in the DB with a different publicResourceServerId" should {
 
       "return Left containing PermissionNotFoundError" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.delete(publicResourceServerId_2, publicPermissionId_1)
+          res <- permissionDb.delete(publicTenantId_1, publicResourceServerId_2, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(PermissionNotFoundError(publicResourceServerId_2, publicPermissionId_1)))
@@ -404,13 +423,11 @@ class PermissionDbSpec
 
       "make no changes to the DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          _ <- permissionDb.delete(publicResourceServerId_2, publicPermissionId_1)
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_2, publicPermissionId_1)
           res <- Queries.getAllPermissions
         } yield res).transact(transactor)
 
@@ -426,17 +443,15 @@ class PermissionDbSpec
       }
     }
 
-    "there is a row in the DB with given both publicResourceServerId and publicPermissionId" should {
+    "there is a Permission in the DB with given both publicResourceServerId and publicPermissionId" should {
 
       "return deleted entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          entityRead <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          entityRead <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
+          res <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         } yield (res, entityRead.value)).transact(transactor)
 
         result.asserting { case (res, entityRead) =>
@@ -448,13 +463,11 @@ class PermissionDbSpec
 
       "delete this row from the DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          _ <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           res <- Queries.getAllPermissions
         } yield res).transact(transactor)
 
@@ -463,13 +476,11 @@ class PermissionDbSpec
 
       "make NO changes to the resourceServer table" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerEntity <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerEntity.id))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          resourceServerEntity <- resourceServerDb.insert(resourceServerEntityWrite_1).map(_.value)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          _ <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           res <- Queries.getAllResourceServers
         } yield (res, resourceServerEntity)).transact(transactor)
 
@@ -481,42 +492,40 @@ class PermissionDbSpec
       }
     }
 
-    "there are several rows in the DB but only one with given both publicResourceServerId and publicPermissionId" should {
+    "there are several Permissions in the DB but only one with given both publicResourceServerId and publicPermissionId" should {
 
       "return deleted entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId_1 <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          resourceServerId_2 <- resourceServerDb
-            .insert(resourceServerEntityWrite_2.copy(tenantId = tenantId))
-            .map(_.value.id)
-          entityRead <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId_1))
-          _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId_1))
-          _ <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId_2))
-
-          res <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
-        } yield (res, entityRead.value)).transact(transactor)
-
-        result.asserting { case (res, entityRead) =>
-          res shouldBe Right(
-            permissionEntityRead_1.copy(id = entityRead.id, resourceServerId = entityRead.resourceServerId)
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+          _ <- permissionDb.insert(
+            permissionEntityWrite_2.copy(tenantId = tenantDbId_1, resourceServerId = resourceServerDbId_1)
           )
-        }
+          _ <- permissionDb.insert(
+            permissionEntityWrite_3.copy(tenantId = tenantDbId_1, resourceServerId = resourceServerDbId_2)
+          )
+
+          res <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Right(permissionEntityRead_1))
       }
 
       "delete this row from the DB and leave others intact" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-          entityRead_2 <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
-          entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1).map(_.value.id)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+          entityRead_2 <- permissionDb.insert(
+            permissionEntityWrite_2.copy(tenantId = tenantDbId_1, resourceServerId = resourceServerId)
+          )
+          entityRead_3 <- permissionDb.insert(
+            permissionEntityWrite_3.copy(tenantId = tenantDbId_1, resourceServerId = resourceServerId)
+          )
 
-          _ <- permissionDb.delete(publicResourceServerId_1, publicPermissionId_1)
+          _ <- permissionDb.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           res <- Queries.getAllPermissions
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -531,57 +540,69 @@ class PermissionDbSpec
 
   "PermissionDb on getBy" when {
 
-    "there are no rows in the DB" should {
-      "return empty Option" in {
-        permissionDb
-          .getBy(publicResourceServerId_1, publicPermissionId_1)
-          .transact(transactor)
-          .asserting(_ shouldBe none[PermissionEntity.Read])
-      }
-    }
-
-    "there is a row in the DB with different publicPermissionId" should {
+    "there are no Permissions in the DB" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          res <- permissionDb.getBy(publicResourceServerId_1, publicPermissionId_2)
+          res <- permissionDb.getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[PermissionEntity.Read])
       }
     }
 
-    "there is a row in the DB with different publicResourceServerId" should {
+    "there is a Permission in the DB for a different publicTenantId" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.getBy(publicResourceServerId_2, publicPermissionId_1)
+          res <- permissionDb.getBy(publicTenantId_2, publicResourceServerId_1, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[PermissionEntity.Read])
       }
     }
 
-    "there is a row in the DB with the same both publicResourceServerId and publicPermissionId" should {
+    "there is a Permission in the DB with different publicResourceServerId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+
+          res <- permissionDb.getBy(publicTenantId_1, publicResourceServerId_2, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Permission in the DB with different publicPermissionId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+
+          res <- permissionDb.getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Permission in the DB with the same both publicResourceServerId and publicPermissionId" should {
       "return this entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.getBy(publicResourceServerId_1, publicPermissionId_1)
+          res <- permissionDb.getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -593,41 +614,55 @@ class PermissionDbSpec
 
   "PermissionDb on getByPublicPermissionId" when {
 
-    "there are no rows in the DB" should {
-      "return empty Option" in {
-        permissionDb
-          .getByPublicPermissionId(publicPermissionId_1)
-          .transact(transactor)
-          .asserting(_ shouldBe none[PermissionEntity.Read])
-      }
-    }
-
-    "there is a row in the DB with different publicPermissionId" should {
+    "there are no Permissions in the DB" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          res <- permissionDb.getByPublicPermissionId(publicPermissionId_2)
+          res <- permissionDb.getByPublicPermissionId(publicTenantId_1, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[PermissionEntity.Read])
       }
     }
 
-    "there is a row in the DB with the same publicPermissionId" should {
+    "there is an ApiKeyTemplate in the DB for a different publicTenantId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+
+          res <- permissionDb.getByPublicPermissionId(publicTenantId_2, publicPermissionId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Permission in the DB with different publicPermissionId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+
+          res <- permissionDb.getByPublicPermissionId(publicTenantId_1, publicPermissionId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Permission in the DB with the same publicPermissionId" should {
       "return this entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- permissionDb.insert(permissionEntityWrite_1)
 
-          res <- permissionDb.getByPublicPermissionId(publicPermissionId_1)
+          res <- permissionDb.getByPublicPermissionId(publicTenantId_1, publicPermissionId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -641,36 +676,53 @@ class PermissionDbSpec
 
     "there are NO ApiKeyTemplates in the DB" should {
       "return empty Stream" in {
-        permissionDb
-          .getAllForTemplate(publicTemplateId_1)
-          .compile
-          .toList
-          .transact(transactor)
-          .asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
       }
     }
 
-    "there is an ApiKeyTemplate in the DB, but with a different publicTemplateId" should {
+    "there is an ApiKeyTemplate in the DB for a different publicTenantId" should {
       "return empty Stream" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-            .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          permissionId <- permissionDb.insert(permissionEntityWrite_1).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          res <- permissionDb.getAllForTemplate(publicTemplateId_2).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTenantId_2, publicTemplateId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyTemplate in the DB, but with a different publicTemplateId" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          permissionId <- permissionDb.insert(permissionEntityWrite_1).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
+
+          preExistingEntities = List(
+            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
+          )
+          _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
+
+          res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_2).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -680,15 +732,13 @@ class PermissionDbSpec
     "there is an ApiKeyTemplate in the DB, but there are no ApiKeyTemplatesPermissions for this Template" should {
       "return empty Stream" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- permissionDb.insert(permissionEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_1).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -698,17 +748,11 @@ class PermissionDbSpec
     "there is an ApiKeyTemplate in the DB with a single ApiKeyTemplatesPermissions" should {
       "return this single ApiKeyTemplatesPermissions" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          permissionId <- permissionDb
-            .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-            .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          permissionId <- permissionDb.insert(permissionEntityWrite_1).map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
@@ -716,10 +760,10 @@ class PermissionDbSpec
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
           expectedPermissionEntities = List(
-            permissionEntityRead_1.copy(id = permissionId, resourceServerId = resourceServerId)
+            permissionEntityRead_1.copy(id = permissionId)
           )
 
-          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -731,10 +775,8 @@ class PermissionDbSpec
     "there is an ApiKeyTemplate in the DB with multiple ApiKeyTemplatesPermissions" should {
       "return all these ApiKeyTemplatesPermissions" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          resourceServerId <- resourceServerDb
-            .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1).map(_.value.id)
 
           permissionId_1 <- permissionDb
             .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
@@ -745,9 +787,7 @@ class PermissionDbSpec
           permissionId_3 <- permissionDb
             .insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
             .map(_.value.id)
-          templateId <- apiKeyTemplateDb
-            .insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-            .map(_.value.id)
+          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
             ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_1),
@@ -762,7 +802,7 @@ class PermissionDbSpec
             permissionEntityRead_3.copy(id = permissionId_3, resourceServerId = resourceServerId)
           )
 
-          res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
+          res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_1).compile.toList
         } yield (res, expectedPermissionEntities)).transact(transactor)
 
         result.asserting { case (res, expectedPermissionEntities) =>
@@ -799,7 +839,7 @@ class PermissionDbSpec
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-            res <- permissionDb.getAllForTemplate(publicTemplateId_3).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_3).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -829,7 +869,7 @@ class PermissionDbSpec
               permissionEntityRead_1.copy(id = permissionIds.head, resourceServerId = resourceServerId)
             )
 
-            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>
@@ -865,7 +905,7 @@ class PermissionDbSpec
               permissionEntityRead_2.copy(id = permissionIds(1), resourceServerId = resourceServerId)
             )
 
-            res <- permissionDb.getAllForTemplate(publicTemplateId_1).compile.toList
+            res <- permissionDb.getAllForTemplate(publicTenantId_1, publicTemplateId_1).compile.toList
           } yield (res, expectedPermissionEntities)).transact(transactor)
 
           result.asserting { case (res, expectedPermissionEntities) =>
@@ -879,6 +919,30 @@ class PermissionDbSpec
 
   "PermissionDb on getAllBy" when {
 
+    "there are no Tenants in the DB" should {
+      "return empty Stream" in {
+        permissionDb
+          .getAllBy(publicTenantId_1, publicTemplateId_1)(None)
+          .compile
+          .toList
+          .transact(transactor)
+          .asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Tenant in the DB, but with a different publicTenantId" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- permissionDb.getAllBy(publicTenantId_2, publicTemplateId_1)(None).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
     "provided with empty nameFragment" when {
 
       val nameFragment = Option.empty[String]
@@ -886,7 +950,7 @@ class PermissionDbSpec
       "there are no rows in the DB" should {
         "return empty Stream" in {
           permissionDb
-            .getAllBy(publicResourceServerId_1)(nameFragment)
+            .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment)
             .compile
             .toList
             .transact(transactor)
@@ -894,16 +958,28 @@ class PermissionDbSpec
         }
       }
 
+      "there is a row in the DB for a different publicTenantId" should {
+        "return empty Stream" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_1)
+
+            res <- permissionDb.getAllBy(publicTenantId_2, publicResourceServerId_1)(nameFragment).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        }
+      }
+
       "there is a row in the DB with a different resourceServerId" should {
         "return empty Stream" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_1)
 
-            res <- permissionDb.getAllBy(publicResourceServerId_2)(nameFragment).compile.toList
+            res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_2)(nameFragment).compile.toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -913,45 +989,31 @@ class PermissionDbSpec
       "there is a row in the DB with the same resourceServerId" should {
         "return Stream containing this single entity" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            entityRead <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_1)
 
-            expectedEntities = Seq(entityRead).map(_.value)
+            res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
+          } yield res).transact(transactor)
 
-            res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
-          } yield (res, expectedEntities)).transact(transactor)
-
-          result.asserting { case (res, expectedEntities) =>
-            res should contain theSameElementsAs expectedEntities
-          }
+          result.asserting(_ should contain theSameElementsAs List(permissionEntityRead_1))
         }
       }
 
       "there are several rows in the DB" should {
         "return Stream containing only entities with the same resourceServerId" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId_1 <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            resourceServerId_2 <- resourceServerDb
-              .insert(resourceServerEntityWrite_2.copy(tenantId = tenantId))
-              .map(_.value.id)
-            entityRead_1 <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId_1))
-            _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId_2))
-            entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId_1))
+            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+            _ <- permissionDb.insert(permissionEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerDbId_2))
+            _ <- permissionDb.insert(permissionEntityWrite_3)
 
-            expectedEntities = Seq(entityRead_1, entityRead_3).map(_.value)
+            res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
+          } yield res).transact(transactor)
 
-            res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
-          } yield (res, expectedEntities)).transact(transactor)
-
-          result.asserting { case (res, expectedEntities) =>
-            res should contain theSameElementsAs expectedEntities
-          }
+          result.asserting(_ should contain theSameElementsAs List(permissionEntityRead_1, permissionEntityRead_3))
         }
       }
     }
@@ -961,7 +1023,7 @@ class PermissionDbSpec
       "there are no rows in the DB" should {
         "return empty Stream" in {
           permissionDb
-            .getAllBy(publicResourceServerId_1)(Some(permissionName_1))
+            .getAllBy(publicTenantId_1, publicResourceServerId_1)(Some(permissionName_1))
             .compile
             .toList
             .transact(transactor)
@@ -969,16 +1031,34 @@ class PermissionDbSpec
         }
       }
 
+      "there is a row in the DB for a different publicTenantId" should {
+        "return empty Stream" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_1)
+
+            res <- permissionDb
+              .getAllBy(publicTenantId_2, publicResourceServerId_1)(Some(permissionName_1))
+              .compile
+              .toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        }
+      }
+
       "there is a row in the DB with a different resourceServerId but matching name" should {
         "return empty Stream" in {
           val result = (for {
-            tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            resourceServerId <- resourceServerDb
-              .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-              .map(_.value.id)
-            _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- permissionDb.insert(permissionEntityWrite_1)
 
-            res <- permissionDb.getAllBy(publicResourceServerId_2)(Some(permissionName_1)).compile.toList
+            res <- permissionDb
+              .getAllBy(publicTenantId_1, publicResourceServerId_2)(Some(permissionName_1))
+              .compile
+              .toList
           } yield res).transact(transactor)
 
           result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -992,15 +1072,12 @@ class PermissionDbSpec
             val nameFragment = Option("write")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              permissionEntity = permissionEntityWrite_1.copy(resourceServerId = resourceServerId)
-              _ <- permissionDb.insert(permissionEntity)
+              _ <- permissionDb.insert(permissionEntityWrite_1)
 
-              res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
             } yield res).transact(transactor)
 
             result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -1012,15 +1089,12 @@ class PermissionDbSpec
             val nameFragment = Option(permissionName_1)
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              permissionEntity = permissionEntityWrite_1.copy(resourceServerId = resourceServerId)
-              entityRead <- permissionDb.insert(permissionEntity)
+              entityRead <- permissionDb.insert(permissionEntityWrite_1)
 
-              res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
             } yield (res, entityRead.value)).transact(transactor)
 
             result.asserting { case (res, entityRead) =>
@@ -1036,17 +1110,23 @@ class PermissionDbSpec
             val nameFragment_3 = Some("1")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              permissionEntity = permissionEntityWrite_1.copy(resourceServerId = resourceServerId)
-              entityRead <- permissionDb.insert(permissionEntity)
+              entityRead <- permissionDb.insert(permissionEntityWrite_1)
 
-              res_1 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_1)
+                .compile
+                .toList
+              res_2 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_2)
+                .compile
+                .toList
+              res_3 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_3)
+                .compile
+                .toList
             } yield (res_1, res_2, res_3, entityRead.value)).transact(transactor)
 
             result.asserting { case (res_1, res_2, res_3, entityRead) =>
@@ -1063,16 +1143,19 @@ class PermissionDbSpec
             val nameFragment_2 = Some(":PERM")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              permissionEntity = permissionEntityWrite_1.copy(resourceServerId = resourceServerId)
-              entityRead <- permissionDb.insert(permissionEntity)
+              entityRead <- permissionDb.insert(permissionEntityWrite_1)
 
-              res_1 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_2).compile.toList
+              res_1 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_1)
+                .compile
+                .toList
+              res_2 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_2)
+                .compile
+                .toList
             } yield (res_1, res_2, entityRead.value)).transact(transactor)
 
             result.asserting { case (res_1, res_2, entityRead) =>
@@ -1090,15 +1173,13 @@ class PermissionDbSpec
             val nameFragment = Option("write")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-              _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
+              _ <- permissionDb.insert(permissionEntityWrite_1)
+              _ <- permissionDb.insert(permissionEntityWrite_2)
 
-              res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
             } yield res).transact(transactor)
 
             result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
@@ -1110,16 +1191,14 @@ class PermissionDbSpec
             val nameFragment = Some(permissionName_1)
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-              _ <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
-              _ <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
+              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1)
+              _ <- permissionDb.insert(permissionEntityWrite_2)
+              _ <- permissionDb.insert(permissionEntityWrite_3)
 
-              res <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment).compile.toList
+              res <- permissionDb.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment).compile.toList
             } yield (res, entityRead_1.value)).transact(transactor)
 
             result.asserting { case (res, entityRead_1) =>
@@ -1135,18 +1214,25 @@ class PermissionDbSpec
             val nameFragment_3 = Some("2")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-              entityRead_2 <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
-              entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
+              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1)
+              entityRead_2 <- permissionDb.insert(permissionEntityWrite_2)
+              entityRead_3 <- permissionDb.insert(permissionEntityWrite_3)
 
-              res_1 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_1)
+                .compile
+                .toList
+              res_2 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_2)
+                .compile
+                .toList
+              res_3 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_3)
+                .compile
+                .toList
             } yield (res_1, res_2, res_3, entityRead_1.value, entityRead_2.value, entityRead_3.value))
               .transact(transactor)
 
@@ -1165,18 +1251,25 @@ class PermissionDbSpec
             val nameFragment_3 = Some("RiTe")
 
             val result = (for {
-              tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              resourceServerId <- resourceServerDb
-                .insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
-                .map(_.value.id)
+              _ <- tenantDb.insert(tenantEntityWrite_1)
+              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
-              entityRead_2 <- permissionDb.insert(permissionEntityWrite_2.copy(resourceServerId = resourceServerId))
-              entityRead_3 <- permissionDb.insert(permissionEntityWrite_3.copy(resourceServerId = resourceServerId))
+              entityRead_1 <- permissionDb.insert(permissionEntityWrite_1)
+              entityRead_2 <- permissionDb.insert(permissionEntityWrite_2)
+              entityRead_3 <- permissionDb.insert(permissionEntityWrite_3)
 
-              res_1 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_1).compile.toList
-              res_2 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_2).compile.toList
-              res_3 <- permissionDb.getAllBy(publicResourceServerId_1)(nameFragment_3).compile.toList
+              res_1 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_1)
+                .compile
+                .toList
+              res_2 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_2)
+                .compile
+                .toList
+              res_3 <- permissionDb
+                .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment_3)
+                .compile
+                .toList
             } yield (res_1, res_2, res_3, entityRead_1.value, entityRead_2.value, entityRead_3.value))
               .transact(transactor)
 

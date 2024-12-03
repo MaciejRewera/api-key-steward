@@ -7,6 +7,7 @@ import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ResourceServerEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
+import doobie.Fragment
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
 import doobie.postgres.implicits._
@@ -158,6 +159,8 @@ class ResourceServerDb()(implicit clock: Clock) {
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
 
+    private val TableName = "resource_server"
+
     private val columnNamesSelectFragment =
       fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at, deactivated_at"
 
@@ -167,7 +170,7 @@ class ResourceServerDb()(implicit clock: Clock) {
                 description = ${resourceServerEntity.description},
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${resourceServerEntity.publicResourceServerId}
-              AND $tenantIdFr
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def activate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
@@ -175,7 +178,7 @@ class ResourceServerDb()(implicit clock: Clock) {
             SET deactivated_at = NULL,
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
-              AND $tenantIdFr
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deactivate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
@@ -183,37 +186,29 @@ class ResourceServerDb()(implicit clock: Clock) {
             SET deactivated_at = $now,
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
-              AND $tenantIdFr
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deleteDeactivated(publicResourceServerId: ResourceServerId): doobie.Update0 =
       sql"""DELETE FROM resource_server
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
               AND resource_server.deactivated_at IS NOT NULL
-              AND $tenantIdFr
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def getBy(publicResourceServerId: String): doobie.Query0[ResourceServerEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM resource_server
               WHERE public_resource_server_id = $publicResourceServerId
-                AND $tenantIdFr
-             """).query[ResourceServerEntity.Read]
+                AND ${tenantIdFr(TableName)}
+             """.stripMargin).query[ResourceServerEntity.Read]
 
     def getAllForTenant: doobie.Query0[ResourceServerEntity.Read] =
-      sql"""SELECT
-              res.id,
-              res.tenant_id,
-              res.public_resource_server_id,
-              res.name,
-              res.description,
-              res.created_at,
-              res.updated_at,
-              res.deactivated_at
-            FROM resource_server AS res
-            WHERE $tenantIdFr
-            ORDER BY res.created_at DESC
-           """.stripMargin.query[ResourceServerEntity.Read]
+      (columnNamesSelectFragment ++
+        sql"""FROM resource_server
+              WHERE ${tenantIdFr(TableName)}
+              ORDER BY resource_server.created_at DESC
+             """.stripMargin).query[ResourceServerEntity.Read]
 
   }
 }

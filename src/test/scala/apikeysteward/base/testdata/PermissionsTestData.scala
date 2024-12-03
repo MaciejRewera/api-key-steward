@@ -6,6 +6,7 @@ import apikeysteward.base.testdata.ResourceServersTestData.{
   resourceServerDbId_2,
   resourceServerDbId_3
 }
+import apikeysteward.base.testdata.TenantsTestData.{tenantDbId_1, tenantDbId_2, tenantDbId_3}
 import apikeysteward.model.Permission
 import apikeysteward.repositories.db.entity.PermissionEntity
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
@@ -67,6 +68,7 @@ object PermissionsTestData extends FixedClock {
 
   val permissionEntityWrite_1: PermissionEntity.Write = PermissionEntity.Write(
     id = permissionDbId_1,
+    tenantId = tenantDbId_1,
     resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_1,
     name = permissionName_1,
@@ -74,6 +76,7 @@ object PermissionsTestData extends FixedClock {
   )
   val permissionEntityRead_1: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_1,
+    tenantId = tenantDbId_1,
     resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_1,
     name = permissionName_1,
@@ -84,14 +87,16 @@ object PermissionsTestData extends FixedClock {
 
   val permissionEntityWrite_2: PermissionEntity.Write = PermissionEntity.Write(
     id = permissionDbId_2,
-    resourceServerId = resourceServerDbId_2,
+    tenantId = tenantDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_2,
     name = permissionName_2,
     description = permissionDescription_2
   )
   val permissionEntityRead_2: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_2,
-    resourceServerId = resourceServerDbId_2,
+    tenantId = tenantDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_2,
     name = permissionName_2,
     description = permissionDescription_2,
@@ -101,14 +106,16 @@ object PermissionsTestData extends FixedClock {
 
   val permissionEntityWrite_3: PermissionEntity.Write = PermissionEntity.Write(
     id = permissionDbId_3,
-    resourceServerId = resourceServerDbId_3,
+    tenantId = tenantDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_3,
     name = permissionName_3,
     description = permissionDescription_3
   )
   val permissionEntityRead_3: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_3,
-    resourceServerId = resourceServerDbId_3,
+    tenantId = tenantDbId_1,
+    resourceServerId = resourceServerDbId_1,
     publicPermissionId = publicPermissionIdStr_3,
     name = permissionName_3,
     description = permissionDescription_3,

@@ -50,12 +50,13 @@ class ResourceServerRepository(
       resourceServerEntityRead <- EitherT(
         resourceServerDb.insert(ResourceServerEntity.Write.from(resourceServerDbId, tenantId, resourceServer))
       )
-      permissionEntities <- insertPermissions(resourceServerEntityRead.id, permissionDbIds, resourceServer)
+      permissionEntities <- insertPermissions(tenantId, resourceServerEntityRead.id, permissionDbIds, resourceServer)
 
       resultResourceServer = ResourceServer.from(resourceServerEntityRead, permissionEntities)
     } yield resultResourceServer).value.transact(transactor)
 
   private def insertPermissions(
+      tenantDbId: UUID,
       resourceServerDbId: UUID,
       permissionDbIds: List[UUID],
       resourceServer: ResourceServer
@@ -63,7 +64,7 @@ class ResourceServerRepository(
     EitherT {
       val permissionsToInsert = (resourceServer.permissions zip permissionDbIds).map {
         case (permission, permissionDbId) =>
-          PermissionEntity.Write.from(permissionDbId, resourceServerDbId, permission)
+          PermissionEntity.Write.from(permissionDbId, tenantDbId, resourceServerDbId, permission)
       }
 
       for {
@@ -82,7 +83,7 @@ class ResourceServerRepository(
         resourceServerDb.update(publicTenantId, ResourceServerEntity.Update.from(resourceServerUpdate))
       )
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
-        constructResourceServer(resourceServerEntityRead)
+        constructResourceServer(publicTenantId, resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
@@ -93,7 +94,7 @@ class ResourceServerRepository(
     (for {
       resourceServerEntityRead <- EitherT(resourceServerDb.activate(publicTenantId, publicResourceServerId))
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
-        constructResourceServer(resourceServerEntityRead)
+        constructResourceServer(publicTenantId, resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
@@ -104,7 +105,7 @@ class ResourceServerRepository(
     (for {
       resourceServerEntityRead <- EitherT(resourceServerDb.deactivate(publicTenantId, publicResourceServerId))
       resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
-        constructResourceServer(resourceServerEntityRead)
+        constructResourceServer(publicTenantId, resourceServerEntityRead)
       )
     } yield resultResourceServer).value.transact(transactor)
 
@@ -121,7 +122,7 @@ class ResourceServerRepository(
     (for {
       _ <- verifyResourceServerIsDeactivatedOp(publicTenantId, publicResourceServerId)
 
-      permissionEntitiesDeleted <- deletePermissions(publicResourceServerId)
+      permissionEntitiesDeleted <- deletePermissions(publicTenantId, publicResourceServerId)
       resourceServerEntityRead <- EitherT(resourceServerDb.deleteDeactivated(publicTenantId, publicResourceServerId))
 
       resultResourceServer = ResourceServer.from(resourceServerEntityRead, permissionEntitiesDeleted)
@@ -145,13 +146,18 @@ class ResourceServerRepository(
     } yield ()
 
   private def deletePermissions(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): EitherT[doobie.ConnectionIO, ResourceServerDbError, List[PermissionEntity.Read]] =
     EitherT {
       for {
-        permissionEntitiesToDelete <- permissionDb.getAllBy(publicResourceServerId)(None).compile.toList
+        permissionEntitiesToDelete <- permissionDb.getAllBy(publicTenantId, publicResourceServerId)(None).compile.toList
         permissionEntitiesDeletedE <- permissionEntitiesToDelete.traverse { entity =>
-          permissionRepository.deleteOp(publicResourceServerId, UUID.fromString(entity.publicPermissionId))
+          permissionRepository.deleteOp(
+            publicTenantId,
+            publicResourceServerId,
+            UUID.fromString(entity.publicPermissionId)
+          )
         }.map(_.sequence)
 
         result = permissionEntitiesDeletedE.left.map(cannotDeletePermissionError(publicResourceServerId, _))
@@ -163,7 +169,7 @@ class ResourceServerRepository(
       resourceServerEntityRead <- OptionT(
         resourceServerDb.getByPublicResourceServerId(publicTenantId, publicResourceServerId)
       )
-      resultResourceServer <- OptionT.liftF(constructResourceServer(resourceServerEntityRead))
+      resultResourceServer <- OptionT.liftF(constructResourceServer(publicTenantId, resourceServerEntityRead))
     } yield resultResourceServer).value.transact(transactor)
 
   def getAllForTenant(publicTenantId: TenantId): IO[List[ResourceServer]] =
@@ -172,15 +178,16 @@ class ResourceServerRepository(
   private[repositories] def getAllForTenantOp(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ResourceServer] =
     for {
       resourceServerEntityRead <- resourceServerDb.getAllForTenant(publicTenantId)
-      resultResourceServer <- Stream.eval(constructResourceServer(resourceServerEntityRead))
+      resultResourceServer <- Stream.eval(constructResourceServer(publicTenantId, resourceServerEntityRead))
     } yield resultResourceServer
 
   private def constructResourceServer(
+      publicTenantId: TenantId,
       resourceServerEntity: ResourceServerEntity.Read
   ): doobie.ConnectionIO[ResourceServer] =
     for {
       permissionEntities <- permissionDb
-        .getAllBy(UUID.fromString(resourceServerEntity.publicResourceServerId))(None)
+        .getAllBy(publicTenantId, UUID.fromString(resourceServerEntity.publicResourceServerId))(None)
         .compile
         .toList
 

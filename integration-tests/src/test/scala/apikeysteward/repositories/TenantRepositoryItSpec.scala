@@ -43,7 +43,9 @@ class TenantRepositoryItSpec
   private val userDb = new UserDb
 
   private val permissionRepository =
-    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+      transactor
+    )
 
   private val resourceServerRepository =
     new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(

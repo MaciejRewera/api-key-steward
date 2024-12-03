@@ -5,6 +5,7 @@ import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.PermissionEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._
@@ -28,6 +29,7 @@ class PermissionDb()(implicit clock: Clock) {
         .insert(permissionEntity, now)
         .withUniqueGeneratedKeys[PermissionEntity.Read](
           "id",
+          "tenant_id",
           "resource_server_id",
           "public_permission_id",
           "name",
@@ -60,43 +62,50 @@ class PermissionDb()(implicit clock: Clock) {
     }
 
   def delete(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       publicPermissionId: PermissionId
   ): doobie.ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
-      permissionToDeleteE <- getBy(publicResourceServerId, publicPermissionId).map(
+      permissionToDeleteE <- getBy(publicTenantId, publicResourceServerId, publicPermissionId).map(
         _.toRight(PermissionNotFoundError(publicResourceServerId, publicPermissionId))
       )
       resultE <- permissionToDeleteE.traverse { result =>
-        Queries.delete(publicResourceServerId, publicPermissionId).run.map(_ => result)
+        TenantIdScopedQueries(publicTenantId).delete(publicResourceServerId, publicPermissionId).run.map(_ => result)
       }
     } yield resultE
 
   def getBy(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       publicPermissionId: PermissionId
   ): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
-    Queries.getBy(publicResourceServerId, publicPermissionId).option
+    TenantIdScopedQueries(publicTenantId).getBy(publicResourceServerId, publicPermissionId).option
 
-  def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
-    Queries.getByPublicPermissionId(publicPermissionId).option
+  def getByPublicPermissionId(
+      publicTenantId: TenantId,
+      publicPermissionId: PermissionId
+  ): doobie.ConnectionIO[Option[PermissionEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getByPublicPermissionId(publicPermissionId).option
 
   def getAllForTemplate(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllForTemplate(publicTemplateId).stream
+    TenantIdScopedQueries(publicTenantId).getAllForTemplate(publicTemplateId).stream
 
-  def getAllBy(publicResourceServerId: ResourceServerId)(
+  def getAllBy(publicTenantId: TenantId, publicResourceServerId: ResourceServerId)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
-    Queries.getAllBy(publicResourceServerId)(nameFragment).stream
+    TenantIdScopedQueries(publicTenantId).getAllBy(publicResourceServerId)(nameFragment).stream
 
   private object Queries {
 
     def insert(permissionEntity: PermissionEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO permission(id, resource_server_id, public_permission_id, name, description, created_at, updated_at)
+      sql"""INSERT INTO permission(id, tenant_id, resource_server_id, public_permission_id, name, description, created_at, updated_at)
             VALUES(
               ${permissionEntity.id},
+              ${permissionEntity.tenantId},
               ${permissionEntity.resourceServerId},
               ${permissionEntity.publicPermissionId},
               ${permissionEntity.name},
@@ -105,6 +114,11 @@ class PermissionDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "permission"
 
     def delete(publicResourceServerId: ResourceServerId, publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM permission
@@ -112,6 +126,7 @@ class PermissionDb()(implicit clock: Clock) {
             WHERE permission.resource_server_id = resource_server.id
               AND resource_server.public_resource_server_id = ${publicResourceServerId.toString}
               AND permission.public_permission_id = ${publicPermissionId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def getBy(
@@ -123,20 +138,23 @@ class PermissionDb()(implicit clock: Clock) {
               JOIN resource_server ON resource_server.id = permission.resource_server_id
               WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
                 AND permission.public_permission_id = ${publicPermissionId.toString}
+                AND ${tenantIdFr(TableName)}
              """).query[PermissionEntity.Read]
 
     def getByPublicPermissionId(publicPermissionId: PermissionId): doobie.Query0[PermissionEntity.Read] =
       (PermissionDb.ColumnNamesSelectFragment ++
         sql"""FROM permission
               WHERE permission.public_permission_id = ${publicPermissionId.toString}
+                AND ${tenantIdFr(TableName)}
              """).query[PermissionEntity.Read]
 
     def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[PermissionEntity.Read] =
       (PermissionDb.ColumnNamesSelectFragment ++
         sql"""FROM permission
-            JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
-            JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
-            WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+              JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
+              JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
+              WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+                AND ${tenantIdFr(TableName)}
            """.stripMargin).query[PermissionEntity.Read]
 
     def getAllBy(
@@ -149,19 +167,12 @@ class PermissionDb()(implicit clock: Clock) {
         .map(n => s"%$n%")
         .map(n => fr"permission.name ILIKE $n")
 
-      sql"""SELECT
-              permission.id,
-              permission.resource_server_id,
-              permission.public_permission_id,
-              permission.name,
-              permission.description,
-              permission.created_at,
-              permission.updated_at
-            FROM permission
-            JOIN resource_server ON resource_server.id = permission.resource_server_id
-            ${whereAndOpt(publicResourceServerIdEquals, nameLikeFr)}
-            ORDER BY permission.name
-            """.stripMargin.query[PermissionEntity.Read]
+      (PermissionDb.ColumnNamesSelectFragment ++
+        sql"""FROM permission
+              JOIN resource_server ON resource_server.id = permission.resource_server_id
+              ${whereAndOpt(publicResourceServerIdEquals, nameLikeFr, Some(tenantIdFr(TableName)))}
+              ORDER BY permission.name
+             """.stripMargin).query[PermissionEntity.Read]
     }
 
   }
@@ -172,6 +183,7 @@ private[db] object PermissionDb {
   val ColumnNamesSelectFragment =
     fr"""SELECT
             permission.id,
+            permission.tenant_id,
             permission.resource_server_id,
             permission.public_permission_id,
             permission.name,

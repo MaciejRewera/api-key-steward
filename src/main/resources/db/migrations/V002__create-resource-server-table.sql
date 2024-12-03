@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS resource_server
     deactivated_at            TIMESTAMPTZ,
 
     UNIQUE (public_resource_server_id),
+
     CONSTRAINT fkey_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)
 );

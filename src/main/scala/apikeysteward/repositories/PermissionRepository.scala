@@ -5,9 +5,11 @@ import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.ReferencedResourceServerDoesNotExistError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.ResourceServer.ResourceServerId
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.PermissionEntity
-import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb, TenantDb}
 import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
@@ -18,27 +20,36 @@ import java.util.UUID
 
 class PermissionRepository(
     uuidGenerator: UuidGenerator,
+    tenantDb: TenantDb,
     resourceServerDb: ResourceServerDb,
     permissionDb: PermissionDb,
     apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
 )(transactor: Transactor[IO]) {
 
   def insert(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       permission: Permission
   ): IO[Either[PermissionInsertionError, Permission]] =
     for {
       permissionDbId <- uuidGenerator.generateUuid
-      result <- insert(permissionDbId, publicResourceServerId, permission)
+      result <- insert(permissionDbId, publicTenantId, publicResourceServerId, permission)
     } yield result
 
   private def insert(
       permissionDbId: UUID,
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       permission: Permission
-  ): IO[Either[PermissionInsertionError, Permission]] = {
-    val publicTenantId = UUID.randomUUID()
+  ): IO[Either[PermissionInsertionError, Permission]] =
     (for {
+      tenantId <- EitherT
+        .fromOptionF(
+          tenantDb.getByPublicTenantId(publicTenantId),
+          PermissionInsertionError.ReferencedTenantDoesNotExistError(publicTenantId)
+        )
+        .map(_.id)
+
       resourceServerId <- EitherT
         .fromOptionF(
           resourceServerDb.getByPublicResourceServerId(publicTenantId, publicResourceServerId),
@@ -47,48 +58,55 @@ class PermissionRepository(
         .map(_.id)
 
       permissionEntityRead <- EitherT(
-        permissionDb.insert(PermissionEntity.Write.from(permissionDbId, resourceServerId, permission))
+        permissionDb.insert(PermissionEntity.Write.from(permissionDbId, tenantId, resourceServerId, permission))
       )
 
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
-  }
 
   def delete(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       publicPermissionId: PermissionId
   ): IO[Either[PermissionNotFoundError, Permission]] =
     (for {
-      permissionEntityRead <- EitherT(deleteOp(publicResourceServerId, publicPermissionId))
+      permissionEntityRead <- EitherT(deleteOp(publicTenantId, publicResourceServerId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
   private[repositories] def deleteOp(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId,
       publicPermissionId: PermissionId
   ): ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId)
-      deletedPermissionEntity <- permissionDb.delete(publicResourceServerId, publicPermissionId)
+      deletedPermissionEntity <- permissionDb.delete(publicTenantId, publicResourceServerId, publicPermissionId)
     } yield deletedPermissionEntity
 
-  def getBy(publicResourceServerId: ResourceServerId, publicPermissionId: PermissionId): IO[Option[Permission]] =
+  def getBy(
+      publicTenantId: TenantId,
+      publicResourceServerId: ResourceServerId,
+      publicPermissionId: PermissionId
+  ): IO[Option[Permission]] =
     (for {
-      permissionEntityRead <- OptionT(permissionDb.getBy(publicResourceServerId, publicPermissionId))
+      permissionEntityRead <- OptionT(permissionDb.getBy(publicTenantId, publicResourceServerId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
 
-  def getAllFor(publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
+  def getAllFor(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
     permissionDb
-      .getAllForTemplate(publicTemplateId)
+      .getAllForTemplate(publicTenantId, publicTemplateId)
       .map(Permission.from)
       .compile
       .toList
       .transact(transactor)
 
-  def getAllBy(publicResourceServerId: ResourceServerId)(nameFragment: Option[String]): IO[List[Permission]] =
+  def getAllBy(publicTenantId: TenantId, publicResourceServerId: ResourceServerId)(
+      nameFragment: Option[String]
+  ): IO[List[Permission]] =
     (for {
-      permissionEntityRead <- permissionDb.getAllBy(publicResourceServerId)(nameFragment)
+      permissionEntityRead <- permissionDb.getAllBy(publicTenantId, publicResourceServerId)(nameFragment)
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).compile.toList.transact(transactor)
 

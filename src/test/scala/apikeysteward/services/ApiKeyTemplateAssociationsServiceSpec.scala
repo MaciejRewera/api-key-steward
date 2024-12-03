@@ -92,14 +92,23 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+        apiKeyTemplatesPermissionsRepository.insertMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO.pure(
           ().asRight
         )
 
         for {
-          _ <- theService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          _ <- theService.associatePermissionsWithApiKeyTemplate(
+            publicTenantId_1,
+            publicTemplateId_1,
+            inputPublicPermissionIds
+          )
 
           _ = verify(apiKeyTemplatesPermissionsRepository).insertMany(
+            eqTo(publicTenantId_1),
             eqTo(publicTemplateId_1),
             eqTo(inputPublicPermissionIds)
           )
@@ -107,11 +116,19 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+        apiKeyTemplatesPermissionsRepository.insertMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO.pure(
           ().asRight
         )
 
-        val result = theService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+        val result = theService.associatePermissionsWithApiKeyTemplate(
+          publicTenantId_1,
+          publicTemplateId_1,
+          inputPublicPermissionIds
+        )
 
         result.asserting(_ shouldBe Right(()))
       }
@@ -121,10 +138,18 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+          apiKeyTemplatesPermissionsRepository.insertMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          ) returns IO
             .pure(insertionError.asLeft)
 
-          val result = theService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          val result = theService.associatePermissionsWithApiKeyTemplate(
+            publicTenantId_1,
+            publicTemplateId_1,
+            inputPublicPermissionIds
+          )
 
           result.asserting(_ shouldBe Left(insertionError))
         }
@@ -133,11 +158,17 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+        apiKeyTemplatesPermissionsRepository.insertMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO
           .raiseError(testException)
 
         val result =
-          theService.associatePermissionsWithApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds).attempt
+          theService
+            .associatePermissionsWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
+            .attempt
 
         result.asserting(_ shouldBe Left(testException))
       }
@@ -149,14 +180,23 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+        apiKeyTemplatesPermissionsRepository.deleteMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO.pure(
           ().asRight
         )
 
         for {
-          _ <- theService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          _ <- theService.removePermissionsFromApiKeyTemplate(
+            publicTenantId_1,
+            publicTemplateId_1,
+            inputPublicPermissionIds
+          )
 
           _ = verify(apiKeyTemplatesPermissionsRepository).deleteMany(
+            eqTo(publicTenantId_1),
             eqTo(publicTemplateId_1),
             eqTo(inputPublicPermissionIds)
           )
@@ -164,11 +204,16 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO.pure(
+        apiKeyTemplatesPermissionsRepository.deleteMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO.pure(
           ().asRight
         )
 
-        val result = theService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+        val result =
+          theService.removePermissionsFromApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
 
         result.asserting(_ shouldBe Right(()))
       }
@@ -186,10 +231,18 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+          apiKeyTemplatesPermissionsRepository.deleteMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          ) returns IO
             .pure(insertionError.asLeft)
 
-          val result = theService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds)
+          val result = theService.removePermissionsFromApiKeyTemplate(
+            publicTenantId_1,
+            publicTemplateId_1,
+            inputPublicPermissionIds
+          )
 
           result.asserting(_ shouldBe Left(insertionError))
         }
@@ -198,11 +251,17 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(any[ApiKeyTemplateId], any[List[PermissionId]]) returns IO
+        apiKeyTemplatesPermissionsRepository.deleteMany(
+          any[TenantId],
+          any[ApiKeyTemplateId],
+          any[List[PermissionId]]
+        ) returns IO
           .raiseError(testException)
 
         val result =
-          theService.removePermissionsFromApiKeyTemplate(publicTemplateId_1, inputPublicPermissionIds).attempt
+          theService
+            .removePermissionsFromApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
+            .attempt
 
         result.asserting(_ shouldBe Left(testException))
       }

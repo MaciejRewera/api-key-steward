@@ -204,7 +204,7 @@ class ResourceServerDbSpec
 
       "return Left containing ResourceServerNotFoundError" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           res <- resourceServerDb.update(publicTenantId_2, resourceServerEntityUpdate_1)
@@ -215,7 +215,7 @@ class ResourceServerDbSpec
 
       "make NO changes to the DB" in {
         val result = for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
 
           _ <- resourceServerDb.update(publicTenantId_2, resourceServerEntityUpdate_1).transact(transactor)
@@ -231,16 +231,21 @@ class ResourceServerDbSpec
       "there are NO rows in the DB" should {
 
         "return Left containing ResourceServerNotFoundError" in {
-          resourceServerDb
-            .update(publicTenantId_1, resourceServerEntityUpdate_1)
-            .transact(transactor)
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+
+            res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          } yield res).transact(transactor)
+
+          result
             .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
         }
 
         "make NO changes to the DB" in {
           val result = (for {
-            _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+            _ <- tenantDb.insert(tenantEntityWrite_1)
 
+            _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
             res <- Queries.getAllResourceServers
           } yield res).transact(transactor)
 

@@ -275,13 +275,13 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "everything works correctly" should {
 
       "call ApiKeyTemplateRepository and UserRepository" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
         for {
-          _ <- userService.getAllForTemplate(publicTemplateId_1)
+          _ <- userService.getAllForTemplate(publicTenantId_1, publicTemplateId_1)
 
-          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(userRepository).getAllForTemplate(eqTo(publicTemplateId_1))
         } yield ()
       }
@@ -289,17 +289,21 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "return the value returned by UserRepository" when {
 
         "UserRepository returns empty List" in {
-          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
           userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
-          userService.getAllForTemplate(publicTemplateId_1).asserting(_ shouldBe Right(List.empty[User]))
+          userService
+            .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
+            .asserting(_ shouldBe Right(List.empty[User]))
         }
 
         "UserRepository returns non-empty List" in {
-          apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+          apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
           userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
 
-          userService.getAllForTemplate(publicTemplateId_1).asserting(_ shouldBe Right(List(user_1, user_2, user_3)))
+          userService
+            .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
+            .asserting(_ shouldBe Right(List(user_1, user_2, user_3)))
         }
       }
     }
@@ -307,31 +311,31 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "ApiKeyTemplateRepository returns empty Option" should {
 
       "NOT call UserRepository" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
 
         for {
-          _ <- userService.getAllForTemplate(publicTemplateId_1)
+          _ <- userService.getAllForTemplate(publicTenantId_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(userRepository)
         } yield ()
       }
 
       "return Left containing ApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
 
         userService
-          .getAllForTemplate(publicTemplateId_1)
+          .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
       }
     }
 
     "UserRepository returns failed IO" should {
       "return failed IO containing the same exception" in {
-        apiKeyTemplateRepository.getBy(any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
         userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         userService
-          .getAllForTemplate(publicTemplateId_1)
+          .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

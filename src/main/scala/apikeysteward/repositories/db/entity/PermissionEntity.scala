@@ -9,6 +9,7 @@ object PermissionEntity {
 
   case class Read(
       id: UUID,
+      tenantId: UUID,
       resourceServerId: UUID,
       publicPermissionId: String,
       name: String,
@@ -19,6 +20,7 @@ object PermissionEntity {
 
   case class Write(
       id: UUID,
+      tenantId: UUID,
       resourceServerId: UUID,
       publicPermissionId: String,
       name: String,
@@ -26,9 +28,10 @@ object PermissionEntity {
   )
 
   object Write {
-    def from(id: UUID, resourceServerId: UUID, permission: Permission): PermissionEntity.Write =
+    def from(id: UUID, tenantId: UUID, resourceServerId: UUID, permission: Permission): PermissionEntity.Write =
       PermissionEntity.Write(
         id = id,
+        tenantId = tenantId,
         resourceServerId = resourceServerId,
         publicPermissionId = permission.publicPermissionId.toString,
         name = permission.name,

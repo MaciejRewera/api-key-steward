@@ -5,6 +5,7 @@ import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb}
 import cats.data.EitherT
@@ -22,12 +23,13 @@ class ApiKeyTemplatesPermissionsRepository(
 )(transactor: Transactor[IO]) {
 
   def insertMany(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId,
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
     (for {
       templateId <- getTemplateId(publicTemplateId)
-      permissionIds <- getPermissionIds(publicPermissionIds)
+      permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToInsert = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(templateId, _))
 
@@ -35,12 +37,13 @@ class ApiKeyTemplatesPermissionsRepository(
     } yield ()).value.transact(transactor)
 
   def deleteMany(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId,
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
     (for {
       templateId <- getTemplateId(publicTemplateId)
-      permissionIds <- getPermissionIds(publicPermissionIds)
+      permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToDelete = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(templateId, _))
 
@@ -62,12 +65,13 @@ class ApiKeyTemplatesPermissionsRepository(
       .map(_.id)
 
   private def getPermissionIds(
+      publicTenantId: TenantId,
       publicPermissionIds: List[PermissionId]
   ): EitherT[doobie.ConnectionIO, ReferencedPermissionDoesNotExistError, List[UUID]] =
     publicPermissionIds.traverse { permissionId =>
       EitherT
         .fromOptionF(
-          permissionDb.getByPublicPermissionId(permissionId),
+          permissionDb.getByPublicPermissionId(publicTenantId, permissionId),
           ReferencedPermissionDoesNotExistError(permissionId)
         )
         .map(_.id)

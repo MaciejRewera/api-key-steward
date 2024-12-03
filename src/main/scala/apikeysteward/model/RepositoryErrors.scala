@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApiKeyTemplatesUsersEntity}
@@ -240,6 +241,9 @@ object RepositoryErrors {
             errorMessage = s"ResourceServer with publicResourceServerId = [$publicResourceServerId] does not exist."
           )
       }
+
+      case class ReferencedTenantDoesNotExistError(publicTenantId: TenantId)
+          extends PermissionInsertionError(message = s"Tenant with publicTenantId = [$publicTenantId] does not exist.")
 
       case class PermissionInsertionErrorImpl(cause: SQLException)
           extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")

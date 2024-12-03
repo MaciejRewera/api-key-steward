@@ -17,10 +17,11 @@ class ApiKeyTemplateAssociationsService(
 ) extends Logging {
 
   def associatePermissionsWithApiKeyTemplate(
+      publicTenantId: TenantId,
       templateId: ApiKeyTemplateId,
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.insertMany(templateId, permissionIds).flatTap {
+    apiKeyTemplatesPermissionsRepository.insertMany(publicTenantId, templateId, permissionIds).flatTap {
       case Right(_) =>
         logger.info(
           s"""Associated Permissions with permissionIds: [${permissionIds.mkString(", ")}]
@@ -34,10 +35,11 @@ class ApiKeyTemplateAssociationsService(
     }
 
   def removePermissionsFromApiKeyTemplate(
+      publicTenantId: TenantId,
       templateId: ApiKeyTemplateId,
       permissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
-    apiKeyTemplatesPermissionsRepository.deleteMany(templateId, permissionIds).flatTap {
+    apiKeyTemplatesPermissionsRepository.deleteMany(publicTenantId, templateId, permissionIds).flatTap {
       case Right(_) =>
         logger.info(
           s"""Removed associations between Permissions with permissionIds: [${permissionIds.mkString(", ")}]

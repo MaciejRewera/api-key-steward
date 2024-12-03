@@ -277,13 +277,18 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerEntity.Update]
         ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         for {
           _ <- resourceServerRepository.update(publicTenantId_1, resourceServerUpdate_1)
 
           _ = verify(resourceServerDb).update(eqTo(publicTenantId_1), eqTo(resourceServerEntityUpdate_1))
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )(eqTo(none[String]))
         } yield ()
       }
 
@@ -292,7 +297,9 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerEntity.Update]
         ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         val expectedUpdatedResourceServer =
           resourceServer_1.copy(name = resourceServerNameUpdated, description = resourceServerDescriptionUpdated)
@@ -362,7 +369,7 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerEntity.Update]
         ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -385,19 +392,26 @@ class ResourceServerRepositorySpec
 
       "call ResourceServerDb and PermissionDb" in {
         resourceServerDb.activate(any[TenantId], any[ResourceServerId]) returns activatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         for {
           _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
 
           _ = verify(resourceServerDb).activate(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )(eqTo(none[String]))
         } yield ()
       }
 
       "return Right containing activated ResourceServer" in {
         resourceServerDb.activate(any[TenantId], any[ResourceServerId]) returns activatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         val expectedActivatedResourceServer = resourceServer_1.copy(isActive = true)
 
@@ -453,7 +467,7 @@ class ResourceServerRepositorySpec
     "PermissionDb returns an exception" should {
       "return failed IO containing this exception" in {
         resourceServerDb.activate(any[TenantId], any[ResourceServerId]) returns activatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -479,13 +493,18 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerId]
         ) returns deactivatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         for {
           _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
 
           _ = verify(resourceServerDb).deactivate(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )(eqTo(none[String]))
         } yield ()
       }
 
@@ -494,7 +513,9 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerId]
         ) returns deactivatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         val expectedDeactivatedResourceServer = resourceServer_1.copy(isActive = false)
 
@@ -553,7 +574,7 @@ class ResourceServerRepositorySpec
           any[TenantId],
           any[ResourceServerId]
         ) returns deactivatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -589,12 +610,12 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
@@ -611,10 +632,22 @@ class ResourceServerRepositorySpec
             eqTo(publicTenantId_1),
             eqTo(publicResourceServerId_1)
           )
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
-          _ = verify(permissionRepository).deleteOp(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
-          _ = verify(permissionRepository).deleteOp(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_2))
-          _ = verify(permissionRepository).deleteOp(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_3))
+          _ = verify(permissionDb).getAllBy(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))(eqTo(none[String]))
+          _ = verify(permissionRepository).deleteOp(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1),
+            eqTo(publicPermissionId_1)
+          )
+          _ = verify(permissionRepository).deleteOp(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1),
+            eqTo(publicPermissionId_2)
+          )
+          _ = verify(permissionRepository).deleteOp(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1),
+            eqTo(publicPermissionId_3)
+          )
           _ = verify(resourceServerDb).deleteDeactivated(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))
         } yield ()
       }
@@ -623,14 +656,13 @@ class ResourceServerRepositorySpec
         resourceServerDb.getByPublicResourceServerId(
           any[TenantId],
           any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        ) returns deletedResourceServerEntityRead.some.pure[doobie.ConnectionIO]
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
@@ -738,7 +770,7 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -746,7 +778,7 @@ class ResourceServerRepositorySpec
         for {
           _ <- resourceServerRepository.delete(publicTenantId_1, publicResourceServerId_1).attempt
 
-          _ = verify(permissionDb, times(0)).delete(any[ResourceServerId], any[PermissionId])
+          _ = verify(permissionDb, times(0)).delete(any[TenantId], any[ResourceServerId], any[PermissionId])
           _ = verify(resourceServerDb, times(0)).deleteDeactivated(any[TenantId], any[ResourceServerId])
         } yield ()
       }
@@ -757,7 +789,9 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1) ++
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        ) ++
           Stream.raiseError[doobie.ConnectionIO](testException)
 
         resourceServerRepository
@@ -777,12 +811,12 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
         )
@@ -799,12 +833,12 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
         )
@@ -823,12 +857,12 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
         )
@@ -846,12 +880,12 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns (
+        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
           permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
         )
@@ -870,8 +904,14 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns permissionEntityRead_1
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
+        permissionRepository.deleteOp(
+          any[TenantId],
+          any[ResourceServerId],
+          any[PermissionId]
+        ) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
         resourceServerDb.deleteDeactivated(any[TenantId], any[ResourceServerId]) returns resourceServerNotFoundWrapped
@@ -889,8 +929,14 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns permissionEntityRead_1
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
+        permissionRepository.deleteOp(
+          any[TenantId],
+          any[ResourceServerId],
+          any[PermissionId]
+        ) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
         resourceServerDb.deleteDeactivated(
@@ -911,8 +957,14 @@ class ResourceServerRepositorySpec
           any[ResourceServerId]
         ) returns deletedResourceServerEntityRead.some
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
-        permissionRepository.deleteOp(any[ResourceServerId], any[PermissionId]) returns permissionEntityRead_1
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
+        permissionRepository.deleteOp(
+          any[TenantId],
+          any[ResourceServerId],
+          any[PermissionId]
+        ) returns permissionEntityRead_1
           .asRight[PermissionNotFoundError]
           .pure[doobie.ConnectionIO]
         resourceServerDb
@@ -933,7 +985,7 @@ class ResourceServerRepositorySpec
         resourceServerEntityRead_1
       )
         .pure[doobie.ConnectionIO]
-      permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream.empty
+      permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream.empty
 
       for {
         _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1)
@@ -974,11 +1026,16 @@ class ResourceServerRepositorySpec
           resourceServerEntityRead_1
         )
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         for {
           _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1)
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )(eqTo(none[String]))
         } yield ()
       }
 
@@ -987,7 +1044,9 @@ class ResourceServerRepositorySpec
           resourceServerEntityRead_1
         )
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(permissionEntityRead_1)
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
+          permissionEntityRead_1
+        )
 
         resourceServerRepository
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -1024,7 +1083,7 @@ class ResourceServerRepositorySpec
           resourceServerEntityRead_1
         )
           .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
@@ -1075,7 +1134,7 @@ class ResourceServerRepositorySpec
           resourceServerEntityRead_2,
           resourceServerEntityRead_3
         )
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns (
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns (
           Stream(permissionEntityRead_1),
           Stream(permissionEntityRead_2),
           Stream(permissionEntityRead_3)
@@ -1084,9 +1143,18 @@ class ResourceServerRepositorySpec
         for {
           _ <- resourceServerRepository.getAllForTenant(publicTenantId_1)
 
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(none[String]))
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_2))(eqTo(none[String]))
-          _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_3))(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_2)
+          )(eqTo(none[String]))
+          _ = verify(permissionDb).getAllBy(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_3)
+          )(eqTo(none[String]))
         } yield ()
       }
 
@@ -1096,7 +1164,7 @@ class ResourceServerRepositorySpec
           resourceServerEntityRead_2,
           resourceServerEntityRead_3
         )
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns (
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns (
           Stream(permissionEntityRead_1),
           Stream(permissionEntityRead_2),
           Stream(permissionEntityRead_3)
@@ -1129,7 +1197,7 @@ class ResourceServerRepositorySpec
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
         resourceServerDb.getAllForTenant(any[TenantId]) returns Stream(resourceServerEntityRead_1)
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1
         ) ++ Stream
           .raiseError[doobie.ConnectionIO](testException)
