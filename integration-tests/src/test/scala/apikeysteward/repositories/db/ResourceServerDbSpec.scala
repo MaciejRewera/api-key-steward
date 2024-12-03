@@ -200,7 +200,32 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB, but with a different publicTenantId" should {
+    "there are NO rows in the DB" should {
+
+      "return Left containing ResourceServerNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result
+          .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is a row in the DB for a different publicTenantId" should {
 
       "return Left containing ResourceServerNotFoundError" in {
         val result = (for {
@@ -226,137 +251,109 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB with provided publicTenantId" when {
+    "there is a row in the DB with different publicResourceServerId" should {
 
-      "there are NO rows in the DB" should {
+      "return Left containing ResourceServerNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1)
+          res <- resourceServerDb.update(
+            publicTenantId_1,
+            resourceServerEntityUpdate_1.copy(publicResourceServerId = publicResourceServerIdStr_2)
+          )
+        } yield res).transact(transactor)
 
-            res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-          } yield res).transact(transactor)
+        result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
+      }
 
-          result
-            .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
-        }
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.update(
+            publicTenantId_1,
+            resourceServerEntityUpdate_1.copy(publicResourceServerId = publicResourceServerIdStr_2)
+          )
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
 
-            _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
+        result.asserting(_ shouldBe List(resourceServerEntityRead_1))
+      }
+    }
 
-          result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+    "there is a row in the DB with given publicResourceServerId" should {
+
+      "return updated entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
         }
       }
 
-      "there is a row in the DB with different publicResourceServerId" should {
+      "update this row" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
 
-            res <- resourceServerDb.update(
-              publicTenantId_1,
-              resourceServerEntityUpdate_1.copy(publicResourceServerId = publicResourceServerIdStr_2)
-            )
-          } yield res).transact(transactor)
+        result.asserting { allResourceServers =>
+          allResourceServers.size shouldBe 1
 
-          result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
+          val expectedEntity =
+            updatedEntityRead.copy(id = allResourceServers.head.id, tenantId = allResourceServers.head.tenantId)
+          allResourceServers.head shouldBe expectedEntity
         }
+      }
+    }
 
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+    "there are several rows in the DB but only one with given publicResourceServerId" should {
 
-            _ <- resourceServerDb.update(
-              publicTenantId_1,
-              resourceServerEntityUpdate_1.copy(publicResourceServerId = publicResourceServerIdStr_2)
-            )
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
+      "return updated entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
 
-          result.asserting(_ shouldBe List(resourceServerEntityRead_1))
+          res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
         }
       }
 
-      "there is a row in the DB with given publicResourceServerId" should {
+      "update only this row and leave others unchanged" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
 
-        "return updated entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          res <- Queries.getAllResourceServers
+        } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
-            res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-          } yield res).transact(transactor)
+        result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
+          allResourceServers.size shouldBe 3
 
-          result.asserting { res =>
-            res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
-          }
-        }
-
-        "update this row" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-            _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting { allResourceServers =>
-            allResourceServers.size shouldBe 1
-
-            val expectedEntity =
-              updatedEntityRead.copy(id = allResourceServers.head.id, tenantId = allResourceServers.head.tenantId)
-            allResourceServers.head shouldBe expectedEntity
-          }
-        }
-      }
-
-      "there are several rows in the DB but only one with given publicResourceServerId" should {
-
-        "return updated entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-
-            res <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-          } yield res).transact(transactor)
-
-          result.asserting { res =>
-            res shouldBe Right(updatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
-          }
-        }
-
-        "update only this row and leave others unchanged" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-
-            _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
-            res <- Queries.getAllResourceServers
-          } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
-
-          result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
-            allResourceServers.size shouldBe 3
-
-            val expectedEntities = Seq(
-              updatedEntityRead.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
-              entityRead_2,
-              entityRead_3
-            )
-            allResourceServers should contain theSameElementsAs expectedEntities
-          }
+          val expectedEntities = Seq(
+            updatedEntityRead.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
+            entityRead_2,
+            entityRead_3
+          )
+          allResourceServers should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -385,12 +382,32 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB, but with a different publicTenantId" should {
+    "there are NO rows in the DB" should {
+
+      "return Left containing ResourceServerNotFoundError" in {
+        resourceServerDb
+          .activate(publicTenantId_1, publicResourceServerId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is a deactivated row in the DB for a different publicTenantId" should {
 
       "return Left containing ResourceServerNotFoundError" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
           res <- resourceServerDb.activate(publicTenantId_2, publicResourceServerId_1)
         } yield res).transact(transactor)
@@ -402,156 +419,53 @@ class ResourceServerDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1).transact(transactor)
 
           _ <- resourceServerDb.activate(publicTenantId_2, publicResourceServerId_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
-        result.asserting(_ shouldBe List(resourceServerEntityRead_1))
+        result.asserting(_ shouldBe List(deactivatedResourceServerEntityRead_1))
       }
     }
 
-    "there is a Tenant in the DB with provided publicTenantId" when {
+    "there is a deactivated row in the DB with different publicResourceServerId" should {
 
-      "there are NO rows in the DB" should {
+      "return Left containing ResourceServerNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          resourceServerDb
-            .activate(publicTenantId_1, publicResourceServerId_1)
-            .transact(transactor)
-            .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
-        }
+          res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_2)
+        } yield res).transact(transactor)
 
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-        }
+        result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
       }
 
-      "there is a deactivated row in the DB with different publicResourceServerId" should {
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
+          _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_2)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List(deactivatedResourceServerEntityRead_1))
+      }
+    }
+
+    "there is a row in the DB with given publicResourceServerId" when {
+
+      "the row is deactivated" should {
+
+        "return activated entity" in {
           val result = (for {
             _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
             _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
             _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-            res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_2)
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
-        }
-
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-            _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_2)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting { allResourceServers =>
-            allResourceServers.size shouldBe 1
-
-            val expectedEntity =
-              deactivatedResourceServerEntityRead_1.copy(
-                id = allResourceServers.head.id,
-                tenantId = allResourceServers.head.tenantId
-              )
-
-            allResourceServers.head shouldBe expectedEntity
-          }
-        }
-      }
-
-      "there is a row in the DB with given publicResourceServerId" when {
-
-        "the row is deactivated" should {
-
-          "return activated entity" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-              res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
-            } yield res).transact(transactor)
-
-            result.asserting { res =>
-              res shouldBe Right(activatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
-            }
-          }
-
-          "activate this row" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-              _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
-              res <- Queries.getAllResourceServers
-            } yield res).transact(transactor)
-
-            result.asserting { allResourceServers =>
-              allResourceServers.size shouldBe 1
-
-              val entity = allResourceServers.head
-              allResourceServers.head shouldBe activatedEntityRead.copy(id = entity.id, tenantId = entity.tenantId)
-            }
-          }
-        }
-
-        "the row is activated" should {
-
-          "return activated entity" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-              res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
-            } yield res).transact(transactor)
-
-            result.asserting { res =>
-              res shouldBe Right(activatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
-            }
-          }
-
-          "make NO changes to the DB" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-              _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
-              res <- Queries.getAllResourceServers
-            } yield res).transact(transactor)
-
-            result.asserting { allResourceServers =>
-              allResourceServers.size shouldBe 1
-
-              val entity = allResourceServers.head
-              allResourceServers.head shouldBe activatedEntityRead.copy(id = entity.id, tenantId = entity.tenantId)
-            }
-          }
-        }
-      }
-
-      "there are several deactivated rows in the DB but only one with given publicTenantId" should {
-
-        "return deactivated entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
 
             res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
           } yield res).transact(transactor)
@@ -561,31 +475,103 @@ class ResourceServerDbSpec
           }
         }
 
-        "deactivate only this row and leave others unchanged" in {
+        "activate this row" in {
           val result = (for {
             _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
             _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-            entityRead_1 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            entityRead_2 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-            entityRead_3 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
+            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
             _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
             res <- Queries.getAllResourceServers
-          } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
+          } yield res).transact(transactor)
 
-          result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
-            allResourceServers.size shouldBe 3
+          result.asserting { allResourceServers =>
+            allResourceServers.size shouldBe 1
 
-            val expectedEntities = Seq(
-              activatedEntityRead.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
-              entityRead_2,
-              entityRead_3
-            )
-
-            allResourceServers should contain theSameElementsAs expectedEntities
+            val entity = allResourceServers.head
+            allResourceServers.head shouldBe activatedEntityRead.copy(id = entity.id, tenantId = entity.tenantId)
           }
+        }
+      }
+
+      "the row is activated" should {
+
+        "return activated entity" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+            res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
+          } yield res).transact(transactor)
+
+          result.asserting { res =>
+            res shouldBe Right(activatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
+          }
+        }
+
+        "make NO changes to the DB" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+            _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
+            res <- Queries.getAllResourceServers
+          } yield res).transact(transactor)
+
+          result.asserting { allResourceServers =>
+            allResourceServers.size shouldBe 1
+
+            val entity = allResourceServers.head
+            allResourceServers.head shouldBe activatedEntityRead.copy(id = entity.id, tenantId = entity.tenantId)
+          }
+        }
+      }
+    }
+
+    "there are several deactivated rows in the DB but only one with given publicTenantId" should {
+
+      "return deactivated entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
+
+          res <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(activatedEntityRead.copy(id = res.value.id, tenantId = res.value.tenantId))
+        }
+      }
+
+      "deactivate only this row and leave others unchanged" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+          entityRead_1 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          entityRead_2 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+          entityRead_3 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
+
+          _ <- resourceServerDb.activate(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
+
+        result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
+          allResourceServers.size shouldBe 3
+
+          val expectedEntities = Seq(
+            activatedEntityRead.copy(id = entityRead_1.id, tenantId = entityRead_1.tenantId),
+            entityRead_2,
+            entityRead_3
+          )
+
+          allResourceServers should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -612,11 +598,30 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB, but with a different publicTenantId" should {
+    "there are NO rows in the DB" should {
+
+      "return Left containing ResourceServerNotFoundError" in {
+        resourceServerDb
+          .deactivate(publicTenantId_1, publicResourceServerId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is an activated row in the DB for different publicTenantId" should {
 
       "return Left containing ResourceServerNotFoundError" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           res <- resourceServerDb.deactivate(publicTenantId_2, publicResourceServerId_1)
@@ -627,7 +632,7 @@ class ResourceServerDbSpec
 
       "make NO changes to the DB" in {
         val result = for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
 
           _ <- resourceServerDb.deactivate(publicTenantId_2, publicResourceServerId_1).transact(transactor)
@@ -638,152 +643,50 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB with provided publicTenantId" when {
+    "there is an activated row in the DB with different publicResourceServerId" should {
 
-      "there are NO rows in the DB" should {
+      "return Left containing ResourceServerNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          resourceServerDb
-            .deactivate(publicTenantId_1, publicResourceServerId_1)
-            .transact(transactor)
-            .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
-        }
+          res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+        } yield res).transact(transactor)
 
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-        }
+        result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
       }
 
-      "there is an activated row in the DB with different publicResourceServerId" should {
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
 
-            res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-          } yield res).transact(transactor)
+        result.asserting { allResourceServers =>
+          allResourceServers.size shouldBe 1
 
-          result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
-        }
+          val expectedEntity =
+            resourceServerEntityRead_1.copy(
+              id = allResourceServers.head.id,
+              tenantId = allResourceServers.head.tenantId
+            )
 
-        "make NO changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting { allResourceServers =>
-            allResourceServers.size shouldBe 1
-
-            val expectedEntity =
-              resourceServerEntityRead_1.copy(
-                id = allResourceServers.head.id,
-                tenantId = allResourceServers.head.tenantId
-              )
-
-            allResourceServers.head shouldBe expectedEntity
-          }
+          allResourceServers.head shouldBe expectedEntity
         }
       }
+    }
 
-      "there is a row in the DB with given publicResourceServerId" when {
+    "there is a row in the DB with given publicResourceServerId" when {
 
-        "the row is activated" should {
-
-          "return deactivated entity" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-              res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            } yield res).transact(transactor)
-
-            result.asserting { res =>
-              res shouldBe Right(
-                deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
-              )
-            }
-          }
-
-          "deactivate this row" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-              res <- Queries.getAllResourceServers
-            } yield res).transact(transactor)
-
-            result.asserting { allResourceServers =>
-              allResourceServers.size shouldBe 1
-
-              val entity = allResourceServers.head
-              allResourceServers.head shouldBe deactivatedResourceServerEntityRead_1.copy(
-                id = entity.id,
-                tenantId = entity.tenantId
-              )
-            }
-          }
-        }
-
-        "the row is deactivated" should {
-
-          "return deactivated entity" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-              res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            } yield res).transact(transactor)
-
-            result.asserting { res =>
-              res shouldBe Right(
-                deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
-              )
-            }
-          }
-
-          "make NO changes to the DB" in {
-            val result = (for {
-              _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-              _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-              _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-              res <- Queries.getAllResourceServers
-            } yield res).transact(transactor)
-
-            result.asserting { allResourceServers =>
-              allResourceServers.size shouldBe 1
-
-              val entity = allResourceServers.head
-              allResourceServers.head shouldBe deactivatedResourceServerEntityRead_1.copy(
-                id = entity.id,
-                tenantId = entity.tenantId
-              )
-            }
-          }
-        }
-      }
-
-      "there are several activated rows in the DB but only one with given publicTenantId" should {
+      "the row is activated" should {
 
         "return deactivated entity" in {
           val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            _ <- tenantDb.insert(tenantEntityWrite_1)
             _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
 
             res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
           } yield res).transact(transactor)
@@ -795,31 +698,111 @@ class ResourceServerDbSpec
           }
         }
 
-        "deactivate only this row and leave others unchanged" in {
+        "deactivate this row" in {
           val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
             _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
             res <- Queries.getAllResourceServers
-          } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
+          } yield res).transact(transactor)
 
-          result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
-            allResourceServers.size shouldBe 3
+          result.asserting { allResourceServers =>
+            allResourceServers.size shouldBe 1
 
-            val expectedEntities = Seq(
-              deactivatedResourceServerEntityRead_1.copy(
-                id = entityRead_1.id,
-                tenantId = entityRead_1.tenantId
-              ),
-              entityRead_2,
-              entityRead_3
+            val entity = allResourceServers.head
+            allResourceServers.head shouldBe deactivatedResourceServerEntityRead_1.copy(
+              id = entity.id,
+              tenantId = entity.tenantId
             )
-
-            allResourceServers should contain theSameElementsAs expectedEntities
           }
+        }
+      }
+
+      "the row is deactivated" should {
+
+        "return deactivated entity" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+
+            res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          } yield res).transact(transactor)
+
+          result.asserting { res =>
+            res shouldBe Right(
+              deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
+            )
+          }
+        }
+
+        "make NO changes to the DB" in {
+          val result = (for {
+            _ <- tenantDb.insert(tenantEntityWrite_1)
+            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+
+            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+            res <- Queries.getAllResourceServers
+          } yield res).transact(transactor)
+
+          result.asserting { allResourceServers =>
+            allResourceServers.size shouldBe 1
+
+            val entity = allResourceServers.head
+            allResourceServers.head shouldBe deactivatedResourceServerEntityRead_1.copy(
+              id = entity.id,
+              tenantId = entity.tenantId
+            )
+          }
+        }
+      }
+    }
+
+    "there are several activated rows in the DB but only one with given publicTenantId" should {
+
+      "return deactivated entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+
+          res <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(
+            deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
+          )
+        }
+      }
+
+      "deactivate only this row and leave others unchanged" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
+
+        result.asserting { case (allResourceServers, entityRead_1, entityRead_2, entityRead_3) =>
+          allResourceServers.size shouldBe 3
+
+          val expectedEntities = Seq(
+            deactivatedResourceServerEntityRead_1.copy(
+              id = entityRead_1.id,
+              tenantId = entityRead_1.tenantId
+            ),
+            entityRead_2,
+            entityRead_3
+          )
+
+          allResourceServers should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -846,11 +829,30 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB, but with a different publicTenantId" should {
+    "there are no rows in the DB" should {
+
+      "return Left containing ResourceServerNotFoundError" in {
+        resourceServerDb
+          .deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is a deactivated row in the DB for different publicTenantId" should {
 
       "return Left containing ResourceServerNotFoundError" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
           _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
@@ -862,7 +864,7 @@ class ResourceServerDbSpec
 
       "make NO changes to the DB" in {
         val result = for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1).transact(transactor)
 
@@ -874,161 +876,139 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB with provided publicTenantId" when {
+    "there is a deactivated row in the DB with different publicResourceServerId" should {
 
-      "there are no rows in the DB" should {
+      "return Left containing ResourceServerNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          resourceServerDb
-            .deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-            .transact(transactor)
-            .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+          res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+
+          _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_2)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe List(
+            deactivatedResourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId)
+          )
         }
+      }
+    }
 
-        "make no changes to the DB" in {
-          val result = (for {
-            _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
+    "there is an activated row in the DB with given publicResourceServerId" should {
 
-          result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      "return Left containing ResourceServerIsNotDeactivatedError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ResourceServerIsNotDeactivatedError(publicResourceServerId_1)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe List(resourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
+        }
+      }
+    }
+
+    "there is a deactivated row in the DB with given publicResourceServerId" should {
+
+      "return deleted entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+
+          res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Right(
+            deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
+          )
         }
       }
 
-      "there is a deactivated row in the DB with different publicResourceServerId" should {
+      "delete this row from the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
 
-        "return Left containing ResourceServerNotFoundError" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield res).transact(transactor)
 
-            res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_2)
-          } yield res).transact(transactor)
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
 
-          result.asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_2)))
-        }
+    "there are several deactivated rows in the DB but only one with given publicResourceServerId" should {
 
-        "make no changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+      "return deleted entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
 
-            _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_2)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
+          res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
 
-          result.asserting { res =>
-            res shouldBe List(
-              deactivatedResourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId)
-            )
-          }
+        result.asserting { res =>
+          res shouldBe Right(
+            deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
+          )
         }
       }
 
-      "there is an activated row in the DB with given publicResourceServerId" should {
+      "delete this row from the DB and leave others intact" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
+          _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
+          entityRead_2 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
+          entityRead_3 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
 
-        "return Left containing ResourceServerIsNotDeactivatedError" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
+          res <- Queries.getAllResourceServers
+        } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
-            res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-          } yield res).transact(transactor)
+        result.asserting { case (allResourceServers, entityRead_2, entityRead_3) =>
+          allResourceServers.size shouldBe 2
 
-          result.asserting(_ shouldBe Left(ResourceServerIsNotDeactivatedError(publicResourceServerId_1)))
-        }
-
-        "make no changes to the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-            _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting { res =>
-            res shouldBe List(resourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
-          }
-        }
-      }
-
-      "there is a deactivated row in the DB with given publicResourceServerId" should {
-
-        "return deleted entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-            res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-          } yield res).transact(transactor)
-
-          result.asserting { res =>
-            res shouldBe Right(
-              deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
-            )
-          }
-        }
-
-        "delete this row from the DB" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-
-            _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-        }
-      }
-
-      "there are several deactivated rows in the DB but only one with given publicResourceServerId" should {
-
-        "return deleted entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
-
-            res <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-          } yield res).transact(transactor)
-
-          result.asserting { res =>
-            res shouldBe Right(
-              deactivatedResourceServerEntityRead_1.copy(id = res.value.id, tenantId = res.value.tenantId)
-            )
-          }
-        }
-
-        "delete this row from the DB and leave others intact" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
-            _ <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_1)
-            entityRead_2 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_2)
-            entityRead_3 <- resourceServerDb.deactivate(publicTenantId_1, publicResourceServerId_3)
-
-            _ <- resourceServerDb.deleteDeactivated(publicTenantId_1, publicResourceServerId_1)
-            res <- Queries.getAllResourceServers
-          } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
-
-          result.asserting { case (allResourceServers, entityRead_2, entityRead_3) =>
-            allResourceServers.size shouldBe 2
-
-            val expectedEntities = Seq(entityRead_2, entityRead_3)
-            allResourceServers should contain theSameElementsAs expectedEntities
-          }
+          val expectedEntities = Seq(entityRead_2, entityRead_3)
+          allResourceServers should contain theSameElementsAs expectedEntities
         }
       }
     }
@@ -1045,7 +1025,19 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB, but with a different publicTenantId" should {
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is a row in the DB for different publicTenantId" should {
       "return empty Option" in {
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
@@ -1058,45 +1050,30 @@ class ResourceServerDbSpec
       }
     }
 
-    "there is a Tenant in the DB with provided publicTenantId" when {
+    "there is a row in the DB with different publicResourceServerId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-      "there are no rows in the DB" should {
-        "return empty Option" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_2)
+        } yield res).transact(transactor)
 
-            res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_1)
-          } yield res).transact(transactor)
-
-          result.asserting(_ shouldBe none[ResourceServerEntity.Read])
-        }
+        result.asserting(_ shouldBe none[ResourceServerEntity.Read])
       }
+    }
 
-      "there is a row in the DB with different publicResourceServerId" should {
-        "return empty Option" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+    "there is a row in the DB with the same publicResourceServerId" should {
+      "return this entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-            res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_2)
-          } yield res).transact(transactor)
+          res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_1)
+        } yield res).transact(transactor)
 
-          result.asserting(_ shouldBe none[ResourceServerEntity.Read])
-        }
-      }
-
-      "there is a row in the DB with the same publicResourceServerId" should {
-        "return this entity" in {
-          val result = (for {
-            _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
-
-            res <- resourceServerDb.getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_1)
-          } yield res).transact(transactor)
-
-          result.asserting { res =>
-            res shouldBe Some(resourceServerEntityRead_1.copy(id = res.get.id, tenantId = res.get.tenantId))
-          }
+        result.asserting { res =>
+          res shouldBe Some(resourceServerEntityRead_1.copy(id = res.get.id, tenantId = res.get.tenantId))
         }
       }
     }
