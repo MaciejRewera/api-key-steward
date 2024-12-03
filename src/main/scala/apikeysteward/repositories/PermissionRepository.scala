@@ -58,7 +58,7 @@ class PermissionRepository(
         .map(_.id)
 
       permissionEntityRead <- EitherT(
-        permissionDb.insert(PermissionEntity.Write.from(permissionDbId, tenantId, resourceServerId, permission))
+        permissionDb.insert(PermissionEntity.Write.from(tenantId, resourceServerId, permissionDbId, permission))
       )
 
       resultPermission = Permission.from(permissionEntityRead)

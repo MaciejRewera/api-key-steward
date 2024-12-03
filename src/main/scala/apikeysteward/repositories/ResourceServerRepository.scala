@@ -64,7 +64,7 @@ class ResourceServerRepository(
     EitherT {
       val permissionsToInsert = (resourceServer.permissions zip permissionDbIds).map {
         case (permission, permissionDbId) =>
-          PermissionEntity.Write.from(permissionDbId, tenantDbId, resourceServerDbId, permission)
+          PermissionEntity.Write.from(tenantDbId, resourceServerDbId, permissionDbId, permission)
       }
 
       for {
