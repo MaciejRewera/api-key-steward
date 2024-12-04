@@ -58,28 +58,24 @@ class UserDb()(implicit clock: Clock) {
       userToDelete <- getByPublicUserId(publicTenantId, publicUserId).map(
         _.toRight(UserNotFoundError(publicTenantId, publicUserId))
       )
-      resultE <- userToDelete.traverse(result => Queries.delete(publicTenantId, publicUserId).run.map(_ => result))
+      resultE <- userToDelete.traverse(result =>
+        TenantIdScopedQueries(publicTenantId).delete(publicUserId).run.map(_ => result)
+      )
     } yield resultE
 
   def getByPublicUserId(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Option[UserEntity.Read]] =
-    Queries.getBy(publicTenantId, publicUserId).option
+    TenantIdScopedQueries(publicTenantId).getBy(publicUserId).option
 
-  def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): Stream[doobie.ConnectionIO, UserEntity.Read] =
-    Queries.getAllForTemplate(publicTemplateId).stream
+  def getAllForTemplate(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): Stream[doobie.ConnectionIO, UserEntity.Read] =
+    TenantIdScopedQueries(publicTenantId).getAllForTemplate(publicTemplateId).stream
 
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, UserEntity.Read] =
-    Queries.getAllForTenant(publicTenantId).stream
+    TenantIdScopedQueries(publicTenantId).getAllForTenant.stream
 
   private object Queries {
-
-    private val columnNamesSelectFragment =
-      fr"""SELECT
-            tenant_user.id,
-            tenant_user.tenant_id,
-            tenant_user.public_user_id,
-            tenant_user.created_at,
-            tenant_user.updated_at
-          """
 
     def insert(userEntity: UserEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO tenant_user(id, tenant_id, public_user_id, created_at, updated_at)
@@ -91,20 +87,33 @@ class UserDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+  }
 
-    def delete(publicTenantId: TenantId, publicUserId: UserId): doobie.Update0 =
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "tenant_user"
+
+    private val columnNamesSelectFragment =
+      fr"""SELECT
+            tenant_user.id,
+            tenant_user.tenant_id,
+            tenant_user.public_user_id,
+            tenant_user.created_at,
+            tenant_user.updated_at
+          """
+
+    def delete(publicUserId: UserId): doobie.Update0 =
       sql"""DELETE FROM tenant_user
             USING tenant
-            WHERE tenant.public_tenant_id = ${publicTenantId.toString}
-              AND tenant_user.public_user_id = ${publicUserId.toString}
+            WHERE tenant_user.public_user_id = ${publicUserId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
-    def getBy(publicTenantId: TenantId, publicUserId: UserId): doobie.Query0[UserEntity.Read] =
+    def getBy(publicUserId: UserId): doobie.Query0[UserEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM tenant_user
-              JOIN tenant ON tenant.id = tenant_user.tenant_id
-              WHERE tenant.public_tenant_id = ${publicTenantId.toString}
-                AND tenant_user.public_user_id = ${publicUserId.toString}
+              WHERE tenant_user.public_user_id = ${publicUserId.toString}
+                AND ${tenantIdFr(TableName)}
              """).query[UserEntity.Read]
 
     def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Query0[UserEntity.Read] =
@@ -113,13 +122,13 @@ class UserDb()(implicit clock: Clock) {
             JOIN api_key_templates_users ON tenant_user.id = api_key_templates_users.user_id
             JOIN api_key_template ON api_key_template.id = api_key_templates_users.api_key_template_id
             WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin).query[UserEntity.Read]
 
-    def getAllForTenant(publicTenantId: TenantId): doobie.Query0[UserEntity.Read] =
+    def getAllForTenant: doobie.Query0[UserEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM tenant_user
-              JOIN tenant ON tenant.id = tenant_user.tenant_id
-              WHERE tenant.public_tenant_id = ${publicTenantId.toString}
+              WHERE ${tenantIdFr(TableName)}
               ORDER BY tenant_user.created_at DESC
              """).query[UserEntity.Read]
   }

@@ -71,7 +71,7 @@ class UserService(
       )
 
       result <- EitherT.liftF[IO, ApiKeyTemplateDoesNotExistError, List[User]](
-        userRepository.getAllForTemplate(templateId)
+        userRepository.getAllForTemplate(publicTenantId, templateId)
       )
     } yield result).value
 

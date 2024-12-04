@@ -276,13 +276,13 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "call ApiKeyTemplateRepository and UserRepository" in {
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-        userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
         for {
           _ <- userService.getAllForTemplate(publicTenantId_1, publicTemplateId_1)
 
           _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
-          _ = verify(userRepository).getAllForTemplate(eqTo(publicTemplateId_1))
+          _ = verify(userRepository).getAllForTemplate(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
         } yield ()
       }
 
@@ -290,7 +290,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "UserRepository returns empty List" in {
           apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-          userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List.empty)
 
           userService
             .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -299,7 +299,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "UserRepository returns non-empty List" in {
           apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-          userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
+          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
 
           userService
             .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -332,7 +332,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "UserRepository returns failed IO" should {
       "return failed IO containing the same exception" in {
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-        userRepository.getAllForTemplate(any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         userService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)

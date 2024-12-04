@@ -73,9 +73,9 @@ class UserRepository(
       resultUser = User.from(userEntityRead)
     } yield resultUser
 
-  def getAllForTemplate(publicTemplateId: ApiKeyTemplateId): IO[List[User]] =
+  def getAllForTemplate(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[List[User]] =
     (for {
-      userEntityRead <- userDb.getAllForTemplate(publicTemplateId)
+      userEntityRead <- userDb.getAllForTemplate(publicTenantId, publicTemplateId)
       resultUser = User.from(userEntityRead)
     } yield resultUser).compile.toList.transact(transactor)
 

@@ -40,7 +40,7 @@ class ResourceServerDbSpec
 
   "ResourceServerDb on insert" when {
 
-    "there is no Tenant with provided tenantId in the DB" should {
+    "there is no Tenant in the DB" should {
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
         resourceServerDb
