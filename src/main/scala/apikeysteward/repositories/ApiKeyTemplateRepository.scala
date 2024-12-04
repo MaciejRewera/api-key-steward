@@ -59,7 +59,7 @@ class ApiKeyTemplateRepository(
       apiKeyTemplate: ApiKeyTemplateUpdate
   ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
-      templateEntityRead <- EitherT(apiKeyTemplateDb.update(ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
+      templateEntityRead <- EitherT(apiKeyTemplateDb.update(publicTenantId, ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
 
       resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
         constructApiKeyTemplate(publicTenantId, templateEntityRead)
@@ -84,14 +84,14 @@ class ApiKeyTemplateRepository(
 
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
       _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTemplateId)
-      deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTemplateId)
+      deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTenantId, publicTemplateId)
 
       deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDeleteAssociationWith))
     } yield deletedTemplate
 
   def getBy(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
     (for {
-      templateEntityRead <- OptionT(apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId))
+      templateEntityRead <- OptionT(apiKeyTemplateDb.getByPublicTemplateId(publicTenantId, publicTemplateId))
       resultTemplate <- OptionT.liftF(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate).value.transact(transactor)
 

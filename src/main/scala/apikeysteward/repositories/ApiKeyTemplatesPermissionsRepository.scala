@@ -28,7 +28,7 @@ class ApiKeyTemplatesPermissionsRepository(
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
     (for {
-      templateId <- getTemplateId(publicTemplateId)
+      templateId <- getTemplateId(publicTenantId, publicTemplateId)
       permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToInsert = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(templateId, _))
@@ -42,7 +42,7 @@ class ApiKeyTemplatesPermissionsRepository(
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
     (for {
-      templateId <- getTemplateId(publicTemplateId)
+      templateId <- getTemplateId(publicTenantId, publicTemplateId)
       permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToDelete = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(templateId, _))
@@ -55,11 +55,12 @@ class ApiKeyTemplatesPermissionsRepository(
     } yield ()).value.transact(transactor)
 
   private def getTemplateId(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, UUID] =
     EitherT
       .fromOptionF(
-        apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId),
+        apiKeyTemplateDb.getByPublicTemplateId(publicTenantId, publicTemplateId),
         ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId)
       )
       .map(_.id)

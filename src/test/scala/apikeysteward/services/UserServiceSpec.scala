@@ -299,7 +299,9 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         "UserRepository returns non-empty List" in {
           apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List(user_1, user_2, user_3))
+          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
+            List(user_1, user_2, user_3)
+          )
 
           userService
             .getAllForTemplate(publicTenantId_1, publicTemplateId_1)

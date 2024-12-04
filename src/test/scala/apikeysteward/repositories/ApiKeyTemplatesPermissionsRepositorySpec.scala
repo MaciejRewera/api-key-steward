@@ -64,7 +64,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyTemplateDb, PermissionDb and ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -81,7 +81,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             inputPublicPermissionIds
           )
 
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_1))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_2))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_3))
@@ -90,7 +90,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -113,7 +113,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns empty Option" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         for {
@@ -128,7 +128,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyTemplatesPermissionsRepository
@@ -140,7 +140,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns exception" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         for {
@@ -153,7 +153,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         apiKeyTemplatesPermissionsRepository
@@ -166,7 +166,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           none[PermissionEntity.Read].pure[doobie.ConnectionIO],
@@ -185,7 +185,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedPermissionDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           none[PermissionEntity.Read].pure[doobie.ConnectionIO],
@@ -201,7 +201,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
@@ -218,7 +218,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
@@ -242,7 +242,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             .asLeft[List[ApiKeyTemplatesPermissionsEntity.Read]]
             .pure[doobie.ConnectionIO]
 
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -260,7 +260,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
 
     "ApiKeyTemplatesPermissionsDb returns exception" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -286,7 +286,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyTemplateDb, PermissionDb and ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -303,7 +303,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             inputPublicPermissionIds
           )
 
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_1))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_2))
           _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_3))
@@ -312,7 +312,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -331,7 +331,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns empty Option" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         for {
@@ -346,7 +346,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyTemplatesPermissionsRepository
@@ -358,7 +358,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns exception" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         for {
@@ -371,7 +371,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         apiKeyTemplatesPermissionsRepository
@@ -384,7 +384,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           none[PermissionEntity.Read].pure[doobie.ConnectionIO],
@@ -403,7 +403,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedPermissionDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           none[PermissionEntity.Read].pure[doobie.ConnectionIO],
@@ -419,7 +419,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
@@ -436,7 +436,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
@@ -459,7 +459,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             .asLeft[List[ApiKeyTemplatesPermissionsEntity.Read]]
             .pure[doobie.ConnectionIO]
 
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,
@@ -477,7 +477,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
 
     "ApiKeyTemplatesPermissionsDb returns exception" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
         permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
           permissionEntityWrapped_1,
           permissionEntityWrapped_2,

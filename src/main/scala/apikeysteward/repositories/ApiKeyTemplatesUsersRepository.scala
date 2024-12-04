@@ -28,7 +28,7 @@ class ApiKeyTemplatesUsersRepository(
       publicUserIds: List[UserId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
-      templateId <- getSingleTemplateId(publicTemplateId)
+      templateId <- getSingleTemplateId(publicTenantId, publicTemplateId)
       userIds <- getUserIds(publicTenantId, publicUserIds)
 
       entitiesToInsert = userIds.map(ApiKeyTemplatesUsersEntity.Write(templateId, _))
@@ -43,7 +43,7 @@ class ApiKeyTemplatesUsersRepository(
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
       userId <- getSingleUserId(publicTenantId, publicUserId)
-      templateIds <- getTemplateIds(publicTemplateIds)
+      templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
       entitiesToInsert = templateIds.map(ApiKeyTemplatesUsersEntity.Write(_, userId))
 
@@ -57,7 +57,7 @@ class ApiKeyTemplatesUsersRepository(
   ): IO[Either[ApiKeyTemplatesUsersDbError, Unit]] =
     (for {
       userId <- getSingleUserId(publicTenantId, publicUserId)
-      templateIds <- getTemplateIds(publicTemplateIds)
+      templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
       entitiesToDelete = templateIds.map(ApiKeyTemplatesUsersEntity.Write(_, userId))
 
@@ -69,16 +69,18 @@ class ApiKeyTemplatesUsersRepository(
     } yield ()).value.transact(transactor)
 
   private def getTemplateIds(
+      publicTenantId: TenantId,
       publicTemplateIds: List[ApiKeyTemplateId]
   ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, List[UUID]] =
-    publicTemplateIds.traverse(getSingleTemplateId)
+    publicTemplateIds.traverse(getSingleTemplateId(publicTenantId, _))
 
   private def getSingleTemplateId(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): EitherT[doobie.ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, UUID] =
     EitherT
       .fromOptionF(
-        apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId),
+        apiKeyTemplateDb.getByPublicTemplateId(publicTenantId, publicTemplateId),
         ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId)
       )
       .map(_.id)
