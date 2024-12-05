@@ -14,7 +14,7 @@ import apikeysteward.base.testdata.PermissionsTestData.{
   publicPermissionId_2,
   publicPermissionId_3
 }
-import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData.{
   publicUserId_1,
   publicUserId_2,
@@ -221,9 +221,9 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     val allErrors = apiKeyTemplatesPermissionsInsertionErrors :+ ApiKeyTemplatesPermissionsNotFoundError(
       List(
-        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_1, userDbId_1),
-        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_2, userDbId_2),
-        ApiKeyTemplatesPermissionsEntity.Write(templateDbId_3, userDbId_3)
+        ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_1, userDbId_1),
+        ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_2, userDbId_2),
+        ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_3, userDbId_3)
       )
     )
 

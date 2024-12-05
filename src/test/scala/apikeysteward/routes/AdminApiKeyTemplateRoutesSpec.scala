@@ -2,12 +2,15 @@ package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.{
+  ApiKeyTemplateInsertionError,
+  ApiKeyTemplateNotFoundError
+}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
@@ -472,7 +475,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
         apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicTemplateId_1))
+          Left(ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError(publicTemplateId_1))
         )
 
         for {
@@ -1539,9 +1542,9 @@ class AdminApiKeyTemplateRoutesSpec
           Left(
             ApiKeyTemplatesPermissionsNotFoundError(
               List(
-                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_1, permissionDbId_1),
-                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_2, permissionDbId_2),
-                ApiKeyTemplatesPermissionsEntity.Write(templateDbId_3, permissionDbId_3)
+                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_1, permissionDbId_1),
+                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_2, permissionDbId_2),
+                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_3, permissionDbId_3)
               )
             )
           )

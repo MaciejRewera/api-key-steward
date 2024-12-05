@@ -746,7 +746,8 @@ class PermissionDbSpec
           templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId)
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -767,7 +768,8 @@ class PermissionDbSpec
           templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId)
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -804,7 +806,8 @@ class PermissionDbSpec
           templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId)
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId)
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -839,9 +842,12 @@ class PermissionDbSpec
           templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).map(_.value.id)
 
           preExistingEntities = List(
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_1),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_2),
-            ApiKeyTemplatesPermissionsEntity.Write(apiKeyTemplateId = templateId, permissionId = permissionId_3)
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId_1),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId_2),
+            ApiKeyTemplatesPermissionsEntity
+              .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateId, permissionId = permissionId_3)
           )
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -880,11 +886,11 @@ class PermissionDbSpec
 
             preExistingEntities = List(
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -903,14 +909,14 @@ class PermissionDbSpec
 
             preExistingEntityExpectedToBeFetched = List(
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head)
             )
 
             preExistingEntities = preExistingEntityExpectedToBeFetched ++ List(
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
@@ -936,16 +942,16 @@ class PermissionDbSpec
 
             preExistingEntitiesExpectedToBeFetched = List(
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1))
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds(1))
             )
 
             preExistingEntities = preExistingEntitiesExpectedToBeFetched ++ List(
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1)),
               ApiKeyTemplatesPermissionsEntity
-                .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
+                .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head)
             )
             _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 

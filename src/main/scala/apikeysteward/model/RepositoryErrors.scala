@@ -1,10 +1,9 @@
 package apikeysteward.model
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, ApiKeyTemplatesUsersEntity}
@@ -366,6 +365,25 @@ object RepositoryErrors {
             message =
               s"ApiKeyTemplatesPermissions with apiKeyTemplateId = [${apiKeyTemplateId.toString}] and permissionId = [${permissionId.toString}] already exists."
           )
+
+      trait ReferencedTenantDoesNotExistError extends ApiKeyTemplatesPermissionsInsertionError {
+        val errorMessage: String
+      }
+      object ReferencedTenantDoesNotExistError {
+
+        private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
+            extends ApiKeyTemplatesPermissionsInsertionError(errorMessage)
+            with ReferencedTenantDoesNotExistError
+
+        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
+          )
+        def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
+          )
+      }
 
       trait ReferencedApiKeyTemplateDoesNotExistError extends ApiKeyTemplatesPermissionsInsertionError {
         val errorMessage: String

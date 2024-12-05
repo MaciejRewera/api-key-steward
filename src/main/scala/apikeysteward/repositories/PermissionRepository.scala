@@ -80,7 +80,7 @@ class PermissionRepository(
       publicPermissionId: PermissionId
   ): ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
-      _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicPermissionId)
+      _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId, publicPermissionId)
       deletedPermissionEntity <- permissionDb.delete(publicTenantId, publicResourceServerId, publicPermissionId)
     } yield deletedPermissionEntity
 

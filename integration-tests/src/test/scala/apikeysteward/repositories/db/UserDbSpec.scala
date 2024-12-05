@@ -63,7 +63,7 @@ class UserDbSpec
         result.asserting(_ shouldBe List.empty[UserEntity.Read])
       }
     }
-    
+
     "there is a Tenant in the DB with a different tenantId" should {
 
       "return Left containing ReferencedTenantDoesNotExistError" in {

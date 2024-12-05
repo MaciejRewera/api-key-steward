@@ -275,7 +275,8 @@ class PermissionRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsDb and PermissionDb" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         permissionDb.delete(
           any[TenantId],
           any[ResourceServerId],
@@ -285,7 +286,10 @@ class PermissionRepositorySpec
         for {
           _ <- permissionRepository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
 
-          _ = verify(apiKeyTemplatesPermissionsDb).deleteAllForPermission(eqTo(publicPermissionId_1))
+          _ = verify(apiKeyTemplatesPermissionsDb).deleteAllForPermission(
+            eqTo(publicTenantId_1),
+            eqTo(publicPermissionId_1)
+          )
           _ = verify(permissionDb).delete(
             eqTo(publicTenantId_1),
             eqTo(publicResourceServerId_1),
@@ -295,7 +299,8 @@ class PermissionRepositorySpec
       }
 
       "return Right containing deleted Permission" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         permissionDb.delete(
           any[TenantId],
           any[ResourceServerId],
@@ -311,7 +316,7 @@ class PermissionRepositorySpec
     "ApiKeyTemplatesPermissionsDb returns exception" should {
 
       "NOT call PermissionDb" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         for {
@@ -322,7 +327,7 @@ class PermissionRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         permissionRepository
@@ -334,7 +339,8 @@ class PermissionRepositorySpec
 
     "PermissionDb returns Left containing PermissionNotFoundError" should {
       "return Left containing this error" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         val permissionNotFoundError = PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)
         permissionDb.delete(any[TenantId], any[ResourceServerId], any[PermissionId]) returns permissionNotFoundError
           .asLeft[PermissionEntity.Read]
@@ -348,7 +354,8 @@ class PermissionRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         permissionDb
           .delete(any[TenantId], any[ResourceServerId], any[PermissionId]) returns testExceptionWrappedE[
           PermissionNotFoundError

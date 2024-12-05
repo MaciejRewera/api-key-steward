@@ -59,7 +59,9 @@ class ApiKeyTemplateRepository(
       apiKeyTemplate: ApiKeyTemplateUpdate
   ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
     (for {
-      templateEntityRead <- EitherT(apiKeyTemplateDb.update(publicTenantId, ApiKeyTemplateEntity.Update.from(apiKeyTemplate)))
+      templateEntityRead <- EitherT(
+        apiKeyTemplateDb.update(publicTenantId, ApiKeyTemplateEntity.Update.from(apiKeyTemplate))
+      )
 
       resultTemplate <- EitherT.liftF[ConnectionIO, ApiKeyTemplateNotFoundError, ApiKeyTemplate](
         constructApiKeyTemplate(publicTenantId, templateEntityRead)
@@ -82,7 +84,7 @@ class ApiKeyTemplateRepository(
         .compile
         .toList
 
-      _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTemplateId)
+      _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
       _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTenantId, publicTemplateId)
 

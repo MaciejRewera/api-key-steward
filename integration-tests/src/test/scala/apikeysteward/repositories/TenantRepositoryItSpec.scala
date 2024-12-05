@@ -113,11 +113,11 @@ class TenantRepositoryItSpec
 
       associationEntities = List(
         ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+          .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
         ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+          .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
         ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+          .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
       )
       _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
 
@@ -152,11 +152,11 @@ class TenantRepositoryItSpec
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
           )
         } yield (res, expectedEntities)
 
@@ -316,11 +316,11 @@ class TenantRepositoryItSpec
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
           )
         } yield (res, expectedEntities)
 
