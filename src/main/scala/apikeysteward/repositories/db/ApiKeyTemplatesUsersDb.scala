@@ -39,6 +39,10 @@ class ApiKeyTemplatesUsersDb {
         val (apiKeyTemplateId, userId) = extractBothIds(sqlException)
         ApiKeyTemplatesUsersAlreadyExistsError(apiKeyTemplateId, userId)
 
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
+        val apiKeyTemplateId = extractTenantId(sqlException)
+        ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateId)
+
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_template_id") =>
         val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
         ReferencedApiKeyTemplateDoesNotExistError.fromDbId(apiKeyTemplateId)
@@ -53,6 +57,9 @@ class ApiKeyTemplatesUsersDb {
   private def extractBothIds(sqlException: SQLException): (UUID, UUID) =
     ForeignKeyViolationSqlErrorExtractor.extractTwoColumnsUuidValues(sqlException)("api_key_template_id", "user_id")
 
+  private def extractTenantId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("tenant_id")
+
   private def extractApiKeyTemplateId(sqlException: SQLException): UUID =
     ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("api_key_template_id")
 
@@ -60,10 +67,13 @@ class ApiKeyTemplatesUsersDb {
     ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("user_id")
 
   def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.ConnectionIO[Int] =
-    Queries.deleteAllForUser(publicTenantId, publicUserId).run
+    TenantIdScopedQueries(publicTenantId).deleteAllForUser(publicUserId).run
 
-  def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.ConnectionIO[Int] =
-    Queries.deleteAllForApiKeyTemplate(publicTemplateId).run
+  def deleteAllForApiKeyTemplate(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): doobie.ConnectionIO[Int] =
+    TenantIdScopedQueries(publicTenantId).deleteAllForApiKeyTemplate(publicTemplateId).run
 
   def deleteMany(
       entities: List[ApiKeyTemplatesUsersEntity.Write]
@@ -106,31 +116,55 @@ class ApiKeyTemplatesUsersDb {
   ): List[ApiKeyTemplatesUsersEntity.Write] =
     entitiesRead.map { entityRead =>
       ApiKeyTemplatesUsersEntity.Write(
+        tenantId = entityRead.tenantId,
         apiKeyTemplateId = entityRead.apiKeyTemplateId,
         userId = entityRead.userId
       )
     }
+
   private object Queries {
 
     def insertMany(
         entities: List[ApiKeyTemplatesUsersEntity.Write]
     ): Stream[doobie.ConnectionIO, ApiKeyTemplatesUsersEntity.Read] = {
-      val sql = s"INSERT INTO api_key_templates_users (api_key_template_id, user_id) VALUES (?, ?)"
+      val sql = s"INSERT INTO api_key_templates_users (tenant_id, api_key_template_id, user_id) VALUES (?, ?, ?)"
 
       Update[ApiKeyTemplatesUsersEntity.Write](sql)
         .updateManyWithGeneratedKeys[ApiKeyTemplatesUsersEntity.Read](
+          "tenant_id",
           "api_key_template_id",
           "user_id"
         )(entities)
     }
 
-    def deleteAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.Update0 =
+    def deleteMany(entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]): doobie.Update0 =
       sql"""DELETE FROM api_key_templates_users
-            USING tenant_user, tenant
+            WHERE (tenant_id, api_key_template_id, user_id) IN (${Fragments.values(entities)})
+           """.stripMargin.update
+
+    def getAllThatExistFrom(
+        entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]
+    ): doobie.Query0[ApiKeyTemplatesUsersEntity.Read] =
+      sql"""SELECT
+              tenant_id,
+              api_key_template_id,
+              user_id
+            FROM api_key_templates_users
+            WHERE (tenant_id, api_key_template_id, user_id) IN (${Fragments.values(entities)})
+            """.stripMargin.query[ApiKeyTemplatesUsersEntity.Read]
+
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "api_key_templates_users"
+
+    def deleteAllForUser(publicUserId: UserId): doobie.Update0 =
+      sql"""DELETE FROM api_key_templates_users
+            USING tenant_user
             WHERE api_key_templates_users.user_id = tenant_user.id
               AND tenant_user.public_user_id = ${publicUserId.toString}
-              AND tenant_user.tenant_id = tenant.id
-              AND tenant.public_tenant_id = ${publicTenantId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
@@ -138,22 +172,8 @@ class ApiKeyTemplatesUsersDb {
             USING api_key_template
             WHERE api_key_templates_users.api_key_template_id = api_key_template.id
               AND api_key_template.public_template_id = ${publicTemplateId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
-
-    def deleteMany(entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]): doobie.Update0 =
-      sql"""DELETE FROM api_key_templates_users
-            WHERE (api_key_template_id, user_id) IN (${Fragments.values(entities)})
-           """.stripMargin.update
-
-    def getAllThatExistFrom(
-        entities: NonEmptyList[ApiKeyTemplatesUsersEntity.Write]
-    ): doobie.Query0[ApiKeyTemplatesUsersEntity.Read] =
-      sql"""SELECT
-              api_key_template_id,
-              user_id
-            FROM api_key_templates_users
-            WHERE (api_key_template_id, user_id) IN (${Fragments.values(entities)})
-            """.stripMargin.query[ApiKeyTemplatesUsersEntity.Read]
 
   }
 }

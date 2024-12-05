@@ -9,6 +9,11 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
   templateDbId_2,
   templateDbId_3
 }
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData.{
+  apiKeyTemplatesUsersEntityWrite_1_1,
+  apiKeyTemplatesUsersEntityWrite_1_2,
+  apiKeyTemplatesUsersEntityWrite_1_3
+}
 import apikeysteward.base.testdata.PermissionsTestData.{
   publicPermissionId_1,
   publicPermissionId_2,
@@ -452,9 +457,9 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     val allErrors = apiKeyTemplatesUsersInsertionErrors :+ ApiKeyTemplatesUsersNotFoundError(
       List(
-        ApiKeyTemplatesUsersEntity.Write(templateDbId_1, userDbId_1),
-        ApiKeyTemplatesUsersEntity.Write(templateDbId_2, userDbId_2),
-        ApiKeyTemplatesUsersEntity.Write(templateDbId_3, userDbId_3)
+        apiKeyTemplatesUsersEntityWrite_1_1,
+        apiKeyTemplatesUsersEntityWrite_1_2,
+        apiKeyTemplatesUsersEntityWrite_1_3
       )
     )
 

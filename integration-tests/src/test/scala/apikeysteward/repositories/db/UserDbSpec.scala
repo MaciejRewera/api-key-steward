@@ -2,6 +2,7 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
@@ -560,9 +561,7 @@ class UserDbSpec
           _ <- userDb.insert(userEntityWrite_1)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_1, userId = userDbId_1)
-          )
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
           res <- userDb.getAllForTemplate(publicTenantId_2, publicTemplateId_1).compile.toList
@@ -580,9 +579,7 @@ class UserDbSpec
           _ <- userDb.insert(userEntityWrite_1)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_1, userId = userDbId_1)
-          )
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
           res <- userDb.getAllForTemplate(publicTenantId_1, publicTemplateId_2).compile.toList
@@ -615,9 +612,7 @@ class UserDbSpec
           _ <- userDb.insert(userEntityWrite_1)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateDbId_1, userId = userDbId_1)
-          )
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
           expectedUserEntities = List(userEntityRead_1.copy(id = userDbId_1, tenantId = tenantDbId_1))
@@ -639,12 +634,12 @@ class UserDbSpec
           userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
           userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
-          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
           preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_1),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_2),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId_3)
+            apiKeyTemplatesUsersEntityWrite_1_1,
+            apiKeyTemplatesUsersEntityWrite_1_2,
+            apiKeyTemplatesUsersEntityWrite_1_3
           )
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
@@ -672,13 +667,12 @@ class UserDbSpec
       "there are NO ApiKeyTemplatesUsers for given publicTemplateId" should {
         "return empty Stream" in {
           val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (_, templateIds, userIds) = dataIds
+            _ <- insertPrerequisiteData()
 
             preExistingEntities = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+              apiKeyTemplatesUsersEntityWrite_1_1,
+              apiKeyTemplatesUsersEntityWrite_2_2,
+              apiKeyTemplatesUsersEntityWrite_2_1
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
@@ -693,15 +687,13 @@ class UserDbSpec
         "return single ApiKeyTemplate" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (tenantId, templateIds, userIds) = dataIds
+            (tenantId, _, userIds) = dataIds
 
-            preExistingEntityExpectedToBeFetched = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
-            )
+            preExistingEntityExpectedToBeFetched = List(apiKeyTemplatesUsersEntityWrite_1_1)
 
             preExistingEntities = preExistingEntityExpectedToBeFetched ++ List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+              apiKeyTemplatesUsersEntityWrite_2_2,
+              apiKeyTemplatesUsersEntityWrite_2_1
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
@@ -721,16 +713,16 @@ class UserDbSpec
         "return all these ApiKeyTemplates" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (tenantId, templateIds, userIds) = dataIds
+            (tenantId, _, userIds) = dataIds
 
             preExistingEntitiesExpectedToBeFetched = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1))
+              apiKeyTemplatesUsersEntityWrite_1_1,
+              apiKeyTemplatesUsersEntityWrite_1_2
             )
 
             preExistingEntities = preExistingEntitiesExpectedToBeFetched ++ List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+              apiKeyTemplatesUsersEntityWrite_2_2,
+              apiKeyTemplatesUsersEntityWrite_2_1
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 

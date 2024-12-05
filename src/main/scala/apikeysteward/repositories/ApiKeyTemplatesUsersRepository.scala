@@ -7,7 +7,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTe
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
-import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesUsersDb, UserDb}
+import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesUsersDb, TenantDb, UserDb}
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.toTraverseOps
@@ -17,6 +17,7 @@ import doobie.implicits._
 import java.util.UUID
 
 class ApiKeyTemplatesUsersRepository(
+    tenantDb: TenantDb,
     apiKeyTemplateDb: ApiKeyTemplateDb,
     userDb: UserDb,
     apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb
@@ -28,10 +29,11 @@ class ApiKeyTemplatesUsersRepository(
       publicUserIds: List[UserId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
+      tenantId <- getTenantId(publicTenantId)
       templateId <- getSingleTemplateId(publicTenantId, publicTemplateId)
       userIds <- getUserIds(publicTenantId, publicUserIds)
 
-      entitiesToInsert = userIds.map(ApiKeyTemplatesUsersEntity.Write(templateId, _))
+      entitiesToInsert = userIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, templateId, _))
 
       _ <- EitherT(apiKeyTemplatesUsersDb.insertMany(entitiesToInsert))
     } yield ()).value.transact(transactor)
@@ -42,10 +44,11 @@ class ApiKeyTemplatesUsersRepository(
       publicTemplateIds: List[ApiKeyTemplateId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
+      tenantId <- getTenantId(publicTenantId)
       userId <- getSingleUserId(publicTenantId, publicUserId)
       templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
-      entitiesToInsert = templateIds.map(ApiKeyTemplatesUsersEntity.Write(_, userId))
+      entitiesToInsert = templateIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, _, userId))
 
       _ <- EitherT(apiKeyTemplatesUsersDb.insertMany(entitiesToInsert))
     } yield ()).value.transact(transactor)
@@ -56,10 +59,11 @@ class ApiKeyTemplatesUsersRepository(
       publicTemplateIds: List[ApiKeyTemplateId]
   ): IO[Either[ApiKeyTemplatesUsersDbError, Unit]] =
     (for {
+      tenantId <- getTenantId(publicTenantId)
       userId <- getSingleUserId(publicTenantId, publicUserId)
       templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
-      entitiesToDelete = templateIds.map(ApiKeyTemplatesUsersEntity.Write(_, userId))
+      entitiesToDelete = templateIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, _, userId))
 
       _ <- EitherT(
         apiKeyTemplatesUsersDb
@@ -67,6 +71,16 @@ class ApiKeyTemplatesUsersRepository(
           .map(_.left.map(_.asInstanceOf[ApiKeyTemplatesUsersDbError]))
       )
     } yield ()).value.transact(transactor)
+
+  private def getTenantId(
+      publicTenantId: TenantId
+  ): EitherT[doobie.ConnectionIO, ReferencedTenantDoesNotExistError, UUID] =
+    EitherT
+      .fromOptionF(
+        tenantDb.getByPublicTenantId(publicTenantId),
+        ReferencedTenantDoesNotExistError(publicTenantId)
+      )
+      .map(_.id)
 
   private def getTemplateIds(
       publicTenantId: TenantId,

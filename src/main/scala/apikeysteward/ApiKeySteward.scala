@@ -221,11 +221,12 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildApiKeyTemplatesUsersRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
     val apiKeyTemplateDb = new ApiKeyTemplateDb
     val userDb = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
-    new ApiKeyTemplatesUsersRepository(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+    new ApiKeyTemplatesUsersRepository(tenantDb, apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
   }
 
   private def buildTenantRepository(

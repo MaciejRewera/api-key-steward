@@ -399,7 +399,8 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
+          .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[TenantId], any[ApiKeyTemplateId]) returns deletedApiKeyTemplateEntityReadWrapped
 
         for {
@@ -413,7 +414,10 @@ class ApiKeyTemplateRepositorySpec
             eqTo(publicTenantId_1),
             eqTo(publicTemplateId_1)
           )
-          _ = verify(apiKeyTemplatesUsersDb).deleteAllForApiKeyTemplate(eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplatesUsersDb).deleteAllForApiKeyTemplate(
+            eqTo(publicTenantId_1),
+            eqTo(publicTemplateId_1)
+          )
           _ = verify(apiKeyTemplateDb).delete(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
         } yield ()
       }
@@ -422,7 +426,8 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
+          .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[TenantId], any[ApiKeyTemplateId]) returns deletedApiKeyTemplateEntityReadWrapped
 
         apiKeyTemplateRepository
@@ -493,7 +498,7 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         for {
@@ -507,7 +512,7 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns testException
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         apiKeyTemplateRepository
@@ -522,7 +527,8 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
+          .pure[doobie.ConnectionIO]
         apiKeyTemplateDb.delete(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateNotFoundWrapped
 
         apiKeyTemplateRepository
@@ -536,7 +542,8 @@ class ApiKeyTemplateRepositorySpec
         permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(permissionEntityRead_1)
         apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
           .pure[doobie.ConnectionIO]
-        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[ApiKeyTemplateId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns 3
+          .pure[doobie.ConnectionIO]
         apiKeyTemplateDb
           .delete(any[TenantId], any[ApiKeyTemplateId]) returns testExceptionWrappedE[ApiKeyTemplateNotFoundError]
 

@@ -1,12 +1,9 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{
-  apiKeyTemplateEntityRead_1,
-  apiKeyTemplateEntityRead_2,
-  apiKeyTemplateEntityRead_3
-}
-import apikeysteward.base.testdata.UsersTestData.{userEntityRead_1, userEntityRead_2, userEntityRead_3}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.TenantsTestData.tenantDbId_1
+import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesUsersEntity, UserEntity}
 import cats.implicits.catsSyntaxApplicativeId
 import doobie.ConnectionIO
@@ -23,27 +20,56 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
 
   private def wrap[A](a: A): ConnectionIO[Option[A]] = Option(a).pure[ConnectionIO]
 
+  val apiKeyTemplatesUsersEntityWrite_1_1: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, userId = userDbId_1)
+
+  val apiKeyTemplatesUsersEntityWrite_1_2: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, userId = userDbId_2)
+
+  val apiKeyTemplatesUsersEntityWrite_1_3: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, userId = userDbId_3)
+
+  val apiKeyTemplatesUsersEntityWrite_2_1: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, userId = userDbId_1)
+
+  val apiKeyTemplatesUsersEntityWrite_2_2: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, userId = userDbId_2)
+
+  val apiKeyTemplatesUsersEntityWrite_2_3: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, userId = userDbId_3)
+
+  val apiKeyTemplatesUsersEntityWrite_3_1: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, userId = userDbId_1)
+
+  val apiKeyTemplatesUsersEntityWrite_3_2: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, userId = userDbId_2)
+
+  val apiKeyTemplatesUsersEntityWrite_3_3: ApiKeyTemplatesUsersEntity.Write =
+    ApiKeyTemplatesUsersEntity.Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, userId = userDbId_3)
+
   val apiKeyTemplatesUsersEntitiesWrite_sameTemplate: List[ApiKeyTemplatesUsersEntity.Write] = List(
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_1.id),
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_2.id),
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_3.id)
+    apiKeyTemplatesUsersEntityWrite_1_1,
+    apiKeyTemplatesUsersEntityWrite_1_2,
+    apiKeyTemplatesUsersEntityWrite_1_3
   )
   val apiKeyTemplatesUsersEntitiesRead_sameTemplate: List[ApiKeyTemplatesUsersEntity.Read] =
     apiKeyTemplatesUsersEntitiesWrite_sameTemplate.map { entityWrite =>
       ApiKeyTemplatesUsersEntity.Read(
+        tenantId = entityWrite.tenantId,
         apiKeyTemplateId = entityWrite.apiKeyTemplateId,
         userId = entityWrite.userId
       )
     }
 
   val apiKeyTemplatesUsersEntitiesWrite_sameUser: List[ApiKeyTemplatesUsersEntity.Write] = List(
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, userId = userEntityRead_1.id),
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_2.id, userId = userEntityRead_1.id),
-    ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = apiKeyTemplateEntityRead_3.id, userId = userEntityRead_1.id)
+    apiKeyTemplatesUsersEntityWrite_1_1,
+    apiKeyTemplatesUsersEntityWrite_2_1,
+    apiKeyTemplatesUsersEntityWrite_3_1
   )
   val apiKeyTemplatesUsersEntitiesRead_sameUser: List[ApiKeyTemplatesUsersEntity.Read] =
     apiKeyTemplatesUsersEntitiesWrite_sameUser.map { entityWrite =>
       ApiKeyTemplatesUsersEntity.Read(
+        tenantId = entityWrite.tenantId,
         apiKeyTemplateId = entityWrite.apiKeyTemplateId,
         userId = entityWrite.userId
       )

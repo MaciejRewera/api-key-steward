@@ -85,7 +85,7 @@ class ApiKeyTemplateRepository(
         .toList
 
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
-      _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTemplateId)
+      _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTenantId, publicTemplateId)
 
       deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDeleteAssociationWith))

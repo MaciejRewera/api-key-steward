@@ -1,6 +1,11 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData.{
+  apiKeyTemplatesUsersEntityWrite_1_1,
+  apiKeyTemplatesUsersEntityWrite_1_2,
+  apiKeyTemplatesUsersEntityWrite_1_3
+}
 import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
@@ -9,7 +14,7 @@ import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTe
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
+import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
@@ -214,7 +219,7 @@ class AdminUserRoutesSpec
 
       "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
         userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicTenantId_1))
+          Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
         )
 
         for {
@@ -418,7 +423,7 @@ class AdminUserRoutesSpec
 
       "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
         userService.getAllForTenant(any[TenantId]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicTenantId_1))
+          Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
         )
 
         for {
@@ -864,9 +869,9 @@ class AdminUserRoutesSpec
           Left(
             ApiKeyTemplatesUsersNotFoundError(
               List(
-                ApiKeyTemplatesUsersEntity.Write(templateDbId_1, userDbId_1),
-                ApiKeyTemplatesUsersEntity.Write(templateDbId_2, userDbId_2),
-                ApiKeyTemplatesUsersEntity.Write(templateDbId_3, userDbId_3)
+                apiKeyTemplatesUsersEntityWrite_1_1,
+                apiKeyTemplatesUsersEntityWrite_1_2,
+                apiKeyTemplatesUsersEntityWrite_1_3
               )
             )
           )
