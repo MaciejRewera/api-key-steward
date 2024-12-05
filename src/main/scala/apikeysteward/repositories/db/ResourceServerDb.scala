@@ -7,7 +7,6 @@ import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ResourceServerEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
-import doobie.Fragment
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
 import doobie.postgres.implicits._

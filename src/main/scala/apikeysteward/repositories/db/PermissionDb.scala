@@ -1,10 +1,10 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError._
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.PermissionEntity
 import cats.implicits.toTraverseOps
@@ -55,7 +55,10 @@ class PermissionDb()(implicit clock: Clock) {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("resource_server_id, name") =>
         PermissionAlreadyExistsForThisResourceServerError(permissionEntity.name, permissionEntity.resourceServerId)
 
-      case FOREIGN_KEY_VIOLATION.value =>
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
+        ReferencedTenantDoesNotExistError.fromDbId(permissionEntity.tenantId)
+
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_resource_server_id") =>
         ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntity.resourceServerId)
 
       case _ => PermissionInsertionErrorImpl(sqlException)

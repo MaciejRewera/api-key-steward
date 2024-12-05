@@ -45,18 +45,42 @@ class UserDbSpec
 
   "UserDb on insert" when {
 
-    "there is no Tenant with provided tenantId in the DB" should {
+    "there is no Tenant in the DB" should {
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
         userDb
           .insert(userEntityWrite_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(userEntityWrite_1.tenantId)))
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
         val result = for {
           _ <- userDb.insert(userEntityWrite_1).transact(transactor)
+          res <- Queries.getAllUsers.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+    
+    "there is a Tenant in the DB with a different tenantId" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+
+          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
           res <- Queries.getAllUsers.transact(transactor)
         } yield res
 

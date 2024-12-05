@@ -225,6 +225,23 @@ object RepositoryErrors {
               s"Permission with name = $permissionName already exists for ResourceServer with ID = [${resourceServerId.toString}]."
           )
 
+      trait ReferencedTenantDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
+      object ReferencedTenantDoesNotExistError {
+
+        private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
+            extends PermissionInsertionError(errorMessage)
+            with ReferencedTenantDoesNotExistError
+
+        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
+          )
+        def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
+          ReferencedTenantDoesNotExistErrorImpl(
+            errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
+          )
+      }
+
       trait ReferencedResourceServerDoesNotExistError extends PermissionInsertionError { val errorMessage: String }
       object ReferencedResourceServerDoesNotExistError {
 
@@ -241,9 +258,6 @@ object RepositoryErrors {
             errorMessage = s"ResourceServer with publicResourceServerId = [$publicResourceServerId] does not exist."
           )
       }
-
-      case class ReferencedTenantDoesNotExistError(publicTenantId: TenantId)
-          extends PermissionInsertionError(message = s"Tenant with publicTenantId = [$publicTenantId] does not exist.")
 
       case class PermissionInsertionErrorImpl(cause: SQLException)
           extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")

@@ -8,6 +8,7 @@ import apikeysteward.base.testdata.TenantsTestData.{
   publicTenantId_1,
   publicTenantId_2,
   tenantDbId_1,
+  tenantDbId_2,
   tenantEntityWrite_1
 }
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
@@ -56,22 +57,70 @@ class PermissionDbSpec
 
   "PermissionDb on insert" when {
 
-    "there is no ResourceServer with provided resourceServerId in the DB" should {
+    "there is no Tenant in the DB" should {
 
-      "return Left containing ReferencedResourceServerDoesNotExistError" in {
+      "return Left containing ReferencedTenantDoesNotExistError" in {
         permissionDb
           .insert(permissionEntityWrite_1)
           .transact(transactor)
-          .asserting(
-            _ shouldBe Left(
-              ReferencedResourceServerDoesNotExistError.fromDbId(permissionEntityWrite_1.resourceServerId)
-            )
-          )
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_1)))
       }
 
       "NOT insert any entity into the DB" in {
         val result = for {
           _ <- permissionDb.insert(permissionEntityWrite_1).transact(transactor)
+          res <- Queries.getAllPermissions.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is a Tenant in the DB with a different tenantId" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- permissionDb.insert(permissionEntityWrite_1.copy(tenantId = tenantDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+
+          _ <- permissionDb.insert(permissionEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          res <- Queries.getAllPermissions.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is a ResourceServer in the DB with a different resourceServerId" should {
+
+      "return Left containing ReferencedResourceServerDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+          res <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedResourceServerDoesNotExistError.fromDbId(resourceServerDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
+
+          _ <- permissionDb
+            .insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerDbId_2))
+            .transact(transactor)
           res <- Queries.getAllPermissions.transact(transactor)
         } yield res
 

@@ -65,6 +65,30 @@ class ApiKeyTemplateDbSpec
       }
     }
 
+    "there is a Tenant in the DB with a different tenantId" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          res <- Queries.getAllApiKeyTemplates.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return inserted entity" in {
@@ -172,25 +196,6 @@ class ApiKeyTemplateDbSpec
             tenantId = entityRead_1.tenantId
           )
         }
-      }
-    }
-
-    "there is no Tenant with provided tenantId in the DB" should {
-
-      "return Left containing ReferencedTenantDoesNotExistError" in {
-        apiKeyTemplateDb
-          .insert(apiKeyTemplateEntityWrite_1)
-          .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateEntityWrite_1.tenantId)))
-      }
-
-      "NOT insert any entity into the DB" in {
-        val result = for {
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).transact(transactor)
-          res <- Queries.getAllApiKeyTemplates.transact(transactor)
-        } yield res
-
-        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
       }
     }
   }

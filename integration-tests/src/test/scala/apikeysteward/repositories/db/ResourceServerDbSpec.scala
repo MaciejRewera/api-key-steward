@@ -59,11 +59,35 @@ class ResourceServerDbSpec
       }
     }
 
+    "there is a Tenant in the DB with a different tenantId" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+
+          res <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+
+          _ <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          res <- Queries.getAllResourceServers.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return inserted entity" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
           res <- resourceServerDb.insert(resourceServerEntityWrite_1)
         } yield res).transact(transactor)
@@ -75,7 +99,7 @@ class ResourceServerDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
           res <- Queries.getAllResourceServers
@@ -97,7 +121,7 @@ class ResourceServerDbSpec
 
       "return inserted entity" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           res <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
@@ -110,7 +134,7 @@ class ResourceServerDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
@@ -133,7 +157,7 @@ class ResourceServerDbSpec
 
       "return Left containing ResourceServerAlreadyExistsError" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           res <- resourceServerDb
@@ -151,7 +175,7 @@ class ResourceServerDbSpec
 
       "NOT insert the second entity into DB" in {
         val result = for {
-          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id).transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
 
           _ <- resourceServerDb
