@@ -61,24 +61,30 @@ class ApiKeyTemplateService(
   }
 
   def updateApiKeyTemplate(
+      publicTenantId: TenantId,
       templateId: ApiKeyTemplateId,
       updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
-    apiKeyTemplateRepository.update(ApiKeyTemplateUpdate.from(templateId, updateApiKeyTemplateRequest)).flatTap {
-      case Right(_) => logger.info(s"Updated API Key Template with templateId: [$templateId].")
-      case Left(e) =>
-        logger.warn(s"Could not update API Key Template with templateId: [$templateId] because: ${e.message}")
-    }
+    apiKeyTemplateRepository
+      .update(publicTenantId, ApiKeyTemplateUpdate.from(templateId, updateApiKeyTemplateRequest))
+      .flatTap {
+        case Right(_) => logger.info(s"Updated API Key Template with templateId: [$templateId].")
+        case Left(e) =>
+          logger.warn(s"Could not update API Key Template with templateId: [$templateId] because: ${e.message}")
+      }
 
-  def deleteApiKeyTemplate(templateId: ApiKeyTemplateId): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
-    apiKeyTemplateRepository.delete(templateId).flatTap {
+  def deleteApiKeyTemplate(
+      publicTenantId: TenantId,
+      templateId: ApiKeyTemplateId
+  ): IO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]] =
+    apiKeyTemplateRepository.delete(publicTenantId, templateId).flatTap {
       case Right(_) => logger.info(s"Deleted API Key Template with templateId: [$templateId].")
       case Left(e) =>
         logger.warn(s"Could not delete API Key Template with templateId: [$templateId] because: ${e.message}")
     }
 
-  def getBy(templateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
-    apiKeyTemplateRepository.getBy(templateId)
+  def getBy(publicTenantId: TenantId, templateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
+    apiKeyTemplateRepository.getBy(publicTenantId, templateId)
 
   def getAllForTenant(tenantId: TenantId): IO[List[ApiKeyTemplate]] =
     apiKeyTemplateRepository.getAllForTenant(tenantId)

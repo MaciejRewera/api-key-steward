@@ -4,14 +4,16 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1, tenant_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.ResourceServer.ResourceServerId
-import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity}
-import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb}
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity, TenantEntity}
+import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb, TenantDb}
 import apikeysteward.services.UuidGenerator
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -36,17 +38,18 @@ class PermissionRepositorySpec
     with EitherValues {
 
   private val uuidGenerator = mock[UuidGenerator]
+  private val tenantDb = mock[TenantDb]
   private val resourceServerDb = mock[ResourceServerDb]
   private val permissionDb = mock[PermissionDb]
   private val apiKeyTemplatesPermissionsDb = mock[ApiKeyTemplatesPermissionsDb]
 
   private val permissionRepository =
-    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
       noopTransactor
     )
 
   override def beforeEach(): Unit =
-    reset(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)
+    reset(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)
 
   private val testException = new RuntimeException("Test Exception")
 
@@ -68,36 +71,49 @@ class PermissionRepositorySpec
 
       "call UuidGenerator, ResourceServerDb and PermissionDb" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
 
         for {
-          _ <- permissionRepository.insert(publicResourceServerId_1, permission_1)
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1)
 
           _ = verify(uuidGenerator).generateUuid
-          _ = verify(resourceServerDb).getByPublicResourceServerId(eqTo(publicResourceServerId_1))
+          _ = verify(resourceServerDb).getByPublicResourceServerId(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1)
+          )
           _ = verify(permissionDb).insert(eqTo(permissionEntityWrite_1))
         } yield ()
       }
 
       "return Right containing Permission" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
 
-        permissionRepository.insert(publicResourceServerId_1, permission_1).asserting(_ shouldBe Right(permission_1))
+        permissionRepository
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
+          .asserting(_ shouldBe Right(permission_1))
       }
     }
 
     "UuidGenerator returns failed IO" should {
 
-      "NOT call ResourceServerDb or PermissionDb" in {
+      "NOT call TenantDb, ResourceServerDb or PermissionDb" in {
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         for {
-          _ <- permissionRepository.insert(publicResourceServerId_1, permission_1).attempt
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1).attempt
 
-          _ = verifyZeroInteractions(resourceServerDb, permissionDb)
+          _ = verifyZeroInteractions(tenantDb, resourceServerDb, permissionDb)
         } yield ()
       }
 
@@ -105,7 +121,56 @@ class PermissionRepositorySpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         permissionRepository
-          .insert(publicResourceServerId_1, permission_1)
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
+    "TenantDb returns empty Option" should {
+
+      "NOT call ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1)
+
+          _ = verifyZeroInteractions(resourceServerDb, permissionDb)
+        } yield ()
+      }
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        permissionRepository
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(publicTenantId_1)))
+      }
+    }
+
+    "TenantDb returns exception" should {
+
+      "NOT call ResourceServerDb or PermissionDb" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        for {
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1).attempt
+
+          _ = verifyZeroInteractions(resourceServerDb, permissionDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        permissionRepository
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -115,11 +180,13 @@ class PermissionRepositorySpec
 
       "NOT call PermissionDb" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns none[ResourceServerEntity.Read]
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns none[ResourceServerEntity.Read]
           .pure[doobie.ConnectionIO]
 
         for {
-          _ <- permissionRepository.insert(publicResourceServerId_1, permission_1)
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1)
 
           _ = verifyZeroInteractions(permissionDb)
         } yield ()
@@ -127,11 +194,13 @@ class PermissionRepositorySpec
 
       "return Left containing ReferencedResourceServerDoesNotExistError" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns none[ResourceServerEntity.Read]
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns none[ResourceServerEntity.Read]
           .pure[doobie.ConnectionIO]
 
         permissionRepository
-          .insert(publicResourceServerId_1, permission_1)
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
           .asserting(_ shouldBe Left(ReferencedResourceServerDoesNotExistError(publicResourceServerId_1)))
       }
     }
@@ -140,11 +209,12 @@ class PermissionRepositorySpec
 
       "NOT call PermissionDb" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns testException
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
 
         for {
-          _ <- permissionRepository.insert(publicResourceServerId_1, permission_1).attempt
+          _ <- permissionRepository.insert(publicTenantId_1, publicResourceServerId_1, permission_1).attempt
 
           _ = verifyZeroInteractions(permissionDb)
         } yield ()
@@ -152,11 +222,12 @@ class PermissionRepositorySpec
 
       "return failed IO containing this exception" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns testException
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
 
         permissionRepository
-          .insert(publicResourceServerId_1, permission_1)
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -165,11 +236,15 @@ class PermissionRepositorySpec
     "PermissionDb returns Left containing PermissionInsertionError" should {
       "return Left containing this error" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns permissionInsertionErrorWrapped
 
         permissionRepository
-          .insert(publicResourceServerId_1, permission_1)
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
           .asserting(_ shouldBe Left(permissionInsertionError))
       }
     }
@@ -177,11 +252,15 @@ class PermissionRepositorySpec
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
         uuidGenerator.generateUuid returns IO.pure(permissionDbId_1)
-        resourceServerDb.getByPublicResourceServerId(any[ResourceServerId]) returns resourceServerEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]) returns Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
+        resourceServerDb.getByPublicResourceServerId(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns resourceServerEntityReadWrapped
         permissionDb.insert(any[PermissionEntity.Write]) returns testExceptionWrappedE[PermissionInsertionError]
 
         permissionRepository
-          .insert(publicResourceServerId_1, permission_1)
+          .insert(publicTenantId_1, publicResourceServerId_1, permission_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -196,23 +275,40 @@ class PermissionRepositorySpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsDb and PermissionDb" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
-        permissionDb.delete(any[ResourceServerId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
+        permissionDb.delete(
+          any[TenantId],
+          any[ResourceServerId],
+          any[PermissionId]
+        ) returns deletedPermissionEntityReadWrapped
 
         for {
-          _ <- permissionRepository.delete(publicResourceServerId_1, publicPermissionId_1)
+          _ <- permissionRepository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
 
-          _ = verify(apiKeyTemplatesPermissionsDb).deleteAllForPermission(eqTo(publicPermissionId_1))
-          _ = verify(permissionDb).delete(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
+          _ = verify(apiKeyTemplatesPermissionsDb).deleteAllForPermission(
+            eqTo(publicTenantId_1),
+            eqTo(publicPermissionId_1)
+          )
+          _ = verify(permissionDb).delete(
+            eqTo(publicTenantId_1),
+            eqTo(publicResourceServerId_1),
+            eqTo(publicPermissionId_1)
+          )
         } yield ()
       }
 
       "return Right containing deleted Permission" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
-        permissionDb.delete(any[ResourceServerId], any[PermissionId]) returns deletedPermissionEntityReadWrapped
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
+        permissionDb.delete(
+          any[TenantId],
+          any[ResourceServerId],
+          any[PermissionId]
+        ) returns deletedPermissionEntityReadWrapped
 
         permissionRepository
-          .delete(publicResourceServerId_1, publicPermissionId_1)
+          .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .asserting(_ shouldBe Right(permission_1))
       }
     }
@@ -220,22 +316,22 @@ class PermissionRepositorySpec
     "ApiKeyTemplatesPermissionsDb returns exception" should {
 
       "NOT call PermissionDb" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         for {
-          _ <- permissionRepository.delete(publicResourceServerId_1, publicPermissionId_1).attempt
+          _ <- permissionRepository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1).attempt
 
           _ = verifyZeroInteractions(permissionDb)
         } yield ()
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns testException
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Int]
 
         permissionRepository
-          .delete(publicResourceServerId_1, publicPermissionId_1)
+          .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -243,26 +339,30 @@ class PermissionRepositorySpec
 
     "PermissionDb returns Left containing PermissionNotFoundError" should {
       "return Left containing this error" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         val permissionNotFoundError = PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)
-        permissionDb.delete(any[ResourceServerId], any[PermissionId]) returns permissionNotFoundError
+        permissionDb.delete(any[TenantId], any[ResourceServerId], any[PermissionId]) returns permissionNotFoundError
           .asLeft[PermissionEntity.Read]
           .pure[doobie.ConnectionIO]
 
         permissionRepository
-          .delete(publicResourceServerId_1, publicPermissionId_1)
+          .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .asserting(_ shouldBe Left(permissionNotFoundError))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[PermissionId]) returns 3.pure[doobie.ConnectionIO]
+        apiKeyTemplatesPermissionsDb.deleteAllForPermission(any[TenantId], any[PermissionId]) returns 3
+          .pure[doobie.ConnectionIO]
         permissionDb
-          .delete(any[ResourceServerId], any[PermissionId]) returns testExceptionWrappedE[PermissionNotFoundError]
+          .delete(any[TenantId], any[ResourceServerId], any[PermissionId]) returns testExceptionWrappedE[
+          PermissionNotFoundError
+        ]
 
         permissionRepository
-          .delete(publicResourceServerId_1, publicPermissionId_1)
+          .delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -272,46 +372,52 @@ class PermissionRepositorySpec
   "PermissionRepository on getBy(:publicResourceServerId, :publicPermissionId)" when {
 
     "should always call PermissionDb" in {
-      permissionDb.getBy(any[ResourceServerId], any[PermissionId]) returns Option(permissionEntityRead_1)
+      permissionDb.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns Option(permissionEntityRead_1)
         .pure[doobie.ConnectionIO]
 
       for {
-        _ <- permissionRepository.getBy(publicResourceServerId_1, publicPermissionId_1)
+        _ <- permissionRepository.getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
 
-        _ = verify(permissionDb).getBy(eqTo(publicResourceServerId_1), eqTo(publicPermissionId_1))
+        _ = verify(permissionDb).getBy(
+          eqTo(publicTenantId_1),
+          eqTo(publicResourceServerId_1),
+          eqTo(publicPermissionId_1)
+        )
       } yield ()
     }
 
     "PermissionDb returns empty Option" should {
       "return empty Option" in {
-        permissionDb.getBy(any[ResourceServerId], any[PermissionId]) returns Option
+        permissionDb.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns Option
           .empty[PermissionEntity.Read]
           .pure[doobie.ConnectionIO]
 
-        permissionRepository.getBy(publicResourceServerId_1, publicPermissionId_1).asserting(_ shouldBe None)
+        permissionRepository
+          .getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+          .asserting(_ shouldBe None)
       }
     }
 
     "PermissionDb returns Option containing PermissionEntity" should {
       "return Option containing Permission" in {
-        permissionDb.getBy(any[ResourceServerId], any[PermissionId]) returns Option(
+        permissionDb.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns Option(
           permissionEntityRead_1
         )
           .pure[doobie.ConnectionIO]
 
         permissionRepository
-          .getBy(publicResourceServerId_1, publicPermissionId_1)
+          .getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .asserting(_ shouldBe Some(permission_1))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getBy(any[ResourceServerId], any[PermissionId]) returns testException
+        permissionDb.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
 
         permissionRepository
-          .getBy(publicResourceServerId_1, publicPermissionId_1)
+          .getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -321,47 +427,48 @@ class PermissionRepositorySpec
   "PermissionRepository on getAllPermissionsForTemplate" when {
 
     "should always call PermissionDb" in {
-      permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+      permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream.empty
 
       for {
-        _ <- permissionRepository.getAllFor(publicTemplateId_1)
+        _ <- permissionRepository.getAllFor(publicTenantId_1, publicTemplateId_1)
 
-        _ = verify(permissionDb).getAllForTemplate(eqTo(publicTemplateId_1))
+        _ = verify(permissionDb).getAllForTemplate(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
       } yield ()
     }
 
     "PermissionDb returns empty Stream" should {
       "return empty List" in {
-        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.empty
+        permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream.empty
 
         permissionRepository
-          .getAllFor(publicTemplateId_1)
+          .getAllFor(publicTenantId_1, publicTemplateId_1)
           .asserting(_ shouldBe List.empty[Permission])
       }
     }
 
     "PermissionDb returns PermissionEntities in Stream" should {
       "return List containing Permissions" in {
-        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream(
+        permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
 
         permissionRepository
-          .getAllFor(publicTemplateId_1)
+          .getAllFor(publicTenantId_1, publicTemplateId_1)
           .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllForTemplate(any[ApiKeyTemplateId]) returns Stream.raiseError[doobie.ConnectionIO](
-          testException
-        )
+        permissionDb.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns Stream
+          .raiseError[doobie.ConnectionIO](
+            testException
+          )
 
         permissionRepository
-          .getAllFor(publicTemplateId_1)
+          .getAllFor(publicTenantId_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -373,48 +480,48 @@ class PermissionRepositorySpec
     val nameFragment = Some("test:name:fragment")
 
     "should always call PermissionDb" in {
-      permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream.empty
+      permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream.empty
 
       for {
-        _ <- permissionRepository.getAllBy(publicResourceServerId_1)(nameFragment)
+        _ <- permissionRepository.getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment)
 
-        _ = verify(permissionDb).getAllBy(eqTo(publicResourceServerId_1))(eqTo(nameFragment))
+        _ = verify(permissionDb).getAllBy(eqTo(publicTenantId_1), eqTo(publicResourceServerId_1))(eqTo(nameFragment))
       } yield ()
     }
 
     "PermissionDb returns empty Stream" should {
       "return empty List" in {
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream.empty
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream.empty
 
         permissionRepository
-          .getAllBy(publicResourceServerId_1)(nameFragment)
+          .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment)
           .asserting(_ shouldBe List.empty[Permission])
       }
     }
 
     "PermissionDb returns PermissionEntities in Stream" should {
       "return List containing Permissions" in {
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream(
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
           permissionEntityRead_1,
           permissionEntityRead_2,
           permissionEntityRead_3
         )
 
         permissionRepository
-          .getAllBy(publicResourceServerId_1)(nameFragment)
+          .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment)
           .asserting(_ shouldBe List(permission_1, permission_2, permission_3))
       }
     }
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllBy(any[ResourceServerId])(any[Option[String]]) returns Stream
+        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream
           .raiseError[doobie.ConnectionIO](
             testException
           )
 
         permissionRepository
-          .getAllBy(publicResourceServerId_1)(nameFragment)
+          .getAllBy(publicTenantId_1, publicResourceServerId_1)(nameFragment)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

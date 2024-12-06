@@ -1,24 +1,17 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{publicTemplateId_1, publicTemplateId_2, publicTemplateId_3}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
-import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
-  ApiKeyTemplatesUsersInsertionErrorImpl,
-  ReferencedApiKeyTemplateDoesNotExistError,
-  ReferencedUserDoesNotExistError
-}
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.{
-  ApiKeyTemplatesUsersInsertionError,
-  ApiKeyTemplatesUsersNotFoundError
-}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesUsersEntity, UserEntity}
-import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesUsersDb, UserDb}
+import apikeysteward.repositories.db.entity._
+import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesUsersDb, TenantDb, UserDb}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxApplicativeErrorId, catsSyntaxApplicativeId, catsSyntaxEitherId, none}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
@@ -39,20 +32,24 @@ class ApiKeyTemplatesUsersRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
+  private val tenantDb = mock[TenantDb]
   private val apiKeyTemplateDb = mock[ApiKeyTemplateDb]
   private val userDb = mock[UserDb]
   private val apiKeyTemplatesUsersDb = mock[ApiKeyTemplatesUsersDb]
 
   private val apiKeyTemplatesUsersRepository =
-    new ApiKeyTemplatesUsersRepository(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(noopTransactor)
+    new ApiKeyTemplatesUsersRepository(tenantDb, apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(noopTransactor)
 
   override def beforeEach(): Unit =
-    reset(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+    reset(tenantDb, apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
 
   private val testException = new RuntimeException("Test Exception")
 
   private def testExceptionWrappedE[E]: doobie.ConnectionIO[Either[E, List[ApiKeyTemplatesUsersEntity.Read]]] =
     testException.raiseError[doobie.ConnectionIO, Either[E, List[ApiKeyTemplatesUsersEntity.Read]]]
+
+  private val tenantEntityReadWrapped: doobie.ConnectionIO[Option[TenantEntity.Read]] =
+    Option(tenantEntityRead_1).pure[doobie.ConnectionIO]
 
   private val inputPublicUserIds = List(publicUserId_1, publicUserId_2, publicUserId_3)
   private val inputPublicTemplateIds = List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
@@ -66,8 +63,12 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "everything works correctly" should {
 
-      "call ApiKeyTemplateDb, UserDb and ApiKeyTemplatesUsersDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+      "call TenantDb, ApiKeyTemplateDb, UserDb and ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           userEntityWrapped_2,
@@ -80,7 +81,8 @@ class ApiKeyTemplatesUsersRepositorySpec
         for {
           _ <- apiKeyTemplatesUsersRepository.insertManyUsers(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
 
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_1))
+          _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(userDb).getByPublicUserId(eqTo(publicTenantId_1), eqTo(publicUserId_1))
           _ = verify(userDb).getByPublicUserId(eqTo(publicTenantId_1), eqTo(publicUserId_2))
           _ = verify(userDb).getByPublicUserId(eqTo(publicTenantId_1), eqTo(publicUserId_3))
@@ -89,7 +91,11 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           userEntityWrapped_2,
@@ -106,10 +112,59 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
     }
 
+    "TenantDb returns empty Option" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository.insertManyUsers(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyTemplatesUsersRepository
+          .insertManyUsers(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(publicTenantId_1)))
+      }
+    }
+
+    "TenantDb returns exception" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository
+            .insertManyUsers(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
+            .attempt
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        apiKeyTemplatesUsersRepository
+          .insertManyUsers(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "ApiKeyTemplateDb returns empty Option" should {
 
       "NOT call UserDb or ApiKeyTemplatesUsersDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         for {
@@ -120,7 +175,9 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
           .pure[doobie.ConnectionIO]
 
         apiKeyTemplatesUsersRepository
@@ -132,7 +189,8 @@ class ApiKeyTemplatesUsersRepositorySpec
     "ApiKeyTemplateDb returns exception" should {
 
       "NOT call UserDb or ApiKeyTemplatesUsersDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         for {
@@ -145,7 +203,8 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns testException
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         apiKeyTemplatesUsersRepository
@@ -158,7 +217,11 @@ class ApiKeyTemplatesUsersRepositorySpec
     "UserDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           none[UserEntity.Read].pure[doobie.ConnectionIO],
@@ -173,7 +236,11 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           none[UserEntity.Read].pure[doobie.ConnectionIO],
@@ -189,7 +256,11 @@ class ApiKeyTemplatesUsersRepositorySpec
     "UserDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]],
@@ -206,7 +277,11 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]],
@@ -228,7 +303,11 @@ class ApiKeyTemplatesUsersRepositorySpec
         val apiKeyTemplatesUsersInsertionErrorWrapped =
           apiKeyTemplatesUsersInsertionError.asLeft[List[ApiKeyTemplatesUsersEntity.Read]].pure[doobie.ConnectionIO]
 
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           userEntityWrapped_2,
@@ -246,7 +325,11 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "ApiKeyTemplatesUsersDb returns exception" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped_1
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        apiKeyTemplateDb.getByPublicTemplateId(
+          any[TenantId],
+          any[ApiKeyTemplateId]
+        ) returns apiKeyTemplateEntityWrapped_1
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns (
           userEntityWrapped_1,
           userEntityWrapped_2,
@@ -271,9 +354,10 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "everything works correctly" should {
 
-      "call UserDb, ApiKeyTemplateDb and ApiKeyTemplatesUsersDb" in {
+      "call TenantDb, UserDb, ApiKeyTemplateDb and ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -289,17 +373,19 @@ class ApiKeyTemplatesUsersRepositorySpec
             inputPublicTemplateIds
           )
 
+          _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
           _ = verify(userDb).getByPublicUserId(eqTo(publicTenantId_1), eqTo(publicUserId_1))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_1))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_2))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_3))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_2))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_3))
           _ = verify(apiKeyTemplatesUsersDb).insertMany(eqTo(apiKeyTemplatesUsersEntitiesWrite_sameUser))
         } yield ()
       }
 
       "return Right containing Unit value" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -315,9 +401,61 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
     }
 
+    "TenantDb returns empty Option" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository.insertManyTemplates(
+            publicTenantId_1,
+            publicUserId_1,
+            inputPublicTemplateIds
+          )
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyTemplatesUsersRepository
+          .insertManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(publicTenantId_1)))
+      }
+    }
+
+    "TenantDb returns exception" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository
+            .insertManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+            .attempt
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        apiKeyTemplatesUsersRepository
+          .insertManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "UserDb returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         for {
@@ -332,6 +470,7 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyTemplatesUsersRepository
@@ -343,6 +482,7 @@ class ApiKeyTemplatesUsersRepositorySpec
     "UserDb returns exception" should {
 
       "NOT call ApiKeyTemplateDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
@@ -356,6 +496,7 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
@@ -369,8 +510,9 @@ class ApiKeyTemplatesUsersRepositorySpec
     "ApiKeyTemplateDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO],
           apiKeyTemplateEntityWrapped_3
@@ -388,8 +530,9 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO],
           apiKeyTemplateEntityWrapped_3
@@ -404,8 +547,9 @@ class ApiKeyTemplatesUsersRepositorySpec
     "ApiKeyTemplateDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]],
           apiKeyTemplateEntityWrapped_3
@@ -421,8 +565,9 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]],
           apiKeyTemplateEntityWrapped_3
@@ -443,8 +588,9 @@ class ApiKeyTemplatesUsersRepositorySpec
         val apiKeyTemplatesUsersInsertionErrorWrapped =
           apiKeyTemplatesUsersInsertionError.asLeft[List[ApiKeyTemplatesUsersEntity.Read]].pure[doobie.ConnectionIO]
 
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -461,8 +607,9 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "ApiKeyTemplatesUsersDb returns exception" should {
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -486,9 +633,10 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "everything works correctly" should {
 
-      "call UserDb, ApiKeyTemplateDb and ApiKeyTemplatesUsersDb" in {
+      "call TenantDb, UserDb, ApiKeyTemplateDb and ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -504,17 +652,19 @@ class ApiKeyTemplatesUsersRepositorySpec
             inputPublicTemplateIds
           )
 
+          _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
           _ = verify(userDb).getByPublicUserId(eqTo(publicTenantId_1), eqTo(publicUserId_1))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_1))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_2))
-          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTemplateId_3))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_2))
+          _ = verify(apiKeyTemplateDb).getByPublicTemplateId(eqTo(publicTenantId_1), eqTo(publicTemplateId_3))
           _ = verify(apiKeyTemplatesUsersDb).deleteMany(eqTo(apiKeyTemplatesUsersEntitiesWrite_sameUser))
         } yield ()
       }
 
       "return Right containing Unit value" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -530,9 +680,61 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
     }
 
+    "TenantDb returns empty Option" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository.deleteManyTemplates(
+            publicTenantId_1,
+            publicUserId_1,
+            inputPublicTemplateIds
+          )
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+
+        apiKeyTemplatesUsersRepository
+          .deleteManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(publicTenantId_1)))
+      }
+    }
+
+    "TenantDb returns exception" should {
+
+      "NOT call ApiKeyTemplateDb, UserDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        for {
+          _ <- apiKeyTemplatesUsersRepository
+            .deleteManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+            .attempt
+
+          _ = verifyZeroInteractions(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)
+        } yield ()
+      }
+
+      "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
+          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+
+        apiKeyTemplatesUsersRepository
+          .deleteManyTemplates(publicTenantId_1, publicUserId_1, inputPublicTemplateIds)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+
     "UserDb returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         for {
@@ -547,6 +749,7 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyTemplatesUsersRepository
@@ -558,6 +761,7 @@ class ApiKeyTemplatesUsersRepositorySpec
     "UserDb returns exception" should {
 
       "NOT call ApiKeyTemplateDb or ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
@@ -571,6 +775,7 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
@@ -584,8 +789,9 @@ class ApiKeyTemplatesUsersRepositorySpec
     "ApiKeyTemplateDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO],
           apiKeyTemplateEntityWrapped_3
@@ -603,8 +809,9 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO],
           apiKeyTemplateEntityWrapped_3
@@ -619,8 +826,9 @@ class ApiKeyTemplatesUsersRepositorySpec
     "ApiKeyTemplateDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesUsersDb" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]],
           apiKeyTemplateEntityWrapped_3
@@ -636,8 +844,9 @@ class ApiKeyTemplatesUsersRepositorySpec
       }
 
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]],
           apiKeyTemplateEntityWrapped_3
@@ -657,8 +866,9 @@ class ApiKeyTemplatesUsersRepositorySpec
         val apiKeyTemplatesUsersNotFoundErrorWrapped =
           apiKeyTemplatesUsersNotFoundError.asLeft[List[ApiKeyTemplatesUsersEntity.Read]].pure[doobie.ConnectionIO]
 
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3
@@ -675,8 +885,9 @@ class ApiKeyTemplatesUsersRepositorySpec
 
     "ApiKeyTemplatesUsersDb returns exception" should {
       "return failed IO containing this exception" in {
+        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplateEntityWrapped_1,
           apiKeyTemplateEntityWrapped_2,
           apiKeyTemplateEntityWrapped_3

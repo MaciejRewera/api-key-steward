@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import cats.data.NonEmptyList
 import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxEitherId, toTraverseOps}
@@ -41,6 +42,10 @@ class ApiKeyTemplatesPermissionsDb {
         val (apiKeyTemplateId, permissionId) = extractBothIds(sqlException)
         ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId, permissionId)
 
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
+        val apiKeyTemplateId = extractTenantId(sqlException)
+        ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateId)
+
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_template_id") =>
         val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)
         ReferencedApiKeyTemplateDoesNotExistError.fromDbId(apiKeyTemplateId)
@@ -58,17 +63,23 @@ class ApiKeyTemplatesPermissionsDb {
       "permission_id"
     )
 
+  private def extractTenantId(sqlException: SQLException): UUID =
+    ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("tenant_id")
+
   private def extractApiKeyTemplateId(sqlException: SQLException): UUID =
     ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("api_key_template_id")
 
   private def extractPermissionId(sqlException: SQLException): UUID =
     ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("permission_id")
 
-  def deleteAllForPermission(publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
-    Queries.deleteAllForPermission(publicPermissionId).run
+  def deleteAllForPermission(publicTenantId: TenantId, publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
+    TenantIdScopedQueries(publicTenantId).deleteAllForPermission(publicPermissionId).run
 
-  def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.ConnectionIO[Int] =
-    Queries.deleteAllForApiKeyTemplate(publicTemplateId).run
+  def deleteAllForApiKeyTemplate(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): doobie.ConnectionIO[Int] =
+    TenantIdScopedQueries(publicTenantId).deleteAllForApiKeyTemplate(publicTemplateId).run
 
   def deleteMany(
       entities: List[ApiKeyTemplatesPermissionsEntity.Write]
@@ -111,6 +122,7 @@ class ApiKeyTemplatesPermissionsDb {
   ): List[ApiKeyTemplatesPermissionsEntity.Write] =
     entitiesRead.map { entityRead =>
       ApiKeyTemplatesPermissionsEntity.Write(
+        tenantId = entityRead.tenantId,
         apiKeyTemplateId = entityRead.apiKeyTemplateId,
         permissionId = entityRead.permissionId
       )
@@ -126,20 +138,45 @@ class ApiKeyTemplatesPermissionsDb {
     def insertMany(
         entities: List[ApiKeyTemplatesPermissionsEntity.Write]
     ): Stream[doobie.ConnectionIO, ApiKeyTemplatesPermissionsEntity.Read] = {
-      val sql = s"INSERT INTO api_key_templates_permissions (api_key_template_id, permission_id) VALUES (?, ?)"
+      val sql =
+        s"INSERT INTO api_key_templates_permissions (tenant_id, api_key_template_id, permission_id) VALUES (?, ?, ?)"
 
       Update[ApiKeyTemplatesPermissionsEntity.Write](sql)
         .updateManyWithGeneratedKeys[ApiKeyTemplatesPermissionsEntity.Read](
+          "tenant_id",
           "api_key_template_id",
           "permission_id"
         )(entities)
     }
+
+    def deleteMany(entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]): doobie.Update0 =
+      sql"""DELETE FROM api_key_templates_permissions
+            WHERE (tenant_id, api_key_template_id, permission_id) IN (${Fragments.values(entities)})
+           """.stripMargin.update
+
+    def getAllThatExistFrom(
+        entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]
+    ): doobie.Query0[ApiKeyTemplatesPermissionsEntity.Read] =
+      sql"""SELECT
+              tenant_id,
+              api_key_template_id,
+              permission_id
+            FROM api_key_templates_permissions
+            WHERE (tenant_id, api_key_template_id, permission_id) IN (${Fragments.values(entities)})
+            """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]
+
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "api_key_templates_permissions"
 
     def deleteAllForPermission(publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM api_key_templates_permissions
             USING permission
             WHERE api_key_templates_permissions.permission_id = permission.id
               AND permission.public_permission_id = ${publicPermissionId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deleteAllForApiKeyTemplate(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
@@ -147,22 +184,8 @@ class ApiKeyTemplatesPermissionsDb {
             USING api_key_template
             WHERE api_key_templates_permissions.api_key_template_id = api_key_template.id
               AND api_key_template.public_template_id = ${publicTemplateId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
-
-    def deleteMany(entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]): doobie.Update0 =
-      sql"""DELETE FROM api_key_templates_permissions
-            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(entities)})
-           """.stripMargin.update
-
-    def getAllThatExistFrom(
-        entities: NonEmptyList[ApiKeyTemplatesPermissionsEntity.Write]
-    ): doobie.Query0[ApiKeyTemplatesPermissionsEntity.Read] =
-      sql"""SELECT
-              api_key_template_id,
-              permission_id
-            FROM api_key_templates_permissions
-            WHERE (api_key_template_id, permission_id) IN (${Fragments.values(entities)})
-            """.stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read]
 
   }
 }

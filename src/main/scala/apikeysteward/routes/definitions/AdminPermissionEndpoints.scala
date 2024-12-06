@@ -5,7 +5,7 @@ import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{errorOutVariantBadRequest, errorOutVariantNotFound}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.definitions.EndpointsBase.{resourceServerIdPathParameter, tenantIdHeaderInput}
 import apikeysteward.routes.model.admin.permission._
 import sttp.model.StatusCode

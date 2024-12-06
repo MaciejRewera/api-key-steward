@@ -2,6 +2,8 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
+import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, userEntityWrite_1}
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
@@ -45,18 +47,59 @@ class ApiKeyTemplateDbSpec
 
   "ApiKeyTemplateDb on insert" when {
 
+    "there is no Tenant in the DB" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        apiKeyTemplateDb
+          .insert(apiKeyTemplateEntityWrite_1)
+          .transact(transactor)
+          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(resourceServerEntityWrite_1.tenantId)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).transact(transactor)
+          res <- Queries.getAllApiKeyTemplates.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
+    "there is a Tenant in the DB with a different tenantId" should {
+
+      "return Left containing ReferencedTenantDoesNotExistError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantDbId_2))
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_2)))
+      }
+
+      "NOT insert any entity into the DB" in {
+        val result = for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
+
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          res <- Queries.getAllApiKeyTemplates.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return inserted entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
-        } yield (res, tenantId)).transact(transactor)
+          res <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, expectedTenantId) =>
-          res shouldBe Right(apiKeyTemplateEntityRead_1.copy(id = res.value.id, tenantId = expectedTenantId))
-        }
+        result.asserting(_ shouldBe Right(apiKeyTemplateEntityRead_1))
       }
 
       "insert entity into DB" in {
@@ -156,25 +199,6 @@ class ApiKeyTemplateDbSpec
         }
       }
     }
-
-    "there is no Tenant with provided tenantId in the DB" should {
-
-      "return Left containing ReferencedTenantDoesNotExistError" in {
-        apiKeyTemplateDb
-          .insert(apiKeyTemplateEntityWrite_1)
-          .transact(transactor)
-          .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateEntityWrite_1.tenantId)))
-      }
-
-      "NOT insert any entity into the DB" in {
-        val result = for {
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1).transact(transactor)
-          res <- Queries.getAllApiKeyTemplates.transact(transactor)
-        } yield res
-
-        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-      }
-    }
   }
 
   "ApiKeyTemplateDb on update" when {
@@ -187,23 +211,82 @@ class ApiKeyTemplateDbSpec
         apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated
       )
 
-    "there are NO rows in the DB" should {
+    "there is no Tenant in the DB" should {
 
       "return Left containing ApiKeyTemplateNotFoundError" in {
         apiKeyTemplateDb
-          .update(apiKeyTemplateEntityUpdate_1)
+          .update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
       }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          _ <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
 
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there are NO rows in the DB" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
+
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicTenantId" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          res <- apiKeyTemplateDb.update(publicTenantId_2, apiKeyTemplateEntityUpdate_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+      }
+
+      "make NO changes to the DB" in {
+        val result = (for {
+          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+
+          _ <- apiKeyTemplateDb.update(publicTenantId_2, apiKeyTemplateEntityUpdate_1)
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting { allApiKeyTemplates =>
+          allApiKeyTemplates.size shouldBe 1
+
+          val expectedEntity =
+            apiKeyTemplateEntityRead_1.copy(
+              id = allApiKeyTemplates.head.id,
+              tenantId = allApiKeyTemplates.head.tenantId
+            )
+          allApiKeyTemplates.head shouldBe expectedEntity
+        }
       }
     }
 
@@ -214,7 +297,10 @@ class ApiKeyTemplateDbSpec
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2))
+          res <- apiKeyTemplateDb.update(
+            publicTenantId_1,
+            apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2)
+          )
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_2)))
@@ -225,7 +311,10 @@ class ApiKeyTemplateDbSpec
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2))
+          _ <- apiKeyTemplateDb.update(
+            publicTenantId_1,
+            apiKeyTemplateEntityUpdate_1.copy(publicTemplateId = publicTemplateIdStr_2)
+          )
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
@@ -249,7 +338,7 @@ class ApiKeyTemplateDbSpec
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          res <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -262,7 +351,7 @@ class ApiKeyTemplateDbSpec
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
-          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          _ <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
@@ -285,7 +374,7 @@ class ApiKeyTemplateDbSpec
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-          res <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          res <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -300,7 +389,7 @@ class ApiKeyTemplateDbSpec
           entityRead_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
           entityRead_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-          _ <- apiKeyTemplateDb.update(apiKeyTemplateEntityUpdate_1)
+          _ <- apiKeyTemplateDb.update(publicTenantId_1, apiKeyTemplateEntityUpdate_1)
           res <- Queries.getAllApiKeyTemplates
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -320,22 +409,72 @@ class ApiKeyTemplateDbSpec
 
   "ApiKeyTemplateDb on delete" when {
 
-    "there are no rows in the DB" should {
+    "there is no Tenant in the DB" should {
 
       "return Left containing ApiKeyTemplateNotFoundError" in {
         apiKeyTemplateDb
-          .delete(publicTemplateId_1)
+          .delete(publicTenantId_1, publicTemplateId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
       }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyTemplateDb.delete(publicTemplateId_1)
+          _ <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there are no rows in the DB" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          _ <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB under different publicTenantId" should {
+
+      "return Left containing ApiKeyTemplateNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          res <- apiKeyTemplateDb.delete(publicTenantId_2, publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          _ <- apiKeyTemplateDb.delete(publicTenantId_2, publicTemplateId_1)
+          res <- Queries.getAllApiKeyTemplates
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List(apiKeyTemplateEntityRead_1))
       }
     }
 
@@ -343,10 +482,10 @@ class ApiKeyTemplateDbSpec
 
       "return Left containing ApiKeyTemplateNotFoundError" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          res <- apiKeyTemplateDb.delete(publicTemplateId_2)
+          res <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_2)))
@@ -354,46 +493,36 @@ class ApiKeyTemplateDbSpec
 
       "make no changes to the DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          _ <- apiKeyTemplateDb.delete(publicTemplateId_2)
+          _ <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_2)
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
-        result.asserting { allApiKeyTemplates =>
-          allApiKeyTemplates.size shouldBe 1
-
-          val resultApiKeyTemplate = allApiKeyTemplates.head
-          resultApiKeyTemplate shouldBe apiKeyTemplateEntityRead_1.copy(
-            id = resultApiKeyTemplate.id,
-            tenantId = resultApiKeyTemplate.tenantId
-          )
-        }
+        result.asserting(_ shouldBe List(apiKeyTemplateEntityRead_1))
       }
     }
 
-    "there is a row in the DB with the same publicTemplateId" should {
+    "there is a row in the DB with the same both publicTenantId and publicTemplateId" should {
 
       "return deleted entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          entityRead <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          res <- apiKeyTemplateDb.delete(publicTemplateId_1)
-        } yield (res, entityRead.value)).transact(transactor)
+          res <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, entityRead) =>
-          res shouldBe Right(apiKeyTemplateEntityRead_1.copy(id = entityRead.id, tenantId = entityRead.tenantId))
-        }
+        result.asserting(_ shouldBe Right(apiKeyTemplateEntityRead_1))
       }
 
       "delete this row from the DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          _ <- apiKeyTemplateDb.delete(publicTemplateId_1)
+          _ <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllApiKeyTemplates
         } yield res).transact(transactor)
 
@@ -401,21 +530,19 @@ class ApiKeyTemplateDbSpec
       }
     }
 
-    "there are several rows in the DB but only one with the same publicTemplateId" should {
+    "there are several rows in the DB but only one with the same both publicTenantId and publicTemplateId" should {
 
       "return deleted entity" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          entityRead <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
           _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-          res <- apiKeyTemplateDb.delete(publicTemplateId_1)
-        } yield (res, entityRead.value)).transact(transactor)
+          res <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
+        } yield res).transact(transactor)
 
-        result.asserting { case (res, entityRead) =>
-          res shouldBe Right(apiKeyTemplateEntityRead_1.copy(id = entityRead.id, tenantId = entityRead.tenantId))
-        }
+        result.asserting(_ shouldBe Right(apiKeyTemplateEntityRead_1))
       }
 
       "delete this row from the DB and leave others intact" in {
@@ -425,7 +552,7 @@ class ApiKeyTemplateDbSpec
           entityRead_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
           entityRead_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-          _ <- apiKeyTemplateDb.delete(publicTemplateId_1)
+          _ <- apiKeyTemplateDb.delete(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllApiKeyTemplates
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -440,22 +567,47 @@ class ApiKeyTemplateDbSpec
 
   "ApiKeyTemplateDb on getByPublicTemplateId" when {
 
-    "there are no rows in the DB" should {
+    "there is no Tenant in the DB" should {
       "return empty Option" in {
         apiKeyTemplateDb
-          .getByPublicTemplateId(publicTemplateId_1)
+          .getByPublicTemplateId(publicTenantId_1, publicTemplateId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTenantId_1, publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicTenantId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTenantId_2, publicTemplateId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
       }
     }
 
     "there is a row in the DB with different publicTemplateId" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId_2)
+          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTenantId_1, publicTemplateId_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
@@ -465,10 +617,10 @@ class ApiKeyTemplateDbSpec
     "there is a row in the DB with the same publicTemplateId" should {
       "return this entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTemplateId_1)
+          res <- apiKeyTemplateDb.getByPublicTemplateId(publicTenantId_1, publicTemplateId_1)
         } yield res).transact(transactor)
 
         result.asserting { res =>
@@ -480,7 +632,7 @@ class ApiKeyTemplateDbSpec
 
   "ApiKeyTemplateDb on getAllForUser" when {
 
-    "there are NO Users in the DB" should {
+    "there is no Tenant in the DB" should {
       "return empty Stream" in {
         apiKeyTemplateDb
           .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -491,20 +643,13 @@ class ApiKeyTemplateDbSpec
       }
     }
 
-    "there is a User in the DB, but with a different publicUserId" should {
+    "there are NO Users in the DB" should {
       "return empty Stream" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId)
-          )
-          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
-
-          res <- apiKeyTemplateDb.getAllForUser(publicTenantId_1, publicUserId_2).compile.toList
+          res <- apiKeyTemplateDb.getAllForUser(publicTenantId_2, publicUserId_1).compile.toList
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
@@ -514,14 +659,12 @@ class ApiKeyTemplateDbSpec
     "there is a User in the DB, but under a different Tenant" should {
       "return empty Stream" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId)
-          )
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
           res <- apiKeyTemplateDb.getAllForUser(publicTenantId_2, publicUserId_1).compile.toList
@@ -531,13 +674,31 @@ class ApiKeyTemplateDbSpec
       }
     }
 
+    "there is a User in the DB, but with a different publicUserId" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
+          _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
+
+          res <- apiKeyTemplateDb.getAllForUser(publicTenantId_1, publicUserId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[ApiKeyTemplateEntity.Read])
+      }
+    }
+
     "there is a User in the DB, but there are no ApiKeyTemplatesUsers for this User" should {
       "return empty Stream" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
           res <- apiKeyTemplateDb.getAllForUser(publicTenantId_1, publicUserId_1).compile.toList
         } yield res).transact(transactor)
@@ -549,17 +710,15 @@ class ApiKeyTemplateDbSpec
     "there is a User in the DB with a single ApiKeyTemplatesUsers" should {
       "return this single ApiKeyTemplate" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
-          templateId <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
 
-          preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId, userId = userId)
-          )
+          preExistingEntities = List(apiKeyTemplatesUsersEntityWrite_1_1)
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
-          expectedApiKeyTemplateEntities = List(apiKeyTemplateEntityRead_1.copy(id = templateId, tenantId = tenantId))
+          expectedApiKeyTemplateEntities = List(apiKeyTemplateEntityRead_1)
 
           res <- apiKeyTemplateDb.getAllForUser(publicTenantId_1, publicUserId_1).compile.toList
         } yield (res, expectedApiKeyTemplateEntities)).transact(transactor)
@@ -575,15 +734,15 @@ class ApiKeyTemplateDbSpec
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
 
-          userId <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           templateId_1 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           templateId_2 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
           templateId_3 <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
 
           preExistingEntities = List(
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId_1, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId_2, userId = userId),
-            ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateId_3, userId = userId)
+            apiKeyTemplatesUsersEntityWrite_1_1,
+            apiKeyTemplatesUsersEntityWrite_2_1,
+            apiKeyTemplatesUsersEntityWrite_3_1
           )
           _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
@@ -611,13 +770,12 @@ class ApiKeyTemplateDbSpec
       "there are NO ApiKeyTemplatesUsers for given User" should {
         "return empty Stream" in {
           val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (_, templateIds, userIds) = dataIds
+            _ <- insertPrerequisiteData()
 
             preExistingEntities = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+              apiKeyTemplatesUsersEntityWrite_1_1,
+              apiKeyTemplatesUsersEntityWrite_2_2,
+              apiKeyTemplatesUsersEntityWrite_2_1
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
@@ -631,22 +789,17 @@ class ApiKeyTemplateDbSpec
       "there is a single ApiKeyTemplatesUsers for given User" should {
         "return this single ApiKeyTemplate" in {
           val result = (for {
-            dataIds <- insertPrerequisiteData()
-            (tenantId, templateIds, userIds) = dataIds
+            _ <- insertPrerequisiteData()
 
-            preExistingEntityExpectedToBeFetched = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head)
-            )
+            preExistingEntityExpectedToBeFetched = List(apiKeyTemplatesUsersEntityWrite_1_1)
 
             preExistingEntities = preExistingEntityExpectedToBeFetched ++ List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1))
+              apiKeyTemplatesUsersEntityWrite_1_2,
+              apiKeyTemplatesUsersEntityWrite_2_2
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 
-            expectedApiKeyTemplateEntities = List(
-              apiKeyTemplateEntityRead_1.copy(id = templateIds.head, tenantId = tenantId)
-            )
+            expectedApiKeyTemplateEntities = List(apiKeyTemplateEntityRead_1)
 
             res <- apiKeyTemplateDb.getAllForUser(publicTenantId_1, publicUserId_1).compile.toList
           } yield (res, expectedApiKeyTemplateEntities)).transact(transactor)
@@ -661,16 +814,16 @@ class ApiKeyTemplateDbSpec
         "return all these ApiKeyTemplates" in {
           val result = (for {
             dataIds <- insertPrerequisiteData()
-            (tenantId, templateIds, userIds) = dataIds
+            (tenantId, templateIds, _) = dataIds
 
             preExistingEntitiesExpectedToBeFetched = List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds(1))
+              apiKeyTemplatesUsersEntityWrite_1_1,
+              apiKeyTemplatesUsersEntityWrite_1_2
             )
 
             preExistingEntities = preExistingEntitiesExpectedToBeFetched ++ List(
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1)),
-              ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head)
+              apiKeyTemplatesUsersEntityWrite_2_2,
+              apiKeyTemplatesUsersEntityWrite_2_1
             )
             _ <- apiKeyTemplatesUsersDb.insertMany(preExistingEntities)
 

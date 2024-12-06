@@ -91,7 +91,7 @@ class TenantRepository(
       )
       _ <- publicResourceServerIds.traverse { publicResourceServerId =>
         resourceServerRepository
-          .verifyResourceServerIsDeactivatedOp(publicResourceServerId)
+          .verifyResourceServerIsDeactivatedOp(publicTenantId, publicResourceServerId)
           .leftMap(cannotDeleteDependencyError(publicTenantId, _))
       }
     } yield ()
@@ -122,7 +122,9 @@ class TenantRepository(
           .map(_.resourceServerId)
           .compile
           .toList
-        deletedResourceServers <- resourceServerIdsToDelete.traverse(resourceServerRepository.deleteOp)
+        deletedResourceServers <- resourceServerIdsToDelete.traverse(
+          resourceServerRepository.deleteOp(publicTenantId, _)
+        )
       } yield deletedResourceServers
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence
@@ -138,7 +140,9 @@ class TenantRepository(
           .map(_.publicTemplateId)
           .compile
           .toList
-        deletedApiKeyTemplates <- apiKeyTemplateIdsToDelete.traverse(apiKeyTemplateRepository.deleteOp)
+        deletedApiKeyTemplates <- apiKeyTemplateIdsToDelete.traverse(
+          apiKeyTemplateRepository.deleteOp(publicTenantId, _)
+        )
       } yield deletedApiKeyTemplates
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence

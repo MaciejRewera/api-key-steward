@@ -1,12 +1,9 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.apiKeyTemplateEntityRead_1
-import apikeysteward.base.testdata.PermissionsTestData.{
-  permissionEntityRead_1,
-  permissionEntityRead_2,
-  permissionEntityRead_3
-}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.TenantsTestData.tenantDbId_1
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesPermissionsEntity, PermissionEntity}
 import cats.implicits.catsSyntaxApplicativeId
 
@@ -22,17 +19,52 @@ object ApiKeyTemplatesPermissionsTestData extends FixedClock {
   val permissionEntityWrapped_3: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Option(permissionEntityRead_3).pure[doobie.ConnectionIO]
 
+  val apiKeyTemplatesPermissionsEntityWrite_1_1: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, permissionId = permissionDbId_1)
+
+  val apiKeyTemplatesPermissionsEntityWrite_1_2: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, permissionId = permissionDbId_2)
+
+  val apiKeyTemplatesPermissionsEntityWrite_1_3: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_1, permissionId = permissionDbId_3)
+
+  val apiKeyTemplatesPermissionsEntityWrite_2_1: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, permissionId = permissionDbId_1)
+
+  val apiKeyTemplatesPermissionsEntityWrite_2_2: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, permissionId = permissionDbId_2)
+
+  val apiKeyTemplatesPermissionsEntityWrite_2_3: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_2, permissionId = permissionDbId_3)
+
+  val apiKeyTemplatesPermissionsEntityWrite_3_1: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, permissionId = permissionDbId_1)
+
+  val apiKeyTemplatesPermissionsEntityWrite_3_2: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, permissionId = permissionDbId_2)
+
+  val apiKeyTemplatesPermissionsEntityWrite_3_3: ApiKeyTemplatesPermissionsEntity.Write =
+    ApiKeyTemplatesPermissionsEntity
+      .Write(tenantId = tenantDbId_1, apiKeyTemplateId = templateDbId_3, permissionId = permissionDbId_3)
+
   val apiKeyTemplatesPermissionsEntitiesWrite: List[ApiKeyTemplatesPermissionsEntity.Write] = List(
-    ApiKeyTemplatesPermissionsEntity
-      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_1.id),
-    ApiKeyTemplatesPermissionsEntity
-      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_2.id),
-    ApiKeyTemplatesPermissionsEntity
-      .Write(apiKeyTemplateId = apiKeyTemplateEntityRead_1.id, permissionId = permissionEntityRead_3.id)
+    apiKeyTemplatesPermissionsEntityWrite_1_1,
+    apiKeyTemplatesPermissionsEntityWrite_1_2,
+    apiKeyTemplatesPermissionsEntityWrite_1_3
   )
+
   val apiKeyTemplatesPermissionsEntitiesRead: List[ApiKeyTemplatesPermissionsEntity.Read] =
     apiKeyTemplatesPermissionsEntitiesWrite.map { entityWrite =>
       ApiKeyTemplatesPermissionsEntity.Read(
+        tenantId = entityWrite.tenantId,
         apiKeyTemplateId = entityWrite.apiKeyTemplateId,
         permissionId = entityWrite.permissionId
       )

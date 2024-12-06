@@ -1,7 +1,6 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
-import apikeysteward.model.RepositoryErrors.{ApiKeyTemplatesUsersDbError, GenericError}
+import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
@@ -13,12 +12,7 @@ import apikeysteward.routes.definitions.{AdminUserEndpoints, ApiErrorMessages}
 import apikeysteward.routes.model.admin.apikeytemplate.GetMultipleApiKeyTemplatesResponse
 import apikeysteward.routes.model.admin.user._
 import apikeysteward.routes.model.apikey.GetMultipleApiKeysResponse
-import apikeysteward.services.{
-  ApiKeyManagementService,
-  ApiKeyTemplateAssociationsService,
-  ApiKeyTemplateService,
-  UserService
-}
+import apikeysteward.services._
 import cats.effect.IO
 import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
@@ -47,7 +41,7 @@ class AdminUserRoutes(
             case Right(newUser) =>
               (StatusCode.Created, CreateUserResponse(newUser)).asRight
 
-            case Left(_: ReferencedTenantDoesNotExistError) =>
+            case Left(_: UserInsertionError.ReferencedTenantDoesNotExistError) =>
               ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound)).asLeft
 
             case Left(_: UserAlreadyExistsForThisTenantError) =>
@@ -98,7 +92,7 @@ class AdminUserRoutes(
 
             case Right(allUsers) => (StatusCode.Ok -> GetMultipleUsersResponse(allUsers)).asRight
 
-            case Left(_: ReferencedTenantDoesNotExistError) =>
+            case Left(_: UserInsertionError.ReferencedTenantDoesNotExistError) =>
               ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.AdminUser.ReferencedTenantNotFound)).asLeft
           }
         }

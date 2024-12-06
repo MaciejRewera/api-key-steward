@@ -39,9 +39,9 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
         resourceServerId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated ResourceServer ID."))
 
         _ <- logger.info("Generating Permission IDs...")
-        permissionIds <- createResourceServerRequest.permissions.traverse { _ =>
-          uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Permission IDs."))
-        }
+        permissionIds <- createResourceServerRequest.permissions
+          .traverse(_ => uuidGenerator.generateUuid)
+          .flatTap(_ => logger.info("Generated Permission IDs."))
 
         _ <- logger.info("Inserting ResourceServer into database...")
         newResourceServer <- resourceServerRepository
@@ -61,19 +61,25 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
   }
 
   def updateResourceServer(
+      publicTenantId: TenantId,
       resourceServerId: ResourceServerId,
       updateResourceServerRequest: UpdateResourceServerRequest
   ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    resourceServerRepository.update(ResourceServerUpdate.from(resourceServerId, updateResourceServerRequest)).flatTap {
-      case Right(_) => logger.info(s"Updated ResourceServer with resourceServerId: [$resourceServerId].")
-      case Left(e) =>
-        logger.warn(s"Could not update ResourceServer with resourceServerId: [$resourceServerId] because: ${e.message}")
-    }
+    resourceServerRepository
+      .update(publicTenantId, ResourceServerUpdate.from(resourceServerId, updateResourceServerRequest))
+      .flatTap {
+        case Right(_) => logger.info(s"Updated ResourceServer with resourceServerId: [$resourceServerId].")
+        case Left(e) =>
+          logger.warn(
+            s"Could not update ResourceServer with resourceServerId: [$resourceServerId] because: ${e.message}"
+          )
+      }
 
   def reactivateResourceServer(
+      publicTenantId: TenantId,
       resourceServerId: ResourceServerId
   ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    resourceServerRepository.activate(resourceServerId).flatTap {
+    resourceServerRepository.activate(publicTenantId, resourceServerId).flatTap {
       case Right(_) => logger.info(s"Activated ResourceServer with resourceServerId: [$resourceServerId].")
       case Left(e) =>
         logger.warn(
@@ -82,9 +88,10 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
     }
 
   def deactivateResourceServer(
+      publicTenantId: TenantId,
       resourceServerId: ResourceServerId
   ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    resourceServerRepository.deactivate(resourceServerId).flatTap {
+    resourceServerRepository.deactivate(publicTenantId, resourceServerId).flatTap {
       case Right(_) => logger.info(s"Deactivated ResourceServer with resourceServerId: [$resourceServerId].")
       case Left(e) =>
         logger.warn(
@@ -92,15 +99,18 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
         )
     }
 
-  def deleteResourceServer(resourceServerId: ResourceServerId): IO[Either[ResourceServerDbError, ResourceServer]] =
-    resourceServerRepository.delete(resourceServerId).flatTap {
+  def deleteResourceServer(
+      publicTenantId: TenantId,
+      resourceServerId: ResourceServerId
+  ): IO[Either[ResourceServerDbError, ResourceServer]] =
+    resourceServerRepository.delete(publicTenantId, resourceServerId).flatTap {
       case Right(_) => logger.info(s"Deleted ResourceServer with resourceServerId: [$resourceServerId].")
       case Left(e) =>
         logger.warn(s"Could not delete ResourceServer with resourceServerId: [$resourceServerId] because: ${e.message}")
     }
 
-  def getBy(resourceServerId: ResourceServerId): IO[Option[ResourceServer]] =
-    resourceServerRepository.getBy(resourceServerId)
+  def getBy(publicTenantId: TenantId, resourceServerId: ResourceServerId): IO[Option[ResourceServer]] =
+    resourceServerRepository.getBy(publicTenantId, resourceServerId)
 
   def getAllForTenant(tenantId: TenantId): IO[List[ResourceServer]] =
     resourceServerRepository.getAllForTenant(tenantId)

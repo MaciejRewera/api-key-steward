@@ -289,12 +289,13 @@ class TenantRepositorySpec
 
     def initVerification(): Unit = {
       resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-      resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+      resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[TenantId], any[ResourceServerId]) returns
+        EitherT.pure(())
       tenantDb.getByPublicTenantId(any[TenantId]) returns deletedTenantEntityRead.some.pure[doobie.ConnectionIO]
     }
 
     def initResourceServerDeletion(): Unit =
-      resourceServerRepository.deleteOp(any[ResourceServerId]) returns (
+      resourceServerRepository.deleteOp(any[TenantId], any[ResourceServerId]) returns (
         resourceServer_1.asRight[ResourceServerDbError].pure[doobie.ConnectionIO],
         resourceServer_2.asRight[ResourceServerDbError].pure[doobie.ConnectionIO]
       )
@@ -302,7 +303,7 @@ class TenantRepositorySpec
     def initApiKeyTemplateDeletion(): Unit = {
       apiKeyTemplateRepository
         .getAllForTenantOp(any[TenantId]) returns Stream(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-      apiKeyTemplateRepository.deleteOp(any[ApiKeyTemplateId]) returns (
+      apiKeyTemplateRepository.deleteOp(any[TenantId], any[ApiKeyTemplateId]) returns (
         apiKeyTemplate_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
         apiKeyTemplate_2.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
         apiKeyTemplate_3.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO]
@@ -332,20 +333,22 @@ class TenantRepositorySpec
 
           _ = verify(resourceServerRepository, times(2)).getAllForTenantOp(eqTo(publicTenantId_1))
           _ = verify(resourceServerRepository).verifyResourceServerIsDeactivatedOp(
+            eqTo(publicTenantId_1),
             eqTo(resourceServer_1.resourceServerId)
           )
           _ = verify(resourceServerRepository).verifyResourceServerIsDeactivatedOp(
+            eqTo(publicTenantId_1),
             eqTo(resourceServer_2.resourceServerId)
           )
           _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
 
-          _ = verify(resourceServerRepository).deleteOp(eqTo(resourceServer_1.resourceServerId))
-          _ = verify(resourceServerRepository).deleteOp(eqTo(resourceServer_2.resourceServerId))
+          _ = verify(resourceServerRepository).deleteOp(eqTo(publicTenantId_1), eqTo(resourceServer_1.resourceServerId))
+          _ = verify(resourceServerRepository).deleteOp(eqTo(publicTenantId_1), eqTo(resourceServer_2.resourceServerId))
 
           _ = verify(apiKeyTemplateRepository).getAllForTenantOp(eqTo(publicTenantId_1))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_1.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_2.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_3.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_1.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_2.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_3.publicTemplateId))
 
           _ = verify(userRepository).getAllForTenantOp(eqTo(publicTenantId_1))
           _ = verify(userRepository).deleteOp(eqTo(publicTenantId_1), eqTo(user_1.userId))
@@ -381,8 +384,9 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
-          _ = verify(resourceServerRepository, times(0)).verifyResourceServerIsDeactivatedOp(any[ResourceServerId])
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0))
+            .verifyResourceServerIsDeactivatedOp(any[TenantId], any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
         } yield ()
       }
 
@@ -402,9 +406,9 @@ class TenantRepositorySpec
           _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
 
           _ = verify(apiKeyTemplateRepository).getAllForTenantOp(eqTo(publicTenantId_1))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_1.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_2.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_3.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_1.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_2.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_3.publicTemplateId))
 
           _ = verify(userRepository).getAllForTenantOp(eqTo(publicTenantId_1))
           _ = verify(userRepository).deleteOp(eqTo(publicTenantId_1), eqTo(user_1.userId))
@@ -438,8 +442,9 @@ class TenantRepositorySpec
           _ <- tenantRepository.delete(publicTenantId_1).attempt
 
           _ = verify(resourceServerRepository, times(1)).getAllForTenantOp(eqTo(publicTenantId_1))
-          _ = verify(resourceServerRepository, times(0)).verifyResourceServerIsDeactivatedOp(any[ResourceServerId])
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0))
+            .verifyResourceServerIsDeactivatedOp(any[TenantId], any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
           _ = verifyZeroInteractions(tenantDb, apiKeyTemplateRepository, userRepository)
         } yield ()
       }
@@ -457,7 +462,10 @@ class TenantRepositorySpec
       "NOT call ApiKeyTemplateRepository, UserRepository, ResourceServerRepository.deleteOp or TenantDb" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
         val error = resourceServerIsNotDeactivatedError(publicResourceServerId_1)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT(
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT(
           error.asLeft[Unit].pure[doobie.ConnectionIO]
         )
 
@@ -465,16 +473,15 @@ class TenantRepositorySpec
           _ <- tenantRepository.delete(publicTenantId_1)
 
           _ = verifyZeroInteractions(tenantDb, apiKeyTemplateRepository, userRepository)
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
         } yield ()
       }
 
       "return Left containing CannotDeleteDependencyError" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
         val error = resourceServerIsNotDeactivatedError(publicResourceServerId_1)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT(
-          error.asLeft[Unit].pure[doobie.ConnectionIO]
-        )
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[TenantId], any[ResourceServerId]) returns
+          EitherT(error.asLeft[Unit].pure[doobie.ConnectionIO])
 
         tenantRepository
           .delete(publicTenantId_1)
@@ -488,19 +495,25 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository, ResourceServerRepository.deleteOp or TenantDb" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns exceptionWrapped
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns exceptionWrapped
 
         for {
           _ <- tenantRepository.delete(publicTenantId_1).attempt
 
           _ = verifyZeroInteractions(tenantDb, apiKeyTemplateRepository, userRepository)
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
         } yield ()
       }
 
       "return failed IO containing this exception" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns exceptionWrapped
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns exceptionWrapped
 
         tenantRepository.delete(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -510,21 +523,27 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository, ResourceServerRepository.deleteOp or TenantDb.deleteDeactivated" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
           _ = verifyZeroInteractions(apiKeyTemplateRepository, userRepository)
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
           _ = verify(tenantDb, times(0)).deleteDeactivated(any[TenantId])
         } yield ()
       }
 
       "return Left containing TenantNotFoundError" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         tenantRepository.delete(publicTenantId_1).asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
@@ -537,21 +556,27 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository, ResourceServerRepository.deleteOp or TenantDb.deleteDeactivated" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns activeTenant.some.pure[doobie.ConnectionIO]
 
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
           _ = verifyZeroInteractions(apiKeyTemplateRepository, userRepository)
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
           _ = verify(tenantDb, times(0)).deleteDeactivated(any[TenantId])
         } yield ()
       }
 
       "return Left containing TenantIsNotDeactivatedError" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns activeTenant.some.pure[doobie.ConnectionIO]
 
         tenantRepository
@@ -564,7 +589,10 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository, ResourceServerRepository.deleteOp or TenantDb.deleteDeactivated" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -572,14 +600,17 @@ class TenantRepositorySpec
           _ <- tenantRepository.delete(publicTenantId_1).attempt
 
           _ = verifyZeroInteractions(apiKeyTemplateRepository, userRepository)
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
           _ = verify(tenantDb, times(0)).deleteDeactivated(any[TenantId])
         } yield ()
       }
 
       "return failed IO containing this exception" in {
         resourceServerRepository.getAllForTenantOp(any[TenantId]) returns Stream(resourceServer_1, resourceServer_2)
-        resourceServerRepository.verifyResourceServerIsDeactivatedOp(any[ResourceServerId]) returns EitherT.pure(())
+        resourceServerRepository.verifyResourceServerIsDeactivatedOp(
+          any[TenantId],
+          any[ResourceServerId]
+        ) returns EitherT.pure(())
         tenantDb.getByPublicTenantId(any[TenantId]) returns testException
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
@@ -602,7 +633,7 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
         } yield ()
       }
 
@@ -623,9 +654,9 @@ class TenantRepositorySpec
           _ = verify(tenantDb).getByPublicTenantId(eqTo(publicTenantId_1))
 
           _ = verify(apiKeyTemplateRepository).getAllForTenantOp(eqTo(publicTenantId_1))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_1.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_2.publicTemplateId))
-          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(apiKeyTemplate_3.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_1.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_2.publicTemplateId))
+          _ = verify(apiKeyTemplateRepository).deleteOp(eqTo(publicTenantId_1), eqTo(apiKeyTemplate_3.publicTemplateId))
 
           _ = verify(userRepository).getAllForTenantOp(eqTo(publicTenantId_1))
           _ = verify(userRepository).deleteOp(eqTo(publicTenantId_1), eqTo(user_1.userId))
@@ -662,7 +693,7 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.delete(publicTenantId_1).attempt
 
-          _ = verify(resourceServerRepository, times(0)).deleteOp(any[ResourceServerId])
+          _ = verify(resourceServerRepository, times(0)).deleteOp(any[TenantId], any[ResourceServerId])
           _ = verifyZeroInteractions(apiKeyTemplateRepository, userRepository)
           _ = verify(tenantDb, times(0)).deleteDeactivated(any[TenantId])
         } yield ()
@@ -685,7 +716,7 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository or TenantDb" in {
         initVerification()
-        resourceServerRepository.deleteOp(any[ResourceServerId]) returns (
+        resourceServerRepository.deleteOp(any[TenantId], any[ResourceServerId]) returns (
           resourceServer_1.asRight[ResourceServerDbError].pure[doobie.ConnectionIO],
           error.asLeft[ResourceServer].pure[doobie.ConnectionIO]
         )
@@ -700,7 +731,7 @@ class TenantRepositorySpec
 
       "return Left containing CannotDeleteDependencyError" in {
         initVerification()
-        resourceServerRepository.deleteOp(any[ResourceServerId]) returns (
+        resourceServerRepository.deleteOp(any[TenantId], any[ResourceServerId]) returns (
           resourceServer_1.asRight[ResourceServerDbError].pure[doobie.ConnectionIO],
           error.asLeft[ResourceServer].pure[doobie.ConnectionIO]
         )
@@ -715,7 +746,7 @@ class TenantRepositorySpec
 
       "NOT call ApiKeyTemplateRepository, UserRepository or TenantDb" in {
         initVerification()
-        resourceServerRepository.deleteOp(any[ResourceServerId]) returns (
+        resourceServerRepository.deleteOp(any[TenantId], any[ResourceServerId]) returns (
           resourceServer_1.asRight[ResourceServerDbError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[ResourceServerDbError, ResourceServer]]
         )
@@ -730,7 +761,7 @@ class TenantRepositorySpec
 
       "return failed IO containing this exception" in {
         initVerification()
-        resourceServerRepository.deleteOp(any[ResourceServerId]) returns (
+        resourceServerRepository.deleteOp(any[TenantId], any[ResourceServerId]) returns (
           resourceServer_1.asRight[ResourceServerDbError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[ResourceServerDbError, ResourceServer]]
         )
@@ -751,7 +782,7 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.delete(publicTenantId_1)
 
-          _ = verify(apiKeyTemplateRepository, times(0)).deleteOp(any[ApiKeyTemplateId])
+          _ = verify(apiKeyTemplateRepository, times(0)).deleteOp(any[TenantId], any[ApiKeyTemplateId])
         } yield ()
       }
 
@@ -798,7 +829,7 @@ class TenantRepositorySpec
         for {
           _ <- tenantRepository.delete(publicTenantId_1).attempt
 
-          _ = verify(apiKeyTemplateRepository, times(0)).deleteOp(any[ApiKeyTemplateId])
+          _ = verify(apiKeyTemplateRepository, times(0)).deleteOp(any[TenantId], any[ApiKeyTemplateId])
           _ = verifyZeroInteractions(userRepository)
           _ = verify(tenantDb, times(0)).deleteDeactivated(any[TenantId])
         } yield ()
@@ -825,7 +856,7 @@ class TenantRepositorySpec
         initResourceServerDeletion()
         apiKeyTemplateRepository
           .getAllForTenantOp(any[TenantId]) returns Stream(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-        apiKeyTemplateRepository.deleteOp(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateRepository.deleteOp(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplate_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           apiKeyTemplate_2.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           error.asLeft[ApiKeyTemplate].pure[doobie.ConnectionIO]
@@ -844,7 +875,7 @@ class TenantRepositorySpec
         initResourceServerDeletion()
         apiKeyTemplateRepository
           .getAllForTenantOp(any[TenantId]) returns Stream(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-        apiKeyTemplateRepository.deleteOp(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateRepository.deleteOp(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplate_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           apiKeyTemplate_2.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           error.asLeft[ApiKeyTemplate].pure[doobie.ConnectionIO]
@@ -863,7 +894,7 @@ class TenantRepositorySpec
         initResourceServerDeletion()
         apiKeyTemplateRepository
           .getAllForTenantOp(any[TenantId]) returns Stream(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-        apiKeyTemplateRepository.deleteOp(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateRepository.deleteOp(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplate_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           apiKeyTemplate_2.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]]
@@ -882,7 +913,7 @@ class TenantRepositorySpec
         initResourceServerDeletion()
         apiKeyTemplateRepository
           .getAllForTenantOp(any[TenantId]) returns Stream(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-        apiKeyTemplateRepository.deleteOp(any[ApiKeyTemplateId]) returns (
+        apiKeyTemplateRepository.deleteOp(any[TenantId], any[ApiKeyTemplateId]) returns (
           apiKeyTemplate_1.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           apiKeyTemplate_2.asRight[ApiKeyTemplateNotFoundError].pure[doobie.ConnectionIO],
           testException.raiseError[doobie.ConnectionIO, Either[ApiKeyTemplateNotFoundError, ApiKeyTemplate]]

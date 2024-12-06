@@ -58,62 +58,54 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
     }
 
   def update(
+      publicTenantId: TenantId,
       templateEntity: ApiKeyTemplateEntity.Update
   ): doobie.ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] = {
     val now = Instant.now(clock)
     for {
-      updateCount <- Queries.update(templateEntity, now).run
+      updateCount <- TenantIdScopedQueries(publicTenantId).update(templateEntity, now).run
 
       resOpt <-
-        if (updateCount > 0) getByPublicTemplateId(templateEntity.publicTemplateId)
+        if (updateCount > 0) getByPublicTemplateId(publicTenantId, templateEntity.publicTemplateId)
         else Option.empty[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(ApiKeyTemplateNotFoundError(templateEntity.publicTemplateId))
   }
 
   def delete(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): doobie.ConnectionIO[Either[ApiKeyTemplateNotFoundError, ApiKeyTemplateEntity.Read]] =
     for {
-      templateToDelete <- getByPublicTemplateId(publicTemplateId).map(
+      templateToDelete <- getByPublicTemplateId(publicTenantId, publicTemplateId).map(
         _.toRight(ApiKeyTemplateNotFoundError(publicTemplateId.toString))
       )
-      resultE <- templateToDelete.traverse(result => Queries.delete(publicTemplateId).run.map(_ => result))
+      resultE <- templateToDelete.traverse(result =>
+        TenantIdScopedQueries(publicTenantId).delete(publicTemplateId).run.map(_ => result)
+      )
     } yield resultE
 
   def getByPublicTemplateId(
+      publicTenantId: TenantId,
       publicTemplateId: ApiKeyTemplateId
   ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
-    getByPublicTemplateId(publicTemplateId.toString)
+    getByPublicTemplateId(publicTenantId, publicTemplateId.toString)
 
   private def getByPublicTemplateId(
+      publicTenantId: TenantId,
       publicTemplateId: String
   ): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
-    Queries.getByPublicTemplateId(publicTemplateId).option
+    TenantIdScopedQueries(publicTenantId).getByPublicTemplateId(publicTemplateId).option
 
   def getAllForUser(
       publicTenantId: TenantId,
       publicUserId: UserId
   ): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
-    Queries.getAllForUser(publicTenantId, publicUserId).stream
+    TenantIdScopedQueries(publicTenantId).getAllForUser(publicUserId).stream
 
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
-    Queries.getAllForTenant(publicTenantId).stream
+    TenantIdScopedQueries(publicTenantId).getAllForTenant.stream
 
   private object Queries {
-
-    private val columnNamesSelectFragment =
-      fr"""SELECT
-            api_key_template.id,
-            api_key_template.tenant_id,
-            api_key_template.public_template_id,
-            api_key_template.name,
-            api_key_template.description,
-            api_key_template.is_default,
-            api_key_template.api_key_max_expiry_period,
-            api_key_template.api_key_prefix,
-            api_key_template.created_at,
-            api_key_template.updated_at
-          """
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO api_key_template(id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
@@ -130,6 +122,25 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               $now
             )
            """.stripMargin.update
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "api_key_template"
+
+    private val columnNamesSelectFragment =
+      fr"""SELECT
+            api_key_template.id,
+            api_key_template.tenant_id,
+            api_key_template.public_template_id,
+            api_key_template.name,
+            api_key_template.description,
+            api_key_template.is_default,
+            api_key_template.api_key_max_expiry_period,
+            api_key_template.api_key_prefix,
+            api_key_template.created_at,
+            api_key_template.updated_at
+          """
 
     def update(templateEntity: ApiKeyTemplateEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE api_key_template
@@ -139,46 +150,34 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
                 api_key_max_expiry_period = ${templateEntity.apiKeyMaxExpiryPeriod.toString},
                 updated_at = $now
             WHERE api_key_template.public_template_id = ${templateEntity.publicTemplateId}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def delete(publicTemplateId: ApiKeyTemplateId): doobie.Update0 =
       sql"DELETE FROM api_key_template WHERE api_key_template.public_template_id = ${publicTemplateId.toString}".update
 
     def getByPublicTemplateId(publicTemplateId: String): doobie.Query0[ApiKeyTemplateEntity.Read] =
-      (
-        columnNamesSelectFragment ++
-          sql"""FROM api_key_template
-                WHERE api_key_template.public_template_id = $publicTemplateId
-                """.stripMargin
-      ).query[ApiKeyTemplateEntity.Read]
+      (columnNamesSelectFragment ++
+        sql"""FROM api_key_template
+              WHERE api_key_template.public_template_id = $publicTemplateId
+                AND ${tenantIdFr(TableName)}
+             """.stripMargin).query[ApiKeyTemplateEntity.Read]
 
-    def getAllForUser(publicTenantId: TenantId, publicUserId: UserId): doobie.Query0[ApiKeyTemplateEntity.Read] =
+    def getAllForUser(publicUserId: UserId): doobie.Query0[ApiKeyTemplateEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM api_key_template
               JOIN api_key_templates_users ON api_key_template.id = api_key_templates_users.api_key_template_id
               JOIN tenant_user ON tenant_user.id = api_key_templates_users.user_id
-              JOIN tenant ON tenant.id = tenant_user.tenant_id
-              WHERE tenant.public_tenant_id = ${publicTenantId.toString}
-                AND tenant_user.public_user_id = ${publicUserId.toString}
+              WHERE tenant_user.public_user_id = ${publicUserId.toString}
+                AND ${tenantIdFr(TableName)}
              """.stripMargin).query[ApiKeyTemplateEntity.Read]
 
-    def getAllForTenant(publicTenantId: TenantId): doobie.Query0[ApiKeyTemplateEntity.Read] =
-      sql"""SELECT
-              template.id,
-              template.tenant_id,
-              template.public_template_id,
-              template.name,
-              template.description,
-              template.is_default,
-              template.api_key_max_expiry_period,
-              template.api_key_prefix,
-              template.created_at,
-              template.updated_at
-            FROM api_key_template AS template
-            JOIN tenant ON tenant.id = template.tenant_id
-            WHERE tenant.public_tenant_id = ${publicTenantId.toString}
-            ORDER BY template.created_at DESC
-           """.stripMargin.query[ApiKeyTemplateEntity.Read]
+    def getAllForTenant: doobie.Query0[ApiKeyTemplateEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM api_key_template
+              WHERE ${tenantIdFr(TableName)}
+              ORDER BY api_key_template.created_at DESC
+             """.stripMargin).query[ApiKeyTemplateEntity.Read]
   }
 
 }

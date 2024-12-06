@@ -64,8 +64,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.updateApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId, request) = input
-          apiKeyTemplateService.updateApiKeyTemplate(apiKeyTemplateId, request).map {
+          val (tenantId, apiKeyTemplateId, request) = input
+          apiKeyTemplateService.updateApiKeyTemplate(tenantId, apiKeyTemplateId, request).map {
 
             case Right(updatedApiKeyTemplate) =>
               (StatusCode.Ok, UpdateApiKeyTemplateResponse(updatedApiKeyTemplate)).asRight
@@ -81,8 +81,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.deleteResourceServerEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId) = input
-          apiKeyTemplateService.deleteApiKeyTemplate(apiKeyTemplateId).map {
+          val (tenantId, apiKeyTemplateId) = input
+          apiKeyTemplateService.deleteApiKeyTemplate(tenantId, apiKeyTemplateId).map {
 
             case Right(deletedApiKeyTemplate) =>
               (StatusCode.Ok, DeleteApiKeyTemplateResponse(deletedApiKeyTemplate)).asRight
@@ -98,8 +98,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getSingleApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId) = input
-          apiKeyTemplateService.getBy(apiKeyTemplateId).map {
+          val (tenantId, apiKeyTemplateId) = input
+          apiKeyTemplateService.getBy(tenantId, apiKeyTemplateId).map {
             case Some(apiKeyTemplate) => (StatusCode.Ok, GetSingleApiKeyTemplateResponse(apiKeyTemplate)).asRight
             case None =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminApiKeyTemplate.ApiKeyTemplateNotFound)).asLeft
@@ -123,9 +123,9 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.associatePermissionsWithApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId, request) = input
+          val (tenantId, apiKeyTemplateId, request) = input
           apiKeyTemplateAssociationsService
-            .associatePermissionsWithApiKeyTemplate(apiKeyTemplateId, request.permissionIds)
+            .associatePermissionsWithApiKeyTemplate(tenantId, apiKeyTemplateId, request.permissionIds)
             .map {
 
               case Right(()) =>
@@ -163,9 +163,9 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.removePermissionsFromApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId, request) = input
+          val (tenantId, apiKeyTemplateId, request) = input
           apiKeyTemplateAssociationsService
-            .removePermissionsFromApiKeyTemplate(apiKeyTemplateId, request.permissionIds)
+            .removePermissionsFromApiKeyTemplate(tenantId, apiKeyTemplateId, request.permissionIds)
             .map {
 
               case Right(()) =>
@@ -203,8 +203,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId) = input
-          permissionService.getAllForTemplate(apiKeyTemplateId).map {
+          val (tenantId, apiKeyTemplateId) = input
+          permissionService.getAllForTemplate(tenantId, apiKeyTemplateId).map {
 
             case Right(permissions) =>
               (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight
@@ -260,8 +260,8 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, apiKeyTemplateId) = input
-          userService.getAllForTemplate(apiKeyTemplateId).map {
+          val (tenantId, apiKeyTemplateId) = input
+          userService.getAllForTemplate(tenantId, apiKeyTemplateId).map {
 
             case Right(allUsers) => (StatusCode.Ok, GetMultipleUsersResponse(allUsers)).asRight
 

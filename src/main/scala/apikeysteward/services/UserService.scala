@@ -60,15 +60,18 @@ class UserService(
     } yield result).value
 
   def getAllForTemplate(
+      publicTenantId: TenantId,
       templateId: ApiKeyTemplateId
   ): IO[Either[ApiKeyTemplateDoesNotExistError, List[User]]] =
     (for {
       _ <- EitherT(
-        apiKeyTemplateRepository.getBy(templateId).map(_.toRight(ApiKeyTemplateDoesNotExistError(templateId)))
+        apiKeyTemplateRepository
+          .getBy(publicTenantId, templateId)
+          .map(_.toRight(ApiKeyTemplateDoesNotExistError(templateId)))
       )
 
       result <- EitherT.liftF[IO, ApiKeyTemplateDoesNotExistError, List[User]](
-        userRepository.getAllForTemplate(templateId)
+        userRepository.getAllForTemplate(publicTenantId, templateId)
       )
     } yield result).value
 

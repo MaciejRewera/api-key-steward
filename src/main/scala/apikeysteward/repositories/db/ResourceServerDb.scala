@@ -1,9 +1,9 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
 import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ResourceServerEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
@@ -48,67 +48,77 @@ class ResourceServerDb()(implicit clock: Clock) {
   private def recoverSqlException(
       sqlException: SQLException,
       publicResourceServerId: String,
-      tenantId: UUID
+      tenantDbId: UUID
   ): ResourceServerInsertionError =
     sqlException.getSQLState match {
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_resource_server_id") =>
         ResourceServerAlreadyExistsError(publicResourceServerId)
 
-      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError.fromDbId(tenantId)
+      case FOREIGN_KEY_VIOLATION.value => ReferencedTenantDoesNotExistError.fromDbId(tenantDbId)
 
       case _ => ResourceServerInsertionErrorImpl(sqlException)
     }
 
   def update(
+      publicTenantId: TenantId,
       resourceServerEntity: ResourceServerEntity.Update
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] = {
     val now = Instant.now(clock)
-    performUpdate(resourceServerEntity.publicResourceServerId)(Queries.update(resourceServerEntity, now).run)
+    performUpdate(publicTenantId, resourceServerEntity.publicResourceServerId)(
+      TenantIdScopedQueries(publicTenantId).update(resourceServerEntity, now).run
+    )
   }
 
   def activate(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] = {
     val now = Instant.now(clock)
-    performUpdate(publicResourceServerId)(Queries.activate(publicResourceServerId, now).run)
+    performUpdate(publicTenantId, publicResourceServerId)(
+      TenantIdScopedQueries(publicTenantId).activate(publicResourceServerId, now).run
+    )
   }
 
   def deactivate(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] = {
     val now = Instant.now(clock)
-    performUpdate(publicResourceServerId)(Queries.deactivate(publicResourceServerId, now).run)
+    performUpdate(publicTenantId, publicResourceServerId)(
+      TenantIdScopedQueries(publicTenantId).deactivate(publicResourceServerId, now).run
+    )
   }
 
-  private def performUpdate(publicResourceServerId: ResourceServerId)(
+  private def performUpdate(publicTenantId: TenantId, publicResourceServerId: ResourceServerId)(
       updateAction: => doobie.ConnectionIO[Int]
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] =
-    performUpdate(publicResourceServerId.toString)(updateAction)
+    performUpdate(publicTenantId, publicResourceServerId.toString)(updateAction)
 
-  private def performUpdate(publicResourceServerId: String)(
+  private def performUpdate(publicTenantId: TenantId, publicResourceServerId: String)(
       updateAction: => doobie.ConnectionIO[Int]
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] =
     for {
       updateCount <- updateAction
 
       resOpt <-
-        if (updateCount > 0) getByPublicResourceServerId(publicResourceServerId)
+        if (updateCount > 0) getByPublicResourceServerId(publicTenantId, publicResourceServerId)
         else Option.empty[ResourceServerEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(ResourceServerNotFoundError(publicResourceServerId))
 
   def deleteDeactivated(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerDbError, ResourceServerEntity.Read]] =
     for {
-      resourceServerToDelete <- getByPublicResourceServerId(publicResourceServerId).map(
-        _.toRight(resourceServerNotFoundError(publicResourceServerId.toString))
+      resourceServerToDelete <- getByPublicResourceServerId(publicTenantId, publicResourceServerId).map(
+        _.toRight(resourceServerNotFoundError(publicResourceServerId))
       )
 
       resultE <- resourceServerToDelete.flatTraverse { result =>
         Either
           .cond(
             result.deactivatedAt.isDefined,
-            Queries.deleteDeactivated(publicResourceServerId).run.map(_ => result),
+            TenantIdScopedQueries(publicTenantId).deleteDeactivated(publicResourceServerId).run.map(_ => result),
             resourceServerIsNotDeactivatedError(publicResourceServerId)
           )
           .sequence
@@ -116,22 +126,21 @@ class ResourceServerDb()(implicit clock: Clock) {
     } yield resultE
 
   def getByPublicResourceServerId(
+      publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Option[ResourceServerEntity.Read]] =
-    getByPublicResourceServerId(publicResourceServerId.toString)
+    getByPublicResourceServerId(publicTenantId, publicResourceServerId.toString)
 
   private def getByPublicResourceServerId(
+      publicTenantId: TenantId,
       publicResourceServerId: String
   ): doobie.ConnectionIO[Option[ResourceServerEntity.Read]] =
-    Queries.getBy(publicResourceServerId).option
+    TenantIdScopedQueries(publicTenantId).getBy(publicResourceServerId).option
 
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ResourceServerEntity.Read] =
-    Queries.getAllForTenant(publicTenantId).stream
+    TenantIdScopedQueries(publicTenantId).getAllForTenant.stream
 
   private object Queries {
-
-    private val columnNamesSelectFragment =
-      fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at, deactivated_at"
 
     def insert(resourceServerEntity: ResourceServerEntity.Write, now: Instant): doobie.Update0 =
       sql"""INSERT INTO resource_server(id, tenant_id, public_resource_server_id, name, description, created_at, updated_at)
@@ -145,6 +154,14 @@ class ResourceServerDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "resource_server"
+
+    private val columnNamesSelectFragment =
+      fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at, deactivated_at"
 
     def update(resourceServerEntity: ResourceServerEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE resource_server
@@ -152,6 +169,7 @@ class ResourceServerDb()(implicit clock: Clock) {
                 description = ${resourceServerEntity.description},
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${resourceServerEntity.publicResourceServerId}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def activate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
@@ -159,6 +177,7 @@ class ResourceServerDb()(implicit clock: Clock) {
             SET deactivated_at = NULL,
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deactivate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
@@ -166,33 +185,29 @@ class ResourceServerDb()(implicit clock: Clock) {
             SET deactivated_at = $now,
                 updated_at = $now
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def deleteDeactivated(publicResourceServerId: ResourceServerId): doobie.Update0 =
       sql"""DELETE FROM resource_server
-            WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString} AND resource_server.deactivated_at IS NOT NULL
+            WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
+              AND resource_server.deactivated_at IS NOT NULL
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def getBy(publicResourceServerId: String): doobie.Query0[ResourceServerEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM resource_server WHERE public_resource_server_id = $publicResourceServerId")
-        .query[ResourceServerEntity.Read]
+        sql"""FROM resource_server
+              WHERE public_resource_server_id = $publicResourceServerId
+                AND ${tenantIdFr(TableName)}
+             """.stripMargin).query[ResourceServerEntity.Read]
 
-    def getAllForTenant(publicTenantId: TenantId): doobie.Query0[ResourceServerEntity.Read] =
-      sql"""SELECT
-              res.id,
-              res.tenant_id,
-              res.public_resource_server_id,
-              res.name,
-              res.description,
-              res.created_at,
-              res.updated_at,
-              res.deactivated_at
-            FROM resource_server AS res
-            JOIN tenant ON tenant.id = res.tenant_id
-            WHERE tenant.public_tenant_id = ${publicTenantId.toString}
-            ORDER BY res.created_at DESC
-           """.stripMargin.query[ResourceServerEntity.Read]
+    def getAllForTenant: doobie.Query0[ResourceServerEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM resource_server
+              WHERE ${tenantIdFr(TableName)}
+              ORDER BY resource_server.created_at DESC
+             """.stripMargin).query[ResourceServerEntity.Read]
 
   }
 }

@@ -210,19 +210,23 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildApiKeyTemplatesPermissionsRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
     val apiKeyTemplateDb = new ApiKeyTemplateDb
     val permissionDb = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
-    new ApiKeyTemplatesPermissionsRepository(apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new ApiKeyTemplatesPermissionsRepository(tenantDb, apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+      transactor
+    )
   }
 
   private def buildApiKeyTemplatesUsersRepository(transactor: HikariTransactor[IO]) = {
+    val tenantDb = new TenantDb
     val apiKeyTemplateDb = new ApiKeyTemplateDb
     val userDb = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
-    new ApiKeyTemplatesUsersRepository(apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+    new ApiKeyTemplatesUsersRepository(tenantDb, apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
   }
 
   private def buildTenantRepository(
@@ -253,10 +257,13 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
   private def buildPermissionRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
     val resourceServerDb = new ResourceServerDb
+    val tenantDb = new TenantDb
     val permissionDb = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
-    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+      transactor
+    )
   }
 
   private def buildUserRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {

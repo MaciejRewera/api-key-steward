@@ -27,8 +27,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.createPermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (_, resourceServerId, request) = input
-          permissionService.createPermission(resourceServerId, request).map {
+          val (tenantId, resourceServerId, request) = input
+          permissionService.createPermission(tenantId, resourceServerId, request).map {
 
             case Right(newPermission) =>
               (StatusCode.Created, CreatePermissionResponse(newPermission)).asRight
@@ -56,8 +56,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.deletePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { - => input =>
-          val (_, resourceServerId, permissionId) = input
-          permissionService.deletePermission(resourceServerId, permissionId).map {
+          val (tenantId, resourceServerId, permissionId) = input
+          permissionService.deletePermission(tenantId, resourceServerId, permissionId).map {
 
             case Right(deletedPermission) =>
               (StatusCode.Ok, DeletePermissionResponse(deletedPermission)).asRight
@@ -73,8 +73,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.getSinglePermissionEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId, permissionId) = input
-          permissionService.getBy(resourceServerId, permissionId).map {
+          val (tenantId, resourceServerId, permissionId) = input
+          permissionService.getBy(tenantId, resourceServerId, permissionId).map {
             case Some(permission) => (StatusCode.Ok, GetSinglePermissionResponse(permission)).asRight
             case None =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminPermission.PermissionNotFound)).asLeft
@@ -87,8 +87,8 @@ class AdminPermissionRoutes(jwtAuthorizer: JwtAuthorizer, permissionService: Per
       AdminPermissionEndpoints.searchPermissionsEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, resourceServerId, nameFragment) = input
-          permissionService.getAllBy(resourceServerId)(nameFragment).map {
+          val (tenantId, resourceServerId, nameFragment) = input
+          permissionService.getAllBy(tenantId, resourceServerId)(nameFragment).map {
 
             case Right(permissions) =>
               (StatusCode.Ok, GetMultiplePermissionsResponse(permissions)).asRight

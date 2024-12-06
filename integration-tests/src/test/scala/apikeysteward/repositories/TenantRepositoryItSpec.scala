@@ -1,14 +1,16 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesPermissionsTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.TestDataInsertions._
-import apikeysteward.repositories.db.entity._
 import apikeysteward.repositories.db._
+import apikeysteward.repositories.db.entity._
 import apikeysteward.services.UuidGenerator
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -17,8 +19,6 @@ import doobie.implicits._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-
-import java.util.UUID
 
 class TenantRepositoryItSpec
     extends AsyncWordSpec
@@ -43,7 +43,9 @@ class TenantRepositoryItSpec
   private val userDb = new UserDb
 
   private val permissionRepository =
-    new PermissionRepository(uuidGenerator, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(transactor)
+    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
+      transactor
+    )
 
   private val resourceServerRepository =
     new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
@@ -110,12 +112,9 @@ class TenantRepositoryItSpec
       (tenantId, resourceServerId, templateIds, permissionIds) = dataIds
 
       associationEntities = List(
-        ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
-        ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
-        ApiKeyTemplatesPermissionsEntity
-          .Write(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+        apiKeyTemplatesPermissionsEntityWrite_1_1,
+        apiKeyTemplatesPermissionsEntityWrite_2_1,
+        apiKeyTemplatesPermissionsEntityWrite_2_2
       )
       _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
 
@@ -125,13 +124,32 @@ class TenantRepositoryItSpec
       userIds = List(userId_1, userId_2, userId_3)
 
       associationEntities = List(
-        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds.head),
-        ApiKeyTemplatesUsersEntity.Write(apiKeyTemplateId = templateIds(1), userId = userIds(1))
+        apiKeyTemplatesUsersEntityWrite_1_1,
+        apiKeyTemplatesUsersEntityWrite_2_1,
+        apiKeyTemplatesUsersEntityWrite_2_2
       )
       _ <- apiKeyTemplatesUsersDb.insertMany(associationEntities)
 
     } yield (tenantId, resourceServerId, templateIds, permissionIds, userIds)).transact(transactor)
+
+  implicit private class apiKeyTemplatesPermissionsEntityWriteToRead(
+      entityWrite: ApiKeyTemplatesPermissionsEntity.Write
+  ) {
+    def toRead: ApiKeyTemplatesPermissionsEntity.Read = ApiKeyTemplatesPermissionsEntity.Read(
+      tenantId = entityWrite.tenantId,
+      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+      permissionId = entityWrite.permissionId
+    )
+  }
+  implicit private class apiKeyTemplatesUsersEntityWriteToRead(
+      entityWrite: ApiKeyTemplatesUsersEntity.Write
+  ) {
+    def toRead: ApiKeyTemplatesUsersEntity.Read = ApiKeyTemplatesUsersEntity.Read(
+      tenantId = entityWrite.tenantId,
+      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+      userId = entityWrite.userId
+    )
+  }
 
   "TenantRepository on delete" when {
 
@@ -139,22 +157,18 @@ class TenantRepositoryItSpec
 
       "NOT delete associations between these Permissions and ApiKeyTemplates" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, _, templateIds, permissionIds, _) = dataIds
+          _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllPermissionTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
-            ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
-            ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
-            ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+            apiKeyTemplatesPermissionsEntityWrite_1_1.toRead,
+            apiKeyTemplatesPermissionsEntityWrite_2_1.toRead,
+            apiKeyTemplatesPermissionsEntityWrite_2_2.toRead
           )
         } yield (res, expectedEntities)
 
@@ -165,19 +179,18 @@ class TenantRepositoryItSpec
 
       "NOT delete associations between these Users and ApiKeyTemplates" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, _, templateIds, _, userIds) = dataIds
+          _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllUserTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds.head),
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds(1))
+            apiKeyTemplatesUsersEntityWrite_1_1.toRead,
+            apiKeyTemplatesUsersEntityWrite_2_1.toRead,
+            apiKeyTemplatesUsersEntityWrite_2_2.toRead
           )
         } yield (res, expectedEntities)
 
@@ -191,7 +204,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -214,7 +227,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -239,7 +252,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, templateIds, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -261,7 +274,7 @@ class TenantRepositoryItSpec
         val result = for {
           dataIds <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -284,7 +297,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -306,7 +319,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, _, templateIds, permissionIds, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -314,11 +327,11 @@ class TenantRepositoryItSpec
 
           expectedEntities = List(
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
             ApiKeyTemplatesPermissionsEntity
-              .Read(apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
           )
         } yield (res, expectedEntities)
 
@@ -329,19 +342,18 @@ class TenantRepositoryItSpec
 
       "NOT delete associations between these Users and ApiKeyTemplates" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, _, templateIds, _, userIds) = dataIds
+          _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllUserTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds.head, userId = userIds.head),
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds.head),
-            ApiKeyTemplatesUsersEntity.Read(apiKeyTemplateId = templateIds(1), userId = userIds(1))
+            apiKeyTemplatesUsersEntityWrite_1_1.toRead,
+            apiKeyTemplatesUsersEntityWrite_2_1.toRead,
+            apiKeyTemplatesUsersEntityWrite_2_2.toRead
           )
         } yield (res, expectedEntities)
 
@@ -355,7 +367,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (_, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -378,7 +390,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, resourceServerId, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -397,7 +409,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, templateIds, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -419,7 +431,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -442,7 +454,7 @@ class TenantRepositoryItSpec
           dataIds <- insertPrerequisiteData()
           (tenantId, _, _, _, _) = dataIds
 
-          _ <- resourceServerRepository.activate(publicResourceServerId_1)
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -463,7 +475,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -477,7 +489,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -492,7 +504,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -506,7 +518,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -520,7 +532,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -534,7 +546,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -548,7 +560,7 @@ class TenantRepositoryItSpec
         val result = for {
           _ <- insertPrerequisiteData()
 
-          _ <- resourceServerRepository.deactivate(publicResourceServerId_1)
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
