@@ -9,9 +9,9 @@ import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.A
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
+import apikeysteward.routes.auth.JwtAuthorizer
+import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.apikey._
 import apikeysteward.routes.model.apikey._
@@ -22,10 +22,8 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
 import io.circe.syntax.EncoderOps
-import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
@@ -33,7 +31,6 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
@@ -557,20 +554,20 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
+        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
           apiKeyData_1.asRight
         )
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).updateApiKey(eqTo(publicKeyId_1), eqTo(requestBody))
+          _ = verify(managementService).updateApiKey(eqTo(publicTenantId_1), eqTo(publicKeyId_1), eqTo(requestBody))
         } yield ()
       }
 
       "return successful value returned by ManagementService" when {
 
         "provided with description" in authorizedFixture {
-          managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
+          managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
             apiKeyData_1.asRight
           )
 
@@ -585,7 +582,7 @@ class AdminApiKeyManagementRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
+          managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
             apiKeyDataWithoutDescription.asRight
           )
 
@@ -603,7 +600,7 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         val error = ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1)
-        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.pure(
+        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
           Left(error)
         )
 
@@ -617,7 +614,8 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.updateApiKey(any[UUID], any[UpdateApiKeyAdminRequest]) returns IO.raiseError(testException)
+        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO
+          .raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)
@@ -663,16 +661,16 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           _ <- adminRoutes.run(request)
-          _ = verify(managementService).getApiKey(eqTo(publicKeyId_1))
+          _ = verify(managementService).getApiKey(eqTo(publicTenantId_1), eqTo(publicKeyId_1))
         } yield ()
       }
 
       "return successful value returned by ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[UUID]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
 
         for {
           response <- adminRoutes.run(request)
@@ -682,7 +680,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-        managementService.getApiKey(any[UUID]) returns IO.pure(None)
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(None)
 
         for {
           response <- adminRoutes.run(request)
@@ -696,7 +694,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getApiKey(any[UUID]) returns IO.raiseError(testException)
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.raiseError(testException)
 
         for {
           response <- adminRoutes.run(request)

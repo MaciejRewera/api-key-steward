@@ -3,7 +3,7 @@ package apikeysteward.services
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
@@ -106,10 +106,11 @@ class ApiKeyManagementService(
     } yield res
 
   def updateApiKey(
-      publicKeyId: UUID,
+      publicTenantId: TenantId,
+      publicKeyId: ApiKeyId,
       updateApiKeyRequest: UpdateApiKeyAdminRequest
-  ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
-    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
+  ): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    apiKeyRepository.update(publicTenantId, ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
@@ -134,18 +135,22 @@ class ApiKeyManagementService(
       }
     } yield resE
 
-  def getAllForUser(tenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
+  def getAllForUser(publicTenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
     (for {
-      _ <- EitherT(userRepository.getBy(tenantId, userId).map(_.toRight(UserDoesNotExistError(tenantId, userId))))
+      _ <- EitherT(
+        userRepository.getBy(publicTenantId, userId).map(_.toRight(UserDoesNotExistError(publicTenantId, userId)))
+      )
 
-      result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyData]](apiKeyRepository.getAllForUser(userId))
+      result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyData]](
+        apiKeyRepository.getAllForUser(publicTenantId, userId)
+      )
     } yield result).value
 
-  def getApiKey(userId: UserId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
-    apiKeyRepository.get(userId, publicKeyId)
+  def getApiKey(publicTenantId: TenantId, userId: UserId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
+    apiKeyRepository.get(publicTenantId, userId, publicKeyId)
 
-  def getApiKey(publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
-    apiKeyRepository.getByPublicKeyId(publicKeyId)
+  def getApiKey(publicTenantId: TenantId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
+    apiKeyRepository.getByPublicKeyId(publicTenantId, publicKeyId)
 
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
 }

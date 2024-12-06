@@ -645,17 +645,17 @@ class ApiKeyManagementRoutesSpec
       "JwtOps returns Right containing user ID" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+          managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
-            _ = verify(managementService).getApiKey(eqTo(expectedUserId), eqTo(publicKeyId_1))
+            _ = verify(managementService).getApiKey(eqTo(publicTenantId_1), eqTo(expectedUserId), eqTo(publicKeyId_1))
           } yield ()
         }
 
         "return successful value returned by ManagementService" in authorizedFixture {
-          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(Some(apiKeyData_1))
+          managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
 
           for {
             response <- managementRoutes.run(request)
@@ -665,7 +665,7 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-          managementService.getApiKey(any[String], any[UUID]) returns IO.pure(None)
+          managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(None)
 
           for {
             response <- managementRoutes.run(request)
@@ -679,7 +679,7 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-          managementService.getApiKey(any[String], any[UUID]) returns IO.raiseError(testException)
+          managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.raiseError(testException)
 
           for {
             response <- managementRoutes.run(request)

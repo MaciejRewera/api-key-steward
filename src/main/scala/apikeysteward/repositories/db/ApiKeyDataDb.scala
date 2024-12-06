@@ -4,6 +4,8 @@ import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
@@ -27,6 +29,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
         .insert(apiKeyDataEntity, now)
         .withUniqueGeneratedKeys[ApiKeyDataEntity.Read](
           "id",
+          "tenant_id",
           "api_key_id",
           "public_key_id",
           "name",
@@ -38,70 +41,103 @@ class ApiKeyDataDb()(implicit clock: Clock) {
         )
         .attemptSql
 
-      res = eitherResult.left.map(recoverSqlException(_, apiKeyDataEntity.apiKeyId))
+      res = eitherResult.left.map(recoverSqlException(_, apiKeyDataEntity.tenantId, apiKeyDataEntity.apiKeyId))
 
     } yield res
   }
 
-  private def recoverSqlException(sqlException: SQLException, apiKeyId: UUID): ApiKeyInsertionError =
+  private def recoverSqlException(
+      sqlException: SQLException,
+      tenantDbId: UUID,
+      apiKeyDbId: UUID
+  ): ApiKeyInsertionError =
     sqlException.getSQLState match {
-      case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key_id")    => ApiKeyIdAlreadyExistsError
-      case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") => PublicKeyIdAlreadyExistsError
-      case FOREIGN_KEY_VIOLATION.value                                                 => ReferencedApiKeyDoesNotExistError(apiKeyId)
-      case _                                                                           => ApiKeyInsertionErrorImpl(sqlException)
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_id") =>
+        ReferencedApiKeyDoesNotExistError(apiKeyDbId)
+
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
+        ReferencedTenantDoesNotExistError.fromDbId(tenantDbId)
+
+      case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key_id") =>
+        ApiKeyIdAlreadyExistsError
+
+      case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("public_key_id") =>
+        PublicKeyIdAlreadyExistsError
+
+      case _ => ApiKeyInsertionErrorImpl(sqlException)
     }
 
   def update(
+      publicTenantId: TenantId,
       apiKeyDataEntity: ApiKeyDataEntity.Update
-  ): doobie.ConnectionIO[Either[ApiKeyDataNotFoundError, ApiKeyDataEntity.Read]] = {
+  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] = {
     val now = Instant.now(clock)
     for {
-      updateCount <- Queries.update(apiKeyDataEntity, now).run
+      updateCount <- TenantIdScopedQueries(publicTenantId).update(apiKeyDataEntity, now).run
 
       resOpt <-
-        if (updateCount > 0) getByPublicKeyId(apiKeyDataEntity.publicKeyId)
+        if (updateCount > 0) getByPublicKeyId(publicTenantId, apiKeyDataEntity.publicKeyId)
         else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(
       ApiKeyDataNotFoundError(apiKeyDataEntity.publicKeyId)
     )
   }
 
-  def getByApiKeyId(apiKeyDbId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getByApiKeyId(apiKeyDbId).option
+  def getByApiKeyId(publicTenantId: TenantId, apiKeyDbId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getByApiKeyId(apiKeyDbId).option
 
-  def getByUserId(userId: String): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
-    Queries.getByUserId(userId).stream
+  def getByUserId(publicTenantId: TenantId, userId: UserId): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
+    TenantIdScopedQueries(publicTenantId).getByUserId(userId).stream
 
-  def getByPublicKeyId(publicKeyId: ApiKeyId): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    getByPublicKeyId(publicKeyId.toString)
+  def getByPublicKeyId(
+      publicTenantId: TenantId,
+      publicKeyId: ApiKeyId
+  ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    getByPublicKeyId(publicTenantId, publicKeyId.toString)
 
-  private def getByPublicKeyId(publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getByPublicKeyId(publicKeyId).option
+  private def getByPublicKeyId(
+      publicTenantId: TenantId,
+      publicKeyId: String
+  ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getByPublicKeyId(publicKeyId).option
 
-  def getBy(userId: String, publicKeyId: ApiKeyId): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    getBy(userId, publicKeyId.toString)
+  def getBy(
+      publicTenantId: TenantId,
+      userId: UserId,
+      publicKeyId: ApiKeyId
+  ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    getBy(publicTenantId, userId, publicKeyId.toString)
 
-  private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getBy(userId, publicKeyId).option
+  private def getBy(
+      publicTenantId: TenantId,
+      userId: String,
+      publicKeyId: String
+  ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getBy(userId, publicKeyId).option
 
-  def delete(publicKeyId: ApiKeyId): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
+  def delete(
+      publicTenantId: TenantId,
+      publicKeyId: ApiKeyId
+  ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
-      apiKeyToDeleteE <- getByPublicKeyId(publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(publicKeyId)))
-      resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(publicKeyId.toString).run.map(_ => result))
+      apiKeyToDeleteE <- getByPublicKeyId(publicTenantId, publicKeyId).map(
+        _.toRight(ApiKeyDataNotFoundError(publicKeyId))
+      )
+      resultE <- apiKeyToDeleteE.traverse(result =>
+        TenantIdScopedQueries(publicTenantId).delete(publicKeyId.toString).run.map(_ => result)
+      )
     } yield resultE
 
   private object Queries {
 
     private val columnNamesInsertFragment =
-      fr"INSERT INTO api_key_data(id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
-
-    private val columnNamesSelectFragment =
-      fr"SELECT id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at"
+      fr"INSERT INTO api_key_data(id, tenant_id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
 
     def insert(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
       (columnNamesInsertFragment ++
         sql"""VALUES (
                 ${apiKeyDataEntityWrite.id},
+                ${apiKeyDataEntityWrite.tenantId},
                 ${apiKeyDataEntityWrite.apiKeyId},
                 ${apiKeyDataEntityWrite.publicKeyId},
                 ${apiKeyDataEntityWrite.name},
@@ -111,6 +147,14 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 $now,
                 $now
              )""".stripMargin).update
+  }
+
+  private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
+
+    private val TableName = "api_key_data"
+
+    private val columnNamesSelectFragment =
+      fr"SELECT id, tenant_id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at"
 
     def update(apiKeyDataEntityUpdate: ApiKeyDataEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE api_key_data
@@ -118,27 +162,42 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 description = ${apiKeyDataEntityUpdate.description},
                 updated_at = $now
             WHERE api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
     def getByApiKeyId(apiKeyDbId: UUID): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM api_key_data WHERE api_key_id = $apiKeyDbId").query[ApiKeyDataEntity.Read]
+        sql"""FROM api_key_data
+              WHERE api_key_id = $apiKeyDbId
+                AND ${tenantIdFr(TableName)}
+             """).query[ApiKeyDataEntity.Read]
 
-    def getByUserId(userId: String): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getByUserId(userId: UserId): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM api_key_data WHERE user_id = $userId").query[ApiKeyDataEntity.Read]
+        sql"""FROM api_key_data
+              WHERE user_id = $userId
+                AND ${tenantIdFr(TableName)}
+             """).query[ApiKeyDataEntity.Read]
 
     def getByPublicKeyId(publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM api_key_data WHERE public_key_id = $publicKeyId").query[ApiKeyDataEntity.Read]
+        sql"""FROM api_key_data
+              WHERE public_key_id = $publicKeyId
+                AND ${tenantIdFr(TableName)}
+             """).query[ApiKeyDataEntity.Read]
 
-    def getBy(userId: String, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getBy(userId: UserId, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM api_key_data WHERE user_id = $userId AND public_key_id = $publicKeyId").query[ApiKeyDataEntity.Read]
+        sql"""FROM api_key_data
+              WHERE user_id = $userId
+                AND public_key_id = $publicKeyId
+                AND ${tenantIdFr(TableName)}
+             """).query[ApiKeyDataEntity.Read]
 
     def delete(publicKeyId: String): doobie.Update0 =
       sql"""DELETE FROM api_key_data
             WHERE api_key_data.public_key_id = $publicKeyId
+              AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
   }
