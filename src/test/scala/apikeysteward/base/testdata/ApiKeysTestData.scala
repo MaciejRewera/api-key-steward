@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.TenantsTestData.tenantDbId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.model._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
@@ -91,23 +92,29 @@ object ApiKeysTestData extends FixedClock {
     description = descriptionUpdated
   )
 
-  val apiKeyEntityWrite_1: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_1, apiKey = apiKey_1.value)
+  val apiKeyEntityWrite_1: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_1, tenantId = tenantDbId_1, apiKey = hashedApiKey_1.value)
   val apiKeyEntityRead_1: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_1,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
 
-  val apiKeyEntityWrite_2: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_2, apiKey = apiKey_2.value)
+  val apiKeyEntityWrite_2: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_2, tenantId = tenantDbId_1, apiKey = hashedApiKey_2.value)
   val apiKeyEntityRead_2: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_2,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
 
-  val apiKeyEntityWrite_3: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_3, apiKey = apiKey_3.value)
+  val apiKeyEntityWrite_3: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_3, tenantId = tenantDbId_1, apiKey = hashedApiKey_3.value)
   val apiKeyEntityRead_3: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_3,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )

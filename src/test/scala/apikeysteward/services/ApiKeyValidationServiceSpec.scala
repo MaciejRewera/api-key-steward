@@ -2,9 +2,11 @@ package apikeysteward.services
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.generators.ChecksumCodec.ChecksumDecodingError.ProvidedEncodedChecksumTooLongError
 import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
 import apikeysteward.model.ApiKey
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
 import cats.effect.IO
@@ -43,14 +45,14 @@ class ApiKeyValidationServiceSpec
         val checksum = 42L
         checksumCalculator.calcChecksumFor(any[String]) returns checksum
         checksumCodec.decode(any[String]) returns checksum.asRight
-        apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+        apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
 
         for {
-          _ <- apiKeyValidationService.validateApiKey(apiKey_1)
+          _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
 
           _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
           _ = verify(checksumCodec).decode(eqTo(checksum_1))
-          _ = verify(apiKeyRepository).get(eqTo(apiKey_1))
+          _ = verify(apiKeyRepository).get(eqTo(publicTenantId_1), eqTo(apiKey_1))
         } yield ()
       }
 
@@ -62,18 +64,18 @@ class ApiKeyValidationServiceSpec
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
 
-          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Right(apiKeyData))
+          apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1).asserting(_ shouldBe Right(apiKeyData))
         }
 
         "the key's expiresAt is 1 second in the future" in {
           val checksum = 42L
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
 
-          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Right(apiKeyData_1))
+          apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1).asserting(_ shouldBe Right(apiKeyData_1))
         }
       }
     }
@@ -87,7 +89,7 @@ class ApiKeyValidationServiceSpec
           checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
 
           for {
-            _ <- apiKeyValidationService.validateApiKey(apiKey_1)
+            _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
             _ = verifyZeroInteractions(apiKeyRepository)
           } yield ()
         }
@@ -96,7 +98,9 @@ class ApiKeyValidationServiceSpec
           checksumCalculator.calcChecksumFor(any[String]) returns 42L
           checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
 
-          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
+          apiKeyValidationService
+            .validateApiKey(publicTenantId_1, apiKey_1)
+            .asserting(_ shouldBe Left(ApiKeyIncorrectError))
         }
       }
 
@@ -109,7 +113,7 @@ class ApiKeyValidationServiceSpec
             checksumCodec.decode(any[String]) returns 42L.asRight
 
             for {
-              _ <- apiKeyValidationService.validateApiKey(apiKey_1)
+              _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
               _ = verifyZeroInteractions(apiKeyRepository)
             } yield ()
           }
@@ -118,7 +122,9 @@ class ApiKeyValidationServiceSpec
             checksumCalculator.calcChecksumFor(any[String]) returns -42
             checksumCodec.decode(any[String]) returns 42L.asRight
 
-            apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
+            apiKeyValidationService
+              .validateApiKey(publicTenantId_1, apiKey_1)
+              .asserting(_ shouldBe Left(ApiKeyIncorrectError))
           }
         }
 
@@ -129,7 +135,7 @@ class ApiKeyValidationServiceSpec
             checksumCodec.decode(any[String]) returns 42L.asRight
 
             for {
-              _ <- apiKeyValidationService.validateApiKey(apiKey_1)
+              _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
               _ = verifyZeroInteractions(apiKeyRepository)
             } yield ()
           }
@@ -138,7 +144,9 @@ class ApiKeyValidationServiceSpec
             checksumCalculator.calcChecksumFor(any[String]) returns 43
             checksumCodec.decode(any[String]) returns 42L.asRight
 
-            apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
+            apiKeyValidationService
+              .validateApiKey(publicTenantId_1, apiKey_1)
+              .asserting(_ shouldBe Left(ApiKeyIncorrectError))
           }
         }
       }
@@ -149,9 +157,11 @@ class ApiKeyValidationServiceSpec
         val checksum = 42L
         checksumCalculator.calcChecksumFor(any[String]) returns checksum
         checksumCodec.decode(any[String]) returns checksum.asRight
-        apiKeyRepository.get(any[ApiKey]) returns IO.pure(None)
+        apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(None)
 
-        apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyIncorrectError))
+        apiKeyValidationService
+          .validateApiKey(publicTenantId_1, apiKey_1)
+          .asserting(_ shouldBe Left(ApiKeyIncorrectError))
       }
     }
 
@@ -165,9 +175,11 @@ class ApiKeyValidationServiceSpec
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
 
-          apiKeyValidationService.validateApiKey(apiKey_1).asserting(_ shouldBe Left(ApiKeyExpiredError(nowInstant)))
+          apiKeyValidationService
+            .validateApiKey(publicTenantId_1, apiKey_1)
+            .asserting(_ shouldBe Left(ApiKeyExpiredError(nowInstant)))
         }
 
         "expiresAt is 1 nanosecond in the past" in {
@@ -176,10 +188,10 @@ class ApiKeyValidationServiceSpec
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
 
           apiKeyValidationService
-            .validateApiKey(apiKey_1)
+            .validateApiKey(publicTenantId_1, apiKey_1)
             .asserting(result => result shouldBe Left(ApiKeyExpiredError(nowInstant.minusNanos(1))))
         }
 
@@ -189,10 +201,10 @@ class ApiKeyValidationServiceSpec
 
           checksumCalculator.calcChecksumFor(any[String]) returns checksum
           checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
 
           apiKeyValidationService
-            .validateApiKey(apiKey_1)
+            .validateApiKey(publicTenantId_1, apiKey_1)
             .asserting(result => result shouldBe Left(ApiKeyExpiredError(nowInstant.minusSeconds(1))))
         }
       }

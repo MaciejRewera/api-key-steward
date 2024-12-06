@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
@@ -16,9 +17,6 @@ import java.time.{Clock, Instant}
 import java.util.UUID
 
 class ApiKeyDataDb()(implicit clock: Clock) {
-
-  import doobie.postgres._
-  import doobie.postgres.implicits._
 
   def insert(
       apiKeyDataEntity: ApiKeyDataEntity.Write
@@ -68,25 +66,25 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     )
   }
 
-  def getByApiKeyId(apiKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    Queries.getByApiKeyId(apiKeyId).option
+  def getByApiKeyId(apiKeyDbId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+    Queries.getByApiKeyId(apiKeyDbId).option
 
   def getByUserId(userId: String): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
     Queries.getByUserId(userId).stream
 
-  def getByPublicKeyId(publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+  def getByPublicKeyId(publicKeyId: ApiKeyId): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     getByPublicKeyId(publicKeyId.toString)
 
   private def getByPublicKeyId(publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getByPublicKeyId(publicKeyId).option
 
-  def getBy(userId: String, publicKeyId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
+  def getBy(userId: String, publicKeyId: ApiKeyId): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     getBy(userId, publicKeyId.toString)
 
   private def getBy(userId: String, publicKeyId: String): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     Queries.getBy(userId, publicKeyId).option
 
-  def delete(publicKeyId: UUID): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
+  def delete(publicKeyId: ApiKeyId): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
       apiKeyToDeleteE <- getByPublicKeyId(publicKeyId).map(_.toRight(ApiKeyDataNotFoundError(publicKeyId)))
       resultE <- apiKeyToDeleteE.traverse(result => Queries.delete(publicKeyId.toString).run.map(_ => result))
@@ -122,9 +120,9 @@ class ApiKeyDataDb()(implicit clock: Clock) {
             WHERE api_key_data.public_key_id = ${apiKeyDataEntityUpdate.publicKeyId}
            """.stripMargin.update
 
-    def getByApiKeyId(apiKeyId: UUID): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getByApiKeyId(apiKeyDbId: UUID): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
-        sql"FROM api_key_data WHERE api_key_id = $apiKeyId").query[ApiKeyDataEntity.Read]
+        sql"FROM api_key_data WHERE api_key_id = $apiKeyDbId").query[ApiKeyDataEntity.Read]
 
     def getByUserId(userId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++

@@ -1,12 +1,18 @@
 CREATE TABLE IF NOT EXISTS api_key
 (
     id         UUID PRIMARY KEY,
+    tenant_id  UUID         NOT NULL,
+
     api_key    VARCHAR(256) NOT NULL,
 
     created_at TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (api_key)
+
+    UNIQUE (api_key),
+    CONSTRAINT fkey_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)
 );
+
+CREATE INDEX idx_api_key ON api_key USING hash (api_key);
 
 CREATE TABLE IF NOT EXISTS api_key_data
 (
@@ -26,5 +32,4 @@ CREATE TABLE IF NOT EXISTS api_key_data
     CONSTRAINT fkey_api_key_id FOREIGN KEY (api_key_id) REFERENCES api_key (id)
 );
 
-CREATE INDEX idx_api_key ON api_key USING hash(api_key);
 CREATE INDEX idx_user_id ON api_key_data (user_id);

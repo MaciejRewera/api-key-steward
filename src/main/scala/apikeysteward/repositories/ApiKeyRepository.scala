@@ -1,10 +1,14 @@
 package apikeysteward.repositories
 
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
-import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb}
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeyDb, TenantDb}
 import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
@@ -18,6 +22,7 @@ import java.util.UUID
 
 class ApiKeyRepository(
     uuidGenerator: UuidGenerator,
+    tenantDb: TenantDb,
     apiKeyDb: ApiKeyDb,
     apiKeyDataDb: ApiKeyDataDb,
     secureHashGenerator: SecureHashGenerator
@@ -26,6 +31,7 @@ class ApiKeyRepository(
   private val logger: StructuredLogger[doobie.ConnectionIO] = Slf4jLogger.getLogger
 
   def insert(
+      publicTenantId: TenantId,
       apiKey: ApiKey,
       apiKeyData: ApiKeyData
   ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
@@ -34,18 +40,26 @@ class ApiKeyRepository(
       apiKeyDbId <- uuidGenerator.generateUuid
       apiKeyDataDbId <- uuidGenerator.generateUuid
 
-      result <- insertHashed(hashedApiKey, apiKeyDbId, apiKeyDataDbId, apiKeyData)
+      result <- insertHashed(publicTenantId, hashedApiKey, apiKeyDbId, apiKeyDataDbId, apiKeyData)
     } yield result
 
   private def insertHashed(
+      publicTenantId: TenantId,
       hashedApiKey: HashedApiKey,
       apiKeyDbId: UUID,
       apiKeyDataDbId: UUID,
       apiKeyData: ApiKeyData
   ): IO[Either[ApiKeyInsertionError, ApiKeyData]] =
     (for {
+      tenantId <- EitherT
+        .fromOptionF(
+          tenantDb.getByPublicTenantId(publicTenantId),
+          ReferencedTenantDoesNotExistError(publicTenantId)
+        )
+        .map(_.id)
+
       _ <- logInfoE("Inserting new API Key...")
-      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKeyDbId, hashedApiKey.value)))
+      apiKeyEntityRead <- EitherT(apiKeyDb.insert(ApiKeyEntity.Write(apiKeyDbId, tenantId, hashedApiKey.value)))
         .leftSemiflatTap(e => logger.warn(s"Could not insert API Key because: ${e.message}"))
         .flatTap(_ => logInfoE("Inserted new API Key."))
 
@@ -75,39 +89,43 @@ class ApiKeyRepository(
       apiKeyData = ApiKeyData.from(entityAfterUpdateRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def get(apiKey: ApiKey): IO[Option[ApiKeyData]] =
+  def get(publicTenantId: TenantId, apiKey: ApiKey): IO[Option[ApiKeyData]] =
     for {
       hashedApiKey <- secureHashGenerator.generateHashFor(apiKey)
-      apiKeyData <- getHashed(hashedApiKey)
+      apiKeyData <- getHashed(publicTenantId, hashedApiKey)
     } yield apiKeyData
 
-  private def getHashed(hashedApiKey: HashedApiKey): IO[Option[ApiKeyData]] =
+  private def getHashed(publicTenantId: TenantId, hashedApiKey: HashedApiKey): IO[Option[ApiKeyData]] =
     (for {
-      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(hashedApiKey))
+      apiKeyEntityRead <- OptionT(apiKeyDb.getByApiKey(publicTenantId, hashedApiKey))
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByApiKeyId(apiKeyEntityRead.id))
 
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def getAllForUser(userId: String): IO[List[ApiKeyData]] =
+  def getAllForUser(userId: UserId): IO[List[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- apiKeyDataDb.getByUserId(userId)
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).transact(transactor).compile.toList
 
-  def get(userId: String, publicKeyId: UUID): IO[Option[ApiKeyData]] =
+  def get(userId: UserId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getBy(userId, publicKeyId))
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def getByPublicKeyId(publicKeyId: UUID): IO[Option[ApiKeyData]] =
+  def getByPublicKeyId(publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
     (for {
       apiKeyDataEntityRead <- OptionT(apiKeyDataDb.getByPublicKeyId(publicKeyId))
       apiKeyData = ApiKeyData.from(apiKeyDataEntityRead)
     } yield apiKeyData).value.transact(transactor)
 
-  def delete(userId: String, publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+  def delete(
+      publicTenantId: TenantId,
+      userId: UserId,
+      publicKeyIdToDelete: ApiKeyId
+  ): IO[Either[ApiKeyDbError, ApiKeyData]] =
     (for {
       apiKeyDataToDelete <- EitherT {
         apiKeyDataDb
@@ -115,10 +133,10 @@ class ApiKeyRepository(
           .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(userId, publicKeyIdToDelete)))
       }
 
-      deletionResult <- performDeletion(apiKeyDataToDelete)
+      deletionResult <- performDeletion(publicTenantId, apiKeyDataToDelete)
     } yield deletionResult).value.transact(transactor)
 
-  def delete(publicKeyIdToDelete: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
+  def delete(publicTenantId: TenantId, publicKeyIdToDelete: ApiKeyId): IO[Either[ApiKeyDbError, ApiKeyData]] =
     (for {
       apiKeyDataToDelete <- EitherT {
         apiKeyDataDb
@@ -126,17 +144,18 @@ class ApiKeyRepository(
           .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyIdToDelete)))
       }
 
-      deletionResult <- performDeletion(apiKeyDataToDelete)
+      deletionResult <- performDeletion(publicTenantId, apiKeyDataToDelete)
     } yield deletionResult).value.transact(transactor)
 
   private def performDeletion(
+      publicTenantId: TenantId,
       apiKeyDataToDelete: ApiKeyDataEntity.Read
   ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyData] = {
 
     val publicKeyIdToDelete = UUID.fromString(apiKeyDataToDelete.publicKeyId)
     for {
       _ <- deleteApiKeyData(publicKeyIdToDelete)
-      _ <- deleteApiKey(apiKeyDataToDelete.apiKeyId, publicKeyIdToDelete)
+      _ <- deleteApiKey(publicTenantId, apiKeyDataToDelete.apiKeyId, publicKeyIdToDelete)
 
       res = ApiKeyData.from(apiKeyDataToDelete)
     } yield res
@@ -152,12 +171,13 @@ class ApiKeyRepository(
     } yield res)
 
   private def deleteApiKey(
+      publicTenantId: TenantId,
       apiKeyId: UUID,
       publicKeyIdToDelete: UUID
   ): EitherT[doobie.ConnectionIO, ApiKeyDbError, ApiKeyEntity.Read] =
     EitherT(for {
       _ <- logger.info(s"Deleting ApiKey for key with publicKeyId: [$publicKeyIdToDelete]...")
-      res <- apiKeyDb.delete(apiKeyId)
+      res <- apiKeyDb.delete(publicTenantId, apiKeyId)
       _ <- logger.info(s"Deleted ApiKey for key with publicKeyId: [$publicKeyIdToDelete].")
     } yield res)
 

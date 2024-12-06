@@ -3,6 +3,7 @@ package apikeysteward.routes
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
@@ -300,21 +301,21 @@ class ApiKeyManagementRoutesSpec
       "JwtOps returns Right containing user ID and request body is correct" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
             (apiKey_1, apiKeyData_1).asRight
           )
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
-            _ = verify(managementService).createApiKey(eqTo(expectedUserId), eqTo(requestBody))
+            _ = verify(managementService).createApiKey(eqTo(publicTenantId_1), eqTo(expectedUserId), eqTo(requestBody))
           } yield ()
         }
 
         "return successful value returned by ManagementService" when {
 
           "provided with description" in authorizedFixture {
-            managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+            managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
               (apiKey_1, apiKeyData_1).asRight
             )
 
@@ -329,7 +330,7 @@ class ApiKeyManagementRoutesSpec
 
           "provided with NO description" in authorizedFixture {
             val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-            managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+            managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
               (apiKey_1, apiKeyDataWithoutDescription).asRight
             )
 
@@ -348,7 +349,9 @@ class ApiKeyManagementRoutesSpec
         "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
           val error =
             ValidationError(Seq(TtlTooLargeError(requestBody.ttl, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))))
-          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(Left(error))
+          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
+            Left(error)
+          )
 
           for {
             response <- managementRoutes.run(request)
@@ -358,7 +361,7 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Internal Server Error when ManagementService returns successful IO with Left containing InsertionError" in authorizedFixture {
-          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.pure(
+          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
             Left(InsertionError(ApiKeyIdAlreadyExistsError))
           )
 
@@ -370,7 +373,9 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-          managementService.createApiKey(any[String], any[CreateApiKeyRequest]) returns IO.raiseError(testException)
+          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.raiseError(
+            testException
+          )
 
           for {
             response <- managementRoutes.run(request)
@@ -794,17 +799,25 @@ class ApiKeyManagementRoutesSpec
       "JwtOps returns Right containing user ID" should {
 
         "call ManagementService" in authorizedFixture {
-          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+          managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
+            Right(apiKeyData_1)
+          )
           val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
 
           for {
             _ <- managementRoutes.run(request)
-            _ = verify(managementService).deleteApiKeyBelongingToUserWith(eqTo(expectedUserId), eqTo(publicKeyId_1))
+            _ = verify(managementService).deleteApiKeyBelongingToUserWith(
+              eqTo(publicTenantId_1),
+              eqTo(expectedUserId),
+              eqTo(publicKeyId_1)
+            )
           } yield ()
         }
 
         "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
-          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(Right(apiKeyData_1))
+          managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
+            Right(apiKeyData_1)
+          )
 
           for {
             response <- managementRoutes.run(request)
@@ -814,7 +827,7 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
-          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
+          managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
             Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
           )
 
@@ -828,7 +841,7 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
-          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.pure(
+          managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
             Left(ApiKeyNotFoundError)
           )
 
@@ -842,7 +855,8 @@ class ApiKeyManagementRoutesSpec
         }
 
         "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-          managementService.deleteApiKeyBelongingToUserWith(any[String], any[UUID]) returns IO.raiseError(testException)
+          managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO
+            .raiseError(testException)
 
           for {
             response <- managementRoutes.run(request)
