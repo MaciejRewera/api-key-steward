@@ -1,8 +1,9 @@
 package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
+import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
@@ -32,12 +33,13 @@ class ApiKeyManagementService(
     extends Logging {
 
   def createApiKey(
+      publicTenantId: TenantId,
       userId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
       validatedRequest <- validateRequest(createApiKeyRequest)
-      result <- createApiKeyWithRetry(userId, validatedRequest)
+      result <- createApiKeyWithRetry(publicTenantId, userId, validatedRequest)
     } yield result).value
 
   private def validateRequest(
@@ -50,6 +52,7 @@ class ApiKeyManagementService(
   )
 
   private def createApiKeyWithRetry(
+      publicTenantId: TenantId,
       userId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ApiKeyCreateError, (ApiKey, ApiKeyData)] = {
@@ -63,7 +66,7 @@ class ApiKeyManagementService(
     EitherT {
       Retry
         .retry(maxRetries = createApiKeyMaxRetries, isWorthRetrying)(
-          buildCreateApiKeyAction(userId, createApiKeyRequest)
+          buildCreateApiKeyAction(publicTenantId, userId, createApiKeyRequest)
         )
         .map(_.asRight)
         .recover { case exc: RetryException[ApiKeyCreateError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
@@ -71,6 +74,7 @@ class ApiKeyManagementService(
   }
 
   private def buildCreateApiKeyAction(
+      publicTenantId: TenantId,
       userId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
@@ -84,13 +88,17 @@ class ApiKeyManagementService(
       apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
       _ <- logInfoF("Inserting API Key into database...")
-      insertionResult <- EitherT(insertNewApiKey(newApiKey, apiKeyData))
+      insertionResult <- EitherT(insertNewApiKey(publicTenantId, newApiKey, apiKeyData))
 
     } yield newApiKey -> insertionResult).value
 
-  private def insertNewApiKey(newApiKey: ApiKey, apiKeyData: ApiKeyData): IO[Either[InsertionError, ApiKeyData]] =
+  private def insertNewApiKey(
+      publicTenantId: TenantId,
+      newApiKey: ApiKey,
+      apiKeyData: ApiKeyData
+  ): IO[Either[InsertionError, ApiKeyData]] =
     for {
-      insertionResult <- apiKeyRepository.insert(newApiKey, apiKeyData).flatTap {
+      insertionResult <- apiKeyRepository.insert(publicTenantId, newApiKey, apiKeyData).flatTap {
         case Right(_) => logger.info(s"Inserted API Key with publicKeyId: [${apiKeyData.publicKeyId}] into database.")
         case Left(e)  => logger.warn(s"Could not insert API Key into database because: ${e.message}")
       }
@@ -98,22 +106,27 @@ class ApiKeyManagementService(
     } yield res
 
   def updateApiKey(
-      publicKeyId: UUID,
+      publicTenantId: TenantId,
+      publicKeyId: ApiKeyId,
       updateApiKeyRequest: UpdateApiKeyAdminRequest
-  ): IO[Either[ApiKeyDataNotFoundError, ApiKeyData]] =
-    apiKeyRepository.update(ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
+  ): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    apiKeyRepository.update(publicTenantId, ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
       case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
-  def deleteApiKeyBelongingToUserWith(userId: UserId, publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
-    delete(publicKeyId)(apiKeyRepository.delete(userId, publicKeyId))
+  def deleteApiKeyBelongingToUserWith(
+      publicTenantId: TenantId,
+      userId: UserId,
+      publicKeyId: ApiKeyId
+  ): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    delete(publicKeyId)(apiKeyRepository.delete(publicTenantId, userId, publicKeyId))
 
-  def deleteApiKey(publicKeyId: UUID): IO[Either[ApiKeyDbError, ApiKeyData]] =
-    delete(publicKeyId)(apiKeyRepository.delete(publicKeyId))
+  def deleteApiKey(publicTenantId: TenantId, publicKeyId: ApiKeyId): IO[Either[ApiKeyDbError, ApiKeyData]] =
+    delete(publicKeyId)(apiKeyRepository.delete(publicTenantId, publicKeyId))
 
   private def delete(
-      publicKeyId: UUID
+      publicKeyId: ApiKeyId
   )(deleteFunction: => IO[Either[ApiKeyDbError, ApiKeyData]]): IO[Either[ApiKeyDbError, ApiKeyData]] =
     for {
       resE <- deleteFunction.flatTap {
@@ -122,20 +135,22 @@ class ApiKeyManagementService(
       }
     } yield resE
 
-  def getAllForUser(tenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
+  def getAllForUser(publicTenantId: TenantId, userId: UserId): IO[Either[UserDoesNotExistError, List[ApiKeyData]]] =
     (for {
-      _ <- EitherT(userRepository.getBy(tenantId, userId).map(_.toRight(UserDoesNotExistError(tenantId, userId))))
+      _ <- EitherT(
+        userRepository.getBy(publicTenantId, userId).map(_.toRight(UserDoesNotExistError(publicTenantId, userId)))
+      )
 
       result <- EitherT.liftF[IO, UserDoesNotExistError, List[ApiKeyData]](
-        apiKeyRepository.getAllForUser(userId)
+        apiKeyRepository.getAllForUser(publicTenantId, userId)
       )
     } yield result).value
 
-  def getApiKey(userId: UserId, publicKeyId: UUID): IO[Option[ApiKeyData]] =
-    apiKeyRepository.get(userId, publicKeyId)
+  def getApiKey(publicTenantId: TenantId, userId: UserId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
+    apiKeyRepository.get(publicTenantId, userId, publicKeyId)
 
-  def getApiKey(publicKeyId: UUID): IO[Option[ApiKeyData]] =
-    apiKeyRepository.getByPublicKeyId(publicKeyId)
+  def getApiKey(publicTenantId: TenantId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
+    apiKeyRepository.getByPublicKeyId(publicTenantId, publicKeyId)
 
   private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
 }

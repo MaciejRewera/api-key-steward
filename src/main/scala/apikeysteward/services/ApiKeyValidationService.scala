@@ -1,6 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.generators.{CRC32ChecksumCalculator, ChecksumCodec}
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ApiKey, ApiKeyData}
 import apikeysteward.repositories.ApiKeyRepository
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError
@@ -19,13 +20,13 @@ class ApiKeyValidationService(
 )(implicit clock: Clock)
     extends Logging {
 
-  def validateApiKey(apiKey: ApiKey): IO[Either[ApiKeyValidationError, ApiKeyData]] =
+  def validateApiKey(publicTenantId: TenantId, apiKey: ApiKey): IO[Either[ApiKeyValidationError, ApiKeyData]] =
     (for {
       _ <- validateChecksum(apiKey)
 
       apiKeyData <- EitherT(
         apiKeyRepository
-          .get(apiKey)
+          .get(publicTenantId, apiKey)
           .map(_.toRight[ApiKeyValidationError](ApiKeyIncorrectError))
       )
       _ <- validateExpiryDate(apiKeyData)

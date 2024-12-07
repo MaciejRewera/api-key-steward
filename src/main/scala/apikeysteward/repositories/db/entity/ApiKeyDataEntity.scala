@@ -9,6 +9,7 @@ object ApiKeyDataEntity {
 
   case class Read(
       id: UUID,
+      tenantId: UUID,
       apiKeyId: UUID,
       publicKeyId: String,
       name: String,
@@ -21,6 +22,7 @@ object ApiKeyDataEntity {
 
   case class Write(
       id: UUID,
+      tenantId: UUID,
       apiKeyId: UUID,
       publicKeyId: String,
       name: String,
@@ -30,9 +32,10 @@ object ApiKeyDataEntity {
   )
 
   object Write {
-    def from(id: UUID, apiKeyId: UUID, apiKeyData: ApiKeyData): ApiKeyDataEntity.Write =
+    def from(id: UUID, tenantId: UUID, apiKeyId: UUID, apiKeyData: ApiKeyData): ApiKeyDataEntity.Write =
       ApiKeyDataEntity.Write(
         id = id,
+        tenantId = tenantId,
         apiKeyId = apiKeyId,
         publicKeyId = apiKeyData.publicKeyId.toString,
         name = apiKeyData.name,

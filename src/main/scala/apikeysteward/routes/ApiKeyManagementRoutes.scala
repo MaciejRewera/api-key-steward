@@ -26,10 +26,10 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
         ApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => input =>
-            val (_, request) = input
+            val (tenantId, request) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.createApiKey(_, request).map {
+              result <- userIdE.flatTraverse(managementService.createApiKey(tenantId, _, request).map {
                 case Right((newApiKey, apiKeyData)) =>
                   (StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
 
@@ -72,10 +72,10 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
         ApiKeyManagementEndpoints.getSingleApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => input =>
-            val (_, publicKeyId) = input
+            val (tenantId, publicKeyId) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.getApiKey(_, publicKeyId).map {
+              result <- userIdE.flatTraverse(managementService.getApiKey(tenantId, _, publicKeyId).map {
                 case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
                 case None =>
                   ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound)).asLeft
@@ -91,18 +91,20 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
         ApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => input =>
-            val (_, publicKeyId) = input
+            val (tenantId, publicKeyId) = input
             for {
               userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.deleteApiKeyBelongingToUserWith(_, publicKeyId).map {
-                case Right(deletedApiKeyData) =>
-                  (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
+              result <- userIdE.flatTraverse(
+                managementService.deleteApiKeyBelongingToUserWith(tenantId, _, publicKeyId).map {
+                  case Right(deletedApiKeyData) =>
+                    (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
-                case Left(_: ApiKeyDataNotFoundError) =>
-                  ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)).asLeft
-                case Left(_: ApiKeyDbError) =>
-                  ErrorInfo.internalServerErrorInfo().asLeft
-              })
+                  case Left(_: ApiKeyDataNotFoundError) =>
+                    ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.DeleteApiKeyNotFound)).asLeft
+                  case Left(_: ApiKeyDbError) =>
+                    ErrorInfo.internalServerErrorInfo().asLeft
+                }
+              )
 
             } yield result
           }

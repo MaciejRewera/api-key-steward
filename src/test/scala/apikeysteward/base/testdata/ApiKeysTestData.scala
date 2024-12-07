@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.TenantsTestData.tenantDbId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
 import apikeysteward.model._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
@@ -91,29 +92,36 @@ object ApiKeysTestData extends FixedClock {
     description = descriptionUpdated
   )
 
-  val apiKeyEntityWrite_1: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_1, apiKey = apiKey_1.value)
+  val apiKeyEntityWrite_1: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_1, tenantId = tenantDbId_1, apiKey = hashedApiKey_1.value)
   val apiKeyEntityRead_1: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_1,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
 
-  val apiKeyEntityWrite_2: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_2, apiKey = apiKey_2.value)
+  val apiKeyEntityWrite_2: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_2, tenantId = tenantDbId_1, apiKey = hashedApiKey_2.value)
   val apiKeyEntityRead_2: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_2,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
 
-  val apiKeyEntityWrite_3: ApiKeyEntity.Write = ApiKeyEntity.Write(id = apiKeyDbId_3, apiKey = apiKey_3.value)
+  val apiKeyEntityWrite_3: ApiKeyEntity.Write =
+    ApiKeyEntity.Write(id = apiKeyDbId_3, tenantId = tenantDbId_1, apiKey = hashedApiKey_3.value)
   val apiKeyEntityRead_3: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_3,
+    tenantId = tenantDbId_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
 
   val apiKeyDataEntityWrite_1: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     id = apiKeyDataDbId_1,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_1,
     publicKeyId = publicKeyIdStr_1,
     name = name_1,
@@ -123,6 +131,7 @@ object ApiKeysTestData extends FixedClock {
   )
   val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_1,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_1,
     publicKeyId = publicKeyIdStr_1,
     name = name_1,
@@ -135,6 +144,7 @@ object ApiKeysTestData extends FixedClock {
 
   val apiKeyDataEntityWrite_2: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     id = apiKeyDataDbId_2,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_2,
     publicKeyId = publicKeyIdStr_2,
     name = name_2,
@@ -144,6 +154,7 @@ object ApiKeysTestData extends FixedClock {
   )
   val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_2,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_2,
     publicKeyId = publicKeyIdStr_2,
     name = name_2,
@@ -156,6 +167,7 @@ object ApiKeysTestData extends FixedClock {
 
   val apiKeyDataEntityWrite_3: ApiKeyDataEntity.Write = ApiKeyDataEntity.Write(
     id = apiKeyDataDbId_3,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_3,
     publicKeyId = publicKeyIdStr_3,
     name = name_3,
@@ -165,6 +177,7 @@ object ApiKeysTestData extends FixedClock {
   )
   val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_3,
+    tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_3,
     publicKeyId = publicKeyIdStr_3,
     name = name_3,

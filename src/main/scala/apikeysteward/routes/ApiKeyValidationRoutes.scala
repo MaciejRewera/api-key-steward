@@ -16,8 +16,8 @@ class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         ApiKeyValidationEndpoints.validateApiKeyEndpoint.serverLogic[IO] { input =>
-          val (_, request) = input
-          apiKeyValidationService.validateApiKey(ApiKey(request.apiKey)).map {
+          val (tenantId, request) = input
+          apiKeyValidationService.validateApiKey(tenantId, ApiKey(request.apiKey)).map {
 
             case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
 

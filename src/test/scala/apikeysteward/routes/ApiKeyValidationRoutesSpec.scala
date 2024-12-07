@@ -2,7 +2,9 @@ package apikeysteward.routes
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKey_1}
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ApiKey
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.apikey.{ValidateApiKeyRequest, ValidateApiKeyResponse}
 import apikeysteward.services.ApiKeyValidationService
@@ -43,22 +45,22 @@ class ApiKeyValidationRoutesSpec
 
     val uri = uri"/api-keys/validation"
     val requestBody = ValidateApiKeyRequest(apiKey_1.value)
-    val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(tenantIdHeader))
+    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders)
       .withEntity(requestBody.asJson)
 
     runCommonTenantIdHeaderTests(request)
 
     "call ApiKeyService" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         _ <- validateApiKeyRoutes.run(request)
-        _ = verify(apiKeyService).validateApiKey(eqTo(apiKey_1))
+        _ = verify(apiKeyService).validateApiKey(eqTo(publicTenantId_1), eqTo(apiKey_1))
       } yield ()
     }
 
     "return Ok and ApiKeyData when ApiKeyService returns Right" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
 
       for {
         response <- validateApiKeyRoutes.run(request)
@@ -70,7 +72,7 @@ class ApiKeyValidationRoutesSpec
     }
 
     "return Forbidden when ApiKeyService returns Left containing ApiKeyIncorrectError" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
+      apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
 
       for {
         response <- validateApiKeyRoutes.run(request)
@@ -84,7 +86,7 @@ class ApiKeyValidationRoutesSpec
     }
 
     "return Forbidden when ApiKeyService returns Left containing ApiKeyExpiredError" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.pure(
+      apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(
         Left(ApiKeyExpiredError(nowInstant.minusSeconds(1).plusMillis(123).plusNanos(456)))
       )
 
@@ -101,7 +103,7 @@ class ApiKeyValidationRoutesSpec
     }
 
     "return Internal Server Error when ApiKeyService returns an exception" in {
-      apiKeyService.validateApiKey(any[ApiKey]) returns IO.raiseError(testException)
+      apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.raiseError(testException)
 
       for {
         response <- validateApiKeyRoutes.run(request)

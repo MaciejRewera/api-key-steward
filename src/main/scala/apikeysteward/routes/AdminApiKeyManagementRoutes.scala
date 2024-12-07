@@ -26,10 +26,10 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
         AdminApiKeyManagementEndpoints.createApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
-            val (_, adminRequest) = input
+            val (tenantId, adminRequest) = input
             val (userId, request) = adminRequest.toUserRequest
 
-            managementService.createApiKey(userId, request).map {
+            managementService.createApiKey(tenantId, userId, request).map {
 
               case Right((newApiKey, apiKeyData)) =>
                 (StatusCode.Created, CreateApiKeyAdminResponse(newApiKey.value, apiKeyData)).asRight
@@ -48,8 +48,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       AdminApiKeyManagementEndpoints.updateApiKeyEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (_, publicKeyId, updateApiKeyRequest) = input
-          managementService.updateApiKey(publicKeyId, updateApiKeyRequest).map {
+          val (tenantId, publicKeyId, updateApiKeyRequest) = input
+          managementService.updateApiKey(tenantId, publicKeyId, updateApiKeyRequest).map {
 
             case Right(apiKeyData) =>
               (StatusCode.Ok, UpdateApiKeyAdminResponse(apiKeyData)).asRight
@@ -66,8 +66,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
         AdminApiKeyManagementEndpoints.getSingleApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadAdmin))(_))
           .serverLogic { _ => input =>
-            val (_, publicKeyId) = input
-            managementService.getApiKey(publicKeyId).map {
+            val (tenantId, publicKeyId) = input
+            managementService.getApiKey(tenantId, publicKeyId).map {
 
               case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
 
@@ -83,8 +83,8 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
         AdminApiKeyManagementEndpoints.deleteApiKeyEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
-            val (_, publicKeyId) = input
-            managementService.deleteApiKey(publicKeyId).map {
+            val (tenantId, publicKeyId) = input
+            managementService.deleteApiKey(tenantId, publicKeyId).map {
 
               case Right(deletedApiKeyData) =>
                 (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
