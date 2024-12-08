@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.db.entity.TenantEntity
 
@@ -12,10 +13,10 @@ object TenantsTestData extends FixedClock {
   val tenantDbId_2: UUID = UUID.randomUUID()
   val tenantDbId_3: UUID = UUID.randomUUID()
 
-  val publicTenantId_1: UUID = UUID.randomUUID()
-  val publicTenantId_2: UUID = UUID.randomUUID()
-  val publicTenantId_3: UUID = UUID.randomUUID()
-  val publicTenantId_4: UUID = UUID.randomUUID()
+  val publicTenantId_1: TenantId = UUID.randomUUID()
+  val publicTenantId_2: TenantId = UUID.randomUUID()
+  val publicTenantId_3: TenantId = UUID.randomUUID()
+  val publicTenantId_4: TenantId = UUID.randomUUID()
   val publicTenantIdStr_1: String = publicTenantId_1.toString
   val publicTenantIdStr_2: String = publicTenantId_2.toString
   val publicTenantIdStr_3: String = publicTenantId_3.toString

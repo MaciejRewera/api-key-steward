@@ -2,8 +2,6 @@ package apikeysteward.model
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
@@ -18,9 +16,10 @@ object RepositoryErrors {
   sealed abstract class GenericError(override val message: String) extends CustomError
   object GenericError {
 
-    case class ApiKeyTemplateDoesNotExistError(publicApiKeyTemplateId: ApiKeyTemplateId)
+    case class ApiKeyTemplateDoesNotExistError(publicTenantId: TenantId, publicApiKeyTemplateId: ApiKeyTemplateId)
         extends GenericError(
-          message = s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist."
+          message =
+            s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist for Tenant with publicTenantId = [$publicTenantId]."
         )
 
     case class UserDoesNotExistError(publicTenantId: TenantId, publicUserId: UserId)
@@ -46,9 +45,9 @@ object RepositoryErrors {
             extends ApiKeyInsertionError(errorMessage)
             with ReferencedTenantDoesNotExistError
 
-        def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError =
+        def fromDbId(tenantDbId: UUID): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
-            errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
+            errorMessage = s"Tenant with ID = [${tenantDbId.toString}] does not exist."
           )
         def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
           ReferencedTenantDoesNotExistErrorImpl(
@@ -71,14 +70,14 @@ object RepositoryErrors {
           extends ApiKeyInsertionError(message = s"An error occurred when inserting ApiKey: $cause")
     }
 
-    def apiKeyDataNotFoundError(userId: String, publicKeyId: UUID): ApiKeyDbError =
+    def apiKeyDataNotFoundError(userId: UserId, publicKeyId: UUID): ApiKeyDbError =
       apiKeyDataNotFoundError(userId, publicKeyId.toString)
 
-    def apiKeyDataNotFoundError(userId: String, publicKeyId: String): ApiKeyDbError =
+    def apiKeyDataNotFoundError(userId: UserId, publicKeyId: String): ApiKeyDbError =
       ApiKeyDataNotFoundError(userId, publicKeyId)
 
-    def apiKeyDataNotFoundError(publicKeyId: UUID): ApiKeyDbError =
-      ApiKeyDataNotFoundError(publicKeyId)
+    def apiKeyDataNotFoundError(publicTenantId: TenantId, publicKeyId: UUID): ApiKeyDbError =
+      ApiKeyDataNotFoundError(publicTenantId, publicKeyId)
 
     trait ApiKeyDataNotFoundError extends ApiKeyDbError { val errorMessage: String }
     object ApiKeyDataNotFoundError {
@@ -87,17 +86,18 @@ object RepositoryErrors {
           extends ApiKeyDbError(errorMessage)
           with ApiKeyDataNotFoundError
 
-      def apply(userId: String, publicKeyId: UUID): ApiKeyDataNotFoundError =
+      def apply(userId: UserId, publicKeyId: UUID): ApiKeyDataNotFoundError =
         apply(userId, publicKeyId.toString)
 
-      def apply(userId: String, publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
-        errorMessage = s"Could not find API Key Data with userId = [$userId] and publicKeyId = [$publicKeyId]."
+      def apply(userId: UserId, publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
+        errorMessage = s"Could not find API Key Data for userId = [$userId] and publicKeyId = [$publicKeyId]."
       )
 
-      def apply(publicKeyId: UUID): ApiKeyDataNotFoundError =
-        apply(publicKeyId.toString)
-      def apply(publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
-        errorMessage = s"Could not find API Key Data with publicKeyId = [$publicKeyId]."
+      def apply(publicTenantId: TenantId, publicKeyId: UUID): ApiKeyDataNotFoundError =
+        apply(publicTenantId, publicKeyId.toString)
+      def apply(publicTenantId: TenantId, publicKeyId: String): ApiKeyDataNotFoundError = ApiKeyDataNotFoundErrorImpl(
+        errorMessage =
+          s"Could not find API Key Data with publicKeyId = [$publicKeyId] for Tenant with publicTenantId = [$publicTenantId]."
       )
     }
 
@@ -126,9 +126,8 @@ object RepositoryErrors {
     case class TenantNotFoundError(publicTenantId: String)
         extends TenantDbError(message = s"Could not find Tenant with publicTenantId = [$publicTenantId].")
 
-    def tenantIsNotDeactivatedError(publicTenantId: TenantId): TenantDbError = TenantIsNotDeactivatedError(
-      publicTenantId
-    )
+    def tenantIsNotDeactivatedError(publicTenantId: TenantId): TenantDbError =
+      TenantIsNotDeactivatedError(publicTenantId)
 
     case class TenantIsNotDeactivatedError(publicTenantId: TenantId)
         extends TenantDbError(

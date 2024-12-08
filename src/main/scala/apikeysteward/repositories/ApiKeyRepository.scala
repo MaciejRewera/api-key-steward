@@ -141,7 +141,7 @@ class ApiKeyRepository(
       apiKeyDataToDelete <- EitherT {
         apiKeyDataDb
           .getByPublicKeyId(publicTenantId, publicKeyIdToDelete)
-          .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyIdToDelete)))
+          .map(_.toRight(ApiKeyDbError.apiKeyDataNotFoundError(publicTenantId, publicKeyIdToDelete)))
       }
 
       deletionResult <- performDeletion(publicTenantId, apiKeyDataToDelete)

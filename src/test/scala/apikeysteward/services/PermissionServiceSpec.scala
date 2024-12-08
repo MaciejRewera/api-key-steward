@@ -458,7 +458,9 @@ class PermissionServiceSpec
 
         permissionService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
-          .asserting(_ shouldBe Left(GenericError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
+          .asserting(
+            _ shouldBe Left(GenericError.ApiKeyTemplateDoesNotExistError(publicTenantId_1, publicTemplateId_1))
+          )
       }
     }
 

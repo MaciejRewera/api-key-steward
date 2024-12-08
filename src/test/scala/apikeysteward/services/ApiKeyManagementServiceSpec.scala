@@ -427,12 +427,12 @@ class ApiKeyManagementServiceSpec
 
       "ApiKeyRepository returns Left" in {
         apiKeyRepository.delete(any[TenantId], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyId_1))
+          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1))
         )
 
         managementService
           .deleteApiKey(publicTenantId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
     }
 
