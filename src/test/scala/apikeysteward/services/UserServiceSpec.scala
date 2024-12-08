@@ -327,7 +327,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
         userService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
-          .asserting(_ shouldBe Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
+          .asserting(_ shouldBe Left(ApiKeyTemplateDoesNotExistError(publicTenantId_1, publicTemplateId_1)))
       }
     }
 

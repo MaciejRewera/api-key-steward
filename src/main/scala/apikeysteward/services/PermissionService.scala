@@ -91,7 +91,7 @@ class PermissionService(
       _ <- EitherT(
         apiKeyTemplateRepository
           .getBy(publicTenantId, templateId)
-          .map(_.toRight(GenericError.ApiKeyTemplateDoesNotExistError(templateId)))
+          .map(_.toRight(GenericError.ApiKeyTemplateDoesNotExistError(publicTenantId, templateId)))
       )
 
       result <- EitherT.liftF[IO, GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]](

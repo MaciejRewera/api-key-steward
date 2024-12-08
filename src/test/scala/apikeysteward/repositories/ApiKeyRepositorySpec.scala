@@ -351,15 +351,15 @@ class ApiKeyRepositorySpec
       "return Left containing ApiKeyDataNotFoundError" in {
         tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
         apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(publicKeyId_1)
-          .asInstanceOf[ApiKeyDbError]
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(
+          publicTenantId_1,
+          publicKeyId_1
+        ).asInstanceOf[ApiKeyDbError].asLeft[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
           .update(publicTenantId_1, apiKeyDataUpdate_1)
           .asserting(
-            _ shouldBe Left(ApiKeyDataNotFoundError(apiKeyDataUpdate_1.publicKeyId))
+            _ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, apiKeyDataUpdate_1.publicKeyId))
           )
       }
     }
@@ -795,7 +795,7 @@ class ApiKeyRepositorySpec
 
         apiKeyRepository
           .delete(publicTenantId_1, publicKeyId_1)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
     }
 

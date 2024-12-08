@@ -298,7 +298,7 @@ class ApiKeyDataDbSpec
         apiKeyDataDb
           .update(publicTenantId_1, apiKeyDataEntityUpdate_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -321,7 +321,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -347,7 +347,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.update(publicTenantId_2, apiKeyDataEntityUpdate_1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_2, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -375,7 +375,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1.copy(publicKeyId = publicKeyIdStr_2))
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_2)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_2)))
       }
 
       "make no changes to the DB" in {
@@ -810,7 +810,7 @@ class ApiKeyDataDbSpec
         apiKeyDataDb
           .delete(publicTenantId_1, publicKeyId_1)
           .transact(transactor)
-          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+          .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -832,7 +832,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -858,7 +858,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.delete(publicTenantId_2, publicKeyId_1)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_2, publicKeyId_1)))
       }
 
       "make no changes to the DB" in {
@@ -886,7 +886,7 @@ class ApiKeyDataDbSpec
           res <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_2)
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_2)))
+        result.asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicTenantId_1, publicKeyId_2)))
       }
 
       "make no changes to the DB" in {

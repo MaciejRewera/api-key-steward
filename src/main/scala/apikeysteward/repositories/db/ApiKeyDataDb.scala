@@ -79,7 +79,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
         if (updateCount > 0) getByPublicKeyId(publicTenantId, apiKeyDataEntity.publicKeyId)
         else Option.empty[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(
-      ApiKeyDataNotFoundError(apiKeyDataEntity.publicKeyId)
+      ApiKeyDataNotFoundError(publicTenantId, apiKeyDataEntity.publicKeyId)
     )
   }
 
@@ -121,7 +121,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   ): doobie.ConnectionIO[Either[ApiKeyDbError, ApiKeyDataEntity.Read]] =
     for {
       apiKeyToDeleteE <- getByPublicKeyId(publicTenantId, publicKeyId).map(
-        _.toRight(ApiKeyDataNotFoundError(publicKeyId))
+        _.toRight(ApiKeyDataNotFoundError(publicTenantId, publicKeyId))
       )
       resultE <- apiKeyToDeleteE.traverse(result =>
         TenantIdScopedQueries(publicTenantId).delete(publicKeyId.toString).run.map(_ => result)

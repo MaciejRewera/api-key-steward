@@ -67,7 +67,7 @@ class UserService(
       _ <- EitherT(
         apiKeyTemplateRepository
           .getBy(publicTenantId, templateId)
-          .map(_.toRight(ApiKeyTemplateDoesNotExistError(templateId)))
+          .map(_.toRight(ApiKeyTemplateDoesNotExistError(publicTenantId, templateId)))
       )
 
       result <- EitherT.liftF[IO, ApiKeyTemplateDoesNotExistError, List[User]](
