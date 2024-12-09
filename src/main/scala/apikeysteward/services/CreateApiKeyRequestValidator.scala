@@ -1,7 +1,7 @@
 package apikeysteward.services
 
 import apikeysteward.config.ApiKeyConfig
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError._

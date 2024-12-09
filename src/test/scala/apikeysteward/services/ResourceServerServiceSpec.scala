@@ -4,9 +4,9 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
+import apikeysteward.model.errors.ResourceServerDbError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ResourceServer, ResourceServerUpdate}

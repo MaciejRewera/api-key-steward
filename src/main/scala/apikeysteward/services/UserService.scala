@@ -1,13 +1,12 @@
 package apikeysteward.services
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError
-import apikeysteward.model.RepositoryErrors.GenericError.ApiKeyTemplateDoesNotExistError
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
+import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.repositories.{ApiKeyTemplateRepository, TenantRepository, UserRepository}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.utils.Logging

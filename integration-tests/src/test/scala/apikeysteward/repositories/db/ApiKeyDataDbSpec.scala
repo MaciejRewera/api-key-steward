@@ -5,8 +5,8 @@ import apikeysteward.base.testdata.ApiKeysTestData
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2}
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

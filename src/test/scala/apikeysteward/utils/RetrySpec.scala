@@ -1,6 +1,6 @@
 package apikeysteward.utils
 
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.IdiomaticMockito.StubbingOps

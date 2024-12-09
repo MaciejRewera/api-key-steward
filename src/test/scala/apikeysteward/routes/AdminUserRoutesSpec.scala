@@ -10,11 +10,11 @@ import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, 
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
-import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
-import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.UserDbError.UserInsertionError._
+import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity

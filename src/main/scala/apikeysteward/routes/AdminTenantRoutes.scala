@@ -1,7 +1,7 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError._
+import apikeysteward.model.errors.TenantDbError
+import apikeysteward.model.errors.TenantDbError._
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminTenantEndpoints, ApiErrorMessages}

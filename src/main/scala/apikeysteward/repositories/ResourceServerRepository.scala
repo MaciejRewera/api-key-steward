@@ -1,8 +1,8 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.errors.ResourceServerDbError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.errors.ResourceServerDbError._
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ResourceServer, ResourceServerUpdate}

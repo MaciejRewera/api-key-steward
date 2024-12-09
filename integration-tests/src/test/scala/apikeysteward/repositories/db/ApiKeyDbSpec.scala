@@ -3,8 +3,8 @@ package apikeysteward.repositories.db
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyNotFoundError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyNotFoundError
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ApiKeyEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

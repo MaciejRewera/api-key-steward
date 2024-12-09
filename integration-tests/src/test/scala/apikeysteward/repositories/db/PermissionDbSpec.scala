@@ -11,8 +11,8 @@ import apikeysteward.base.testdata.TenantsTestData.{
   tenantDbId_2,
   tenantEntityWrite_1
 }
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, PermissionEntity, ResourceServerEntity}
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}

@@ -2,9 +2,9 @@ package apikeysteward.routes
 
 import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerIsNotDeactivatedError
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerIsNotDeactivatedError
+import apikeysteward.model.errors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
+import apikeysteward.model.errors.TenantDbError.{
   CannotDeleteDependencyError,
   TenantIsNotDeactivatedError,
   TenantNotFoundError

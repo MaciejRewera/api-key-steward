@@ -1,8 +1,8 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
+import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId

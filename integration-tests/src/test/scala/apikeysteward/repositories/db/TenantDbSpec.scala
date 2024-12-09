@@ -2,8 +2,8 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
+import apikeysteward.model.errors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
+import apikeysteward.model.errors.TenantDbError.{TenantIsNotDeactivatedError, TenantNotFoundError}
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.TenantEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

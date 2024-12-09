@@ -1,6 +1,6 @@
 package apikeysteward.utils
 
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import apikeysteward.utils.Retry.RetryException._
 import cats.effect.IO
 import org.typelevel.log4cats.StructuredLogger

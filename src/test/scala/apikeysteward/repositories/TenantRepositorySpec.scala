@@ -2,23 +2,20 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
-import apikeysteward.base.testdata.ResourceServersTestData.{
-  publicResourceServerId_1,
-  resourceServer_1,
-  resourceServer_2
-}
+import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_3, user_1, user_2, user_3}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.ResourceServer.ResourceServerId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantInsertionErrorImpl
-import apikeysteward.model.RepositoryErrors.TenantDbError._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
-import apikeysteward.model.RepositoryErrors.{ResourceServerDbError, TenantDbError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
+import apikeysteward.model.errors.ResourceServerDbError
+import apikeysteward.model.errors.ResourceServerDbError._
+import apikeysteward.model.errors.UserDbError.UserNotFoundError
+import apikeysteward.model.errors.TenantDbError
+import apikeysteward.model.errors.TenantDbError.TenantInsertionError.TenantInsertionErrorImpl
+import apikeysteward.model.errors.TenantDbError._
 import apikeysteward.model.{ApiKeyTemplate, ResourceServer, Tenant, User}
 import apikeysteward.repositories.db.TenantDb
 import apikeysteward.repositories.db.entity.TenantEntity

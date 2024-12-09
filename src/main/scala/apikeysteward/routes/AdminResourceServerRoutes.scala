@@ -1,8 +1,8 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.errors.ResourceServerDbError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.model.errors.ResourceServerDbError._
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminResourceServerEndpoints, ApiErrorMessages}

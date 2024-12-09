@@ -12,10 +12,10 @@ import apikeysteward.base.testdata.ResourceServersTestData.{
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.GenericError
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
+import apikeysteward.model.errors.GenericError
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{ApiKeyTemplate, Permission, ResourceServer}

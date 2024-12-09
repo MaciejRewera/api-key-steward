@@ -3,12 +3,12 @@ package apikeysteward.services
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.GenericError
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.errors.GenericError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.utils.Retry.RetryException
@@ -16,8 +16,6 @@ import apikeysteward.utils.{Logging, Retry}
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
-
-import java.util.UUID
 
 class PermissionService(
     uuidGenerator: UuidGenerator,
