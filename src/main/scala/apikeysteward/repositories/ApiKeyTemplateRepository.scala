@@ -1,8 +1,8 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError._
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
+import apikeysteward.model.errors.ApiKeyTemplateDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}

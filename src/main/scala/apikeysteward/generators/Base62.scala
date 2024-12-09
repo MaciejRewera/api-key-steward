@@ -1,7 +1,7 @@
 package apikeysteward.generators
 
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import cats.implicits.catsSyntaxEitherId
 
 import scala.annotation.tailrec

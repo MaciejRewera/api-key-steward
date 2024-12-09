@@ -1,11 +1,11 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.{
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.{
   PermissionAlreadyExistsForThisResourceServerError,
   ReferencedResourceServerDoesNotExistError
 }
-import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminPermissionEndpoints, ApiErrorMessages}

@@ -5,9 +5,9 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerNotFoundError
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionNotFoundError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.JwtAuthorizer.{Permission => JwtPermission}

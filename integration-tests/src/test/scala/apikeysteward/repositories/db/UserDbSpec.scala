@@ -5,8 +5,8 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
-import apikeysteward.model.RepositoryErrors.UserDbError.UserNotFoundError
+import apikeysteward.model.errors.UserDbError.UserInsertionError._
+import apikeysteward.model.errors.UserDbError.UserNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
 import apikeysteward.repositories.db.entity.{ApiKeyTemplatesUsersEntity, ResourceServerEntity, UserEntity}
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}

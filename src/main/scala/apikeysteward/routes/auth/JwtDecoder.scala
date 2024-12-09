@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import apikeysteward.routes.auth.JwtDecoder._
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError
 import apikeysteward.routes.auth.JwtValidator.JwtValidatorError._

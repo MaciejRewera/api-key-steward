@@ -1,9 +1,9 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData.ApiKeyId
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError._
+import apikeysteward.model.errors.ApiKeyDbError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.model.errors.ApiKeyDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate, HashedApiKey}

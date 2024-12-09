@@ -5,11 +5,11 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError.PermissionInsertionErrorImpl
-import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.PermissionInsertionErrorImpl
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.errors.ResourceServerDbError
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.errors.ResourceServerDbError._
 import apikeysteward.model.ResourceServer
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId

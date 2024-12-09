@@ -6,10 +6,10 @@ import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError._
-import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.ApiKeyDbError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.errors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}

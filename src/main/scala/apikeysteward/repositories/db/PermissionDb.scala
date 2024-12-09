@@ -2,8 +2,8 @@ package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError._
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError._
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.PermissionEntity

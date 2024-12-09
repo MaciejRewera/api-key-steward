@@ -6,8 +6,8 @@ import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3, userEntityWrite_1}
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
 import apikeysteward.repositories.db.entity.{ApiKeyTemplateEntity, ApiKeyTemplatesUsersEntity, ResourceServerEntity}
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}

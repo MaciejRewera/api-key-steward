@@ -2,9 +2,9 @@ package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesPermissionsDbError._
+import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError
+import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
+import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
 import apikeysteward.repositories.db.{ApiKeyTemplateDb, ApiKeyTemplatesPermissionsDb, PermissionDb, TenantDb}

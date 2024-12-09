@@ -1,6 +1,6 @@
 package apikeysteward.routes.auth
 
-import apikeysteward.model.CustomError
+import apikeysteward.model.errors.CustomError
 import apikeysteward.routes.auth.PublicKeyGenerator._
 import apikeysteward.routes.auth.model.JsonWebKey
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}

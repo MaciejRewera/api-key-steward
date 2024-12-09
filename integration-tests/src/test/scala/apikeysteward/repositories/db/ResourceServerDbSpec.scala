@@ -3,8 +3,8 @@ package apikeysteward.repositories.db
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.errors.ResourceServerDbError._
 import apikeysteward.repositories.DatabaseIntegrationSpec
 import apikeysteward.repositories.db.entity.ResourceServerEntity
 import cats.effect.testing.scalatest.AsyncIOSpec

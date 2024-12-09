@@ -1,8 +1,8 @@
 package apikeysteward.services
 
-import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.RepositoryErrors.TenantDbError._
+import apikeysteward.model.errors.TenantDbError
+import apikeysteward.model.errors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
+import apikeysteward.model.errors.TenantDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.{Tenant, TenantUpdate}
 import apikeysteward.repositories.TenantRepository

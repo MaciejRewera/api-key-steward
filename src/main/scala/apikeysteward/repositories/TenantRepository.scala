@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
-import apikeysteward.model.RepositoryErrors.TenantDbError
-import apikeysteward.model.RepositoryErrors.TenantDbError._
+import apikeysteward.model.errors.TenantDbError
+import apikeysteward.model.errors.TenantDbError._
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model._
 import apikeysteward.repositories.db.TenantDb

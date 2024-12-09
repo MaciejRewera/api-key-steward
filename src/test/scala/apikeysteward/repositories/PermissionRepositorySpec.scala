@@ -8,8 +8,8 @@ import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEnti
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.RepositoryErrors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.RepositoryErrors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity, TenantEntity}

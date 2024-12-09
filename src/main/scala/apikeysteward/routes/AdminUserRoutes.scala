@@ -1,11 +1,11 @@
 package apikeysteward.routes
 
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
-import apikeysteward.model.RepositoryErrors.ApiKeyTemplatesUsersDbError._
-import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
-import apikeysteward.model.RepositoryErrors.UserDbError.UserInsertionError._
-import apikeysteward.model.RepositoryErrors.UserDbError.{UserInsertionError, UserNotFoundError}
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError._
+import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.UserDbError.UserInsertionError._
+import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminUserEndpoints, ApiErrorMessages}

@@ -7,8 +7,8 @@ import apikeysteward.base.testdata.PermissionsTestData.{
 }
 import apikeysteward.base.testdata.ResourceServersTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError.ResourceServerInsertionError._
-import apikeysteward.model.RepositoryErrors.ResourceServerDbError._
+import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError._
+import apikeysteward.model.errors.ResourceServerDbError._
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.auth.JwtAuthorizer

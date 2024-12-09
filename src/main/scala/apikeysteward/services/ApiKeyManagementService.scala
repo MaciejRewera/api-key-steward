@@ -2,12 +2,12 @@ package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError
-import apikeysteward.model.RepositoryErrors.ApiKeyDbError.ApiKeyInsertionError
-import apikeysteward.model.RepositoryErrors.GenericError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model._
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError
+import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
+import apikeysteward.model.errors.GenericError.UserDoesNotExistError
 import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
@@ -21,7 +21,6 @@ import cats.effect.IO
 import cats.implicits.catsSyntaxEitherId
 
 import java.time.Clock
-import java.util.UUID
 
 class ApiKeyManagementService(
     createApiKeyRequestValidator: CreateApiKeyRequestValidator,
