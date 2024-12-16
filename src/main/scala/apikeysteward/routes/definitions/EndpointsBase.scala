@@ -7,10 +7,12 @@ import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
+import apikeysteward.routes.model.admin.apikey.CreateApiKeyAdminRequest
 import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequest, UpdateApiKeyTemplateRequest}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.resourceserver.CreateResourceServerRequest
 import apikeysteward.routes.model.admin.user.CreateUserRequest
+import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -23,6 +25,10 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
 private[routes] object EndpointsBase {
+
+  val UserExample_1: User = User("user-123456701")
+  val UserExample_2: User = User("user-123456702")
+  val UserExample_3: User = User("user-123456703")
 
   val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
   val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
@@ -59,6 +65,21 @@ private[routes] object EndpointsBase {
 
   val createUserRequest: CreateUserRequest = CreateUserRequest(userId = "user-1234567")
 
+  val PermissionExample: Permission = Permission(
+    publicPermissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    name = "read:permission:123",
+    description = Some("A description what this Permission is for.")
+  )
+
+  val CreateApiKeyAdminRequestExample: CreateApiKeyAdminRequest = CreateApiKeyAdminRequest(
+    userId = UserExample_1.userId,
+    name = "My API key",
+    description = Some("A short description what this API key is for."),
+    templateId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+    ttl = Duration(60, TimeUnit.MINUTES),
+    permissionIds = List.fill(3)(EndpointsBase.PermissionExample).map(_.publicPermissionId)
+  )
+
   val ApiKeyExample: ApiKey = ApiKey("prefix_thisIsMyApiKey1234567")
 
   val ApiKeyDataExample: ApiKeyData = ApiKeyData(
@@ -67,12 +88,6 @@ private[routes] object EndpointsBase {
     description = Some("A short description what this API key is for."),
     userId = "user-1234567",
     expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z")
-  )
-
-  val PermissionExample: Permission = Permission(
-    publicPermissionId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-    name = "read:permission:123",
-    description = Some("A description what this Permission is for.")
   )
 
   val ApiKeyTemplateExample: ApiKeyTemplate = ApiKeyTemplate(
@@ -99,10 +114,6 @@ private[routes] object EndpointsBase {
     isActive = true,
     permissions = List(PermissionExample, PermissionExample)
   )
-
-  val UserExample_1: User = User("user-123456701")
-  val UserExample_2: User = User("user-123456702")
-  val UserExample_3: User = User("user-123456703")
 
   val authenticatedEndpointBase: Endpoint[AccessToken, Unit, ErrorInfo, Unit, Any] =
     endpoint

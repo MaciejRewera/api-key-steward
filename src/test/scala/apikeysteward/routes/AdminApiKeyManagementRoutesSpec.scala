@@ -1,14 +1,16 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.errors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
-import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
@@ -31,8 +33,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 
 class AdminApiKeyManagementRoutesSpec
     extends AsyncWordSpec
@@ -68,7 +69,13 @@ class AdminApiKeyManagementRoutesSpec
       userId = publicUserId_1,
       name = name_1,
       description = description_1,
-      ttl = ttlMinutes
+      templateId = publicTemplateId_1,
+      ttl = ttl,
+      permissionIds = List(
+        publicPermissionId_1,
+        publicPermissionId_2,
+        publicPermissionId_3
+      )
     )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
@@ -274,9 +281,9 @@ class AdminApiKeyManagementRoutesSpec
 
       "request body is provided with negative ttl value" should {
 
-        val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
+        val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = Duration(-1, ttl.unit)))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
+          Some("Invalid value for: body (expected ttl to pass validation, but got: -1 minutes)")
         )
 
         "return Bad Request" in authorizedFixture {
@@ -309,7 +316,9 @@ class AdminApiKeyManagementRoutesSpec
           expectedRequest = CreateApiKeyRequest(
             name = requestBody.name,
             description = requestBody.description,
-            ttl = requestBody.ttl
+            templateId = requestBody.templateId,
+            ttl = requestBody.ttl,
+            permissionIds = requestBody.permissionIds
           )
           _ = verify(managementService).createApiKey(
             eqTo(publicTenantId_1),
@@ -354,8 +363,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
-        val error =
-          ValidationError(Seq(TtlTooLargeError(requestBody.ttl, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))))
+        val error = ValidationError(Seq(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit)))))
         managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
           Left(error)
         )

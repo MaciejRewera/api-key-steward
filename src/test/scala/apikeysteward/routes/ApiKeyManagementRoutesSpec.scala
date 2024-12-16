@@ -1,14 +1,16 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.errors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
-import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
@@ -22,18 +24,15 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import org.typelevel.ci.{CIString, CIStringSyntax}
 
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 
 class ApiKeyManagementRoutesSpec
     extends AsyncWordSpec
@@ -70,7 +69,17 @@ class ApiKeyManagementRoutesSpec
   "ManagementRoutes on POST /api-keys" when {
 
     val uri = Uri.unsafeFromString("/api-keys")
-    val requestBody = CreateApiKeyRequest(name = name_1, description = description_1, ttl = ttlMinutes)
+    val requestBody = CreateApiKeyRequest(
+      name = name_1,
+      description = description_1,
+      templateId = publicTemplateId_1,
+      ttl = ttl,
+      permissionIds = List(
+        publicPermissionId_1,
+        publicPermissionId_2,
+        publicPermissionId_3
+      )
+    )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
@@ -275,9 +284,9 @@ class ApiKeyManagementRoutesSpec
 
           "request body is provided with negative ttl value" should {
 
-            val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
+            val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = Duration(-1, ttl.unit)))
             val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-              Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
+              Some("Invalid value for: body (expected ttl to pass validation, but got: -1 minutes)")
             )
 
             "return Bad Request" in authorizedFixture {
@@ -348,7 +357,7 @@ class ApiKeyManagementRoutesSpec
 
         "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
           val error =
-            ValidationError(Seq(TtlTooLargeError(requestBody.ttl, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))))
+            ValidationError(Seq(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit)))))
           managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
             Left(error)
           )

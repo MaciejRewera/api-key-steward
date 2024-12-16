@@ -4,13 +4,9 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.ApiKeyManagementEndpointsBase.keyIdPathParameter
-import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants.{
-  errorOutVariantBadRequest,
-  errorOutVariantNotFound
-}
+import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
 import apikeysteward.routes.definitions.EndpointsBase.tenantIdHeaderInput
 import apikeysteward.routes.model.apikey._
-import apikeysteward.services.ApiKeyExpirationCalculator
 import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.generic.auto.schemaForCaseClass
@@ -28,16 +24,8 @@ private[routes] object ApiKeyManagementEndpoints {
       .in("api-keys")
       .in(
         jsonBody[CreateApiKeyRequest]
-          .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase}."
-          )
-          .example(
-            CreateApiKeyRequest(
-              name = "My API key",
-              description = Some("A short description what this API key is for."),
-              ttl = 60
-            )
-          )
+          .description(s"Details of the API key to create.")
+          .example(EndpointsBase.CreateApiKeyAdminRequestExample.toUserRequest._2)
       )
       .out(statusCode.description(StatusCode.Created, "API key created successfully"))
       .out(
