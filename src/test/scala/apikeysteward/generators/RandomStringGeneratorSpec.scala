@@ -1,6 +1,6 @@
 package apikeysteward.generators
 
-import apikeysteward.base.testdata.ApiKeysTestData.ttlMinutes
+import apikeysteward.base.testdata.ApiKeysTestData.ttl
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.repositories.SecureHashGenerator.Algorithm.SHA3_256
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -19,7 +19,7 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
       prngAmount = 13,
       randomSectionLength = 42,
       prefix = "prefix",
-      ttlMax = FiniteDuration(ttlMinutes, TimeUnit.MINUTES),
+      ttlMax = ttl,
       storageHashingAlgorithm = SHA3_256
     )
 

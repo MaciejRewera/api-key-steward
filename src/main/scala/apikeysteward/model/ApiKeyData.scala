@@ -40,6 +40,6 @@ object ApiKeyData {
       name = createApiKeyRequest.name,
       description = createApiKeyRequest.description,
       userId = userId,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(createApiKeyRequest.ttl)
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(createApiKeyRequest.ttl)
     )
 }

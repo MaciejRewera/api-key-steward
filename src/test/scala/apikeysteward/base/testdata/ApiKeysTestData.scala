@@ -8,6 +8,7 @@ import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Random
 
 object ApiKeysTestData extends FixedClock {
@@ -62,28 +63,28 @@ object ApiKeysTestData extends FixedClock {
   val nameUpdated = "Updated Test APi Key Name"
   val descriptionUpdated: Option[String] = Some("Updated test key description")
 
-  val ttlMinutes = 60
+  val ttl: FiniteDuration = Duration(60, TimeUnit.MINUTES)
 
   val apiKeyData_1: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,
     name = name_1,
     description = description_1,
     userId = publicUserId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name_2,
     description = description_2,
     userId = publicUserId_2,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name_3,
     description = description_3,
     userId = publicUserId_3,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
 
   val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
@@ -127,7 +128,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_1,
     description = description_1,
     userId = publicUserId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_1,
@@ -137,7 +138,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_1,
     description = description_1,
     userId = publicUserId_1,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -150,7 +151,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_2,
     description = description_2,
     userId = publicUserId_2,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_2,
@@ -160,7 +161,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_2,
     description = description_2,
     userId = publicUserId_2,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -173,7 +174,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_3,
     description = description_3,
     userId = publicUserId_3,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit)
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_3,
@@ -183,7 +184,7 @@ object ApiKeysTestData extends FixedClock {
     name = name_3,
     description = description_3,
     userId = publicUserId_3,
-    expiresAt = nowInstant.plus(ttlMinutes, TimeUnit.MINUTES.toChronoUnit),
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
   )

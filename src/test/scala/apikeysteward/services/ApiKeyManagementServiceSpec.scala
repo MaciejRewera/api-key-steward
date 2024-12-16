@@ -1,7 +1,9 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
@@ -33,7 +35,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 class ApiKeyManagementServiceSpec
     extends AsyncWordSpec
@@ -48,19 +50,20 @@ class ApiKeyManagementServiceSpec
   private val apiKeyRepository = mock[ApiKeyRepository]
   private val userRepository = mock[UserRepository]
 
-  private val managementService =
-    new ApiKeyManagementService(
-      createApiKeyRequestValidator,
-      apiKeyGenerator,
-      uuidGenerator,
-      apiKeyRepository,
-      userRepository
-    )
+  private val managementService = new ApiKeyManagementService(
+    createApiKeyRequestValidator,
+    apiKeyGenerator,
+    uuidGenerator,
+    apiKeyRepository,
+    userRepository
+  )
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name_1,
     description = description_1,
-    ttl = ttlMinutes
+    templateId = publicTemplateId_1,
+    ttl = ttl,
+    permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
   )
 
   override def beforeEach(): Unit = {
@@ -103,9 +106,11 @@ class ApiKeyManagementServiceSpec
 
     "CreateApiKeyRequestValidator returns Left" should {
 
+      val error = TtlTooLargeError(ttl, ttl.minus(Duration(1, ttl.unit)))
+
       "NOT call ApiKeyGenerator, UuidGenerator or ApiKeyRepository" in {
         createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
-          NonEmptyChain.one(TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)))
+          NonEmptyChain.one(error)
         )
 
         for {
@@ -116,7 +121,6 @@ class ApiKeyManagementServiceSpec
       }
 
       "return successful IO containing Left with ValidationError" in {
-        val error = TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
         createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
           NonEmptyChain.one(error)
         )
@@ -313,7 +317,7 @@ class ApiKeyManagementServiceSpec
       name = nameUpdated,
       description = descriptionUpdated,
       userId = publicUserId_1,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42)
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(ttl)
     )
 
     "call ApiKeyRepository" in {

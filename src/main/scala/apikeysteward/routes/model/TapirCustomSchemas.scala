@@ -10,7 +10,6 @@ import apikeysteward.routes.model.admin.resourceserver.{CreateResourceServerRequ
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
-import apikeysteward.services.ApiKeyExpirationCalculator.TtlTimeUnit
 import sttp.tapir.{Schema, ValidationResult, Validator}
 
 import scala.concurrent.duration.Duration
@@ -186,26 +185,17 @@ object TapirCustomSchemas {
   private def userIdValidator: Validator[String] =
     Validator.nonEmptyString and Validator.maxLength(255)
 
-  private def validateTtl(schema: Schema[Int]): Schema[Int] =
+  private def validateTtl(schema: Schema[Duration]): Schema[Duration] =
     schema
-      .validate(Validator.positiveOrZero)
-      .description(
-        s"Time-to-live for the API Key in ${TtlTimeUnit.toString.toLowerCase}. Has to be positive or zero."
-      )
+      .validate(TapirCustomValidators.durationInfiniteOrGreaterThanZeroValidator)
+      .description(s"Time-to-live for the API Key. Has to be positive, zero or infinite.")
 
   private def validateListNotEmpty[T](schema: Schema[List[T]]): Schema[List[T]] =
     schema.validate(Validator.nonEmpty)
 
-  private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] = {
-    val infValidator = Validator.custom[Duration](duration =>
-      ValidationResult.validWhen(
-        duration.ne(Duration.MinusInf) &&
-          duration.ne(Duration.Undefined) &&
-          (duration.eq(Duration.Inf) || duration.gteq(Duration.Zero))
-      )
-    )
-
-    schema.validate(infValidator)
-  }
+  private def validateApiKeyMaxExpiryPeriod(schema: Schema[Duration]): Schema[Duration] =
+    schema
+      .validate(TapirCustomValidators.durationInfiniteOrGreaterThanZeroValidator)
+      .description(s"Maximum allowed time-to-live for the API Key. Has to be positive, zero or infinite.")
 
 }

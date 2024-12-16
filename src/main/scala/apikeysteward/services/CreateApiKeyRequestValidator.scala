@@ -8,7 +8,7 @@ import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestVa
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import cats.implicits.catsSyntaxTuple2Semigroupal
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
 
@@ -24,7 +24,7 @@ class CreateApiKeyRequestValidator(apiKeyConfig: ApiKeyConfig) {
   ): ValidatedNec[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
     Validated
       .condNec(
-        FiniteDuration(createApiKeyRequest.ttl, ApiKeyExpirationCalculator.TtlTimeUnit) <= apiKeyConfig.ttlMax,
+        createApiKeyRequest.ttl <= apiKeyConfig.ttlMax,
         createApiKeyRequest,
         TtlTooLargeError(createApiKeyRequest.ttl, apiKeyConfig.ttlMax)
       )
@@ -35,10 +35,10 @@ object CreateApiKeyRequestValidator {
   sealed abstract class CreateApiKeyRequestValidatorError(override val message: String) extends CustomError
   object CreateApiKeyRequestValidatorError {
 
-    case class TtlTooLargeError(ttlRequest: Int, ttlMax: FiniteDuration)
+    case class TtlTooLargeError(ttlRequest: Duration, ttlMax: FiniteDuration)
         extends CreateApiKeyRequestValidatorError(
           message =
-            s"Provided request contains time-to-live (ttl) of: $ttlRequest ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase} which is bigger than maximum allowed value of: $ttlMax."
+            s"Provided request contains time-to-live (ttl) of: $ttlRequest which is bigger than maximum allowed value of: $ttlMax."
         )
   }
 
