@@ -1,24 +1,25 @@
 package apikeysteward.services
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
-import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
 import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.TtlTooLargeError
-import cats.data.NonEmptyChain
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -31,9 +32,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 
 class ApiKeyManagementServiceSpec
     extends AsyncWordSpec
@@ -48,25 +47,30 @@ class ApiKeyManagementServiceSpec
   private val apiKeyRepository = mock[ApiKeyRepository]
   private val userRepository = mock[UserRepository]
 
-  private val managementService =
-    new ApiKeyManagementService(
-      createApiKeyRequestValidator,
-      apiKeyGenerator,
-      uuidGenerator,
-      apiKeyRepository,
-      userRepository
-    )
+  private val managementService = new ApiKeyManagementService(
+    createApiKeyRequestValidator,
+    apiKeyGenerator,
+    uuidGenerator,
+    apiKeyRepository,
+    userRepository
+  )
 
   private val createApiKeyRequest = CreateApiKeyRequest(
     name = name_1,
     description = description_1,
-    ttl = ttlMinutes
+    templateId = publicTemplateId_1,
+    ttl = ttl,
+    permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
   )
 
   override def beforeEach(): Unit = {
     reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository, userRepository)
 
-    createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Right(createApiKeyRequest)
+    createApiKeyRequestValidator.validateCreateRequest(
+      any[TenantId],
+      any[UserId],
+      any[CreateApiKeyRequest]
+    ) returns IO.pure(Right(createApiKeyRequest))
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
     uuidGenerator.generateUuid returns IO.pure(publicKeyId_1)
     apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
@@ -82,7 +86,11 @@ class ApiKeyManagementServiceSpec
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
 
-          _ = verify(createApiKeyRequestValidator).validateCreateRequest(eqTo(createApiKeyRequest))
+          _ = verify(createApiKeyRequestValidator).validateCreateRequest(
+            eqTo(publicTenantId_1),
+            eqTo(publicUserId_1),
+            eqTo(createApiKeyRequest)
+          )
           _ = verify(apiKeyGenerator).generateApiKey
           _ = verify(uuidGenerator).generateUuid
           _ = {
@@ -103,10 +111,14 @@ class ApiKeyManagementServiceSpec
 
     "CreateApiKeyRequestValidator returns Left" should {
 
+      val error = TtlTooLargeError(ttl, ttl.minus(Duration(1, ttl.unit)))
+
       "NOT call ApiKeyGenerator, UuidGenerator or ApiKeyRepository" in {
-        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
-          NonEmptyChain.one(TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES)))
-        )
+        createApiKeyRequestValidator.validateCreateRequest(
+          any[TenantId],
+          any[UserId],
+          any[CreateApiKeyRequest]
+        ) returns IO.pure(Left(error))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -116,14 +128,15 @@ class ApiKeyManagementServiceSpec
       }
 
       "return successful IO containing Left with ValidationError" in {
-        val error = TtlTooLargeError(ttlMinutes, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))
-        createApiKeyRequestValidator.validateCreateRequest(any[CreateApiKeyRequest]) returns Left(
-          NonEmptyChain.one(error)
-        )
+        createApiKeyRequestValidator.validateCreateRequest(
+          any[TenantId],
+          any[UserId],
+          any[CreateApiKeyRequest]
+        ) returns IO.pure(Left(error))
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
-          .asserting(_ shouldBe Left(ValidationError(Seq(error))))
+          .asserting(_ shouldBe Left(ValidationError(error)))
       }
     }
 
@@ -313,7 +326,7 @@ class ApiKeyManagementServiceSpec
       name = nameUpdated,
       description = descriptionUpdated,
       userId = publicUserId_1,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(42)
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(ttl)
     )
 
     "call ApiKeyRepository" in {

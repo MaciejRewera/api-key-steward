@@ -1,6 +1,7 @@
 package apikeysteward.routes.model
 
 import sttp.tapir.{Schema, ValidationResult, Validator}
+import scala.concurrent.duration.Duration
 
 object TapirCustomValidators {
 
@@ -20,5 +21,14 @@ object TapirCustomValidators {
         Validator.custom[List[T]](list => ValidationResult.validWhen(list.flatMap(elem => validator(elem)).isEmpty))
       )
   }
+
+  val durationInfiniteOrGreaterThanZeroValidator: Validator[Duration] =
+    Validator.custom[Duration](duration =>
+      ValidationResult.validWhen(
+        duration.ne(Duration.MinusInf) &&
+          duration.ne(Duration.Undefined) &&
+          (duration.eq(Duration.Inf) || duration.gteq(Duration.Zero))
+      )
+    )
 
 }
