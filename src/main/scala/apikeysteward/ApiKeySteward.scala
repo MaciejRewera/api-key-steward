@@ -87,7 +87,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
 
-        createApiKeyRequestValidator = new CreateApiKeyRequestValidator(config.apiKey)
+        createApiKeyRequestValidator = new CreateApiKeyRequestValidator(
+          config.apiKey,
+          userRepository,
+          apiKeyTemplateRepository
+        )
         apiKeyManagementService = new ApiKeyManagementService(
           createApiKeyRequestValidator,
           apiKeyGenerator,

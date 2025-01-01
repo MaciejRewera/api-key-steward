@@ -6,8 +6,8 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model._
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError
-import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
 import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
@@ -33,26 +33,32 @@ class ApiKeyManagementService(
 
   def createApiKey(
       publicTenantId: TenantId,
-      userId: UserId,
+      publicUserId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
-      validatedRequest <- validateRequest(createApiKeyRequest)
-      result <- createApiKeyWithRetry(publicTenantId, userId, validatedRequest)
+      validatedRequest <- validateRequest(publicTenantId, publicUserId, createApiKeyRequest)
+      result <- createApiKeyWithRetry(publicTenantId, publicUserId, validatedRequest)
     } yield result).value
 
   private def validateRequest(
+      publicTenantId: TenantId,
+      publicUserId: UserId,
       createApiKeyRequest: CreateApiKeyRequest
-  ): EitherT[IO, ValidationError, CreateApiKeyRequest] = EitherT.fromEither[IO](
-    createApiKeyRequestValidator
-      .validateCreateRequest(createApiKeyRequest)
-      .left
-      .map(err => ValidationError(err.iterator.toSeq))
-  )
+  ): EitherT[IO, ValidationError, CreateApiKeyRequest] = EitherT {
+    for {
+      validationResultE <- createApiKeyRequestValidator.validateCreateRequest(
+        publicTenantId,
+        publicUserId,
+        createApiKeyRequest
+      )
+      res = validationResultE.left.map(err => ValidationError(err))
+    } yield res
+  }
 
   private def createApiKeyWithRetry(
       publicTenantId: TenantId,
-      userId: String,
+      publicUserId: String,
       createApiKeyRequest: CreateApiKeyRequest
   ): EitherT[IO, ApiKeyCreateError, (ApiKey, ApiKeyData)] = {
 
@@ -65,7 +71,7 @@ class ApiKeyManagementService(
     EitherT {
       Retry
         .retry(maxRetries = createApiKeyMaxRetries, isWorthRetrying)(
-          buildCreateApiKeyAction(publicTenantId, userId, createApiKeyRequest)
+          buildCreateApiKeyAction(publicTenantId, publicUserId, createApiKeyRequest)
         )
         .map(_.asRight)
         .recover { case exc: RetryException[ApiKeyCreateError] => exc.error.asLeft[(ApiKey, ApiKeyData)] }
@@ -78,15 +84,15 @@ class ApiKeyManagementService(
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
-      _ <- logInfoF("Generating API Key...")
+      _ <- logInfoT("Generating API Key...")
       newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
 
-      _ <- logInfoF("Generating public key ID...")
+      _ <- logInfoT("Generating public key ID...")
       publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
 
       apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
 
-      _ <- logInfoF("Inserting API Key into database...")
+      _ <- logInfoT("Inserting API Key into database...")
       insertionResult <- EitherT(insertNewApiKey(publicTenantId, newApiKey, apiKeyData))
 
     } yield newApiKey -> insertionResult).value
@@ -151,7 +157,7 @@ class ApiKeyManagementService(
   def getApiKey(publicTenantId: TenantId, publicKeyId: ApiKeyId): IO[Option[ApiKeyData]] =
     apiKeyRepository.getByPublicKeyId(publicTenantId, publicKeyId)
 
-  private def logInfoF(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
+  private def logInfoT(str: String): EitherT[IO, Nothing, Unit] = EitherT.right(logger.info(str))
 }
 
 object ApiKeyManagementService {
@@ -159,9 +165,9 @@ object ApiKeyManagementService {
   sealed abstract class ApiKeyCreateError(override val message: String) extends CustomError
   object ApiKeyCreateError {
 
-    case class ValidationError(errors: Seq[CreateApiKeyRequestValidatorError])
+    case class ValidationError(error: CreateApiKeyRequestValidatorError)
         extends ApiKeyCreateError(
-          message = s"Request validation failed because: ${errors.map(_.message).mkString("['", "', '", "']")}."
+          message = s"Request validation failed because: ${error.message}."
         )
 
     case class InsertionError(cause: ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)

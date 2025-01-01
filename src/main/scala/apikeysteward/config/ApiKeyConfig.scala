@@ -16,6 +16,7 @@ case class ApiKeyConfig(
 )
 
 object ApiKeyConfig {
+
   implicit val hashingAlgorithmReader: ConfigReader[Algorithm] =
     ConfigReader.fromString { str =>
       Algorithm.AllAlgorithms

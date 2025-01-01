@@ -3,11 +3,12 @@ package apikeysteward.model
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator
-import io.circe.{Codec, Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 import java.time.{Clock, Instant}
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 case class ApiKeyData(
     publicKeyId: UUID,
@@ -22,6 +23,8 @@ object ApiKeyData {
   implicit val decoder: Decoder[ApiKeyData] = deriveDecoder[ApiKeyData]
 
   type ApiKeyId = UUID
+
+  val ApiKeyTtlResolution: TimeUnit = TimeUnit.SECONDS
 
   def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read): ApiKeyData =
     ApiKeyData(
