@@ -453,7 +453,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
-        val error = ValidationError(Seq(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit)))))
+        val error = ValidationError(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit))))
         managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
           Left(error)
         )
