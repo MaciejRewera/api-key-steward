@@ -1,8 +1,10 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.tenantDbId_1
-import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, publicUserId_3}
+import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model._
 import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, ApiKeyEntity}
 
@@ -69,22 +71,28 @@ object ApiKeysTestData extends FixedClock {
     publicKeyId = publicKeyId_1,
     name = name_1,
     description = description_1,
-    userId = publicUserId_1,
-    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
+    publicUserId = publicUserId_1,
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
+    publicTemplateId = publicTemplateId_1,
+    permissions = List(permission_1)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name_2,
     description = description_2,
-    userId = publicUserId_2,
-    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
+    publicUserId = publicUserId_2,
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
+    publicTemplateId = publicTemplateId_2,
+    permissions = List(permission_2)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name_3,
     description = description_3,
-    userId = publicUserId_3,
-    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
+    publicUserId = publicUserId_3,
+    expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
+    publicTemplateId = publicTemplateId_3,
+    permissions = List(permission_3)
   )
 
   val apiKeyDataUpdate_1: ApiKeyDataUpdate = ApiKeyDataUpdate(
@@ -124,20 +132,22 @@ object ApiKeysTestData extends FixedClock {
     id = apiKeyDataDbId_1,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_1,
+    userId = userDbId_1,
+    templateId = templateDbId_1,
     publicKeyId = publicKeyIdStr_1,
     name = name_1,
     description = description_1,
-    userId = publicUserId_1,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_1,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_1,
+    userId = userDbId_1,
+    templateId = templateDbId_1,
     publicKeyId = publicKeyIdStr_1,
     name = name_1,
     description = description_1,
-    userId = publicUserId_1,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
@@ -147,20 +157,22 @@ object ApiKeysTestData extends FixedClock {
     id = apiKeyDataDbId_2,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_2,
+    userId = userDbId_2,
+    templateId = templateDbId_2,
     publicKeyId = publicKeyIdStr_2,
     name = name_2,
     description = description_2,
-    userId = publicUserId_2,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_2,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_2,
+    userId = userDbId_2,
+    templateId = templateDbId_2,
     publicKeyId = publicKeyIdStr_2,
     name = name_2,
     description = description_2,
-    userId = publicUserId_2,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant
@@ -170,20 +182,22 @@ object ApiKeysTestData extends FixedClock {
     id = apiKeyDataDbId_3,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_3,
+    userId = userDbId_3,
+    templateId = templateDbId_3,
     publicKeyId = publicKeyIdStr_3,
     name = name_3,
     description = description_3,
-    userId = publicUserId_3,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
   val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_3,
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_3,
+    userId = userDbId_3,
+    templateId = templateDbId_3,
     publicKeyId = publicKeyIdStr_3,
     name = name_3,
     description = description_3,
-    userId = publicUserId_3,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     createdAt = nowInstant,
     updatedAt = nowInstant

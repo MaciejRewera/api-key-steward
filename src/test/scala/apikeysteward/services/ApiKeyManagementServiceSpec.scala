@@ -8,21 +8,23 @@ import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}
-import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
+import apikeysteward.repositories.{ApiKeyRepository, PermissionRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError.TtlTooLargeError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.implicits.none
+import cats.implicits.{catsSyntaxEitherId, none}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
@@ -46,13 +48,15 @@ class ApiKeyManagementServiceSpec
   private val apiKeyGenerator = mock[ApiKeyGenerator]
   private val apiKeyRepository = mock[ApiKeyRepository]
   private val userRepository = mock[UserRepository]
+  private val permissionRepository = mock[PermissionRepository]
 
   private val managementService = new ApiKeyManagementService(
     createApiKeyRequestValidator,
     apiKeyGenerator,
     uuidGenerator,
     apiKeyRepository,
-    userRepository
+    userRepository,
+    permissionRepository
   )
 
   private val createApiKeyRequest = CreateApiKeyRequest(
@@ -62,18 +66,26 @@ class ApiKeyManagementServiceSpec
     ttl = ttl,
     permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
   )
+  private val testApiKeyData = apiKeyData_1.copy(permissions = List(permission_1, permission_2, permission_3))
 
   override def beforeEach(): Unit = {
-    reset(createApiKeyRequestValidator, apiKeyGenerator, uuidGenerator, apiKeyRepository, userRepository)
+    reset(
+      createApiKeyRequestValidator,
+      apiKeyGenerator,
+      uuidGenerator,
+      apiKeyRepository,
+      userRepository,
+      permissionRepository
+    )
 
-    createApiKeyRequestValidator.validateCreateRequest(
-      any[TenantId],
-      any[UserId],
-      any[CreateApiKeyRequest]
-    ) returns IO.pure(Right(createApiKeyRequest))
+    createApiKeyRequestValidator.validateCreateRequest(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
+      IO.pure(Right(createApiKeyRequest))
     apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
     uuidGenerator.generateUuid returns IO.pure(publicKeyId_1)
-    apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(apiKeyData_1))
+    apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(testApiKeyData))
+
+    permissionRepository.getBy(any[TenantId], any[List[PermissionId]]) returns
+      IO.pure(List(permission_1, permission_2, permission_3).asRight[PermissionNotFoundError])
   }
 
   private val testException = new RuntimeException("Test Exception")
@@ -82,7 +94,7 @@ class ApiKeyManagementServiceSpec
 
     "everything works correctly" should {
 
-      "call CreateApiKeyRequestValidator, ApiKeyGenerator, UuidGenerator and ApiKeyRepository providing correct ApiKeyData" in {
+      "call CreateApiKeyRequestValidator, ApiKeyGenerator, UuidGenerator, ApiKeyRepository and PermissionRepository providing correct ApiKeyData" in {
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
 
@@ -93,19 +105,18 @@ class ApiKeyManagementServiceSpec
           )
           _ = verify(apiKeyGenerator).generateApiKey
           _ = verify(uuidGenerator).generateUuid
-          _ = {
-            val captor: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-            verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), captor.capture())
-            val actualApiKeyData: ApiKeyData = captor.getValue
-            actualApiKeyData shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData.publicKeyId)
-          }
+          _ = verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), eqTo(testApiKeyData))
+          _ = verify(permissionRepository).getBy(
+            eqTo(publicTenantId_1),
+            eqTo(List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3))
+          )
         } yield ()
       }
 
       "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
-          .asserting(_ shouldBe Right(apiKey_1 -> apiKeyData_1))
+          .asserting(_ shouldBe Right(apiKey_1 -> testApiKeyData))
       }
     }
 
@@ -210,7 +221,7 @@ class ApiKeyManagementServiceSpec
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
           apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
-            IO.pure(Right(apiKeyData_1))
+            IO.pure(Right(testApiKeyData))
           )
 
           for {
@@ -222,12 +233,12 @@ class ApiKeyManagementServiceSpec
               val captor_1: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), captor_1.capture())
               val actualApiKeyData_1: ApiKeyData = captor_1.getValue
-              actualApiKeyData_1 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
+              actualApiKeyData_1 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
 
               val captor_2: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_2), captor_2.capture())
               val actualApiKeyData_2: ApiKeyData = captor_2.getValue
-              actualApiKeyData_2 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
+              actualApiKeyData_2 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
             }
           } yield ()
         }
@@ -237,12 +248,12 @@ class ApiKeyManagementServiceSpec
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
           apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
-            IO.pure(Right(apiKeyData_1))
+            IO.pure(Right(testApiKeyData))
           )
 
           managementService
             .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
-            .asserting(_ shouldBe Right(apiKey_2 -> apiKeyData_1))
+            .asserting(_ shouldBe Right(apiKey_2 -> testApiKeyData))
         }
       }
     }
@@ -268,22 +279,22 @@ class ApiKeyManagementServiceSpec
               val captor_1: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), captor_1.capture())
               val actualApiKeyData_1: ApiKeyData = captor_1.getValue
-              actualApiKeyData_1 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
+              actualApiKeyData_1 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
 
               val captor_2: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_2), captor_2.capture())
               val actualApiKeyData_2: ApiKeyData = captor_2.getValue
-              actualApiKeyData_2 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
+              actualApiKeyData_2 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
 
               val captor_3: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_3), captor_3.capture())
               val actualApiKeyData_3: ApiKeyData = captor_3.getValue
-              actualApiKeyData_3 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_3.publicKeyId)
+              actualApiKeyData_3 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_3.publicKeyId)
 
               val captor_4: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
               verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_4), captor_4.capture())
               val actualApiKeyData_4: ApiKeyData = captor_4.getValue
-              actualApiKeyData_4 shouldBe apiKeyData_1.copy(publicKeyId = actualApiKeyData_4.publicKeyId)
+              actualApiKeyData_4 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_4.publicKeyId)
             }
           } yield ()
         }
@@ -325,8 +336,10 @@ class ApiKeyManagementServiceSpec
       publicKeyId = publicKeyId_1,
       name = nameUpdated,
       description = descriptionUpdated,
-      userId = publicUserId_1,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(ttl)
+      publicUserId = publicUserId_1,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(ttl),
+      publicTemplateId = publicTemplateId_1,
+      permissions = List(permission_1, permission_2)
     )
 
     "call ApiKeyRepository" in {

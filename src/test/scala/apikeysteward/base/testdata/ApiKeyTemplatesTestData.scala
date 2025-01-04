@@ -16,6 +16,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val templateDbId_1: UUID = UUID.randomUUID()
   val templateDbId_2: UUID = UUID.randomUUID()
   val templateDbId_3: UUID = UUID.randomUUID()
+  val templateDbId_4: UUID = UUID.randomUUID()
 
   val publicTemplateId_1: ApiKeyTemplateId = UUID.randomUUID()
   val publicTemplateId_2: ApiKeyTemplateId = UUID.randomUUID()

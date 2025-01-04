@@ -62,9 +62,27 @@ object PermissionDbError {
         extends PermissionInsertionError(message = s"An error occurred when inserting Permission: $cause")
   }
 
-  case class PermissionNotFoundError(publicResourceServerId: ResourceServerId, publicPermissionId: PermissionId)
-      extends PermissionDbError(
-        message =
+  trait PermissionNotFoundError extends PermissionDbError {
+    val errorMessage: String
+  }
+  object PermissionNotFoundError {
+
+    private case class PermissionNotFoundErrorImpl(override val errorMessage: String)
+        extends PermissionDbError(errorMessage)
+        with PermissionNotFoundError
+
+    def apply(publicResourceServerId: ResourceServerId, publicPermissionId: PermissionId): PermissionNotFoundError =
+      PermissionNotFoundErrorImpl(
+        errorMessage =
           s"Could not find Permission with publicPermissionId = [$publicPermissionId] for ResourceServer with publicResourceServerId = [$publicResourceServerId]."
       )
+
+    def forTenant(publicTenantId: TenantId, publicPermissionId: PermissionId): PermissionNotFoundError =
+      PermissionNotFoundErrorImpl(
+        errorMessage =
+          s"Could not find Permission with publicPermissionId = [$publicPermissionId] for Tenant with publicTenantId = [$publicTenantId]."
+      )
+
+  }
+
 }

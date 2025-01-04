@@ -8,11 +8,15 @@ import apikeysteward.model._
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
 import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
-import apikeysteward.repositories.{ApiKeyRepository, UserRepository}
+import apikeysteward.repositories.{ApiKeyRepository, PermissionRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError
-import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{
+  ApiKeyCreateErrorImpl,
+  InsertionError,
+  ValidationError
+}
 import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestValidatorError
 import apikeysteward.utils.Retry.RetryException
 import apikeysteward.utils.{Logging, Retry}
@@ -27,7 +31,8 @@ class ApiKeyManagementService(
     apiKeyGenerator: ApiKeyGenerator,
     uuidGenerator: UuidGenerator,
     apiKeyRepository: ApiKeyRepository,
-    userRepository: UserRepository
+    userRepository: UserRepository,
+    permissionRepository: PermissionRepository
 )(implicit clock: Clock)
     extends Logging {
 
@@ -90,10 +95,20 @@ class ApiKeyManagementService(
       _ <- logInfoT("Generating public key ID...")
       publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
 
-      apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest)
+      _ <- logInfoT("Fetching Permissions for new API Key...")
+      permissions <- EitherT[IO, ApiKeyCreateError, List[Permission]] {
+        permissionRepository
+          .getBy(publicTenantId, createApiKeyRequest.permissionIds)
+          .map(_.left.map(ApiKeyCreateErrorImpl))
+          .flatTap(_ => logger.info("Fetched Permissions for new API Key."))
+      }
+
+      apiKeyData = ApiKeyData.from(publicKeyId, userId, createApiKeyRequest, permissions)
 
       _ <- logInfoT("Inserting API Key into database...")
-      insertionResult <- EitherT(insertNewApiKey(publicTenantId, newApiKey, apiKeyData))
+      insertionResult <- EitherT[IO, ApiKeyCreateError, ApiKeyData] {
+        insertNewApiKey(publicTenantId, newApiKey, apiKeyData)
+      }
 
     } yield newApiKey -> insertionResult).value
 
@@ -167,9 +182,11 @@ object ApiKeyManagementService {
 
     case class ValidationError(error: CreateApiKeyRequestValidatorError)
         extends ApiKeyCreateError(
-          message = s"Request validation failed because: ${error.message}."
+          message = s"Request validation failed because: ${error.message}"
         )
 
-    case class InsertionError(cause: ApiKeyInsertionError) extends ApiKeyCreateError(cause.message)
+    case class InsertionError(cause: ApiKeyDbError) extends ApiKeyCreateError(cause.message)
+
+    case class ApiKeyCreateErrorImpl(cause: CustomError) extends ApiKeyCreateError(cause.message)
   }
 }

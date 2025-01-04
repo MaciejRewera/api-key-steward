@@ -3,7 +3,7 @@ package apikeysteward
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
 import apikeysteward.repositories._
-import apikeysteward.repositories.db._
+import apikeysteward.repositories.db.{ApiKeysPermissionsDb, _}
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
 import apikeysteward.routes.auth.model.JwtCustom
@@ -97,7 +97,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyGenerator,
           uuidGenerator,
           apiKeyRepository,
-          userRepository
+          userRepository,
+          permissionRepository
         )
 
         apiKeyTemplateService = new ApiKeyTemplateService(
@@ -191,10 +192,24 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val tenantDb = new TenantDb
     val apiKeyDb = new ApiKeyDb
     val apiKeyDataDb = new ApiKeyDataDb
+    val permissionDb = new PermissionDb
+    val userDb = new UserDb
+    val apiKeyTemplateDb = new ApiKeyTemplateDb
+    val apiKeysPermissionsDb = new ApiKeysPermissionsDb
 
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
 
-    new ApiKeyRepository(uuidGenerator, tenantDb, apiKeyDb, apiKeyDataDb, secureHashGenerator)(transactor)
+    new ApiKeyRepository(
+      uuidGenerator,
+      secureHashGenerator,
+      tenantDb,
+      apiKeyDb,
+      apiKeyDataDb,
+      permissionDb,
+      userDb,
+      apiKeyTemplateDb,
+      apiKeysPermissionsDb
+    )(transactor)
   }
 
   private def buildApiKeyTemplateRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
