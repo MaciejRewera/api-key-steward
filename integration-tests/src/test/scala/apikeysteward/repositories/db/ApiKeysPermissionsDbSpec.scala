@@ -4,7 +4,7 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeysPermissionsTestData._
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData._
+import apikeysteward.base.testdata.TenantsTestData.{tenantEntityWrite_1, _}
 import apikeysteward.model.errors.ApiKeysPermissionsDbError.ApiKeysPermissionsInsertionError._
 import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.ApiKeysPermissionsEntity
@@ -87,30 +87,6 @@ class ApiKeysPermissionsDbSpec
 
   "ApiKeysPermissionsDb on insertMany" when {
 
-    "provided with an empty List" should {
-
-      "return Right containing empty List" in {
-        val result = (for {
-          _ <- insertPrerequisiteData()
-
-          res <- apiKeysPermissionsDb.insertMany(List.empty)
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe Right(List.empty))
-      }
-
-      "make no changes to the DB" in {
-        val result = (for {
-          _ <- insertPrerequisiteData()
-
-          _ <- apiKeysPermissionsDb.insertMany(List.empty)
-          res <- Queries.getAllAssociations
-        } yield res).transact(transactor)
-
-        result.asserting(_ shouldBe List.empty)
-      }
-    }
-
     "there is no Tenant in the DB" should {
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
@@ -162,6 +138,30 @@ class ApiKeysPermissionsDbSpec
       }
     }
 
+    "provided with an empty List" should {
+
+      "return Right containing empty List" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          res <- apiKeysPermissionsDb.insertMany(List.empty)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Right(List.empty))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          _ <- apiKeysPermissionsDb.insertMany(List.empty)
+          res <- Queries.getAllAssociations
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty)
+      }
+    }
+
     "there are no rows in the DB" should {
 
       "return inserted entities" in {
@@ -206,53 +206,6 @@ class ApiKeysPermissionsDbSpec
     }
 
     "there is a row in the DB with provided apiKeyDataId, but different permissionId" should {
-
-      "return inserted entities" in {
-        val result = (for {
-          _ <- insertPrerequisiteData()
-
-          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1)
-          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
-
-          entitiesToInsert = List(
-            apiKeysPermissionsEntityWrite_1_2,
-            apiKeysPermissionsEntityWrite_1_3
-          )
-
-          res <- apiKeysPermissionsDb.insertMany(entitiesToInsert)
-        } yield (res, entitiesToInsert)).transact(transactor)
-
-        result.asserting { case (res, entitiesToInsert) =>
-          val expectedEntities = convertEntitiesWriteToRead(entitiesToInsert)
-          res.value should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "insert entities into DB" in {
-        val result = (for {
-          _ <- insertPrerequisiteData()
-
-          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1)
-          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
-
-          entitiesToInsert = List(
-            apiKeysPermissionsEntityWrite_1_2,
-            apiKeysPermissionsEntityWrite_1_3
-          )
-
-          _ <- apiKeysPermissionsDb.insertMany(entitiesToInsert)
-          res <- Queries.getAllAssociations
-        } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
-
-        result.asserting { case (res, allEntities) =>
-          res.size shouldBe 3
-          val expectedEntities = convertEntitiesWriteToRead(allEntities)
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-    }
-
-    "there is a row in the DB with provided apiKeyDataId and permissionId but different tenantId" should {
 
       "return inserted entities" in {
         val result = (for {
@@ -385,6 +338,51 @@ class ApiKeysPermissionsDbSpec
         result.asserting { case (res, preExistingEntities) =>
           val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
           res shouldBe expectedEntities
+        }
+      }
+    }
+
+    "there is a row in the DB with provided apiKeyDataId and permissionId but different tenantId" should {
+
+      "return Left containing ApiKeysPermissionsAlreadyExistsError" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+          _ <- tenantDb.insert(tenantEntityWrite_2)
+
+          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1.copy(tenantId = tenantDbId_2))
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+          entitiesToInsert = List(
+            apiKeysPermissionsEntityWrite_1_2,
+            apiKeysPermissionsEntityWrite_1_1
+          )
+
+          res <- apiKeysPermissionsDb.insertMany(entitiesToInsert)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(ApiKeysPermissionsAlreadyExistsError(apiKeyDataDbId_1, permissionDbId_1)))
+      }
+
+      "NOT insert any new entity into the DB" in {
+        val result = for {
+          _ <- insertPrerequisiteData().transact(transactor)
+          _ <- tenantDb.insert(tenantEntityWrite_2).transact(transactor)
+
+          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1.copy(tenantId = tenantDbId_2))
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities).transact(transactor)
+
+          entitiesToInsert = List(
+            apiKeysPermissionsEntityWrite_1_2,
+            apiKeysPermissionsEntityWrite_1_1
+          )
+
+          _ <- apiKeysPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          res <- Queries.getAllAssociations.transact(transactor)
+        } yield (res, preExistingEntities)
+
+        result.asserting { case (res, preExistingEntities) =>
+          val expectedEntities = convertEntitiesWriteToRead(preExistingEntities)
+          res should contain theSameElementsAs expectedEntities
         }
       }
     }
