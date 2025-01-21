@@ -14,5 +14,6 @@ CREATE TABLE IF NOT EXISTS api_key_template
     updated_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE (public_template_id),
+
     CONSTRAINT fkey_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)
 );
