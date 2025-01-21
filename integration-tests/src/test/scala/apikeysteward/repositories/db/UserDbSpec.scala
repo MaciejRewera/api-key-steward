@@ -899,8 +899,8 @@ class UserDbSpec
     "there is a row in the DB with different publicTenantId" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
 
           res <- userDb.getByDbId(publicTenantId_2, userDbId_1)
         } yield res).transact(transactor)
@@ -912,8 +912,8 @@ class UserDbSpec
     "there is a row in the DB with different publicUserId" should {
       "return empty Option" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
 
           res <- userDb.getByDbId(publicTenantId_1, userDbId_2)
         } yield res).transact(transactor)
@@ -925,8 +925,8 @@ class UserDbSpec
     "there is a row in the DB with the same both publicTenantId and publicUserId" should {
       "return this entity" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
 
           res <- userDb.getByDbId(publicTenantId_1, userDbId_1)
         } yield res).transact(transactor)

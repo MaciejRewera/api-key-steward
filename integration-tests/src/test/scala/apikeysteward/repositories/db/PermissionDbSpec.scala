@@ -1027,7 +1027,7 @@ class PermissionDbSpec
       }
     }
 
-    "there is an ApiKeyData in the DB, but there are no ApiKeyDataPermissions for this Template" should {
+    "there is an ApiKeyData in the DB, but there are no ApiKeysPermissions for this ApiKeyData" should {
       "return empty Stream" in {
         val result = (for {
           _ <- insertPrerequisiteData()
@@ -1039,7 +1039,7 @@ class PermissionDbSpec
       }
     }
 
-    "there is an ApiKeyData in the DB with a single ApiKeyDataPermissions" should {
+    "there is an ApiKeyData in the DB with a single ApiKeysPermissions" should {
       "return this single Permission" in {
         val result = (for {
           _ <- insertPrerequisiteData()
@@ -1053,7 +1053,7 @@ class PermissionDbSpec
       }
     }
 
-    "there is an ApiKeyData in the DB with multiple ApiKeyDataPermissions" should {
+    "there is an ApiKeyData in the DB with multiple ApiKeysPermissions" should {
       "return all these Permissions" in {
         val result = (for {
           _ <- insertPrerequisiteData()
@@ -1078,9 +1078,9 @@ class PermissionDbSpec
       }
     }
 
-    "there are several ApiKeyData in the DB with associated ApiKeyDataPermissions" when {
+    "there are several ApiKeyData in the DB with associated ApiKeysPermissions" when {
 
-      "there are NO ApiKeyDataPermissions for given publicKeyId" should {
+      "there are NO ApiKeysPermissions for given publicKeyId" should {
         "return empty Stream" in {
           val result = (for {
             _ <- insertPrerequisiteData()
@@ -1099,7 +1099,7 @@ class PermissionDbSpec
         }
       }
 
-      "there is a single ApiKeyDataPermissions for given publicKeyId" should {
+      "there is a single ApiKeysPermissions for given publicKeyId" should {
         "return this single Permission" in {
           val result = (for {
             _ <- insertPrerequisiteData()
@@ -1118,7 +1118,7 @@ class PermissionDbSpec
         }
       }
 
-      "there are several ApiKeyDataPermissions got given publicKeyId" should {
+      "there are several ApiKeysPermissions for given publicKeyId" should {
         "return all these Permissions" in {
           val result = (for {
             _ <- insertPrerequisiteData()
