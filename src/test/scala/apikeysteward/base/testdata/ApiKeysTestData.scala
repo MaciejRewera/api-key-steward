@@ -65,7 +65,7 @@ object ApiKeysTestData extends FixedClock {
   val nameUpdated = "Updated Test APi Key Name"
   val descriptionUpdated: Option[String] = Some("Updated test key description")
 
-  val ttl: FiniteDuration = Duration(60, TimeUnit.MINUTES)
+  val ttl: FiniteDuration = Duration(101, TimeUnit.MINUTES)
 
   val apiKeyData_1: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_1,

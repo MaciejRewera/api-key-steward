@@ -1,6 +1,5 @@
 package apikeysteward.services
 
-import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
@@ -14,11 +13,11 @@ import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestVa
 import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
+import cats.implicits.catsSyntaxTuple2Parallel
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 
 class CreateApiKeyRequestValidator(
-    apiKeyConfig: ApiKeyConfig,
     userRepository: UserRepository,
     apiKeyTemplateRepository: ApiKeyTemplateRepository
 ) extends Logging {
@@ -29,9 +28,12 @@ class CreateApiKeyRequestValidator(
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[CreateApiKeyRequestValidatorError, CreateApiKeyRequest]] =
     (for {
-      _ <- validateUserId(publicTenantId, publicUserId)
-      _ <- validateTemplate(publicTenantId, createApiKeyRequest)
-      _ <- validateTimeToLive(createApiKeyRequest)
+      validationData <- fetchValidationData(publicTenantId, publicUserId, createApiKeyRequest.templateId)
+      (_, apiKeyTemplate) = validationData
+
+      _ <- EitherT.fromEither[IO](validateRequestPermissions(publicTenantId, createApiKeyRequest, apiKeyTemplate))
+      _ <- EitherT.fromEither[IO](validateTimeToLive(createApiKeyRequest, apiKeyTemplate))
+
     } yield createApiKeyRequest).value.flatTap {
       case Right(_) =>
         logger.info(s"CreateApiKeyRequest validation was successful.")
@@ -39,36 +41,35 @@ class CreateApiKeyRequestValidator(
         logger.warn(s"CreateApiKeyRequest validation failed because: ${validationError.message}")
     }
 
-  private def validateUserId(
+  private def fetchValidationData(
+      publicTenantId: TenantId,
+      publicUserId: UserId,
+      publicTemplateId: ApiKeyTemplateId
+  ): EitherT[IO, CreateApiKeyRequestValidatorError, (User, ApiKeyTemplate)] =
+    (
+      fetchUser(publicTenantId, publicUserId),
+      fetchApiKeyTemplate(publicTenantId, publicTemplateId)
+    ).parMapN((_, _))
+
+  private def fetchUser(
       publicTenantId: TenantId,
       publicUserId: UserId
   ): EitherT[IO, CreateApiKeyRequestValidatorError, User] =
     EitherT {
       for {
         userOpt <- userRepository.getBy(publicTenantId, publicUserId)
-
         res = userOpt.toRight(UserNotFoundError(publicTenantId, publicUserId))
       } yield res
     }
 
-  private def validateTemplate(
+  private def fetchApiKeyTemplate(
       publicTenantId: TenantId,
-      createApiKeyRequest: CreateApiKeyRequest
-  ): EitherT[IO, CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
-    for {
-      apiKeyTemplate <- validateTemplateExists(publicTenantId, createApiKeyRequest)
-      _ <- validateRequestPermissions(publicTenantId, createApiKeyRequest, apiKeyTemplate)
-    } yield createApiKeyRequest
-
-  private def validateTemplateExists(
-      publicTenantId: TenantId,
-      createApiKeyRequest: CreateApiKeyRequest
+      publicTemplateId: ApiKeyTemplateId
   ): EitherT[IO, CreateApiKeyRequestValidatorError, ApiKeyTemplate] =
     EitherT {
       for {
-        templateOpt <- apiKeyTemplateRepository.getBy(publicTenantId, createApiKeyRequest.templateId)
-
-        res = templateOpt.toRight(ApiKeyTemplateNotFoundError(publicTenantId, createApiKeyRequest.templateId))
+        templateOpt <- apiKeyTemplateRepository.getBy(publicTenantId, publicTemplateId)
+        res = templateOpt.toRight(ApiKeyTemplateNotFoundError(publicTenantId, publicTemplateId))
       } yield res
     }
 
@@ -76,13 +77,13 @@ class CreateApiKeyRequestValidator(
       publicTenantId: TenantId,
       createApiKeyRequest: CreateApiKeyRequest,
       apiKeyTemplate: ApiKeyTemplate
-  ): EitherT[IO, CreateApiKeyRequestValidatorError, CreateApiKeyRequest] = {
+  ): Either[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] = {
     val allowedPermissionIds = apiKeyTemplate.permissions.map(_.publicPermissionId).toSet
     val requestPermissionIds = createApiKeyRequest.permissionIds.toSet
 
     val notAllowedPermissions = requestPermissionIds.diff(allowedPermissionIds)
 
-    EitherT.cond(
+    Either.cond(
       notAllowedPermissions.isEmpty,
       createApiKeyRequest,
       PermissionsNotAllowedError(publicTenantId, createApiKeyRequest.templateId, notAllowedPermissions.toList)
@@ -90,15 +91,14 @@ class CreateApiKeyRequestValidator(
   }
 
   private def validateTimeToLive(
-      createApiKeyRequest: CreateApiKeyRequest
-  ): EitherT[IO, CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
-    EitherT
-      .cond(
-        createApiKeyRequest.ttl <= apiKeyConfig.ttlMax,
-        createApiKeyRequest,
-        TtlTooLargeError(createApiKeyRequest.ttl, apiKeyConfig.ttlMax)
-      )
-
+      createApiKeyRequest: CreateApiKeyRequest,
+      apiKeyTemplate: ApiKeyTemplate
+  ): Either[CreateApiKeyRequestValidatorError, CreateApiKeyRequest] =
+    Either.cond(
+      createApiKeyRequest.ttl <= apiKeyTemplate.apiKeyMaxExpiryPeriod,
+      createApiKeyRequest,
+      TtlTooLargeError(createApiKeyRequest.ttl, apiKeyTemplate.apiKeyMaxExpiryPeriod)
+    )
 }
 
 object CreateApiKeyRequestValidator {
@@ -126,7 +126,7 @@ object CreateApiKeyRequestValidator {
             s"Permissions with IDs: ${notAllowedPermissionIds.mkString("[", ", ", "]")} are not allowed for ApiKeyTemplate with publicTenantId = [$publicTenantId] and publicTemplateId = [$publicTemplateId]."
         )
 
-    case class TtlTooLargeError(ttlRequest: Duration, ttlMax: FiniteDuration)
+    case class TtlTooLargeError(ttlRequest: Duration, ttlMax: Duration)
         extends CreateApiKeyRequestValidatorError(
           message =
             s"Provided request contains time-to-live (ttl) of: $ttlRequest which is bigger than maximum allowed value of: $ttlMax."

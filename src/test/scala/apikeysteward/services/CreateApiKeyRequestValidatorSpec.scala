@@ -1,11 +1,10 @@
 package apikeysteward.services
 
-import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, publicTemplateId_1, publicTemplateId_2}
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, publicUserId_2, user_1}
-import apikeysteward.config.ApiKeyConfig
 import apikeysteward.model.ApiKeyData
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Tenant.TenantId
@@ -17,7 +16,7 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
-import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
+import org.mockito.MockitoSugar.{mock, reset, verify}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
@@ -31,17 +30,16 @@ class CreateApiKeyRequestValidatorSpec
     with BeforeAndAfterEach
     with EitherValues {
 
-  private val apiKeyConfig = mock[ApiKeyConfig]
   private val userRepository = mock[UserRepository]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
 
   private val requestValidator =
-    new CreateApiKeyRequestValidator(apiKeyConfig, userRepository, apiKeyTemplateRepository)
+    new CreateApiKeyRequestValidator(userRepository, apiKeyTemplateRepository)
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(apiKeyConfig, userRepository, apiKeyTemplateRepository)
+    reset(userRepository, apiKeyTemplateRepository)
   }
 
   private val apiKeyTemplate = apiKeyTemplate_1.copy(permissions = List(permission_1, permission_2, permission_3))
@@ -49,7 +47,7 @@ class CreateApiKeyRequestValidatorSpec
   private val createRequest: CreateApiKeyRequest = CreateApiKeyRequest(
     name = name_1,
     description = description_1,
-    ttl = ttl.minus(Duration(1, ttl.unit)),
+    ttl = apiKeyMaxExpiryPeriod_1.minus(Duration(1, ApiKeyData.ApiKeyTtlResolution)),
     templateId = publicTemplateId_1,
     permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
   )
@@ -63,10 +61,9 @@ class CreateApiKeyRequestValidatorSpec
       def initMocks(): Unit = {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
-        apiKeyConfig.ttlMax returns ttl
       }
 
-      "call UserRepository, ApiKeyTemplateRepository and ApiKeyConfig" in {
+      "call UserRepository and ApiKeyTemplateRepository" in {
         initMocks()
 
         for {
@@ -74,7 +71,6 @@ class CreateApiKeyRequestValidatorSpec
 
           _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
           _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
-          _ = verify(apiKeyConfig).ttlMax
         } yield ()
       }
 
@@ -106,7 +102,7 @@ class CreateApiKeyRequestValidatorSpec
             .asserting(_ shouldBe Right(createRequest))
         }
 
-        "the request contains ttl value smaller than ApiKeyConfig.ttlMax" in {
+        "the request contains ttl value smaller than ApiKeyTemplate.apiKeyMaxExpiryPeriod" in {
           initMocks()
 
           requestValidator
@@ -114,10 +110,10 @@ class CreateApiKeyRequestValidatorSpec
             .asserting(_ shouldBe Right(createRequest))
         }
 
-        "the request contains ttl value equal to ApiKeyConfig.ttlMax" in {
+        "the request contains ttl value equal to ApiKeyTemplate.apiKeyMaxExpiryPeriod" in {
           initMocks()
 
-          val request = createRequest.copy(ttl = ttl)
+          val request = createRequest.copy(ttl = apiKeyMaxExpiryPeriod_1)
 
           requestValidator
             .validateCreateRequest(publicTenantId_1, publicUserId_1, request)
@@ -126,14 +122,6 @@ class CreateApiKeyRequestValidatorSpec
       }
 
       "return Left containing appropriate CreateApiKeyRequestValidatorError" when {
-
-        "provided with non-existing userId - UserRepository returns empty Option" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
-
-          requestValidator
-            .validateCreateRequest(publicTenantId_1, publicUserId_2, createRequest)
-            .asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_2)))
-        }
 
         "provided with non-existing templateId - ApiKeyTemplateRepository returns empty Option" in {
           userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
@@ -177,45 +165,57 @@ class CreateApiKeyRequestValidatorSpec
             )
         }
 
-        "the request contains ttl value bigger than ApiKeyConfig.ttlMax" in {
+        "the request contains ttl value bigger than ApiKeyTemplate.apiKeyMaxExpiryPeriod" in {
           initMocks()
-          val requestTtl = ttl.plus(Duration(1, ApiKeyData.ApiKeyTtlResolution))
+          val requestTtl = apiKeyMaxExpiryPeriod_1.plus(Duration(1, ApiKeyData.ApiKeyTtlResolution))
           val request = createRequest.copy(ttl = requestTtl)
 
           requestValidator
             .validateCreateRequest(publicTenantId_1, publicUserId_1, request)
-            .asserting(_ shouldBe Left(TtlTooLargeError(ttlRequest = requestTtl, ttlMax = ttl)))
+            .asserting(_ shouldBe Left(TtlTooLargeError(ttlRequest = requestTtl, ttlMax = apiKeyMaxExpiryPeriod_1)))
         }
       }
     }
 
     "UserRepository returns empty Option" should {
 
-      "NOT call either ApiKeyTemplateRepository or ApiKeyConfig" in {
+      "call ApiKeyTemplateRepository anyway" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
 
-          _ = verifyZeroInteractions(apiKeyTemplateRepository, apiKeyConfig)
+          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
         } yield ()
+      }
+
+      "return Left containing appropriate CreateApiKeyRequestValidatorError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
+
+        requestValidator
+          .validateCreateRequest(publicTenantId_1, publicUserId_2, createRequest)
+          .asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_2)))
       }
     }
 
     "UserRepository returns failed IO" should {
 
-      "NOT call either ApiKeyTemplateRepository or ApiKeyConfig" in {
+      "call ApiKeyTemplateRepository anyway" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest).attempt
 
-          _ = verifyZeroInteractions(apiKeyTemplateRepository, apiKeyConfig)
+          _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
         } yield ()
       }
 
       "return failed IO containing the same exception" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -226,47 +226,43 @@ class CreateApiKeyRequestValidatorSpec
 
     "ApiKeyTemplateRepository returns empty Option" should {
 
-      "NOT call ApiKeyConfig" in {
+      "call UserRepository anyway" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
 
-          _ = verifyZeroInteractions(apiKeyConfig)
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
         } yield ()
+      }
+
+      "return Left containing appropriate CreateApiKeyRequestValidatorError" in {
+        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
+
+        requestValidator
+          .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
+          .asserting(_ shouldBe Left(ApiKeyTemplateNotFoundError(publicTenantId_1, publicTemplateId_1)))
       }
     }
 
     "ApiKeyTemplateRepository returns failed IO" should {
 
-      "NOT call ApiKeyConfig" in {
+      "call UserRepository anyway" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest).attempt
 
-          _ = verifyZeroInteractions(apiKeyConfig)
+          _ = verify(userRepository).getBy(eqTo(publicTenantId_1), eqTo(publicUserId_1))
         } yield ()
       }
 
       "return failed IO containing the same exception" in {
         userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
-
-        requestValidator
-          .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
-          .attempt
-          .asserting(_ shouldBe Left(testException))
-      }
-    }
-
-    "ApiKeyConfig returns exception" should {
-      "return failed IO containing the same exception" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate))
-        apiKeyConfig.ttlMax throws testException
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
