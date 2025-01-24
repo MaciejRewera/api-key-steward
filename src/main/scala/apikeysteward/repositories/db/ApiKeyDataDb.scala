@@ -1,17 +1,18 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyData.ApiKeyId
-import apikeysteward.model.errors.ApiKeyDbError
-import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
-import apikeysteward.model.errors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyInsertionError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.ApiKeyDbError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
+import apikeysteward.model.errors.ApiKeyDbError._
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import cats.implicits.{catsSyntaxApplicativeId, toTraverseOps}
 import doobie.implicits._
 import doobie.postgres._
 import doobie.postgres.implicits._
 import doobie.postgres.sqlstate.class23.{FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION}
+import doobie.util.fragment
 import fs2.Stream
 
 import java.sql.SQLException
@@ -31,32 +32,38 @@ class ApiKeyDataDb()(implicit clock: Clock) {
           "id",
           "tenant_id",
           "api_key_id",
+          "user_id",
+          "template_id",
           "public_key_id",
           "name",
           "description",
-          "user_id",
           "expires_at",
           "created_at",
           "updated_at"
         )
         .attemptSql
 
-      res = eitherResult.left.map(recoverSqlException(_, apiKeyDataEntity.tenantId, apiKeyDataEntity.apiKeyId))
+      res = eitherResult.left.map(recoverSqlException(_, apiKeyDataEntity))
 
     } yield res
   }
 
   private def recoverSqlException(
       sqlException: SQLException,
-      tenantDbId: UUID,
-      apiKeyDbId: UUID
+      apiKeyDataEntity: ApiKeyDataEntity.Write
   ): ApiKeyInsertionError =
     sqlException.getSQLState match {
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_id") =>
-        ReferencedApiKeyDoesNotExistError(apiKeyDbId)
+        ReferencedApiKeyDoesNotExistError(apiKeyDataEntity.apiKeyId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
-        ReferencedTenantDoesNotExistError.fromDbId(tenantDbId)
+        ReferencedTenantDoesNotExistError.fromDbId(apiKeyDataEntity.tenantId)
+
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_user_id") =>
+        ReferencedUserDoesNotExistError.fromDbId(apiKeyDataEntity.userId)
+
+      case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_template_id") =>
+        ReferencedApiKeyTemplateDoesNotExistError.fromDbId(apiKeyDataEntity.templateId)
 
       case UNIQUE_VIOLATION.value if sqlException.getMessage.contains("api_key_id") =>
         ApiKeyIdAlreadyExistsError
@@ -86,8 +93,8 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   def getByApiKeyId(publicTenantId: TenantId, apiKeyDbId: UUID): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
     TenantIdScopedQueries(publicTenantId).getByApiKeyId(apiKeyDbId).option
 
-  def getByUserId(publicTenantId: TenantId, userId: UserId): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
-    TenantIdScopedQueries(publicTenantId).getByUserId(userId).stream
+  def getByUserId(publicTenantId: TenantId, publicUserId: UserId): Stream[doobie.ConnectionIO, ApiKeyDataEntity.Read] =
+    TenantIdScopedQueries(publicTenantId).getByPublicUserId(publicUserId).stream
 
   def getByPublicKeyId(
       publicTenantId: TenantId,
@@ -103,17 +110,17 @@ class ApiKeyDataDb()(implicit clock: Clock) {
 
   def getBy(
       publicTenantId: TenantId,
-      userId: UserId,
+      publicUserId: UserId,
       publicKeyId: ApiKeyId
   ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    getBy(publicTenantId, userId, publicKeyId.toString)
+    getBy(publicTenantId, publicUserId, publicKeyId.toString)
 
   private def getBy(
       publicTenantId: TenantId,
-      userId: String,
+      publicUserId: String,
       publicKeyId: String
   ): doobie.ConnectionIO[Option[ApiKeyDataEntity.Read]] =
-    TenantIdScopedQueries(publicTenantId).getBy(userId, publicKeyId).option
+    TenantIdScopedQueries(publicTenantId).getBy(publicUserId, publicKeyId).option
 
   def delete(
       publicTenantId: TenantId,
@@ -131,7 +138,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
   private object Queries {
 
     private val columnNamesInsertFragment =
-      fr"INSERT INTO api_key_data(id, tenant_id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at)"
+      fr"INSERT INTO api_key_data(id, tenant_id, api_key_id, user_id, template_id, public_key_id, name, description, expires_at, created_at, updated_at)"
 
     def insert(apiKeyDataEntityWrite: ApiKeyDataEntity.Write, now: Instant): doobie.Update0 =
       (columnNamesInsertFragment ++
@@ -139,10 +146,11 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 ${apiKeyDataEntityWrite.id},
                 ${apiKeyDataEntityWrite.tenantId},
                 ${apiKeyDataEntityWrite.apiKeyId},
+                ${apiKeyDataEntityWrite.userId},
+                ${apiKeyDataEntityWrite.templateId},
                 ${apiKeyDataEntityWrite.publicKeyId},
                 ${apiKeyDataEntityWrite.name},
                 ${apiKeyDataEntityWrite.description},
-                ${apiKeyDataEntityWrite.userId},
                 ${apiKeyDataEntityWrite.expiresAt},
                 $now,
                 $now
@@ -154,7 +162,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
     private val TableName = "api_key_data"
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, tenant_id, api_key_id, public_key_id, name, description, user_id, expires_at, created_at, updated_at"
+      fr"SELECT id, tenant_id, api_key_id, user_id, template_id, public_key_id, name, description, expires_at, created_at, updated_at"
 
     def update(apiKeyDataEntityUpdate: ApiKeyDataEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE api_key_data
@@ -172,10 +180,10 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 AND ${tenantIdFr(TableName)}
              """).query[ApiKeyDataEntity.Read]
 
-    def getByUserId(userId: UserId): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getByPublicUserId(publicUserId: UserId): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM api_key_data
-              WHERE user_id = $userId
+              WHERE ${userIdFr(publicUserId)}
                 AND ${tenantIdFr(TableName)}
              """).query[ApiKeyDataEntity.Read]
 
@@ -186,11 +194,11 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 AND ${tenantIdFr(TableName)}
              """).query[ApiKeyDataEntity.Read]
 
-    def getBy(userId: UserId, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
+    def getBy(publicUserId: UserId, publicKeyId: String): doobie.Query0[ApiKeyDataEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM api_key_data
-              WHERE user_id = $userId
-                AND public_key_id = $publicKeyId
+              WHERE public_key_id = $publicKeyId
+                AND ${userIdFr(publicUserId)}
                 AND ${tenantIdFr(TableName)}
              """).query[ApiKeyDataEntity.Read]
 
@@ -200,5 +208,12 @@ class ApiKeyDataDb()(implicit clock: Clock) {
               AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
+    private def userIdFr(publicUserId: UserId): fragment.Fragment =
+      fr""" user_id = (
+          |   SELECT tenant_user.id
+          |   FROM tenant_user
+          |   WHERE tenant_user.public_user_id = $publicUserId
+          | )
+          |""".stripMargin
   }
 }

@@ -1,10 +1,10 @@
 package apikeysteward.repositories.db
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.errors.UserDbError.UserInsertionError._
-import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.UserDbError.UserInsertionError._
+import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.repositories.db.entity.UserEntity
 import cats.implicits.toTraverseOps
 import doobie.implicits._
@@ -15,6 +15,7 @@ import fs2.Stream
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
+import java.util.UUID
 
 class UserDb()(implicit clock: Clock) {
 
@@ -75,6 +76,9 @@ class UserDb()(implicit clock: Clock) {
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, UserEntity.Read] =
     TenantIdScopedQueries(publicTenantId).getAllForTenant.stream
 
+  def getByDbId(publicTenantId: TenantId, userDbId: UUID): doobie.ConnectionIO[Option[UserEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getByDbId(userDbId).option
+
   private object Queries {
 
     def insert(userEntity: UserEntity.Write, now: Instant): doobie.Update0 =
@@ -131,5 +135,13 @@ class UserDb()(implicit clock: Clock) {
               WHERE ${tenantIdFr(TableName)}
               ORDER BY tenant_user.created_at DESC
              """).query[UserEntity.Read]
+
+    def getByDbId(userDbId: UUID): doobie.Query0[UserEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM tenant_user
+             |WHERE tenant_user.id = $userDbId
+             |  AND ${tenantIdFr(TableName)}
+             |""".stripMargin).query[UserEntity.Read]
+
   }
 }

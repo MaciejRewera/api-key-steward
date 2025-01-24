@@ -1,5 +1,6 @@
 package apikeysteward.repositories.db
 
+import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
@@ -97,6 +98,12 @@ class PermissionDb()(implicit clock: Clock) {
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
     TenantIdScopedQueries(publicTenantId).getAllForTemplate(publicTemplateId).stream
 
+  def getAllForApiKey(
+      publicTenantId: TenantId,
+      publicKeyId: ApiKeyId
+  ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
+    TenantIdScopedQueries(publicTenantId).getAllForApiKey(publicKeyId).stream
+
   def getAllBy(publicTenantId: TenantId, publicResourceServerId: ResourceServerId)(
       nameFragment: Option[String]
   ): Stream[doobie.ConnectionIO, PermissionEntity.Read] =
@@ -157,6 +164,15 @@ class PermissionDb()(implicit clock: Clock) {
               JOIN api_key_templates_permissions ON permission.id = api_key_templates_permissions.permission_id
               JOIN api_key_template ON api_key_template.id = api_key_templates_permissions.api_key_template_id
               WHERE api_key_template.public_template_id = ${publicTemplateId.toString}
+                AND ${tenantIdFr(TableName)}
+           """.stripMargin).query[PermissionEntity.Read]
+
+    def getAllForApiKey(publicKeyId: ApiKeyId): doobie.Query0[PermissionEntity.Read] =
+      (PermissionDb.ColumnNamesSelectFragment ++
+        sql"""FROM permission
+              JOIN api_keys_permissions ON permission.id = api_keys_permissions.permission_id
+              JOIN api_key_data ON api_key_data.id = api_keys_permissions.api_key_data_id
+              WHERE api_key_data.public_key_id = ${publicKeyId.toString}
                 AND ${tenantIdFr(TableName)}
            """.stripMargin).query[PermissionEntity.Read]
 

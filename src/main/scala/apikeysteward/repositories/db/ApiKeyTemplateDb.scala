@@ -15,6 +15,7 @@ import fs2.Stream
 
 import java.sql.SQLException
 import java.time.{Clock, Instant}
+import java.util.UUID
 
 class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
 
@@ -105,6 +106,9 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
   def getAllForTenant(publicTenantId: TenantId): Stream[doobie.ConnectionIO, ApiKeyTemplateEntity.Read] =
     TenantIdScopedQueries(publicTenantId).getAllForTenant.stream
 
+  def getByDbId(publicTenantId: TenantId, templateDbId: UUID): doobie.ConnectionIO[Option[ApiKeyTemplateEntity.Read]] =
+    TenantIdScopedQueries(publicTenantId).getByDbId(templateDbId).option
+
   private object Queries {
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
@@ -178,6 +182,14 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               WHERE ${tenantIdFr(TableName)}
               ORDER BY api_key_template.created_at DESC
              """.stripMargin).query[ApiKeyTemplateEntity.Read]
+
+    def getByDbId(templateDbId: UUID): doobie.Query0[ApiKeyTemplateEntity.Read] =
+      (columnNamesSelectFragment ++
+        sql"""FROM api_key_template
+             |WHERE api_key_template.id = $templateDbId
+             |  AND ${tenantIdFr(TableName)}
+             |""".stripMargin).query[ApiKeyTemplateEntity.Read]
+
   }
 
 }

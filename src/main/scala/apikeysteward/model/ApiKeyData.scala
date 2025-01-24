@@ -1,20 +1,26 @@
 package apikeysteward.model
 
-import apikeysteward.repositories.db.entity.ApiKeyDataEntity
+import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.User.UserId
+import apikeysteward.repositories.db.entity.{ApiKeyDataEntity, PermissionEntity}
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import apikeysteward.services.ApiKeyExpirationCalculator
-import io.circe.{Codec, Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 import java.time.{Clock, Instant}
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 case class ApiKeyData(
-    publicKeyId: UUID,
+    publicKeyId: ApiKeyId,
     name: String,
     description: Option[String],
-    userId: String,
-    expiresAt: Instant
+    publicUserId: UserId,
+    expiresAt: Instant,
+    publicTemplateId: ApiKeyTemplateId,
+    permissions: List[Permission]
 )
 
 object ApiKeyData {
@@ -23,23 +29,37 @@ object ApiKeyData {
 
   type ApiKeyId = UUID
 
-  def from(apiKeyDataEntityRead: ApiKeyDataEntity.Read): ApiKeyData =
+  val ApiKeyTtlResolution: TimeUnit = TimeUnit.SECONDS
+
+  def from(
+      publicUserId: UserId,
+      publicTemplateId: ApiKeyTemplateId,
+      apiKeyDataEntityRead: ApiKeyDataEntity.Read,
+      permissionEntities: List[PermissionEntity.Read]
+  ): ApiKeyData =
     ApiKeyData(
       publicKeyId = UUID.fromString(apiKeyDataEntityRead.publicKeyId),
       name = apiKeyDataEntityRead.name,
       description = apiKeyDataEntityRead.description,
-      userId = apiKeyDataEntityRead.userId,
-      expiresAt = apiKeyDataEntityRead.expiresAt
+      publicUserId = publicUserId,
+      expiresAt = apiKeyDataEntityRead.expiresAt,
+      publicTemplateId = publicTemplateId,
+      permissions = permissionEntities.map(Permission.from)
     )
 
-  def from(publicKeyId: UUID, userId: String, createApiKeyRequest: CreateApiKeyRequest)(
-      implicit clock: Clock
-  ): ApiKeyData =
+  def from(
+      publicKeyId: ApiKeyId,
+      publicUserId: UserId,
+      createApiKeyRequest: CreateApiKeyRequest,
+      permissions: List[Permission]
+  )(implicit clock: Clock): ApiKeyData =
     ApiKeyData(
       publicKeyId = publicKeyId,
       name = createApiKeyRequest.name,
       description = createApiKeyRequest.description,
-      userId = userId,
-      expiresAt = ApiKeyExpirationCalculator.calcExpiresAt(createApiKeyRequest.ttl)
+      publicUserId = publicUserId,
+      expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(createApiKeyRequest.ttl),
+      publicTemplateId = createApiKeyRequest.templateId,
+      permissions = permissions
     )
 }

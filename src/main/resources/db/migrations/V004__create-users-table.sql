@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS tenant_user
     updated_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE (tenant_id, public_user_id),
+
     CONSTRAINT fkey_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenant (id)
 );

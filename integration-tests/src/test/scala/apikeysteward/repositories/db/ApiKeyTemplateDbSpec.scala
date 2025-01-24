@@ -976,4 +976,69 @@ class ApiKeyTemplateDbSpec
     }
   }
 
+  "ApiKeyTemplateDb on getByDbId" when {
+
+    "there is no Tenant in the DB" should {
+      "return empty Option" in {
+        apiKeyTemplateDb
+          .getByDbId(publicTenantId_1, templateDbId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByDbId(publicTenantId_1, templateDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicTenantId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByDbId(publicTenantId_2, templateDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different templateDbID" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByDbId(publicTenantId_1, templateDbId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[ApiKeyTemplateEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same templateDbId" should {
+      "return this entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1)
+
+          res <- apiKeyTemplateDb.getByDbId(publicTenantId_1, templateDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting { res =>
+          res shouldBe Some(apiKeyTemplateEntityRead_1.copy(id = res.get.id, tenantId = res.get.tenantId))
+        }
+      }
+    }
+  }
+
 }

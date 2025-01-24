@@ -1,17 +1,15 @@
 package apikeysteward.services
 
-import java.time.temporal.ChronoUnit
+import apikeysteward.model.ApiKeyData.ApiKeyTtlResolution
+
 import java.time.{Clock, Instant}
-import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 object ApiKeyExpirationCalculator {
 
-  val TtlTimeUnit: TimeUnit = TimeUnit.MINUTES
-  val ApiKeyExpirationResolution: ChronoUnit = ChronoUnit.SECONDS
-
-  def calcExpiresAt(timeToLive: Int)(implicit clock: Clock): Instant =
+  def calcExpiresAtFromNow(timeToLive: Duration)(implicit clock: Clock): Instant =
     Instant
       .now(clock)
-      .plus(timeToLive, ApiKeyExpirationCalculator.TtlTimeUnit.toChronoUnit)
-      .truncatedTo(ApiKeyExpirationResolution)
+      .plus(timeToLive.length, timeToLive.unit.toChronoUnit)
+      .truncatedTo(ApiKeyTtlResolution.toChronoUnit)
 }

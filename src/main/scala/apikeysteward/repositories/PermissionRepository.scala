@@ -3,16 +3,16 @@ package apikeysteward.repositories
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.ReferencedResourceServerDoesNotExistError
-import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.model.errors.ResourceServerDbError.ResourceServerInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.ReferencedResourceServerDoesNotExistError
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.repositories.db.entity.PermissionEntity
 import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb, TenantDb}
 import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
+import cats.implicits.toTraverseOps
 import doobie.implicits._
 import doobie.{ConnectionIO, Transactor}
 
@@ -93,6 +93,19 @@ class PermissionRepository(
       permissionEntityRead <- OptionT(permissionDb.getBy(publicTenantId, publicResourceServerId, publicPermissionId))
       resultPermission = Permission.from(permissionEntityRead)
     } yield resultPermission).value.transact(transactor)
+
+  def getBy(
+      publicTenantId: TenantId,
+      publicPermissionIds: List[PermissionId]
+  ): IO[Either[PermissionNotFoundError, List[Permission]]] =
+    publicPermissionIds.traverse { permissionId =>
+      EitherT
+        .fromOptionF(
+          permissionDb.getByPublicPermissionId(publicTenantId, permissionId),
+          PermissionNotFoundError.forTenant(publicTenantId, permissionId)
+        )
+        .map(Permission.from)
+    }.value.transact(transactor)
 
   def getAllFor(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
     permissionDb

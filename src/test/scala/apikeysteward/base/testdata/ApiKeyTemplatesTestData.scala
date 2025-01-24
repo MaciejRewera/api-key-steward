@@ -16,6 +16,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val templateDbId_1: UUID = UUID.randomUUID()
   val templateDbId_2: UUID = UUID.randomUUID()
   val templateDbId_3: UUID = UUID.randomUUID()
+  val templateDbId_4: UUID = UUID.randomUUID()
 
   val publicTemplateId_1: ApiKeyTemplateId = UUID.randomUUID()
   val publicTemplateId_2: ApiKeyTemplateId = UUID.randomUUID()
@@ -36,10 +37,10 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyTemplateDescription_3: Option[String] = Some("Test API Key Template description no. 3.")
   val apiKeyTemplateDescriptionUpdated: Option[String] = Some("Test Updated API Key Template description.")
 
-  val apiKeyMaxExpiryPeriod_1: FiniteDuration = Duration(101, TimeUnit.HOURS)
-  val apiKeyMaxExpiryPeriod_2: FiniteDuration = Duration(102, TimeUnit.HOURS)
-  val apiKeyMaxExpiryPeriod_3: FiniteDuration = Duration(103, TimeUnit.HOURS)
-  val apiKeyMaxExpiryPeriodUpdated: FiniteDuration = Duration(201, TimeUnit.HOURS)
+  val apiKeyMaxExpiryPeriod_1: FiniteDuration = Duration(101, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriod_2: FiniteDuration = Duration(102, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriod_3: FiniteDuration = Duration(103, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriodUpdated: FiniteDuration = Duration(201, TimeUnit.MINUTES)
 
   val apiKeyPrefix_1: String = "testPrefix_1_"
   val apiKeyPrefix_2: String = "testPrefix_2_"

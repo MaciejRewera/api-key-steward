@@ -43,8 +43,8 @@ class ApiKeyTemplatesPermissionsDb {
         ApiKeyTemplatesPermissionsAlreadyExistsError(apiKeyTemplateId, permissionId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_tenant_id") =>
-        val apiKeyTemplateId = extractTenantId(sqlException)
-        ReferencedTenantDoesNotExistError.fromDbId(apiKeyTemplateId)
+        val tenantId = extractTenantId(sqlException)
+        ReferencedTenantDoesNotExistError.fromDbId(tenantId)
 
       case FOREIGN_KEY_VIOLATION.value if sqlException.getMessage.contains("fkey_api_key_template_id") =>
         val apiKeyTemplateId = extractApiKeyTemplateId(sqlException)

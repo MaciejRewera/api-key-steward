@@ -4,14 +4,14 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1, tenant_1}
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
-import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
+import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.repositories.db.entity.{PermissionEntity, ResourceServerEntity, TenantEntity}
 import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb, TenantDb}
 import apikeysteward.services.UuidGenerator
@@ -369,7 +369,7 @@ class PermissionRepositorySpec
     }
   }
 
-  "PermissionRepository on getBy(:publicResourceServerId, :publicPermissionId)" when {
+  "PermissionRepository on getBy(:publicTenantId, :publicResourceServerId, :publicPermissionId)" when {
 
     "should always call PermissionDb" in {
       permissionDb.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns Option(permissionEntityRead_1)
@@ -418,6 +418,61 @@ class PermissionRepositorySpec
 
         permissionRepository
           .getBy(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
+      }
+    }
+  }
+
+  "PermissionRepository on getBy(:publicTenantId, :publicPermissionIds)" when {
+
+    "should always call PermissionDb" in {
+      permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns
+        Option(permissionEntityRead_1).pure[doobie.ConnectionIO]
+
+      for {
+        _ <- permissionRepository.getBy(publicTenantId_1, List(publicPermissionId_1, publicPermissionId_2))
+
+        _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_1))
+        _ = verify(permissionDb).getByPublicPermissionId(eqTo(publicTenantId_1), eqTo(publicPermissionId_2))
+      } yield ()
+    }
+
+    "PermissionDb returns Option containing PermissionEntities for all calls" should {
+      "return Right containing all these Permissions" in {
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
+          Option(permissionEntityRead_1).pure[doobie.ConnectionIO],
+          Option(permissionEntityRead_2).pure[doobie.ConnectionIO]
+        )
+
+        permissionRepository
+          .getBy(publicTenantId_1, List(publicPermissionId_1, publicPermissionId_2))
+          .asserting(_ shouldBe Right(List(permission_1, permission_2)))
+      }
+    }
+
+    "PermissionDb returns empty Option for one of the calls" should {
+      "return Left containing PermissionNotFoundError" in {
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
+          Option(permissionEntityRead_1).pure[doobie.ConnectionIO],
+          Option.empty[PermissionEntity.Read].pure[doobie.ConnectionIO]
+        )
+
+        permissionRepository
+          .getBy(publicTenantId_1, List(publicPermissionId_1, publicPermissionId_2))
+          .asserting(_ shouldBe Left(PermissionNotFoundError.forTenant(publicTenantId_1, publicPermissionId_2)))
+      }
+    }
+
+    "PermissionDb returns exception for one of the calls" should {
+      "return failed IO containing this exception" in {
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
+          Option(permissionEntityRead_1).pure[doobie.ConnectionIO],
+          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
+        )
+
+        permissionRepository
+          .getBy(publicTenantId_1, List(publicPermissionId_1, publicPermissionId_2))
           .attempt
           .asserting(_ shouldBe Left(testException))
       }

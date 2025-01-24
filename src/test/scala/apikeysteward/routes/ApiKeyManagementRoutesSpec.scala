@@ -1,14 +1,16 @@
 package apikeysteward.routes
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
-import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1}
+import apikeysteward.base.testdata.PermissionsTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.errors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
-import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.User.UserId
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}
@@ -20,26 +22,25 @@ import apikeysteward.services.CreateApiKeyRequestValidator.CreateApiKeyRequestVa
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.catsSyntaxEitherId
+import io.circe.parser
 import io.circe.syntax.EncoderOps
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.{Header, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import org.typelevel.ci.{CIString, CIStringSyntax}
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 
 class ApiKeyManagementRoutesSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
     with BeforeAndAfterEach
+    with EitherValues
     with RoutesSpecBase {
 
   private val jwtOps = mock[JwtOps]
@@ -70,7 +71,17 @@ class ApiKeyManagementRoutesSpec
   "ManagementRoutes on POST /api-keys" when {
 
     val uri = Uri.unsafeFromString("/api-keys")
-    val requestBody = CreateApiKeyRequest(name = name_1, description = description_1, ttl = ttlMinutes)
+    val requestBody = CreateApiKeyRequest(
+      name = name_1,
+      description = description_1,
+      ttl = ttl,
+      templateId = publicTemplateId_1,
+      permissionIds = List(
+        publicPermissionId_1,
+        publicPermissionId_2,
+        publicPermissionId_3
+      )
+    )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
@@ -246,54 +257,140 @@ class ApiKeyManagementRoutesSpec
               _ = verifyZeroInteractions(managementService)
             } yield ()
           }
+        }
 
-          "request body is provided with description longer than 250 characters" should {
+        "request body is provided with description longer than 250 characters" should {
 
-            val descriptionThatIsTooLong = List.fill(251)("A").mkString
-            val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
-            val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-              Some(
-                s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
-              )
+          val descriptionThatIsTooLong = List.fill(251)("A").mkString
+          val requestWithLongName = request.withEntity(requestBody.copy(description = Some(descriptionThatIsTooLong)))
+          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+            Some(
+              s"Invalid value for: body (expected description to pass validation, but got: Some($descriptionThatIsTooLong))"
             )
+          )
 
-            "return Bad Request" in authorizedFixture {
-              for {
-                response <- managementRoutes.run(requestWithLongName)
-                _ = response.status shouldBe Status.BadRequest
-                _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-              } yield ()
-            }
-
-            "NOT call ManagementService" in authorizedFixture {
-              for {
-                _ <- managementRoutes.run(requestWithLongName)
-                _ = verifyZeroInteractions(managementService)
-              } yield ()
-            }
+          "return Bad Request" in authorizedFixture {
+            for {
+              response <- managementRoutes.run(requestWithLongName)
+              _ = response.status shouldBe Status.BadRequest
+              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+            } yield ()
           }
 
-          "request body is provided with negative ttl value" should {
+          "NOT call ManagementService" in authorizedFixture {
+            for {
+              _ <- managementRoutes.run(requestWithLongName)
+              _ = verifyZeroInteractions(managementService)
+            } yield ()
+          }
+        }
 
-            val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = -1))
-            val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-              Some("Invalid value for: body (expected ttl to be greater than or equal to 0, but got -1)")
+        "request body is provided with negative ttl value" should {
+
+          val requestWithNegativeTtl = request.withEntity(requestBody.copy(ttl = Duration(-1, ttl.unit)))
+          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+            Some("Invalid value for: body (expected ttl to pass validation, but got: -1 minutes)")
+          )
+
+          "return Bad Request" in authorizedFixture {
+            for {
+              response <- managementRoutes.run(requestWithNegativeTtl)
+              _ = response.status shouldBe Status.BadRequest
+              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+            } yield ()
+          }
+
+          "NOT call ManagementService" in authorizedFixture {
+            for {
+              _ <- managementRoutes.run(requestWithNegativeTtl)
+              _ = verifyZeroInteractions(managementService)
+            } yield ()
+          }
+        }
+
+        "request body is provided with templateId which is NOT a UUID" should {
+
+          val requestBodyWithIncorrectTemplateId =
+            s"""{
+               |  "name": "$name_1",
+               |  "description": "$description_1",
+               |  "ttl": "$ttl",
+               |  "templateId": "this-is-not-a-uuid",
+               |  "permissionIds": [
+               |    "$publicPermissionId_1",
+               |    "$publicPermissionId_2",
+               |    "$publicPermissionId_3"
+               |  ]
+               |}""".stripMargin
+
+          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+            Some(
+              "Invalid value for: body (Got value '\"this-is-not-a-uuid\"' with wrong type, expecting string at 'templateId')"
             )
+          )
 
-            "return Bad Request" in authorizedFixture {
-              for {
-                response <- managementRoutes.run(requestWithNegativeTtl)
-                _ = response.status shouldBe Status.BadRequest
-                _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-              } yield ()
-            }
+          "return Bad Request" in authorizedFixture {
+            val requestWithIncorrectTemplateId =
+              request.withEntity(parser.parse(requestBodyWithIncorrectTemplateId).value)
 
-            "NOT call ManagementService" in authorizedFixture {
-              for {
-                _ <- managementRoutes.run(requestWithNegativeTtl)
-                _ = verifyZeroInteractions(managementService)
-              } yield ()
-            }
+            for {
+              response <- managementRoutes.run(requestWithIncorrectTemplateId)
+              _ = response.status shouldBe Status.BadRequest
+              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+            } yield ()
+          }
+
+          "NOT call ManagementService" in authorizedFixture {
+            val requestWithIncorrectTemplateId =
+              request.withEntity(parser.parse(requestBodyWithIncorrectTemplateId).value)
+
+            for {
+              _ <- managementRoutes.run(requestWithIncorrectTemplateId)
+              _ = verifyZeroInteractions(managementService)
+            } yield ()
+          }
+        }
+
+        "request body is provided with permissionIds containing ID which is NOT a UUID" should {
+
+          val requestBodyWithIncorrectPermissionId =
+            s"""{
+               |  "name": "$name_1",
+               |  "description": "$description_1",
+               |  "ttl": "$ttl",
+               |  "templateId": "$publicTemplateId_1",
+               |  "permissionIds": [
+               |    "$publicPermissionId_1",
+               |    "this-is-not-a-uuid",
+               |    "$publicPermissionId_3"
+               |  ]
+               |}""".stripMargin
+
+          val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
+            Some(
+              "Invalid value for: body (Got value '\"this-is-not-a-uuid\"' with wrong type, expecting string at 'permissionIds[1]')"
+            )
+          )
+
+          "return Bad Request" in authorizedFixture {
+            val requestWithIncorrectPermissionId =
+              request.withEntity(parser.parse(requestBodyWithIncorrectPermissionId).value)
+
+            for {
+              response <- managementRoutes.run(requestWithIncorrectPermissionId)
+              _ = response.status shouldBe Status.BadRequest
+              _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
+            } yield ()
+          }
+
+          "NOT call ManagementService" in authorizedFixture {
+            val requestWithIncorrectPermissionId =
+              request.withEntity(parser.parse(requestBodyWithIncorrectPermissionId).value)
+
+            for {
+              _ <- managementRoutes.run(requestWithIncorrectPermissionId)
+              _ = verifyZeroInteractions(managementService)
+            } yield ()
           }
         }
       }
@@ -348,7 +445,7 @@ class ApiKeyManagementRoutesSpec
 
         "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
           val error =
-            ValidationError(Seq(TtlTooLargeError(requestBody.ttl, FiniteDuration(ttlMinutes - 1, TimeUnit.MINUTES))))
+            ValidationError(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit))))
           managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
             Left(error)
           )

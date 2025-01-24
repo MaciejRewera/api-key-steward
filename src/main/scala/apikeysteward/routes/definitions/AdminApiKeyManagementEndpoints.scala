@@ -30,17 +30,8 @@ private[routes] object AdminApiKeyManagementEndpoints {
       .in("admin" / "api-keys")
       .in(
         jsonBody[CreateApiKeyAdminRequest]
-          .description(
-            s"Details of the API key to create. The time unit of 'ttl' parameter are ${ApiKeyExpirationCalculator.TtlTimeUnit.toString.toLowerCase}."
-          )
-          .example(
-            CreateApiKeyAdminRequest(
-              userId = "user-1234567890",
-              name = "My API key",
-              description = Some("A short description what this API key is for."),
-              ttl = 60
-            )
-          )
+          .description(s"Details of the API key to create.")
+          .example(EndpointsBase.CreateApiKeyAdminRequestExample)
       )
       .out(statusCode.description(StatusCode.Created, "API key created successfully"))
       .out(

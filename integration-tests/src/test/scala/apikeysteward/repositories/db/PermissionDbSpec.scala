@@ -2,19 +2,15 @@ package apikeysteward.repositories.db
 
 import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeysPermissionsTestData._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData._
-import apikeysteward.base.testdata.TenantsTestData.{
-  publicTenantId_1,
-  publicTenantId_2,
-  tenantDbId_1,
-  tenantDbId_2,
-  tenantEntityWrite_1
-}
+import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.repositories.TestDataInsertions._
-import apikeysteward.repositories.db.entity.{ApiKeyTemplatesPermissionsEntity, PermissionEntity, ResourceServerEntity}
+import apikeysteward.repositories.db.entity._
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -34,13 +30,17 @@ class PermissionDbSpec
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
     _ <-
-      sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
+      sql"TRUNCATE tenant, tenant_user, resource_server, permission, api_key_template, api_key, api_key_data, api_key_templates_permissions, api_keys_permissions CASCADE".update.run
   } yield ()
 
   private val tenantDb = new TenantDb
   private val resourceServerDb = new ResourceServerDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
   private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+  private val apiKeysPermissionsDb = new ApiKeysPermissionsDb
+  private val userDb = new UserDb
+  private val apiKeyDb = new ApiKeyDb
+  private val apiKeyDataDb = new ApiKeyDataDb()
 
   private val permissionDb = new PermissionDb
 
@@ -967,6 +967,174 @@ class PermissionDbSpec
             res.size shouldBe 2
             res should contain theSameElementsAs expectedPermissionEntities
           }
+        }
+      }
+    }
+  }
+
+  "PermissionDb on getAllForApiKey" when {
+
+    def insertPrerequisiteData()
+        : ConnectionIO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[UserDbId], List[PermissionDbId])] =
+      TestDataInsertions
+        .insertPrerequisiteTemplatesAndUsersAndPermissionsAndApiKeys(
+          tenantDb,
+          userDb,
+          resourceServerDb,
+          permissionDb,
+          apiKeyTemplateDb,
+          apiKeyDb,
+          apiKeyDataDb
+        )
+
+    "there is NO ApiKeyData in the DB" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyData in the DB for a different publicTenantId" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1)
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_2, publicKeyId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyData in the DB, but with a different publicKeyId" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1)
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_2).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyData in the DB, but there are no ApiKeysPermissions for this ApiKeyData" should {
+      "return empty Stream" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      }
+    }
+
+    "there is an ApiKeyData in the DB with a single ApiKeysPermissions" should {
+      "return this single Permission" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+          preExistingEntities = List(apiKeysPermissionsEntityWrite_1_1)
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List(permissionEntityRead_1))
+      }
+    }
+
+    "there is an ApiKeyData in the DB with multiple ApiKeysPermissions" should {
+      "return all these Permissions" in {
+        val result = (for {
+          _ <- insertPrerequisiteData()
+
+          preExistingEntities = List(
+            apiKeysPermissionsEntityWrite_1_1,
+            apiKeysPermissionsEntityWrite_1_2,
+            apiKeysPermissionsEntityWrite_1_3
+          )
+          _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+          res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+        } yield res).transact(transactor)
+
+        result.asserting(
+          _ should contain theSameElementsAs List(
+            permissionEntityRead_1,
+            permissionEntityRead_2,
+            permissionEntityRead_3
+          )
+        )
+      }
+    }
+
+    "there are several ApiKeyData in the DB with associated ApiKeysPermissions" when {
+
+      "there are NO ApiKeysPermissions for given publicKeyId" should {
+        "return empty Stream" in {
+          val result = (for {
+            _ <- insertPrerequisiteData()
+
+            preExistingEntities = List(
+              apiKeysPermissionsEntityWrite_1_1,
+              apiKeysPermissionsEntityWrite_2_2,
+              apiKeysPermissionsEntityWrite_2_1
+            )
+            _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+            res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_3).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+        }
+      }
+
+      "there is a single ApiKeysPermissions for given publicKeyId" should {
+        "return this single Permission" in {
+          val result = (for {
+            _ <- insertPrerequisiteData()
+
+            preExistingEntities = List(
+              apiKeysPermissionsEntityWrite_1_1,
+              apiKeysPermissionsEntityWrite_2_2,
+              apiKeysPermissionsEntityWrite_2_1
+            )
+            _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+            res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ shouldBe List(permissionEntityRead_1))
+        }
+      }
+
+      "there are several ApiKeysPermissions for given publicKeyId" should {
+        "return all these Permissions" in {
+          val result = (for {
+            _ <- insertPrerequisiteData()
+
+            preExistingEntities = List(
+              apiKeysPermissionsEntityWrite_1_1,
+              apiKeysPermissionsEntityWrite_1_2,
+              apiKeysPermissionsEntityWrite_2_2,
+              apiKeysPermissionsEntityWrite_2_1
+            )
+            _ <- apiKeysPermissionsDb.insertMany(preExistingEntities)
+
+            res <- permissionDb.getAllForApiKey(publicTenantId_1, publicKeyId_1).compile.toList
+          } yield res).transact(transactor)
+
+          result.asserting(_ should contain theSameElementsAs List(permissionEntityRead_1, permissionEntityRead_2))
         }
       }
     }

@@ -14,6 +14,7 @@ object UsersTestData extends FixedClock {
   val userDbId_1: UUID = UUID.randomUUID()
   val userDbId_2: UUID = UUID.randomUUID()
   val userDbId_3: UUID = UUID.randomUUID()
+  val userDbId_4: UUID = UUID.randomUUID()
 
   val publicUserId_1: UserId = Random.alphanumeric.take(42).mkString
   val publicUserId_2: UserId = Random.alphanumeric.take(42).mkString

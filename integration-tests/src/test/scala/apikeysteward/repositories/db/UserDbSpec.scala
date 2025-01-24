@@ -8,7 +8,7 @@ import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.UserNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
-import apikeysteward.repositories.db.entity.{ApiKeyTemplatesUsersEntity, ResourceServerEntity, UserEntity}
+import apikeysteward.repositories.db.entity.{ResourceServerEntity, UserEntity}
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.none
@@ -478,7 +478,7 @@ class UserDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          res <- userDb.getByPublicUserId(publicTenantId_2, publicUserId_1)
+          res <- userDb.getByPublicUserId(publicTenantId_1, publicUserId_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[UserEntity.Read])
@@ -520,9 +520,7 @@ class UserDbSpec
           res <- userDb.getByPublicUserId(publicTenantId_1, publicUserId_1)
         } yield res).transact(transactor)
 
-        result.asserting { res =>
-          res shouldBe Some(userEntityRead_1.copy(id = res.get.id, tenantId = res.get.tenantId))
-        }
+        result.asserting(_ shouldBe Some(userEntityRead_1))
       }
     }
   }
@@ -871,6 +869,69 @@ class UserDbSpec
             res should contain theSameElementsAs expectedEntities
           }
         }
+      }
+    }
+  }
+
+  "UserDb on getByDbId" when {
+
+    "there are no Tenants in the DB" should {
+      "return empty Option" in {
+        userDb
+          .getByDbId(publicTenantId_1, userDbId_1)
+          .transact(transactor)
+          .asserting(_ shouldBe none[UserEntity.Read])
+      }
+    }
+
+    "there are no rows in the DB" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+
+          res <- userDb.getByDbId(publicTenantId_1, userDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[UserEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicTenantId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
+
+          res <- userDb.getByDbId(publicTenantId_2, userDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[UserEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with different publicUserId" should {
+      "return empty Option" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
+
+          res <- userDb.getByDbId(publicTenantId_1, userDbId_2)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe none[UserEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same both publicTenantId and publicUserId" should {
+      "return this entity" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          _ <- userDb.insert(userEntityWrite_1)
+
+          res <- userDb.getByDbId(publicTenantId_1, userDbId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Some(userEntityRead_1))
       }
     }
   }
