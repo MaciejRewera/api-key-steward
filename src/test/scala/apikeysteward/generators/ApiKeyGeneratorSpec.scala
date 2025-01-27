@@ -1,14 +1,19 @@
 package apikeysteward.generators
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData.publicTemplateId_1
 import apikeysteward.base.testdata.ApiKeysTestData._
+import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.generators.ApiKeyGenerator.ApiKeyGeneratorError
 import apikeysteward.generators.Base62.Base62Error.ProvidedWithNegativeNumberError
 import apikeysteward.model.ApiKey
-import apikeysteward.utils.Retry.RetryException.MaxNumberOfRetriesExceeded
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateNotFoundError
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
-import org.mockito.MockitoSugar.{mock, reset, times, verify, verifyZeroInteractions}
+import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
@@ -38,15 +43,15 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "everything works correctly" should {
 
       "call ApiKeyPrefixProvider, RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
         randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
         for {
-          _ <- apiKeyGenerator.generateApiKey
+          _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1)
 
-          _ = verify(apiKeyPrefixProvider).fetchPrefix
+          _ = verify(apiKeyPrefixProvider).fetchPrefix(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(randomStringGenerator).generate
           expectedApiKeyWithPrefix = apiKeyPrefix + apiKeyRandomSection_1
           _ = verify(checksumCalculator).calcChecksumFor(eqTo(expectedApiKeyWithPrefix))
@@ -54,188 +59,108 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
         } yield ()
       }
 
-      "return the newly created Api Key" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+      "return Right containing the newly created Api Key" in {
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
         randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L
         checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
 
-        apiKeyGenerator.generateApiKey.asserting { result =>
-          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomSection_1 + encodedValue_42)
+        apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).asserting {
+          _ shouldBe Right(ApiKey(apiKeyPrefix + apiKeyRandomSection_1 + encodedValue_42))
         }
+      }
+    }
+
+    "ApiKeyPrefixProvider returns Left containing error" should {
+
+      "NOT call either RandomStringGenerator, CRC32ChecksumCalculator or ChecksumCodec" in {
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
+          Left(ApiKeyTemplateNotFoundError(publicTemplateId_1.toString))
+        )
+
+        for {
+          _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1)
+
+          _ = verifyZeroInteractions(randomStringGenerator, checksumCalculator, checksumCodec)
+        } yield ()
+      }
+
+      "return Left containing ApiKeyGeneratorError" in {
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
+          Left(ApiKeyTemplateNotFoundError(publicTemplateId_1.toString))
+        )
+
+        apiKeyGenerator
+          .generateApiKey(publicTenantId_1, publicTemplateId_1)
+          .asserting(_ shouldBe Left(ApiKeyGeneratorError(ApiKeyTemplateNotFoundError(publicTemplateId_1.toString))))
       }
     }
 
     "ApiKeyPrefixProvider returns failed IO" should {
 
-      "call RandomStringGenerator anyway" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
+      "NOT call either RandomStringGenerator, CRC32ChecksumCalculator or ChecksumCodec" in {
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
+          _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
 
-          _ = verify(randomStringGenerator).generate
-        } yield ()
-      }
-
-      "NOT call either CRC32ChecksumCalculator or ChecksumCodec" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
-
-        for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
-
-          _ = verifyZeroInteractions(checksumCalculator, checksumCodec)
+          _ = verifyZeroInteractions(randomStringGenerator, checksumCalculator, checksumCodec)
         } yield ()
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.raiseError(testException)
-        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
-        apiKeyGenerator.generateApiKey.attempt.asserting(_ shouldBe Left(testException))
+        apiKeyGenerator
+          .generateApiKey(publicTenantId_1, publicTemplateId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
 
     "RandomStringGenerator returns failed IO" should {
 
       "call ApiKeyPrefixProvider anyway" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
         randomStringGenerator.generate returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
-          _ = verify(apiKeyPrefixProvider).fetchPrefix
+          _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
+          _ = verify(apiKeyPrefixProvider).fetchPrefix(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
         } yield ()
       }
 
       "NOT call either CRC32ChecksumCalculator or ChecksumCodec" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
         randomStringGenerator.generate returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
+          _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
           _ = verifyZeroInteractions(checksumCalculator, checksumCodec)
         } yield ()
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
         randomStringGenerator.generate returns IO.raiseError(testException)
 
-        apiKeyGenerator.generateApiKey.attempt.asserting(_ shouldBe Left(testException))
+        apiKeyGenerator
+          .generateApiKey(publicTenantId_1, publicTemplateId_1)
+          .attempt
+          .asserting(_ shouldBe Left(testException))
       }
     }
 
-    "ChecksumCodec returns ProvidedWithNegativeNumberError on the first try" should {
-
-      "call RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec again" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
-        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
-        checksumCodec.encode(any[Long]) returns (
-          Left(ProvidedWithNegativeNumberError(-42L)),
-          Right(encodedValue_42)
-        )
-
-        for {
-          _ <- apiKeyGenerator.generateApiKey
-
-          _ = verify(randomStringGenerator, times(2)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_2))
-        } yield ()
-      }
-
-      "NOT call ApiKeyPrefixProvider again" in {
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
-        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        checksumCodec.encode(any[Long]) returns (
-          Left(ProvidedWithNegativeNumberError(-42L)),
-          Right(encodedValue_42)
-        )
-
-        for {
-          _ <- apiKeyGenerator.generateApiKey
-          _ = verify(apiKeyPrefixProvider).fetchPrefix
-        } yield ()
-      }
-
-      "return the second created Api Key" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2))
-        checksumCalculator.calcChecksumFor(any[String]) returns (-42L, 42L)
-        checksumCodec.encode(any[Long]) returns (
-          Left(ProvidedWithNegativeNumberError(-42L)),
-          Right(encodedValue_42)
-        )
-
-        apiKeyGenerator.generateApiKey.asserting { result =>
-          result shouldBe ApiKey(apiKeyPrefix + apiKeyRandomSection_2 + encodedValue_42)
-        }
-      }
-    }
-
-    "ChecksumCodec keeps returning ProvidedWithNegativeNumberError" should {
-
-      "call RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec again until reaching max retries amount (3)" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
-            apiKeyRandomSection_4
-          )
-        )
+    "ChecksumCodec returns Left containing ProvidedWithNegativeNumberError" should {
+      "return Left containing ApiKeyGeneratorError" in {
+        apiKeyPrefixProvider.fetchPrefix(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyPrefix))
+        randomStringGenerator.generate returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns -42L
         checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
 
-        for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
-
-          _ = verify(randomStringGenerator, times(4)).generate
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_1))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_2))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_3))
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(apiKeyPrefix + apiKeyRandomSection_4))
-        } yield ()
-      }
-
-      "NOT call ApiKeyPrefixProvider again" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
-            apiKeyRandomSection_4
-          )
-        )
-        checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
-
-        for {
-          _ <- apiKeyGenerator.generateApiKey.attempt
-          _ = verify(apiKeyPrefixProvider).fetchPrefix
-        } yield ()
-      }
-
-      "return failed IO containing MaxNumberOfRetriesExceeded" in {
-        apiKeyPrefixProvider.fetchPrefix returns IO.pure(apiKeyPrefix)
-        randomStringGenerator.generate returns (
-          IO.pure(apiKeyRandomSection_1), IO.pure(apiKeyRandomSection_2), IO.pure(apiKeyRandomSection_3), IO.pure(
-            apiKeyRandomSection_4
-          )
-        )
-        checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
-
-        apiKeyGenerator.generateApiKey.attempt.asserting(
-          _ shouldBe Left(MaxNumberOfRetriesExceeded(ProvidedWithNegativeNumberError(-42L)))
-        )
+        apiKeyGenerator
+          .generateApiKey(publicTenantId_1, publicTemplateId_1)
+          .asserting(_ shouldBe Left(ApiKeyGeneratorError(ProvidedWithNegativeNumberError(-42L))))
       }
     }
   }

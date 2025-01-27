@@ -1,9 +1,14 @@
 package apikeysteward.generators
 
+import apikeysteward.generators.ApiKeyGenerator.ApiKeyGeneratorError
 import apikeysteward.model.ApiKey
-import apikeysteward.utils.{Logging, Retry}
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.errors.CustomError
+import apikeysteward.utils.Logging
+import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits.{catsSyntaxEitherId, catsSyntaxTuple2Parallel}
+import cats.implicits.catsSyntaxEitherId
 
 class ApiKeyGenerator(
     apiKeyPrefixProvider: ApiKeyPrefixProvider,
@@ -12,25 +17,44 @@ class ApiKeyGenerator(
     checksumCodec: ChecksumCodec
 ) extends Logging {
 
-  def generateApiKey: IO[ApiKey] =
-    for {
-      prefix <- apiKeyPrefixProvider.fetchPrefix.memoize
-      apiKey <- Retry.retry(maxRetries = 3, (_: Base62.Base62Error) => true)(generateApiKeyWithChecksum(prefix))
-    } yield ApiKey(apiKey)
+  def generateApiKey(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): IO[Either[ApiKeyGeneratorError, ApiKey]] =
+    (for {
+      prefix <- fetchPrefix(publicTenantId, publicTemplateId)
+      randomFragment <- EitherT.right[ApiKeyGeneratorError](randomStringGenerator.generate)
+      randomFragmentWithPrefix = prefix + randomFragment
 
-  private def generateApiKeyWithChecksum(prefixIO: IO[String]): IO[Either[Base62.Base62Error, String]] =
-    generateRandomFragmentWithPrefix(prefixIO).flatMap { randomFragmentWithPrefix =>
-      val checksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
+      checksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
+      encodedChecksum <- encodeChecksum(checksum)
+
+      res = ApiKey(randomFragmentWithPrefix + encodedChecksum)
+    } yield res).value
+
+  private def fetchPrefix(
+      publicTenantId: TenantId,
+      publicTemplateId: ApiKeyTemplateId
+  ): EitherT[IO, ApiKeyGeneratorError, String] =
+    EitherT(apiKeyPrefixProvider.fetchPrefix(publicTenantId, publicTemplateId))
+      .leftMap(ApiKeyGeneratorError)
+
+  private def encodeChecksum(checksum: Long): EitherT[IO, ApiKeyGeneratorError, String] =
+    EitherT {
       checksumCodec.encode(checksum) match {
-        case Left(error)            => logger.warn(s"Error while encoding checksum: ${error.message}") >> IO(error.asLeft)
-        case Right(encodedChecksum) => IO((randomFragmentWithPrefix + encodedChecksum).asRight)
+        case Left(error) =>
+          logger.warn(s"Error while encoding checksum: ${error.message}") >>
+            IO(ApiKeyGeneratorError(error).asLeft)
+
+        case Right(encodedChecksum) => IO(encodedChecksum.asRight)
       }
     }
 
-  private def generateRandomFragmentWithPrefix(prefixIO: IO[String]): IO[String] =
-    (
-      prefixIO,
-      randomStringGenerator.generate
-    ).parMapN { case (prefix, randomFragment) => prefix + randomFragment }
+}
 
+object ApiKeyGenerator {
+
+  case class ApiKeyGeneratorError(cause: CustomError) extends CustomError {
+    override val message: String = cause.message
+  }
 }

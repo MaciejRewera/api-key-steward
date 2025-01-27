@@ -90,7 +90,11 @@ class ApiKeyManagementService(
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
       _ <- logInfoT("Generating API Key...")
-      newApiKey <- EitherT.right(apiKeyGenerator.generateApiKey.flatTap(_ => logger.info("Generated API Key.")))
+      newApiKey <- EitherT(
+        apiKeyGenerator
+          .generateApiKey(publicTenantId, createApiKeyRequest.templateId)
+          .flatTap(_ => logger.info("Generated API Key."))
+      ).leftMap(ApiKeyCreateErrorImpl)
 
       _ <- logInfoT("Generating public key ID...")
       publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
