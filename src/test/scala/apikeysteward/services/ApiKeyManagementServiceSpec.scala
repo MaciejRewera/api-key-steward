@@ -8,6 +8,7 @@ import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
@@ -80,7 +81,7 @@ class ApiKeyManagementServiceSpec
 
     createApiKeyRequestValidator.validateCreateRequest(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
       IO.pure(Right(createApiKeyRequest))
-    apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
+    apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(apiKey_1)
     uuidGenerator.generateUuid returns IO.pure(publicKeyId_1)
     apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(testApiKeyData))
 
@@ -103,7 +104,7 @@ class ApiKeyManagementServiceSpec
             eqTo(publicUserId_1),
             eqTo(createApiKeyRequest)
           )
-          _ = verify(apiKeyGenerator).generateApiKey
+          _ = verify(apiKeyGenerator).generateApiKey(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(uuidGenerator).generateUuid
           _ = verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), eqTo(testApiKeyData))
           _ = verify(permissionRepository).getBy(
@@ -154,17 +155,17 @@ class ApiKeyManagementServiceSpec
     "ApiKeyGenerator returns failed IO" should {
 
       "NOT call ApiKeyGenerator again" in {
-        apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
-          _ = verify(apiKeyGenerator).generateApiKey
+          _ = verify(apiKeyGenerator).generateApiKey(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verifyNoMoreInteractions(apiKeyGenerator)
         } yield ()
       }
 
       "NOT call UuidGenerator or ApiKeyRepository" in {
-        apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -173,7 +174,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyGenerator.generateApiKey returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -217,7 +218,7 @@ class ApiKeyManagementServiceSpec
       s"ApiKeyRepository returns ${insertionError.getClass.getSimpleName} on the first try" should {
 
         "call ApiKeyGenerator, UuidGenerator and ApiKeyRepository again" in {
-          apiKeyGenerator.generateApiKey returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
+          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
           apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
@@ -226,7 +227,7 @@ class ApiKeyManagementServiceSpec
 
           for {
             _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
-            _ = verify(apiKeyGenerator, times(2)).generateApiKey
+            _ = verify(apiKeyGenerator, times(2)).generateApiKey(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
             _ = verify(uuidGenerator, times(2)).generateUuid
 
             _ = {
@@ -244,7 +245,7 @@ class ApiKeyManagementServiceSpec
         }
 
         "return the second created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
-          apiKeyGenerator.generateApiKey returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
+          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (IO.pure(apiKey_1), IO.pure(apiKey_2))
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
           apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
             IO.pure(Left(insertionError)),
@@ -262,7 +263,7 @@ class ApiKeyManagementServiceSpec
       s"ApiKeyRepository keeps returning ${dbInsertionError.getClass.getSimpleName}" should {
 
         "call ApiKeyGenerator and ApiKeyRepository again until reaching max retries amount (3)" in {
-          apiKeyGenerator.generateApiKey returns (
+          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
           uuidGenerator.generateUuid returns (
@@ -272,7 +273,7 @@ class ApiKeyManagementServiceSpec
 
           for {
             _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
-            _ = verify(apiKeyGenerator, times(4)).generateApiKey
+            _ = verify(apiKeyGenerator, times(4)).generateApiKey(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
             _ = verify(uuidGenerator, times(4)).generateUuid
 
             _ = {
@@ -300,7 +301,7 @@ class ApiKeyManagementServiceSpec
         }
 
         "return successful IO containing Left with InsertionError" in {
-          apiKeyGenerator.generateApiKey returns (
+          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
             IO.pure(apiKey_1), IO.pure(apiKey_2), IO.pure(apiKey_3), IO.pure(apiKey_4)
           )
           uuidGenerator.generateUuid returns (
@@ -317,7 +318,7 @@ class ApiKeyManagementServiceSpec
 
     "ApiKeyRepository returns a different exception" should {
       "return IO with this exception" in {
-        apiKeyGenerator.generateApiKey returns IO.pure(apiKey_1)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(apiKey_1)
         apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
 
         managementService

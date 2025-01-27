@@ -18,8 +18,6 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
     val config = ApiKeyConfig(
       prngAmount = 13,
       randomSectionLength = 42,
-      prefix = "prefix",
-      ttlMax = ttl,
       storageHashingAlgorithm = SHA3_256
     )
 

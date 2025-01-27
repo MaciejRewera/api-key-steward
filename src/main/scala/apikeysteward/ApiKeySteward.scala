@@ -54,17 +54,6 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         migrationResult <- DatabaseMigrator.migrateDatabase(transactor.kernel, config.database)
         _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
-        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(config.apiKey)
-        randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
-        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
-        checksumCodec: ChecksumCodec = new ChecksumCodec
-        apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
-          apiKeyPrefixProvider,
-          randomStringGenerator,
-          checksumCalculator,
-          checksumCodec
-        )
-
         uuidGenerator = new UuidGenerator
 
         apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(uuidGenerator, config)(transactor)
@@ -84,6 +73,17 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyTemplateRepository,
           userRepository
         )(transactor)
+
+        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(apiKeyTemplateRepository)
+        randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
+        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
+        checksumCodec: ChecksumCodec = new ChecksumCodec
+        apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
+          apiKeyPrefixProvider,
+          randomStringGenerator,
+          checksumCalculator,
+          checksumCodec
+        )
 
         apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
 
