@@ -8,7 +8,13 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.ReferencedResourceServerDoesNotExistError
 import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
 import apikeysteward.repositories.db.entity.PermissionEntity
-import apikeysteward.repositories.db.{ApiKeyTemplatesPermissionsDb, PermissionDb, ResourceServerDb, TenantDb}
+import apikeysteward.repositories.db.{
+  ApiKeyTemplatesPermissionsDb,
+  ApiKeysPermissionsDb,
+  PermissionDb,
+  ResourceServerDb,
+  TenantDb
+}
 import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
@@ -23,7 +29,8 @@ class PermissionRepository(
     tenantDb: TenantDb,
     resourceServerDb: ResourceServerDb,
     permissionDb: PermissionDb,
-    apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb
+    apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb,
+    apiKeysPermissionsDb: ApiKeysPermissionsDb
 )(transactor: Transactor[IO]) {
 
   def insert(
@@ -80,7 +87,9 @@ class PermissionRepository(
       publicPermissionId: PermissionId
   ): ConnectionIO[Either[PermissionNotFoundError, PermissionEntity.Read]] =
     for {
+      _ <- apiKeysPermissionsDb.deleteAllForPermission(publicTenantId, publicPermissionId)
       _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId, publicPermissionId)
+
       deletedPermissionEntity <- permissionDb.delete(publicTenantId, publicResourceServerId, publicPermissionId)
     } yield deletedPermissionEntity
 

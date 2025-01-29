@@ -17,6 +17,7 @@ import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.JwtAuthorizer.Permission
@@ -292,7 +293,7 @@ class AdminUserRoutesSpec
 
       "return Not Found when UserService returns successful IO with Left containing UserNotFoundError" in authorizedFixture {
         userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserNotFoundError(publicTenantId_1, publicUserId_1))
+          Left(UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1)))
         )
 
         for {

@@ -7,6 +7,7 @@ import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.{ApiKeyTemplateRepository, TenantRepository, UserRepository}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.utils.Logging
@@ -37,7 +38,7 @@ class UserService(
 
     } yield newUser
 
-  def deleteUser(tenantId: TenantId, userId: UserId): IO[Either[UserNotFoundError, User]] =
+  def deleteUser(tenantId: TenantId, userId: UserId): IO[Either[UserRepositoryError, User]] =
     userRepository.delete(tenantId, userId).flatTap {
       case Right(_) => logger.info(s"Deleted User with userId: [$userId] for Tenant with tenantId: [$tenantId].")
       case Left(e) =>

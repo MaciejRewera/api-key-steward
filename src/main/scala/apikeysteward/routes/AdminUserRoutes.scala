@@ -6,6 +6,7 @@ import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError._
 import apikeysteward.model.errors.GenericError.UserDoesNotExistError
 import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminUserEndpoints, ApiErrorMessages}
@@ -64,7 +65,7 @@ class AdminUserRoutes(
             case Right(deletedUser) =>
               (StatusCode.Ok, DeleteUserResponse(deletedUser)).asRight
 
-            case Left(_: UserNotFoundError) =>
+            case Left(err: UserRepositoryError) if err.cause.isInstanceOf[UserNotFoundError] =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminUser.UserNotFound)).asLeft
           }
         }

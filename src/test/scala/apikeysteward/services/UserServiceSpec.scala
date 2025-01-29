@@ -11,6 +11,7 @@ import apikeysteward.model.errors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, Tenant, User}
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.{ApiKeyTemplateRepository, TenantRepository, UserRepository}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import cats.effect.IO
@@ -137,13 +138,10 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "UserRepository returns Left" in {
-        userRepository.delete(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserNotFoundError(publicTenantId_1, publicUserId_1))
-        )
+        val error = UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1))
+        userRepository.delete(any[TenantId], any[UserId]) returns IO.pure(Left(error))
 
-        userService
-          .deleteUser(publicTenantId_1, publicUserId_1)
-          .asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_1)))
+        userService.deleteUser(publicTenantId_1, publicUserId_1).asserting(_ shouldBe Left(error))
       }
     }
 

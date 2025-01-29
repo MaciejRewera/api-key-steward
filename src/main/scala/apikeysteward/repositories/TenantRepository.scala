@@ -70,9 +70,9 @@ class TenantRepository(
       _ <- verifyAllDependenciesAreDeactivated(publicTenantId)
       _ <- verifyTenantIsDeactivated(publicTenantId)
 
-      _ <- deleteResourceServers(publicTenantId)
-      _ <- deleteApiKeyTemplates(publicTenantId)
       _ <- deleteUsers(publicTenantId)
+      _ <- deleteApiKeyTemplates(publicTenantId)
+      _ <- deleteResourceServers(publicTenantId)
 
       tenantEntityRead <- EitherT(tenantDb.deleteDeactivated(publicTenantId))
       resultTenant = Tenant.from(tenantEntityRead)
@@ -112,20 +112,14 @@ class TenantRepository(
       )
     } yield ()
 
-  private def deleteResourceServers(
+  private def deleteUsers(
       publicTenantId: TenantId
-  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[ResourceServer]] =
+  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[User]] =
     EitherT {
       for {
-        resourceServerIdsToDelete <- resourceServerRepository
-          .getAllForTenantOp(publicTenantId)
-          .map(_.resourceServerId)
-          .compile
-          .toList
-        deletedResourceServers <- resourceServerIdsToDelete.traverse(
-          resourceServerRepository.deleteOp(publicTenantId, _)
-        )
-      } yield deletedResourceServers
+        userIdsToDelete <- userRepository.getAllForTenantOp(publicTenantId).map(_.userId).compile.toList
+        deletedUsers <- userIdsToDelete.traverse(userRepository.deleteOp(publicTenantId, _))
+      } yield deletedUsers
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence
     }
@@ -148,14 +142,20 @@ class TenantRepository(
         .sequence
     }
 
-  private def deleteUsers(
+  private def deleteResourceServers(
       publicTenantId: TenantId
-  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[User]] =
+  ): EitherT[doobie.ConnectionIO, CannotDeleteDependencyError, List[ResourceServer]] =
     EitherT {
       for {
-        userIdsToDelete <- userRepository.getAllForTenantOp(publicTenantId).map(_.userId).compile.toList
-        deletedUsers <- userIdsToDelete.traverse(userRepository.deleteOp(publicTenantId, _))
-      } yield deletedUsers
+        resourceServerIdsToDelete <- resourceServerRepository
+          .getAllForTenantOp(publicTenantId)
+          .map(_.resourceServerId)
+          .compile
+          .toList
+        deletedResourceServers <- resourceServerIdsToDelete.traverse(
+          resourceServerRepository.deleteOp(publicTenantId, _)
+        )
+      } yield deletedResourceServers
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence
     }

@@ -70,4 +70,14 @@ object ApiKeyTemplatesPermissionsTestData extends FixedClock {
       )
     }
 
+  implicit class apiKeyTemplatesPermissionsEntityWriteToRead(
+      entityWrite: ApiKeyTemplatesPermissionsEntity.Write
+  ) {
+    def toRead: ApiKeyTemplatesPermissionsEntity.Read = ApiKeyTemplatesPermissionsEntity.Read(
+      tenantId = entityWrite.tenantId,
+      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+      permissionId = entityWrite.permissionId
+    )
+  }
+
 }
