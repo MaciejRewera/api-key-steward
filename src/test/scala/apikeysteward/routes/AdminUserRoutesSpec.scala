@@ -6,7 +6,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData.{
   apiKeyTemplatesUsersEntityWrite_1_2,
   apiKeyTemplatesUsersEntityWrite_1_3
 }
-import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3}
+import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3, publicKeyId_1}
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
@@ -17,6 +17,9 @@ import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.ApiKeyDbError
+import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesUsersEntity
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.JwtAuthorizer.Permission
@@ -292,7 +295,7 @@ class AdminUserRoutesSpec
 
       "return Not Found when UserService returns successful IO with Left containing UserNotFoundError" in authorizedFixture {
         userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserNotFoundError(publicTenantId_1, publicUserId_1))
+          Left(UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1)))
         )
 
         for {
@@ -303,6 +306,18 @@ class AdminUserRoutesSpec
             .asserting(
               _ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminUser.UserNotFound))
             )
+        } yield ()
+      }
+
+      "return Not Found when UserService returns successful IO with Left containing ApiKeyDbError" in authorizedFixture {
+        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
+          Left(UserRepositoryError(ApiKeyDataNotFoundError(publicKeyId_1)))
+        )
+
+        for {
+          response <- adminUserRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
         } yield ()
       }
 

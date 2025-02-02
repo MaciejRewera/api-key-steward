@@ -69,11 +69,11 @@ class ApiKeysPermissionsDb {
   private def extractPermissionId(sqlException: SQLException): UUID =
     ForeignKeyViolationSqlErrorExtractor.extractColumnUuidValue(sqlException)("permission_id")
 
-  def deleteAllForPermission(publicTenantId: TenantId, permissionId: PermissionId): doobie.ConnectionIO[Int] =
-    TenantIdScopedQueries(publicTenantId).deleteAllForPermission(permissionId).run
+  def deleteAllForPermission(publicTenantId: TenantId, publicPermissionId: PermissionId): doobie.ConnectionIO[Int] =
+    TenantIdScopedQueries(publicTenantId).deleteAllForPermission(publicPermissionId).run
 
-  def deleteAllForApiKey(publicTenantId: TenantId, apiKeyId: ApiKeyId): doobie.ConnectionIO[Int] =
-    TenantIdScopedQueries(publicTenantId).deleteAllForApiKey(apiKeyId).run
+  def deleteAllForApiKey(publicTenantId: TenantId, publicKeyId: ApiKeyId): doobie.ConnectionIO[Int] =
+    TenantIdScopedQueries(publicTenantId).deleteAllForApiKey(publicKeyId).run
 
   private object Queries {
 
@@ -96,19 +96,19 @@ class ApiKeysPermissionsDb {
 
     private val TableName = "api_keys_permissions"
 
-    def deleteAllForPermission(permissionId: PermissionId): doobie.Update0 =
+    def deleteAllForPermission(publicPermissionId: PermissionId): doobie.Update0 =
       sql"""DELETE FROM api_keys_permissions
            |USING permission
            |WHERE api_keys_permissions.permission_id = permission.id
-           |  AND permission.public_permission_id = ${permissionId.toString}
+           |  AND permission.public_permission_id = ${publicPermissionId.toString}
            |  AND ${tenantIdFr(TableName)}
            |""".stripMargin.update
 
-    def deleteAllForApiKey(apiKeyId: ApiKeyId): doobie.Update0 =
+    def deleteAllForApiKey(publicKeyId: ApiKeyId): doobie.Update0 =
       sql"""DELETE FROM api_keys_permissions
            |USING api_key_data
            |WHERE api_keys_permissions.api_key_data_id = api_key_data.id
-           |  AND api_key_data.public_key_id = ${apiKeyId.toString}
+           |  AND api_key_data.public_key_id = ${publicKeyId.toString}
            |  AND ${tenantIdFr(TableName)}
            |""".stripMargin.update
 

@@ -2,7 +2,7 @@ package apikeysteward
 
 import apikeysteward.config.{AppConfig, DatabaseConnectionExecutionContextConfig}
 import apikeysteward.generators._
-import apikeysteward.repositories._
+import apikeysteward.repositories.{ApiKeyRepository, _}
 import apikeysteward.repositories.db.{ApiKeysPermissionsDb, _}
 import apikeysteward.routes._
 import apikeysteward.routes.auth._
@@ -66,7 +66,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           uuidGenerator,
           permissionRepository
         )(transactor)
-        userRepository: UserRepository = buildUserRepository(uuidGenerator)(transactor)
+        userRepository: UserRepository = buildUserRepository(uuidGenerator, apiKeyRepository)(transactor)
         tenantRepository: TenantRepository = buildTenantRepository(
           uuidGenerator,
           resourceServerRepository,
@@ -279,18 +279,26 @@ object ApiKeySteward extends IOApp.Simple with Logging {
     val tenantDb = new TenantDb
     val permissionDb = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+    val apiKeysPermissionsDb = new ApiKeysPermissionsDb
 
-    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
-      transactor
-    )
+    new PermissionRepository(
+      uuidGenerator,
+      tenantDb,
+      resourceServerDb,
+      permissionDb,
+      apiKeyTemplatesPermissionsDb,
+      apiKeysPermissionsDb
+    )(transactor)
   }
 
-  private def buildUserRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
+  private def buildUserRepository(uuidGenerator: UuidGenerator, apiKeyRepository: ApiKeyRepository)(
+      transactor: HikariTransactor[IO]
+  ) = {
     val tenantDb = new TenantDb
     val userDb = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
-    new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+    new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb, apiKeyRepository)(transactor)
   }
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {

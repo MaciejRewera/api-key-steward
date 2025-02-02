@@ -75,4 +75,12 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
       )
     }
 
+  implicit class apiKeyTemplatesUsersEntityWriteToRead(entityWrite: ApiKeyTemplatesUsersEntity.Write) {
+    def toRead: ApiKeyTemplatesUsersEntity.Read = ApiKeyTemplatesUsersEntity.Read(
+      tenantId = entityWrite.tenantId,
+      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
+      userId = entityWrite.userId
+    )
+  }
+
 }

@@ -1,11 +1,13 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId
+import apikeysteward.model.errors.CustomError
+import apikeysteward.model.errors.UserDbError.UserInsertionError
+import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
+import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.db.entity.UserEntity
 import apikeysteward.repositories.db.{ApiKeyTemplatesUsersDb, TenantDb, UserDb}
 import apikeysteward.services.UuidGenerator
@@ -21,7 +23,8 @@ class UserRepository(
     uuidGenerator: UuidGenerator,
     tenantDb: TenantDb,
     userDb: UserDb,
-    apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb
+    apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb,
+    apiKeyRepository: ApiKeyRepository
 )(transactor: Transactor[IO]) {
 
   def insert(publicTenantId: TenantId, user: User): IO[Either[UserInsertionError, User]] =
@@ -44,19 +47,20 @@ class UserRepository(
       resultUser = User.from(userEntityRead)
     } yield resultUser).value.transact(transactor)
 
-  def delete(publicTenantId: TenantId, publicUserId: UserId): IO[Either[UserNotFoundError, User]] =
+  def delete(publicTenantId: TenantId, publicUserId: UserId): IO[Either[UserRepositoryError, User]] =
     deleteOp(publicTenantId, publicUserId).transact(transactor)
 
   private[repositories] def deleteOp(
       publicTenantId: TenantId,
       publicUserId: UserId
-  ): ConnectionIO[Either[UserNotFoundError, User]] =
-    for {
-      _ <- apiKeyTemplatesUsersDb.deleteAllForUser(publicTenantId, publicUserId)
-      userEntityRead <- userDb.delete(publicTenantId, publicUserId)
+  ): ConnectionIO[Either[UserRepositoryError, User]] =
+    (for {
+      _ <- apiKeyRepository.deleteAllForUserOp(publicTenantId, publicUserId).leftMap(UserRepositoryError)
+      _ <- EitherT.liftF(apiKeyTemplatesUsersDb.deleteAllForUser(publicTenantId, publicUserId))
+      userEntityRead <- EitherT(userDb.delete(publicTenantId, publicUserId)).leftMap(UserRepositoryError)
 
-      resultUser = userEntityRead.map(User.from)
-    } yield resultUser
+      resultUser = User.from(userEntityRead)
+    } yield resultUser).value
 
   def getBy(publicTenantId: TenantId, publicUserId: UserId): IO[Option[User]] =
     (for {
@@ -79,4 +83,11 @@ class UserRepository(
       resultUser = User.from(userEntityRead)
     } yield resultUser).compile.toList.transact(transactor)
 
+}
+
+object UserRepository {
+
+  case class UserRepositoryError(cause: CustomError) extends CustomError {
+    override val message: String = cause.message
+  }
 }

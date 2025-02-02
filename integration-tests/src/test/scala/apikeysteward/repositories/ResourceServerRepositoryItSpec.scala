@@ -7,7 +7,7 @@ import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1, tenantEntityRead_1}
 import apikeysteward.model.ApiKeyTemplate
 import apikeysteward.repositories.TestDataInsertions.{PermissionDbId, ResourceServerDbId, TemplateDbId, TenantDbId}
-import apikeysteward.repositories.db._
+import apikeysteward.repositories.db.{ApiKeysPermissionsDb, _}
 import apikeysteward.repositories.db.entity._
 import apikeysteward.services.UuidGenerator
 import cats.effect.IO
@@ -36,12 +36,18 @@ class ResourceServerRepositoryItSpec
   private val resourceServerDb = new ResourceServerDb
   private val permissionDb = new PermissionDb
   private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
+  private val apiKeysPermissionsDb = new ApiKeysPermissionsDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
 
   private val permissionRepository =
-    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
-      transactor
-    )
+    new PermissionRepository(
+      uuidGenerator,
+      tenantDb,
+      resourceServerDb,
+      permissionDb,
+      apiKeyTemplatesPermissionsDb,
+      apiKeysPermissionsDb
+    )(transactor)
 
   private val repository =
     new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(

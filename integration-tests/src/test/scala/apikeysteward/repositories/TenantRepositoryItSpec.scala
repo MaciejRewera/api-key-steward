@@ -4,12 +4,15 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.ApiKeyTemplatesPermissionsTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
+import apikeysteward.base.testdata.ApiKeysPermissionsTestData._
+import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.{publicResourceServerId_1, resourceServerEntityRead_1}
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
+import apikeysteward.repositories.SecureHashGenerator.Algorithm
 import apikeysteward.repositories.TestDataInsertions._
-import apikeysteward.repositories.db._
+import apikeysteward.repositories.db.{ApiKeyDataDb, ApiKeysPermissionsDb, _}
 import apikeysteward.repositories.db.entity._
 import apikeysteward.services.UuidGenerator
 import cats.effect.IO
@@ -29,8 +32,18 @@ class TenantRepositoryItSpec
     with EitherValues {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
-    _ <-
-      sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
+    _ <- sql"""TRUNCATE
+              |tenant,
+              |tenant_user,
+              |resource_server,
+              |permission,
+              |api_key_template,
+              |api_key_templates_permissions,
+              |api_key_templates_users,
+              |api_key,
+              |api_key_data,
+              |api_keys_permissions
+              |CASCADE""".stripMargin.update.run
   } yield ()
 
   private val uuidGenerator = new UuidGenerator
@@ -41,11 +54,19 @@ class TenantRepositoryItSpec
   private val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
   private val userDb = new UserDb
+  private val apiKeyDb = new ApiKeyDb
+  private val apiKeyDataDb = new ApiKeyDataDb
+  private val apiKeysPermissionsDb = new ApiKeysPermissionsDb
 
   private val permissionRepository =
-    new PermissionRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, apiKeyTemplatesPermissionsDb)(
-      transactor
-    )
+    new PermissionRepository(
+      uuidGenerator,
+      tenantDb,
+      resourceServerDb,
+      permissionDb,
+      apiKeyTemplatesPermissionsDb,
+      apiKeysPermissionsDb
+    )(transactor)
 
   private val resourceServerRepository =
     new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
@@ -62,7 +83,21 @@ class TenantRepositoryItSpec
       apiKeyTemplatesUsersDb
     )(transactor)
 
-  private val userRepository = new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb)(transactor)
+  private val secureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
+  private val apiKeyRepository = new ApiKeyRepository(
+    uuidGenerator,
+    secureHashGenerator,
+    tenantDb,
+    apiKeyDb,
+    apiKeyDataDb,
+    permissionDb,
+    userDb,
+    apiKeyTemplateDb,
+    apiKeysPermissionsDb
+  )(transactor)
+
+  private val userRepository =
+    new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb, apiKeyRepository)(transactor)
 
   private val repository =
     new TenantRepository(uuidGenerator, tenantDb, resourceServerRepository, apiKeyTemplateRepository, userRepository)(
@@ -98,6 +133,15 @@ class TenantRepositoryItSpec
     val getAllUserTemplateAssociations: ConnectionIO[List[ApiKeyTemplatesUsersEntity.Read]] =
       sql"SELECT * FROM api_key_templates_users".query[ApiKeyTemplatesUsersEntity.Read].stream.compile.toList
 
+    val getAllApiKeys: ConnectionIO[List[ApiKeyEntity.Read]] =
+      sql"SELECT id, tenant_id, created_at, updated_at FROM api_key".query[ApiKeyEntity.Read].stream.compile.toList
+
+    val getAllApiKeyData: ConnectionIO[List[ApiKeyDataEntity.Read]] =
+      sql"SELECT * FROM api_key_data".query[ApiKeyDataEntity.Read].stream.compile.toList
+
+    val getAllPermissionApiKeyAssociations: ConnectionIO[List[ApiKeysPermissionsEntity.Read]] =
+      sql"SELECT * FROM api_keys_permissions".query[ApiKeysPermissionsEntity.Read].stream.compile.toList
+
   }
 
   private def insertPrerequisiteData()
@@ -130,32 +174,30 @@ class TenantRepositoryItSpec
       )
       _ <- apiKeyTemplatesUsersDb.insertMany(associationEntities)
 
-    } yield (tenantId, resourceServerId, templateIds, permissionIds, userIds)).transact(transactor)
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2)
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_3)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3)
 
-  implicit private class apiKeyTemplatesPermissionsEntityWriteToRead(
-      entityWrite: ApiKeyTemplatesPermissionsEntity.Write
-  ) {
-    def toRead: ApiKeyTemplatesPermissionsEntity.Read = ApiKeyTemplatesPermissionsEntity.Read(
-      tenantId = entityWrite.tenantId,
-      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
-      permissionId = entityWrite.permissionId
-    )
-  }
-  implicit private class apiKeyTemplatesUsersEntityWriteToRead(
-      entityWrite: ApiKeyTemplatesUsersEntity.Write
-  ) {
-    def toRead: ApiKeyTemplatesUsersEntity.Read = ApiKeyTemplatesUsersEntity.Read(
-      tenantId = entityWrite.tenantId,
-      apiKeyTemplateId = entityWrite.apiKeyTemplateId,
-      userId = entityWrite.userId
-    )
-  }
+      associationEntities = List(
+        apiKeysPermissionsEntityWrite_1_1,
+        apiKeysPermissionsEntityWrite_1_2,
+        apiKeysPermissionsEntityWrite_1_3,
+        apiKeysPermissionsEntityWrite_2_1,
+        apiKeysPermissionsEntityWrite_3_2,
+        apiKeysPermissionsEntityWrite_3_3
+      )
+      _ <- apiKeysPermissionsDb.insertMany(associationEntities)
+
+    } yield (tenantId, resourceServerId, templateIds, permissionIds, userIds)).transact(transactor)
 
   "TenantRepository on delete" when {
 
     "given Tenant is active" should {
 
-      "NOT delete associations between these Permissions and ApiKeyTemplates" in {
+      "NOT delete associations between Permissions and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
@@ -177,7 +219,7 @@ class TenantRepositoryItSpec
         }
       }
 
-      "NOT delete associations between these Users and ApiKeyTemplates" in {
+      "NOT delete associations between Users and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
@@ -199,23 +241,91 @@ class TenantRepositoryItSpec
         }
       }
 
+      "NOT delete associations between Permissions and ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllPermissionApiKeyAssociations.transact(transactor)
+
+          expectedEntities = List(
+            apiKeysPermissionsEntityWrite_1_1.toRead,
+            apiKeysPermissionsEntityWrite_1_2.toRead,
+            apiKeysPermissionsEntityWrite_1_3.toRead,
+            apiKeysPermissionsEntityWrite_2_1.toRead,
+            apiKeysPermissionsEntityWrite_3_2.toRead,
+            apiKeysPermissionsEntityWrite_3_3.toRead
+          )
+        } yield (res, expectedEntities)
+
+        result.asserting { case (res, expectedEntities) =>
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete related ApiKeys" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeys.transact(transactor)
+        } yield res
+
+        result.asserting { res =>
+          val expectedEntities = List(
+            apiKeyEntityRead_1,
+            apiKeyEntityRead_2,
+            apiKeyEntityRead_3
+          )
+
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete related ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.activate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeyData.transact(transactor)
+        } yield res
+
+        result.asserting { res =>
+          val expectedEntities = List(
+            apiKeyDataEntityRead_1,
+            apiKeyDataEntityRead_2,
+            apiKeyDataEntityRead_3
+          )
+
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
       "NOT delete related Permissions" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, resourceServerId, _, _, _) = dataIds
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
-        } yield (res, resourceServerId)
+        } yield res
 
-        result.asserting { case (res, resourceServerId) =>
+        result.asserting { res =>
           val expectedEntities = List(
-            permissionEntityRead_1.copy(id = res.head.id, resourceServerId = resourceServerId),
-            permissionEntityRead_2.copy(id = res(1).id, resourceServerId = resourceServerId),
-            permissionEntityRead_3.copy(id = res(2).id, resourceServerId = resourceServerId)
+            permissionEntityRead_1,
+            permissionEntityRead_2,
+            permissionEntityRead_3
           )
 
           res should contain theSameElementsAs expectedEntities
@@ -224,24 +334,17 @@ class TenantRepositoryItSpec
 
       "NOT delete related ResourceServers" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (tenantId, resourceServerId, _, _, _) = dataIds
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllResourceServers.transact(transactor)
-        } yield (res, tenantId, resourceServerId)
+        } yield res
 
-        result.asserting { case (res, tenantId, resourceServerId) =>
-          val expectedEntities = List(
-            resourceServerEntityRead_1.copy(
-              id = resourceServerId,
-              tenantId = tenantId,
-              deactivatedAt = Some(nowInstant)
-            )
-          )
+        result.asserting { res =>
+          val expectedEntities = List(resourceServerEntityRead_1.copy(deactivatedAt = Some(nowInstant)))
 
           res should contain theSameElementsAs expectedEntities
         }
@@ -272,7 +375,7 @@ class TenantRepositoryItSpec
 
       "NOT delete related Users" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
@@ -314,10 +417,9 @@ class TenantRepositoryItSpec
 
     "at least one of related ResourceServers is active" should {
 
-      "NOT delete associations between these Permissions and ApiKeyTemplates" in {
+      "NOT delete associations between Permissions and ApiKeyTemplates" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, _, templateIds, permissionIds, _) = dataIds
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
@@ -326,12 +428,9 @@ class TenantRepositoryItSpec
           res <- Queries.getAllPermissionTemplateAssociations.transact(transactor)
 
           expectedEntities = List(
-            ApiKeyTemplatesPermissionsEntity
-              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds.head, permissionId = permissionIds.head),
-            ApiKeyTemplatesPermissionsEntity
-              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds.head),
-            ApiKeyTemplatesPermissionsEntity
-              .Read(tenantId = tenantDbId_1, apiKeyTemplateId = templateIds(1), permissionId = permissionIds(1))
+            apiKeyTemplatesPermissionsEntityWrite_1_1.toRead,
+            apiKeyTemplatesPermissionsEntityWrite_2_1.toRead,
+            apiKeyTemplatesPermissionsEntityWrite_2_2.toRead
           )
         } yield (res, expectedEntities)
 
@@ -340,7 +439,7 @@ class TenantRepositoryItSpec
         }
       }
 
-      "NOT delete associations between these Users and ApiKeyTemplates" in {
+      "NOT delete associations between Users and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
@@ -362,23 +461,91 @@ class TenantRepositoryItSpec
         }
       }
 
+      "NOT delete associations between Permissions and ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllPermissionApiKeyAssociations.transact(transactor)
+
+          expectedEntities = List(
+            apiKeysPermissionsEntityWrite_1_1.toRead,
+            apiKeysPermissionsEntityWrite_1_2.toRead,
+            apiKeysPermissionsEntityWrite_1_3.toRead,
+            apiKeysPermissionsEntityWrite_2_1.toRead,
+            apiKeysPermissionsEntityWrite_3_2.toRead,
+            apiKeysPermissionsEntityWrite_3_3.toRead
+          )
+        } yield (res, expectedEntities)
+
+        result.asserting { case (res, expectedEntities) =>
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete related ApiKeys" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeys.transact(transactor)
+        } yield res
+
+        result.asserting { res =>
+          val expectedEntities = List(
+            apiKeyEntityRead_1,
+            apiKeyEntityRead_2,
+            apiKeyEntityRead_3
+          )
+
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
+      "NOT delete related ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeyData.transact(transactor)
+        } yield res
+
+        result.asserting { res =>
+          val expectedEntities = List(
+            apiKeyDataEntityRead_1,
+            apiKeyDataEntityRead_2,
+            apiKeyDataEntityRead_3
+          )
+
+          res should contain theSameElementsAs expectedEntities
+        }
+      }
+
       "NOT delete related Permissions" in {
         val result = for {
-          dataIds <- insertPrerequisiteData()
-          (_, resourceServerId, _, _, _) = dataIds
+          _ <- insertPrerequisiteData()
 
           _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllPermissions.transact(transactor)
-        } yield (res, resourceServerId)
+        } yield res
 
-        result.asserting { case (res, resourceServerId) =>
+        result.asserting { res =>
           val expectedEntities = List(
-            permissionEntityRead_1.copy(id = res.head.id, resourceServerId = resourceServerId),
-            permissionEntityRead_2.copy(id = res(1).id, resourceServerId = resourceServerId),
-            permissionEntityRead_3.copy(id = res(2).id, resourceServerId = resourceServerId)
+            permissionEntityRead_1,
+            permissionEntityRead_2,
+            permissionEntityRead_3
           )
 
           res should contain theSameElementsAs expectedEntities
@@ -471,7 +638,7 @@ class TenantRepositoryItSpec
 
     "there are entities in the DB, related to given inactive Tenant" should {
 
-      "delete associations between these Permissions and ApiKeyTemplates" in {
+      "delete associations between Permissions and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
@@ -485,7 +652,7 @@ class TenantRepositoryItSpec
         result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
       }
 
-      "delete associations between these Users and ApiKeyTemplates" in {
+      "delete associations between Users and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteData()
 
@@ -498,6 +665,49 @@ class TenantRepositoryItSpec
         } yield res
 
         result.asserting(_ shouldBe List.empty[ApiKeyTemplatesUsersEntity.Read])
+      }
+
+      "delete associations between Permissions and ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllPermissionApiKeyAssociations.transact(transactor)
+
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeysPermissionsEntity.Read])
+      }
+
+      "delete ApiKeys" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeys.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeyEntity.Read])
+      }
+
+      "delete all ApiKeyData" in {
+        val result = for {
+          _ <- insertPrerequisiteData()
+
+          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
+          _ <- repository.deactivate(publicTenantId_1)
+          _ <- repository.delete(publicTenantId_1)
+
+          res <- Queries.getAllApiKeyData.transact(transactor)
+        } yield res
+
+        result.asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
       }
 
       "delete Permissions" in {
