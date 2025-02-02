@@ -180,12 +180,6 @@ class ApiKeyRepository(
     } yield deletionResult).value.transact(transactor)
 
   def delete(publicTenantId: TenantId, publicKeyIdToDelete: ApiKeyId): IO[Either[ApiKeyDbError, ApiKeyData]] =
-    deleteOp(publicTenantId, publicKeyIdToDelete).transact(transactor)
-
-  private[repositories] def deleteOp(
-      publicTenantId: TenantId,
-      publicKeyIdToDelete: ApiKeyId
-  ): ConnectionIO[Either[ApiKeyDbError, ApiKeyData]] =
     (for {
       apiKeyDataToDelete <- EitherT {
         apiKeyDataDb
@@ -194,21 +188,22 @@ class ApiKeyRepository(
       }
 
       deletionResult <- performDeletion(publicTenantId, apiKeyDataToDelete)
-    } yield deletionResult).value
+    } yield deletionResult).value.transact(transactor)
 
-  private[repositories] def deleteAllForUser(
+  private[repositories] def deleteAllForUserOp(
       publicTenantId: TenantId,
       publicUserId: UserId
-  ): ConnectionIO[Either[ApiKeyDbError, List[ApiKeyData]]] =
+  ): EitherT[ConnectionIO, ApiKeyDbError, List[ApiKeyData]] =
     for {
-      apiKeyDataIdsToDelete <- apiKeyDataDb
-        .getByUserId(publicTenantId, publicUserId)
-        .map(_.publicKeyId)
-        .map(UUID.fromString)
-        .compile
-        .toList
-      res <- apiKeyDataIdsToDelete.traverse(deleteOp(publicTenantId, _))
-    } yield res.sequence
+      apiKeyDataIdsToDelete <- EitherT.liftF {
+        apiKeyDataDb
+          .getByUserId(publicTenantId, publicUserId)
+          .compile
+          .toList
+      }
+
+      res <- apiKeyDataIdsToDelete.traverse(performDeletion(publicTenantId, _))
+    } yield res
 
   private def performDeletion(
       publicTenantId: TenantId,

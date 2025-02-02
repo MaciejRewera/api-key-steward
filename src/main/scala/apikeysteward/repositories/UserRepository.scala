@@ -1,19 +1,18 @@
 package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
-import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
-import apikeysteward.model.{ApiKeyData, User}
+import apikeysteward.model.User
 import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.CustomError
+import apikeysteward.model.errors.UserDbError.UserInsertionError
+import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.repositories.UserRepository.UserRepositoryError
 import apikeysteward.repositories.db.entity.UserEntity
 import apikeysteward.repositories.db.{ApiKeyTemplatesUsersDb, TenantDb, UserDb}
 import apikeysteward.services.UuidGenerator
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import cats.implicits.toTraverseOps
 import doobie.implicits._
 import doobie.{ConnectionIO, Transactor}
 import fs2.Stream
@@ -56,7 +55,7 @@ class UserRepository(
       publicUserId: UserId
   ): ConnectionIO[Either[UserRepositoryError, User]] =
     (for {
-      _ <- EitherT(apiKeyRepository.deleteAllForUser(publicTenantId, publicUserId)).leftMap(UserRepositoryError)
+      _ <- apiKeyRepository.deleteAllForUserOp(publicTenantId, publicUserId).leftMap(UserRepositoryError)
       _ <- EitherT.liftF(apiKeyTemplatesUsersDb.deleteAllForUser(publicTenantId, publicUserId))
       userEntityRead <- EitherT(userDb.delete(publicTenantId, publicUserId)).leftMap(UserRepositoryError)
 
