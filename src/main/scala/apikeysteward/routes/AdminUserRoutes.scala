@@ -65,7 +65,7 @@ class AdminUserRoutes(
             case Right(deletedUser) =>
               (StatusCode.Ok, DeleteUserResponse(deletedUser)).asRight
 
-            case Left(err: UserRepositoryError) if err.cause.isInstanceOf[UserNotFoundError] =>
+            case Left(UserRepositoryError(_: UserNotFoundError)) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminUser.UserNotFound)).asLeft
           }
         }
