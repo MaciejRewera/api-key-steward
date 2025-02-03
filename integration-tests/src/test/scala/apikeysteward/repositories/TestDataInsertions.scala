@@ -1,10 +1,13 @@
 package apikeysteward.repositories
 
+import apikeysteward.base.testdata.ApiKeyTemplatesPermissionsTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
+import apikeysteward.base.testdata.ApiKeysPermissionsTestData._
 import apikeysteward.base.testdata.ApiKeysTestData._
-import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
 import apikeysteward.base.testdata.PermissionsTestData._
-import apikeysteward.base.testdata.TenantsTestData.tenantEntityWrite_1
+import apikeysteward.base.testdata.ResourceServersTestData.resourceServerEntityWrite_1
+import apikeysteward.base.testdata.TenantsTestData.{tenantDbId_1, tenantEntityWrite_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.repositories.db._
 import org.scalatest.EitherValues
@@ -126,4 +129,63 @@ private[repositories] object TestDataInsertions extends EitherValues {
       permissionIds = List(permissionDbId_1, permissionDbId_2, permissionDbId_3)
     } yield (tenantId, resourceServerId, templateIds, userIds, permissionIds)
 
+  def insertAll(
+      tenantDb: TenantDb,
+      userDb: UserDb,
+      resourceServerDb: ResourceServerDb,
+      permissionDb: PermissionDb,
+      apiKeyTemplateDb: ApiKeyTemplateDb,
+      apiKeyDb: ApiKeyDb,
+      apiKeyDataDb: ApiKeyDataDb,
+      apiKeyTemplatesPermissionsDb: ApiKeyTemplatesPermissionsDb,
+      apiKeyTemplatesUsersDb: ApiKeyTemplatesUsersDb,
+      apiKeysPermissionsDb: ApiKeysPermissionsDb
+  ): doobie.ConnectionIO[Unit] =
+    for {
+      _ <- tenantDb.insert(tenantEntityWrite_1)
+      _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+
+      _ <- permissionDb.insert(permissionEntityWrite_1)
+      _ <- permissionDb.insert(permissionEntityWrite_2)
+      _ <- permissionDb.insert(permissionEntityWrite_3)
+
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantDbId_1))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantDbId_1))
+      _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantDbId_1))
+
+      associationEntities = List(
+        apiKeyTemplatesPermissionsEntityWrite_1_1,
+        apiKeyTemplatesPermissionsEntityWrite_2_1,
+        apiKeyTemplatesPermissionsEntityWrite_2_2
+      )
+      _ <- apiKeyTemplatesPermissionsDb.insertMany(associationEntities)
+
+      _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantDbId_1)).map(_.value.id)
+      _ <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantDbId_1)).map(_.value.id)
+      _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantDbId_1)).map(_.value.id)
+
+      associationEntities = List(
+        apiKeyTemplatesUsersEntityWrite_1_1,
+        apiKeyTemplatesUsersEntityWrite_2_1,
+        apiKeyTemplatesUsersEntityWrite_2_2
+      )
+      _ <- apiKeyTemplatesUsersDb.insertMany(associationEntities)
+
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2)
+      _ <- apiKeyDb.insert(apiKeyEntityWrite_3)
+      _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3)
+
+      associationEntities = List(
+        apiKeysPermissionsEntityWrite_1_1,
+        apiKeysPermissionsEntityWrite_1_2,
+        apiKeysPermissionsEntityWrite_1_3,
+        apiKeysPermissionsEntityWrite_2_1,
+        apiKeysPermissionsEntityWrite_3_2,
+        apiKeysPermissionsEntityWrite_3_3
+      )
+      _ <- apiKeysPermissionsDb.insertMany(associationEntities)
+    } yield ()
 }
