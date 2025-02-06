@@ -2,6 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
 import cats.effect.IO
@@ -81,31 +82,6 @@ trait RepositoryItSpecBase
 
     val getAllApiKeysPermissionsAssociations: ConnectionIO[List[ApiKeysPermissionsEntity.Read]] =
       sql"SELECT * FROM api_keys_permissions".query[ApiKeysPermissionsEntity.Read].stream.compile.toList
-
-    def getApiKeys(publicKeyId: ApiKeyId): ConnectionIO[List[ApiKeyEntity.Read]] =
-      sql"""SELECT
-           |  api_key.id,
-           |  api_key.tenant_id,
-           |  api_key.created_at,
-           |  api_key.updated_at
-           |FROM api_key
-           |JOIN api_key_data ON api_key_data.api_key_id = api_key.id
-           |WHERE api_key_data.public_key_id = ${publicKeyId.toString}
-           |""".stripMargin.query[ApiKeyEntity.Read].stream.compile.toList
-
-    def getApiKeyData(publicKeyId: ApiKeyId): ConnectionIO[List[ApiKeyDataEntity.Read]] =
-      sql"SELECT * FROM api_key_data WHERE public_key_id = ${publicKeyId.toString}"
-        .query[ApiKeyDataEntity.Read]
-        .stream
-        .compile
-        .toList
-
-    def getApiKeysPermissionsAssociations(publicKeyId: ApiKeyId): ConnectionIO[List[ApiKeysPermissionsEntity.Read]] =
-      sql"""SELECT *
-           |FROM api_keys_permissions
-           |JOIN api_key_data ON api_key_data.id = api_keys_permissions.api_key_data_id
-           |WHERE api_key_data.public_key_id = ${publicKeyId.toString}
-           |""".stripMargin.query[ApiKeysPermissionsEntity.Read].stream.compile.toList
 
   }
 
