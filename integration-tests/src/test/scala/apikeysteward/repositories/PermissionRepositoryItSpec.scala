@@ -1,9 +1,10 @@
 package apikeysteward.repositories
 
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeysTestData._
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
-import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1}
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.repositories.db.entity._
 import apikeysteward.services.UuidGenerator
@@ -44,11 +45,11 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
          |WHERE permission.public_permission_id = ${publicPermissionId.toString}
          |""".stripMargin.query[ApiKeyTemplatesPermissionsEntity.Read].stream.compile.toList.transact(transactor)
 
-  private def getPermission(publicPermissionId: PermissionId): IO[List[PermissionEntity.Read]] =
+  private def getPermission(publicPermissionId: PermissionId): IO[Option[PermissionEntity.Read]] =
     sql"""SELECT *
          |FROM permission
          |WHERE permission.public_permission_id = ${publicPermissionId.toString}
-         |""".stripMargin.query[PermissionEntity.Read].stream.compile.toList.transact(transactor)
+         |""".stripMargin.query[PermissionEntity.Read].option.transact(transactor)
 
   "PermissionRepository on delete" should {
 
@@ -91,7 +92,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         res <- getPermission(publicPermissionId_1)
       } yield res
 
-      result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+      result.asserting(_ shouldBe Option.empty[PermissionEntity.Read])
     }
 
     "NOT delete ApiKeyData" in {
@@ -125,6 +126,28 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
 
       result.asserting { res =>
         val expectedEntities = List(apiKeyEntityRead_1, apiKeyEntityRead_2, apiKeyEntityRead_3)
+
+        res should contain theSameElementsAs expectedEntities
+      }
+    }
+
+    "NOT delete ApiKeyTemplate" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
+
+        entitiesBeforeDeletion <- Queries.getAllApiKeyTemplates.transact(transactor)
+        _ = entitiesBeforeDeletion should not be empty
+
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        res <- Queries.getAllApiKeyTemplates.transact(transactor)
+      } yield res
+
+      result.asserting { res =>
+        val expectedEntities = List(
+          apiKeyTemplateEntityRead_1.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_2.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_3.copy(tenantId = tenantDbId_1)
+        )
 
         res should contain theSameElementsAs expectedEntities
       }

@@ -88,7 +88,8 @@ class ApiKeyManagementServiceSpec
       IO.pure(Right(createApiKeyRequest))
     apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKey_1))
     uuidGenerator.generateUuid returns IO.pure(publicKeyId_1)
-    apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Right(testApiKeyData))
+    apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns
+      IO.pure(Right(testApiKeyData))
 
     permissionRepository.getBy(any[TenantId], any[List[PermissionId]]) returns
       IO.pure(List(permission_1, permission_2, permission_3).asRight[PermissionNotFoundError])
@@ -111,7 +112,12 @@ class ApiKeyManagementServiceSpec
           )
           _ = verify(apiKeyGenerator).generateApiKey(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(uuidGenerator).generateUuid
-          _ = verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), eqTo(testApiKeyData))
+          _ = verify(apiKeyRepository).insert(
+            eqTo(publicTenantId_1),
+            eqTo(apiKey_1),
+            eqTo(testApiKeyData),
+            eqTo(publicTemplateId_1)
+          )
           _ = verify(permissionRepository).getBy(
             eqTo(publicTenantId_1),
             eqTo(List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3))
@@ -266,7 +272,7 @@ class ApiKeyManagementServiceSpec
             IO.pure(Right(apiKey_2))
           )
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
+          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns (
             IO.pure(Left(insertionError)),
             IO.pure(Right(testApiKeyData))
           )
@@ -278,12 +284,22 @@ class ApiKeyManagementServiceSpec
 
             _ = {
               val captor_1: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), captor_1.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_1),
+                captor_1.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_1: ApiKeyData = captor_1.getValue
               actualApiKeyData_1 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
 
               val captor_2: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_2), captor_2.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_2),
+                captor_2.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_2: ApiKeyData = captor_2.getValue
               actualApiKeyData_2 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
             }
@@ -296,7 +312,7 @@ class ApiKeyManagementServiceSpec
             IO.pure(Right(apiKey_2))
           )
           uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns (
+          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns (
             IO.pure(Left(insertionError)),
             IO.pure(Right(testApiKeyData))
           )
@@ -321,7 +337,9 @@ class ApiKeyManagementServiceSpec
           uuidGenerator.generateUuid returns (
             IO.pure(publicKeyId_1), IO.pure(publicKeyId_2), IO.pure(publicKeyId_3), IO.pure(publicKeyId_4)
           )
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
+          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO.pure(
+            Left(dbInsertionError)
+          )
 
           for {
             _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -330,22 +348,42 @@ class ApiKeyManagementServiceSpec
 
             _ = {
               val captor_1: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_1), captor_1.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_1),
+                captor_1.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_1: ApiKeyData = captor_1.getValue
               actualApiKeyData_1 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_1.publicKeyId)
 
               val captor_2: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_2), captor_2.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_2),
+                captor_2.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_2: ApiKeyData = captor_2.getValue
               actualApiKeyData_2 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_2.publicKeyId)
 
               val captor_3: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_3), captor_3.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_3),
+                captor_3.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_3: ApiKeyData = captor_3.getValue
               actualApiKeyData_3 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_3.publicKeyId)
 
               val captor_4: ArgumentCaptor[ApiKeyData] = ArgumentCaptor.forClass(classOf[ApiKeyData])
-              verify(apiKeyRepository).insert(eqTo(publicTenantId_1), eqTo(apiKey_4), captor_4.capture())
+              verify(apiKeyRepository).insert(
+                eqTo(publicTenantId_1),
+                eqTo(apiKey_4),
+                captor_4.capture(),
+                eqTo(publicTemplateId_1)
+              )
               val actualApiKeyData_4: ApiKeyData = captor_4.getValue
               actualApiKeyData_4 shouldBe testApiKeyData.copy(publicKeyId = actualApiKeyData_4.publicKeyId)
             }
@@ -362,7 +400,9 @@ class ApiKeyManagementServiceSpec
           uuidGenerator.generateUuid returns (
             IO.pure(publicKeyId_1), IO.pure(publicKeyId_2), IO.pure(publicKeyId_3), IO.pure(publicKeyId_4)
           )
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.pure(Left(dbInsertionError))
+          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO.pure(
+            Left(dbInsertionError)
+          )
 
           managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).asserting { result =>
             result shouldBe Left(InsertionError(dbInsertionError))
@@ -374,7 +414,8 @@ class ApiKeyManagementServiceSpec
     "ApiKeyRepository returns a different exception" should {
       "return IO with this exception" in {
         apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKey_1))
-        apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData]) returns IO.raiseError(testException)
+        apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO
+          .raiseError(testException)
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -394,7 +435,6 @@ class ApiKeyManagementServiceSpec
       description = descriptionUpdated,
       publicUserId = publicUserId_1,
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(ttl),
-      publicTemplateId = publicTemplateId_1,
       permissions = List(permission_1, permission_2)
     )
 

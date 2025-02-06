@@ -2,6 +2,7 @@ package apikeysteward.services
 
 import apikeysteward.generators.ApiKeyGenerator
 import apikeysteward.model.ApiKeyData.ApiKeyId
+import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model._
@@ -111,7 +112,7 @@ class ApiKeyManagementService(
 
       _ <- logInfoT("Inserting API Key into database...")
       insertionResult <- EitherT[IO, ApiKeyCreateError, ApiKeyData] {
-        insertNewApiKey(publicTenantId, newApiKey, apiKeyData)
+        insertNewApiKey(publicTenantId, newApiKey, apiKeyData, createApiKeyRequest.templateId)
       }
 
     } yield newApiKey -> insertionResult).value
@@ -119,10 +120,11 @@ class ApiKeyManagementService(
   private def insertNewApiKey(
       publicTenantId: TenantId,
       newApiKey: ApiKey,
-      apiKeyData: ApiKeyData
+      apiKeyData: ApiKeyData,
+      publicTemplateId: ApiKeyTemplateId
   ): IO[Either[InsertionError, ApiKeyData]] =
     for {
-      insertionResult <- apiKeyRepository.insert(publicTenantId, newApiKey, apiKeyData).flatTap {
+      insertionResult <- apiKeyRepository.insert(publicTenantId, newApiKey, apiKeyData, publicTemplateId).flatTap {
         case Right(_) => logger.info(s"Inserted API Key with publicKeyId: [${apiKeyData.publicKeyId}] into database.")
         case Left(e)  => logger.warn(s"Could not insert API Key into database because: ${e.message}")
       }

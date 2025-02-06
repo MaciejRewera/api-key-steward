@@ -73,7 +73,6 @@ object ApiKeysTestData extends FixedClock {
     description = description_1,
     publicUserId = publicUserId_1,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
-    publicTemplateId = publicTemplateId_1,
     permissions = List(permission_1)
   )
   val apiKeyData_2: ApiKeyData = ApiKeyData(
@@ -82,7 +81,6 @@ object ApiKeysTestData extends FixedClock {
     description = description_2,
     publicUserId = publicUserId_2,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
-    publicTemplateId = publicTemplateId_2,
     permissions = List(permission_2)
   )
   val apiKeyData_3: ApiKeyData = ApiKeyData(
@@ -91,7 +89,6 @@ object ApiKeysTestData extends FixedClock {
     description = description_3,
     publicUserId = publicUserId_3,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
-    publicTemplateId = publicTemplateId_3,
     permissions = List(permission_3)
   )
 
@@ -144,7 +141,7 @@ object ApiKeysTestData extends FixedClock {
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_1,
     userId = userDbId_1,
-    templateId = templateDbId_1,
+    templateId = Some(templateDbId_1),
     publicKeyId = publicKeyIdStr_1,
     name = name_1,
     description = description_1,
@@ -169,7 +166,7 @@ object ApiKeysTestData extends FixedClock {
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_2,
     userId = userDbId_2,
-    templateId = templateDbId_2,
+    templateId = Some(templateDbId_2),
     publicKeyId = publicKeyIdStr_2,
     name = name_2,
     description = description_2,
@@ -194,7 +191,7 @@ object ApiKeysTestData extends FixedClock {
     tenantId = tenantDbId_1,
     apiKeyId = apiKeyDbId_3,
     userId = userDbId_3,
-    templateId = templateDbId_3,
+    templateId = Some(templateDbId_3),
     publicKeyId = publicKeyIdStr_3,
     name = name_3,
     description = description_3,

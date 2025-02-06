@@ -1,6 +1,7 @@
 package apikeysteward.repositories
 
-import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
+import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.SecureHashGenerator.Algorithm
@@ -128,6 +129,28 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
       } yield res
 
       result.asserting(_ shouldBe List.empty[ApiKeyEntity.Read])
+    }
+
+    "NOT delete ApiKeyTemplates" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
+
+        entitiesBeforeDeletion <- Queries.getAllApiKeyTemplates.transact(transactor)
+        _ = entitiesBeforeDeletion should not be empty
+
+        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        res <- Queries.getAllApiKeyTemplates.transact(transactor)
+      } yield res
+
+      result.asserting { res =>
+        val expectedEntities = List(
+          apiKeyTemplateEntityRead_1.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_2.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_3.copy(tenantId = tenantDbId_1)
+        )
+
+        res should contain theSameElementsAs expectedEntities
+      }
     }
   }
 

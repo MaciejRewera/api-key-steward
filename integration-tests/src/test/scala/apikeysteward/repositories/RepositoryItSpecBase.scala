@@ -1,8 +1,6 @@
 package apikeysteward.repositories
 
 import apikeysteward.base.FixedClock
-import apikeysteward.model.ApiKeyData.ApiKeyId
-import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db._
 import apikeysteward.repositories.db.entity._
 import cats.effect.IO
@@ -17,7 +15,8 @@ trait RepositoryItSpecBase
     with AsyncIOSpec
     with Matchers
     with FixedClock
-    with DatabaseIntegrationSpec {
+    with DatabaseIntegrationSpec
+    with DoobieCustomMeta {
 
   override protected val resetDataQuery: ConnectionIO[_] = for {
     _ <- sql"""TRUNCATE
@@ -45,7 +44,7 @@ trait RepositoryItSpecBase
   val apiKeyDataDb = new ApiKeyDataDb
   val apiKeysPermissionsDb = new ApiKeysPermissionsDb
 
-  object Queries extends DoobieCustomMeta {
+  object Queries {
     import doobie.postgres._
     import doobie.postgres.implicits._
 

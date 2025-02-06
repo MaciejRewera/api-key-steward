@@ -12,7 +12,7 @@ object ApiKeyDataEntity {
       tenantId: UUID,
       apiKeyId: UUID,
       userId: UUID,
-      templateId: UUID,
+      templateId: Option[UUID],
       publicKeyId: String,
       name: String,
       description: Option[String],

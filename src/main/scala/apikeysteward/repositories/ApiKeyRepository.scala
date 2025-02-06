@@ -2,6 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.model.ApiKeyData.ApiKeyId
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError
@@ -39,14 +40,15 @@ class ApiKeyRepository(
   def insert(
       publicTenantId: TenantId,
       apiKey: ApiKey,
-      apiKeyData: ApiKeyData
+      apiKeyData: ApiKeyData,
+      publicTemplateId: ApiKeyTemplateId
   ): IO[Either[ApiKeyDbError, ApiKeyData]] =
     for {
       hashedApiKey <- secureHashGenerator.generateHashFor(apiKey)
       apiKeyDbId <- uuidGenerator.generateUuid
       apiKeyDataDbId <- uuidGenerator.generateUuid
 
-      result <- insertHashed(publicTenantId, hashedApiKey, apiKeyDbId, apiKeyDataDbId, apiKeyData)
+      result <- insertHashed(publicTenantId, hashedApiKey, apiKeyDbId, apiKeyDataDbId, apiKeyData, publicTemplateId)
     } yield result
 
   private def insertHashed(
@@ -54,21 +56,17 @@ class ApiKeyRepository(
       hashedApiKey: HashedApiKey,
       apiKeyDbId: UUID,
       apiKeyDataDbId: UUID,
-      apiKeyData: ApiKeyData
+      apiKeyData: ApiKeyData,
+      publicTemplateId: ApiKeyTemplateId
   ): IO[Either[ApiKeyDbError, ApiKeyData]] =
     (for {
       tenantDbId <- getTenantEntity(publicTenantId).map(_.id)
       userDbId <- getUserEntity(publicTenantId, apiKeyData.publicUserId).map(_.id)
-      templateDbId <- getApiKeyTemplateEntityByPublicId(publicTenantId, apiKeyData.publicTemplateId).map(_.id)
+      templateDbId <- getApiKeyTemplateEntityByPublicId(publicTenantId, publicTemplateId).map(_.id)
 
       permissionDbIds <-
-        apiKeyData.permissions.map(_.publicPermissionId).traverse { permissionId =>
-          EitherT
-            .fromOptionF(
-              permissionDb.getByPublicPermissionId(publicTenantId, permissionId),
-              ReferencedPermissionDoesNotExistError(permissionId)
-            )
-            .map(_.id)
+        apiKeyData.permissions.map(_.publicPermissionId).traverse { publicPermissionId =>
+          getPermissionEntity(publicTenantId, publicPermissionId).map(_.id)
         }
 
       _ <- logInfoE("Inserting new API Key...")
@@ -251,12 +249,10 @@ class ApiKeyRepository(
   ): EitherT[ConnectionIO, ApiKeyDbError, ApiKeyData] =
     (for {
       userEntity <- getUserEntity(publicTenantId, apiKeyDataEntity.userId)
-      templateEntity <- getApiKeyTemplateEntity(publicTenantId, apiKeyDataEntity.templateId)
       permissionEntities <- getPermissionEntities(publicTenantId, UUID.fromString(apiKeyDataEntity.publicKeyId))
 
       resultApiKeyData = ApiKeyData.from(
         userEntity.publicUserId,
-        UUID.fromString(templateEntity.publicTemplateId),
         apiKeyDataEntity,
         permissionEntities
       )
@@ -299,13 +295,13 @@ class ApiKeyRepository(
       ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId)
     )
 
-  private def getApiKeyTemplateEntity(
+  private def getPermissionEntity(
       publicTenantId: TenantId,
-      templateDbId: UUID
-  ): EitherT[ConnectionIO, ReferencedApiKeyTemplateDoesNotExistError, ApiKeyTemplateEntity.Read] =
+      publicPermissionId: PermissionId
+  ): EitherT[ConnectionIO, ReferencedPermissionDoesNotExistError, PermissionEntity.Read] =
     EitherT.fromOptionF(
-      apiKeyTemplateDb.getByDbId(publicTenantId, templateDbId),
-      ReferencedApiKeyTemplateDoesNotExistError.fromDbId(templateDbId)
+      permissionDb.getByPublicPermissionId(publicTenantId, publicPermissionId),
+      ReferencedPermissionDoesNotExistError(publicPermissionId)
     )
 
   private def getPermissionEntities(
