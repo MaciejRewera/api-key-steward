@@ -28,8 +28,17 @@ class CreateApiKeyRequestValidator(
       createApiKeyRequest: CreateApiKeyRequest
   ): IO[Either[CreateApiKeyRequestValidatorError, CreateApiKeyRequest]] =
     (for {
-      validationData <- fetchValidationData(publicTenantId, publicUserId, createApiKeyRequest.templateId)
-      (_, apiKeyTemplate) = validationData
+      validationData <- fetchValidationData(publicTenantId, publicUserId)
+      (_, apiKeyTemplates) = validationData
+
+      apiKeyTemplate <- EitherT.fromEither[IO](
+        validateApiKeyTemplateIsAssignedToUser(
+          publicTenantId,
+          publicUserId,
+          createApiKeyRequest.templateId,
+          apiKeyTemplates
+        )
+      )
 
       _ <- EitherT.fromEither[IO](validateRequestPermissions(publicTenantId, createApiKeyRequest, apiKeyTemplate))
       _ <- EitherT.fromEither[IO](validateTimeToLive(createApiKeyRequest, apiKeyTemplate))
@@ -43,12 +52,11 @@ class CreateApiKeyRequestValidator(
 
   private def fetchValidationData(
       publicTenantId: TenantId,
-      publicUserId: UserId,
-      publicTemplateId: ApiKeyTemplateId
-  ): EitherT[IO, CreateApiKeyRequestValidatorError, (User, ApiKeyTemplate)] =
+      publicUserId: UserId
+  ): EitherT[IO, CreateApiKeyRequestValidatorError, (User, List[ApiKeyTemplate])] =
     (
       fetchUser(publicTenantId, publicUserId),
-      fetchApiKeyTemplate(publicTenantId, publicTemplateId)
+      fetchAllApiKeyTemplatesForUser(publicTenantId, publicUserId)
     ).parMapN((_, _))
 
   private def fetchUser(
@@ -62,16 +70,23 @@ class CreateApiKeyRequestValidator(
       } yield res
     }
 
-  private def fetchApiKeyTemplate(
+  private def fetchAllApiKeyTemplatesForUser(
       publicTenantId: TenantId,
-      publicTemplateId: ApiKeyTemplateId
-  ): EitherT[IO, CreateApiKeyRequestValidatorError, ApiKeyTemplate] =
-    EitherT {
-      for {
-        templateOpt <- apiKeyTemplateRepository.getBy(publicTenantId, publicTemplateId)
-        res = templateOpt.toRight(ApiKeyTemplateNotFoundError(publicTenantId, publicTemplateId))
-      } yield res
+      publicUserId: UserId
+  ): EitherT[IO, CreateApiKeyRequestValidatorError, List[ApiKeyTemplate]] =
+    EitherT.right[CreateApiKeyRequestValidatorError] {
+      apiKeyTemplateRepository.getAllForUser(publicTenantId, publicUserId)
     }
+
+  private def validateApiKeyTemplateIsAssignedToUser(
+      publicTenantId: TenantId,
+      publicUserId: UserId,
+      publicTemplateId: ApiKeyTemplateId,
+      apiKeyTemplates: List[ApiKeyTemplate]
+  ): Either[CreateApiKeyRequestValidatorError, ApiKeyTemplate] =
+    apiKeyTemplates
+      .find(_.publicTemplateId == publicTemplateId)
+      .toRight(ApiKeyTemplateNotAssignedToUserError(publicTenantId, publicUserId, publicTemplateId))
 
   private def validateRequestPermissions(
       publicTenantId: TenantId,
@@ -111,10 +126,13 @@ object CreateApiKeyRequestValidator {
           message = s"Could not find User with publicTenantId = [$publicTenantId] and publicUserId = [$publicUserId]."
         )
 
-    case class ApiKeyTemplateNotFoundError(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId)
-        extends CreateApiKeyRequestValidatorError(
+    case class ApiKeyTemplateNotAssignedToUserError(
+        publicTenantId: TenantId,
+        publicUserId: UserId,
+        publicTemplateId: ApiKeyTemplateId
+    ) extends CreateApiKeyRequestValidatorError(
           message =
-            s"Could not find ApiKeyTemplate with publicTenantId = [$publicTenantId] and publicTemplateId = [$publicTemplateId]."
+            s"There is no ApiKeyTemplate with publicTenantId = [$publicTenantId] and publicTemplateId = [$publicTemplateId] assigned to User with publicUserId = [$publicUserId]."
         )
 
     case class PermissionsNotAllowedError(
