@@ -156,7 +156,7 @@ class ApiKeyRepositorySpec
           ApiKeyEntity.Write(id = apiKeyDbId_1, tenantId = tenantDbId_1, apiKey = hashedApiKey_1.value)
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verify(secureHashGenerator).generateHashFor(eqTo(apiKey_1))
           _ = verify(uuidGenerator, times(2)).generateUuid
@@ -174,7 +174,9 @@ class ApiKeyRepositorySpec
       "return Right containing ApiKeyData" in {
         initMocks()
 
-        apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).asserting(_ shouldBe Right(apiKeyData_1))
+        apiKeyRepository
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
+          .asserting(_ shouldBe Right(apiKeyData_1))
       }
     }
 
@@ -184,7 +186,7 @@ class ApiKeyRepositorySpec
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(
             uuidGenerator,
@@ -202,7 +204,7 @@ class ApiKeyRepositorySpec
         secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -215,7 +217,7 @@ class ApiKeyRepositorySpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(tenantDb, userDb, apiKeyTemplateDb, permissionDb, apiKeyDb, apiKeyDataDb)
         } yield ()
@@ -226,7 +228,7 @@ class ApiKeyRepositorySpec
         uuidGenerator.generateUuid returns IO.raiseError(testException)
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -240,7 +242,7 @@ class ApiKeyRepositorySpec
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(userDb, apiKeyTemplateDb, permissionDb, apiKeyDb, apiKeyDataDb)
         } yield ()
@@ -252,7 +254,7 @@ class ApiKeyRepositorySpec
         tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError(publicTenantId_1)))
       }
     }
@@ -266,7 +268,7 @@ class ApiKeyRepositorySpec
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(userDb, apiKeyTemplateDb, permissionDb, apiKeyDb, apiKeyDataDb)
         } yield ()
@@ -279,7 +281,7 @@ class ApiKeyRepositorySpec
           .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -294,7 +296,7 @@ class ApiKeyRepositorySpec
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(apiKeyTemplateDb, permissionDb, apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -308,7 +310,7 @@ class ApiKeyRepositorySpec
         userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ReferencedUserDoesNotExistError(publicUserId_1)))
       }
     }
@@ -323,7 +325,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(apiKeyTemplateDb, permissionDb, apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -338,7 +340,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -355,7 +357,7 @@ class ApiKeyRepositorySpec
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(permissionDb, apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -372,7 +374,7 @@ class ApiKeyRepositorySpec
           none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
       }
     }
@@ -388,7 +390,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(permissionDb, apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -405,7 +407,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -423,7 +425,7 @@ class ApiKeyRepositorySpec
           none[PermissionEntity.Read].pure[doobie.ConnectionIO]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -442,7 +444,7 @@ class ApiKeyRepositorySpec
           none[PermissionEntity.Read].pure[doobie.ConnectionIO]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ReferencedPermissionDoesNotExistError(publicPermissionId_1)))
       }
     }
@@ -459,7 +461,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(apiKeyDb, apiKeyDataDb)
           _ = verify(userDb, never).getByDbId(any[TenantId], any[UUID])
@@ -478,7 +480,7 @@ class ApiKeyRepositorySpec
           testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -496,7 +498,7 @@ class ApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
           _ = verifyZeroInteractions(apiKeyDataDb)
         } yield ()
@@ -512,7 +514,7 @@ class ApiKeyRepositorySpec
         apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .asserting(_ shouldBe Left(ApiKeyAlreadyExistsError))
       }
     }
@@ -530,7 +532,7 @@ class ApiKeyRepositorySpec
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
         for {
-          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+          _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
           _ = verifyZeroInteractions(apiKeyDataDb)
         } yield ()
@@ -547,7 +549,7 @@ class ApiKeyRepositorySpec
           .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
 
         apiKeyRepository
-          .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+          .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
           .attempt
           .asserting(_ shouldBe Left(testException))
       }
@@ -571,7 +573,7 @@ class ApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
           for {
-            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
             _ = verifyZeroInteractions(apiKeysPermissionsDb)
           } yield ()
@@ -581,7 +583,7 @@ class ApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
 
           apiKeyRepository
-            .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
             .asserting(_ shouldBe Left(ApiKeyIdAlreadyExistsError))
         }
       }
@@ -592,7 +594,7 @@ class ApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
           for {
-            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
 
             _ = verifyZeroInteractions(apiKeysPermissionsDb)
           } yield ()
@@ -602,7 +604,7 @@ class ApiKeyRepositorySpec
           apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
 
           apiKeyRepository
-            .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
             .asserting(_ shouldBe Left(PublicKeyIdAlreadyExistsError))
         }
       }
@@ -614,7 +616,7 @@ class ApiKeyRepositorySpec
             .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
           for {
-            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1).attempt
+            _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
 
             _ = verifyZeroInteractions(apiKeysPermissionsDb)
           } yield ()
@@ -625,7 +627,7 @@ class ApiKeyRepositorySpec
             .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
 
           apiKeyRepository
-            .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
             .attempt
             .asserting(_ shouldBe Left(testException))
         }
@@ -641,7 +643,7 @@ class ApiKeyRepositorySpec
               .pure[doobie.ConnectionIO]
 
           apiKeyRepository
-            .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
             .asserting(
               _ shouldBe Left(
                 ApiKeyPermissionAssociationCannotBeCreated(ApiKeysPermissionsInsertionErrorImpl(testSqlException))
@@ -657,7 +659,7 @@ class ApiKeyRepositorySpec
             .raiseError[doobie.ConnectionIO, Either[ApiKeysPermissionsDbError, List[ApiKeysPermissionsEntity.Read]]]
 
           apiKeyRepository
-            .insert(publicTenantId_1, apiKey_1, apiKeyData_1)
+            .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
             .attempt
             .asserting(_ shouldBe Left(testException))
         }
@@ -1636,12 +1638,11 @@ class ApiKeyRepositorySpec
 
     "everything works correctly" should {
 
-      "call UserDb, ApiKeyTemplateDb and PermissionDb" in {
+      "call UserDb and PermissionDb" in {
         for {
           _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
 
           _ = verify(userDb).getByDbId(any[TenantId], any[UUID])
-          _ = verify(apiKeyTemplateDb).getByDbId(any[TenantId], any[UUID])
           _ = verify(permissionDb).getAllForApiKey(any[TenantId], any[ApiKeyId])
         } yield ()
       }
@@ -1654,13 +1655,13 @@ class ApiKeyRepositorySpec
 
     "UserDb.getByDbId returns empty Option" should {
 
-      "NOT call ApiKeyTemplateDb.getByDbId or PermissionDb" in {
+      "NOT call PermissionDb" in {
         userDb.getByDbId(any[TenantId], any[UUID]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
 
         for {
           _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
 
-          _ = verifyZeroInteractions(permissionDb, apiKeyTemplateDb)
+          _ = verifyZeroInteractions(permissionDb)
         } yield ()
       }
 
@@ -1674,52 +1675,9 @@ class ApiKeyRepositorySpec
 
     "UserDb.getByDbId returns exception" should {
 
-      "NOT call ApiKeyTemplateDb.getByDbId or PermissionDb" in {
+      "NOT call PermissionDb" in {
         userDb.getByDbId(any[TenantId], any[UUID]) returns
           testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
-
-        for {
-          _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt
-
-          _ = verifyZeroInteractions(permissionDb, apiKeyTemplateDb)
-        } yield ()
-      }
-
-      "return failed IO containing this exception" in {
-        userDb.getByDbId(any[TenantId], any[UUID]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
-
-        methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt.asserting(_ shouldBe Left(testException))
-      }
-    }
-
-    "ApiKeyTemplateDb.getByDbId returns empty Option" should {
-
-      "NOT call PermissionDb" in {
-        apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-          none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
-
-        for {
-          _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
-
-          _ = verifyZeroInteractions(permissionDb)
-        } yield ()
-      }
-
-      "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-          none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
-
-        methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
-          .asserting(_ shouldBe Left(ReferencedApiKeyTemplateDoesNotExistError.fromDbId(templateDbId_1)))
-      }
-    }
-
-    "ApiKeyTemplateDb.getByDbId returns exception" should {
-
-      "NOT call PermissionDb" in {
-        apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
 
         for {
           _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt
@@ -1729,8 +1687,8 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        userDb.getByDbId(any[TenantId], any[UUID]) returns
+          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
 
         methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt.asserting(_ shouldBe Left(testException))
       }

@@ -88,7 +88,6 @@ private[routes] object EndpointsBase {
     description = Some("A short description what this API key is for."),
     publicUserId = "user-1234567",
     expiresAt = Instant.parse("2024-06-03T13:34:56.789098Z"),
-    publicTemplateId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
     permissions = List(PermissionExample, PermissionExample)
   )
 

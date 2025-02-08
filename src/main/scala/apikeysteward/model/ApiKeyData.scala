@@ -19,7 +19,6 @@ case class ApiKeyData(
     description: Option[String],
     publicUserId: UserId,
     expiresAt: Instant,
-    publicTemplateId: ApiKeyTemplateId,
     permissions: List[Permission]
 )
 
@@ -33,7 +32,6 @@ object ApiKeyData {
 
   def from(
       publicUserId: UserId,
-      publicTemplateId: ApiKeyTemplateId,
       apiKeyDataEntityRead: ApiKeyDataEntity.Read,
       permissionEntities: List[PermissionEntity.Read]
   ): ApiKeyData =
@@ -43,7 +41,6 @@ object ApiKeyData {
       description = apiKeyDataEntityRead.description,
       publicUserId = publicUserId,
       expiresAt = apiKeyDataEntityRead.expiresAt,
-      publicTemplateId = publicTemplateId,
       permissions = permissionEntities.map(Permission.from)
     )
 
@@ -59,7 +56,6 @@ object ApiKeyData {
       description = createApiKeyRequest.description,
       publicUserId = publicUserId,
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(createApiKeyRequest.ttl),
-      publicTemplateId = createApiKeyRequest.templateId,
       permissions = permissions
     )
 }
