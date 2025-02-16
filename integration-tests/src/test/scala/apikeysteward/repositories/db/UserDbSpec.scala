@@ -5,6 +5,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
 import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData._
 import apikeysteward.base.testdata.TenantsTestData._
 import apikeysteward.base.testdata.UsersTestData._
+import apikeysteward.model.errors.CommonError.TenantIsDeactivated
 import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.UserNotFoundError
 import apikeysteward.repositories.TestDataInsertions.{TemplateDbId, TenantDbId, UserDbId}
@@ -279,7 +280,35 @@ class UserDbSpec
           res <- Queries.getAllUsers.transact(transactor)
         } yield res
 
-        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+        result.asserting(_ shouldBe List.empty[UserEntity.Read])
+      }
+    }
+
+    "there is a row in the DB with the same both publicTenantId and publicUserId, but the Tenant is deactivated" should {
+
+      "return Left containing UserNotFoundError" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
+
+          res <- userDb.delete(publicTenantId_1, publicUserId_1)
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_1)))
+      }
+
+      "make no changes to the DB" in {
+        val result = (for {
+          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _ <- userDb.insert(userEntityWrite_1)
+          _ <- tenantDb.deactivate(publicTenantId_1)
+
+          _ <- userDb.delete(publicTenantId_1, publicUserId_1)
+          res <- Queries.getAllUsers
+        } yield res).transact(transactor)
+
+        result.asserting(_ shouldBe List(userEntityRead_1))
       }
     }
 

@@ -7,6 +7,10 @@ import apikeysteward.model.User.UserId
 sealed abstract class CommonError(override val message: String) extends CustomError
 object CommonError {
 
+  case class TenantIsDeactivated(publicTenantId: TenantId) extends CommonError(
+    message = s"Tenant with publicTenantId = [$publicTenantId] is deactivated."
+  )
+
   case class ApiKeyTemplateDoesNotExistError(publicApiKeyTemplateId: ApiKeyTemplateId)
       extends CommonError(
         message = s"ApiKeyTemplate with publicTemplateId = [$publicApiKeyTemplateId] does not exist."
