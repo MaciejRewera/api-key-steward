@@ -67,7 +67,6 @@ class TenantRepository(
 
   def delete(publicTenantId: TenantId): IO[Either[TenantDbError, Tenant]] =
     (for {
-      _ <- verifyAllDependenciesAreDeactivated(publicTenantId)
       _ <- verifyTenantIsDeactivated(publicTenantId)
 
       _ <- deleteUsers(publicTenantId)
@@ -77,24 +76,6 @@ class TenantRepository(
       tenantEntityRead <- EitherT(tenantDb.deleteDeactivated(publicTenantId))
       resultTenant = Tenant.from(tenantEntityRead)
     } yield resultTenant).value.transact(transactor)
-
-  private def verifyAllDependenciesAreDeactivated(
-      publicTenantId: TenantId
-  ): EitherT[doobie.ConnectionIO, TenantDbError, Unit] =
-    for {
-      publicResourceServerIds <- EitherT.liftF(
-        resourceServerRepository
-          .getAllForTenantOp(publicTenantId)
-          .map(_.resourceServerId)
-          .compile
-          .toList
-      )
-      _ <- publicResourceServerIds.traverse { publicResourceServerId =>
-        resourceServerRepository
-          .verifyResourceServerIsDeactivatedOp(publicTenantId, publicResourceServerId)
-          .leftMap(cannotDeleteDependencyError(publicTenantId, _))
-      }
-    } yield ()
 
   private def verifyTenantIsDeactivated(
       publicTenantId: TenantId

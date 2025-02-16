@@ -87,28 +87,6 @@ class ResourceServerRepository(
       )
     } yield resultResourceServer).value.transact(transactor)
 
-  def activate(
-      publicTenantId: TenantId,
-      publicResourceServerId: ResourceServerId
-  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    (for {
-      resourceServerEntityRead <- EitherT(resourceServerDb.activate(publicTenantId, publicResourceServerId))
-      resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
-        constructResourceServer(publicTenantId, resourceServerEntityRead)
-      )
-    } yield resultResourceServer).value.transact(transactor)
-
-  def deactivate(
-      publicTenantId: TenantId,
-      publicResourceServerId: ResourceServerId
-  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    (for {
-      resourceServerEntityRead <- EitherT(resourceServerDb.deactivate(publicTenantId, publicResourceServerId))
-      resultResourceServer <- EitherT.liftF[doobie.ConnectionIO, ResourceServerNotFoundError, ResourceServer](
-        constructResourceServer(publicTenantId, resourceServerEntityRead)
-      )
-    } yield resultResourceServer).value.transact(transactor)
-
   def delete(
       publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
@@ -120,30 +98,11 @@ class ResourceServerRepository(
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerDbError, ResourceServer]] =
     (for {
-      _ <- verifyResourceServerIsDeactivatedOp(publicTenantId, publicResourceServerId)
-
       permissionEntitiesDeleted <- deletePermissions(publicTenantId, publicResourceServerId)
-      resourceServerEntityRead <- EitherT(resourceServerDb.deleteDeactivated(publicTenantId, publicResourceServerId))
+      resourceServerEntityRead <- EitherT(resourceServerDb.delete(publicTenantId, publicResourceServerId))
 
       resultResourceServer = ResourceServer.from(resourceServerEntityRead, permissionEntitiesDeleted)
     } yield resultResourceServer).value
-
-  private[repositories] def verifyResourceServerIsDeactivatedOp(
-      publicTenantId: TenantId,
-      publicResourceServerId: ResourceServerId
-  ): EitherT[doobie.ConnectionIO, ResourceServerDbError, Unit] =
-    for {
-      resourceServerToDelete <- EitherT(
-        resourceServerDb
-          .getByPublicResourceServerId(publicTenantId, publicResourceServerId)
-          .map(_.toRight(resourceServerNotFoundError(publicResourceServerId)))
-      )
-      _ <- EitherT.cond[doobie.ConnectionIO](
-        resourceServerToDelete.deactivatedAt.isDefined,
-        (),
-        resourceServerIsNotDeactivatedError(publicResourceServerId)
-      )
-    } yield ()
 
   private def deletePermissions(
       publicTenantId: TenantId,

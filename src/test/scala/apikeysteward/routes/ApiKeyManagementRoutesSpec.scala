@@ -10,7 +10,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError.ApiKeyIdAlreadyExistsError
 import apikeysteward.model.errors.ApiKeyDbError.{ApiKeyDataNotFoundError, ApiKeyNotFoundError}
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
 import apikeysteward.routes.auth.model.{JsonWebToken, JwtPermissions}
 import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer, JwtOps}

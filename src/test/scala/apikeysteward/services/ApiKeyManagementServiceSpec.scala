@@ -15,7 +15,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError._
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
 import apikeysteward.model.{ApiKey, ApiKeyData, ApiKeyDataUpdate}

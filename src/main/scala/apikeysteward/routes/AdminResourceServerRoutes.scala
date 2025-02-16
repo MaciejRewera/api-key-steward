@@ -56,40 +56,6 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
         }
     )
 
-  private val reactivateResourceServerRoutes: HttpRoutes[IO] =
-    serverInterpreter.toRoutes(
-      AdminResourceServerEndpoints.reactivateResourceServerEndpoint
-        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-        .serverLogic { _ => input =>
-          val (tenantId, resourceServerId) = input
-          resourceServerService.reactivateResourceServer(tenantId, resourceServerId).map {
-
-            case Right(reactivatedResourceServer) =>
-              (StatusCode.Ok, ReactivateResourceServerResponse(reactivatedResourceServer)).asRight
-
-            case Left(_: ResourceServerNotFoundError) =>
-              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound)).asLeft
-          }
-        }
-    )
-
-  private val deactivateResourceServerRoutes: HttpRoutes[IO] =
-    serverInterpreter.toRoutes(
-      AdminResourceServerEndpoints.deactivateResourceServerEndpoint
-        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
-        .serverLogic { _ => input =>
-          val (tenantId, resourceServerId) = input
-          resourceServerService.deactivateResourceServer(tenantId, resourceServerId).map {
-
-            case Right(deactivatedResourceServer) =>
-              (StatusCode.Ok, DeactivateResourceServerResponse(deactivatedResourceServer)).asRight
-
-            case Left(_: ResourceServerNotFoundError) =>
-              ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound)).asLeft
-          }
-        }
-    )
-
   private val deleteResourceServerRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
       AdminResourceServerEndpoints.deleteResourceServerEndpoint
@@ -103,13 +69,6 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
 
             case Left(_: ResourceServerNotFoundError) =>
               ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminResourceServer.ResourceServerNotFound)).asLeft
-
-            case Left(_: ResourceServerIsNotDeactivatedError) =>
-              ErrorInfo
-                .badRequestErrorInfo(
-                  Some(ApiErrorMessages.AdminResourceServer.ResourceServerIsNotDeactivated(resourceServerId))
-                )
-                .asLeft
 
             case Left(_: ResourceServerDbError) =>
               ErrorInfo.internalServerErrorInfo().asLeft
@@ -145,8 +104,6 @@ class AdminResourceServerRoutes(jwtAuthorizer: JwtAuthorizer, resourceServerServ
   val allRoutes: HttpRoutes[IO] =
     createResourceServerRoutes <+>
       updateResourceServerRoutes <+>
-      reactivateResourceServerRoutes <+>
-      deactivateResourceServerRoutes <+>
       deleteResourceServerRoutes <+>
       getSingleResourceServerRoutes <+>
       searchResourceServersRoutes

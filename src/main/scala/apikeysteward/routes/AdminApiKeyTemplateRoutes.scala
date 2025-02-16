@@ -13,7 +13,7 @@ import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUse
   ApiKeyTemplatesUsersAlreadyExistsError,
   ReferencedUserDoesNotExistError
 }
-import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
+import apikeysteward.model.errors.CommonError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.routes.auth.JwtAuthorizer
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.definitions.{AdminApiKeyTemplateEndpoints, ApiErrorMessages}

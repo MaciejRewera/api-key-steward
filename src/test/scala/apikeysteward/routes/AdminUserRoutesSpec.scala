@@ -12,7 +12,7 @@ import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError._
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.model.Tenant.TenantId
