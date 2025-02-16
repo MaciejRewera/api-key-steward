@@ -12,7 +12,7 @@ import apikeysteward.base.testdata.ResourceServersTestData.{
 import apikeysteward.base.testdata.TenantsTestData.publicTenantId_1
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
-import apikeysteward.model.errors.GenericError
+import apikeysteward.model.errors.CommonError
 import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError._
 import apikeysteward.model.errors.PermissionDbError.PermissionNotFoundError
 import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
@@ -458,7 +458,7 @@ class PermissionServiceSpec
 
         permissionService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
-          .asserting(_ shouldBe Left(GenericError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
+          .asserting(_ shouldBe Left(CommonError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1)))
       }
     }
 

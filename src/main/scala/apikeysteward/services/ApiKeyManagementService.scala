@@ -7,7 +7,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model._
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyInsertionError
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.model.errors.{ApiKeyDbError, CustomError}
 import apikeysteward.repositories.{ApiKeyRepository, PermissionRepository, UserRepository}
 import apikeysteward.routes.model.admin.apikey.UpdateApiKeyAdminRequest

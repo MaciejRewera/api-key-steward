@@ -4,7 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User
 import apikeysteward.model.User.UserId
-import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
+import apikeysteward.model.errors.CommonError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.errors.UserDbError.UserInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.errors.UserDbError.{UserInsertionError, UserNotFoundError}
 import apikeysteward.repositories.UserRepository.UserRepositoryError
