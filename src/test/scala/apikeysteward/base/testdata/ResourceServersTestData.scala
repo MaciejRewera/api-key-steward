@@ -37,21 +37,18 @@ object ResourceServersTestData extends FixedClock {
     resourceServerId = publicResourceServerId_1,
     name = resourceServerName_1,
     description = resourceServerDescription_1,
-    isActive = true,
     permissions = List(permission_1)
   )
   val resourceServer_2: ResourceServer = ResourceServer(
     resourceServerId = publicResourceServerId_2,
     name = resourceServerName_2,
     description = resourceServerDescription_2,
-    isActive = true,
     permissions = List(permission_2)
   )
   val resourceServer_3: ResourceServer = ResourceServer(
     resourceServerId = publicResourceServerId_3,
     name = resourceServerName_3,
     description = resourceServerDescription_3,
-    isActive = true,
     permissions = List(permission_3)
   )
 
@@ -76,8 +73,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_1,
     description = resourceServerDescription_1,
     createdAt = nowInstant,
-    updatedAt = nowInstant,
-    deactivatedAt = None
+    updatedAt = nowInstant
   )
 
   val resourceServerEntityWrite_2: ResourceServerEntity.Write = ResourceServerEntity.Write(
@@ -94,8 +90,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_2,
     description = resourceServerDescription_2,
     createdAt = nowInstant,
-    updatedAt = nowInstant,
-    deactivatedAt = None
+    updatedAt = nowInstant
   )
 
   val resourceServerEntityWrite_3: ResourceServerEntity.Write = ResourceServerEntity.Write(
@@ -112,8 +107,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_3,
     description = resourceServerDescription_3,
     createdAt = nowInstant,
-    updatedAt = nowInstant,
-    deactivatedAt = None
+    updatedAt = nowInstant
   )
 
   val resourceServerEntityUpdate_1: ResourceServerEntity.Update = ResourceServerEntity.Update(
@@ -121,8 +115,5 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerNameUpdated,
     description = resourceServerDescriptionUpdated
   )
-
-  val deactivatedResourceServerEntityRead_1: ResourceServerEntity.Read =
-    resourceServerEntityRead_1.copy(deactivatedAt = Some(nowInstant))
 
 }

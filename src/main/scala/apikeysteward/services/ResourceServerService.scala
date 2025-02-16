@@ -75,30 +75,6 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
           )
       }
 
-  def reactivateResourceServer(
-      publicTenantId: TenantId,
-      resourceServerId: ResourceServerId
-  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    resourceServerRepository.activate(publicTenantId, resourceServerId).flatTap {
-      case Right(_) => logger.info(s"Activated ResourceServer with resourceServerId: [$resourceServerId].")
-      case Left(e) =>
-        logger.warn(
-          s"Could not activate ResourceServer with resourceServerId: [$resourceServerId] because: ${e.message}"
-        )
-    }
-
-  def deactivateResourceServer(
-      publicTenantId: TenantId,
-      resourceServerId: ResourceServerId
-  ): IO[Either[ResourceServerNotFoundError, ResourceServer]] =
-    resourceServerRepository.deactivate(publicTenantId, resourceServerId).flatTap {
-      case Right(_) => logger.info(s"Deactivated ResourceServer with resourceServerId: [$resourceServerId].")
-      case Left(e) =>
-        logger.warn(
-          s"Could not deactivate ResourceServer with resourceServerId: [$resourceServerId] because: ${e.message}"
-        )
-    }
-
   def deleteResourceServer(
       publicTenantId: TenantId,
       resourceServerId: ResourceServerId

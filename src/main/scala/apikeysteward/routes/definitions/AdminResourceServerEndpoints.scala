@@ -69,48 +69,6 @@ private[routes] object AdminResourceServerEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val reactivateResourceServerEndpoint: Endpoint[
-    AccessToken,
-    (TenantId, ResourceServerId),
-    ErrorInfo,
-    (StatusCode, ReactivateResourceServerResponse),
-    Any
-  ] =
-    EndpointsBase.authenticatedEndpointBase.put
-      .description(
-        "Reactivate an inactive Resource Server. If the Resource Server is already active, this API has no effect."
-      )
-      .in(tenantIdHeaderInput)
-      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "reactivation")
-      .out(statusCode.description(StatusCode.Ok, "Resource Server reactivated."))
-      .out(
-        jsonBody[ReactivateResourceServerResponse]
-          .example(ReactivateResourceServerResponse(EndpointsBase.ResourceServerExample))
-      )
-      .errorOutVariantPrepend(errorOutVariantNotFound)
-      .errorOutVariantPrepend(errorOutVariantBadRequest)
-
-  val deactivateResourceServerEndpoint: Endpoint[
-    AccessToken,
-    (TenantId, ResourceServerId),
-    ErrorInfo,
-    (StatusCode, DeactivateResourceServerResponse),
-    Any
-  ] =
-    EndpointsBase.authenticatedEndpointBase.put
-      .description(
-        "Deactivate an active Resource Server. If the Resource Server is already inactive, this API has no effect."
-      )
-      .in(tenantIdHeaderInput)
-      .in("admin" / "resource-servers" / resourceServerIdPathParameter / "deactivation")
-      .out(statusCode.description(StatusCode.Ok, "Resource Server deactivated."))
-      .out(
-        jsonBody[DeactivateResourceServerResponse]
-          .example(DeactivateResourceServerResponse(EndpointsBase.ResourceServerExample.copy(isActive = false)))
-      )
-      .errorOutVariantPrepend(errorOutVariantNotFound)
-      .errorOutVariantPrepend(errorOutVariantBadRequest)
-
   val deleteResourceServerEndpoint: Endpoint[
     AccessToken,
     (TenantId, ResourceServerId),
@@ -120,7 +78,7 @@ private[routes] object AdminResourceServerEndpoints {
   ] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description(
-        """Delete an inactive Resource Server. The Resource Server has to be inactive before using this API.
+        """Delete Resource Server.
           |
           |This operation is permanent. Proceed with caution.""".stripMargin
       )
@@ -129,7 +87,7 @@ private[routes] object AdminResourceServerEndpoints {
       .out(statusCode.description(StatusCode.Ok, "Resource Server deleted."))
       .out(
         jsonBody[DeleteResourceServerResponse]
-          .example(DeleteResourceServerResponse(EndpointsBase.ResourceServerExample.copy(isActive = false)))
+          .example(DeleteResourceServerResponse(EndpointsBase.ResourceServerExample))
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)

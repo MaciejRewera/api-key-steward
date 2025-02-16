@@ -13,7 +13,6 @@ case class ResourceServer(
     resourceServerId: ResourceServerId,
     name: String,
     description: Option[String],
-    isActive: Boolean,
     permissions: List[Permission]
 )
 
@@ -28,7 +27,6 @@ object ResourceServer {
       resourceServerId = UUID.fromString(resourceServerEntity.publicResourceServerId),
       name = resourceServerEntity.name,
       description = resourceServerEntity.description,
-      isActive = resourceServerEntity.deactivatedAt.isEmpty,
       permissions = permissions.map(Permission.from)
     )
 
@@ -40,7 +38,6 @@ object ResourceServer {
     resourceServerId = resourceServerId,
     name = createResourceServerRequest.name,
     description = createResourceServerRequest.description,
-    isActive = true,
     permissions = (permissionIds zip createResourceServerRequest.permissions).map { case (id, request) =>
       Permission.from(id, request)
     }

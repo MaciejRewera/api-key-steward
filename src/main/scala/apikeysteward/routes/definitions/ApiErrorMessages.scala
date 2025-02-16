@@ -73,13 +73,6 @@ private[routes] object ApiErrorMessages {
   object AdminResourceServer {
     val ResourceServerNotFound = "No ResourceServer found for provided resourceServerId."
     val ReferencedTenantNotFound = "No Tenant found for provided tenantId."
-
-    def ResourceServerIsNotDeactivated(resourceServerId: UUID): String = {
-      val method = AdminResourceServerEndpoints.deactivateResourceServerEndpoint.method.getOrElse("PUT")
-      val path = AdminResourceServerEndpoints.deactivateResourceServerEndpoint.showPathTemplate()
-
-      s"Could not delete ResourceServer with resourceServerId = [$resourceServerId] because it is active and only inactive ResourceServers can be permanently deleted. Deactivate the ResourceServer first, using $method $path API."
-    }
   }
 
   object AdminPermission {

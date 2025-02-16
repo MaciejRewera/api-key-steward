@@ -35,9 +35,6 @@ object TenantDbError {
           s"Could not delete Tenant with publicTenantId = [${publicTenantId.toString}] because it is not deactivated."
       )
 
-  def cannotDeleteDependencyError(publicTenantId: TenantId, dependencyError: CustomError): TenantDbError =
-    CannotDeleteDependencyError(publicTenantId, dependencyError)
-
   case class CannotDeleteDependencyError(publicTenantId: TenantId, dependencyError: CustomError)
       extends TenantDbError(
         message =

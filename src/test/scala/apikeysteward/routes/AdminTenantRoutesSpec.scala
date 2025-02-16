@@ -1,17 +1,14 @@
 package apikeysteward.routes
 
-import apikeysteward.base.testdata.ResourceServersTestData.publicResourceServerId_1
 import apikeysteward.base.testdata.TenantsTestData._
-import apikeysteward.model.errors.ResourceServerDbError.ResourceServerIsNotDeactivatedError
+import apikeysteward.base.testdata.UsersTestData.publicUserId_1
 import apikeysteward.model.errors.TenantDbError.TenantInsertionError.TenantAlreadyExistsError
-import apikeysteward.model.errors.TenantDbError.{
-  CannotDeleteDependencyError,
-  TenantIsNotDeactivatedError,
-  TenantNotFoundError
-}
-import apikeysteward.routes.auth.JwtAuthorizer.{AccessToken, Permission}
+import apikeysteward.model.errors.TenantDbError._
+import apikeysteward.model.errors.UserDbError.UserNotFoundError
+import apikeysteward.repositories.UserRepository.UserRepositoryError
+import apikeysteward.routes.auth.JwtAuthorizer
+import apikeysteward.routes.auth.JwtAuthorizer.Permission
 import apikeysteward.routes.auth.model.JwtPermissions
-import apikeysteward.routes.auth.{AuthTestData, JwtAuthorizer}
 import apikeysteward.routes.definitions.ApiErrorMessages
 import apikeysteward.routes.model.admin.tenant._
 import apikeysteward.services.TenantService
@@ -19,10 +16,8 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.{catsSyntaxEitherId, catsSyntaxOptionId, none}
 import io.circe.syntax.EncoderOps
-import org.http4s.AuthScheme.Bearer
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, Headers, HttpApp, Method, Request, Status, Uri}
+import org.http4s.{Headers, HttpApp, Method, Request, Status, Uri}
 import org.mockito.ArgumentMatchersSugar.{any, eqTo}
 import org.mockito.IdiomaticMockito.StubbingOps
 import org.mockito.MockitoSugar.{mock, reset, verify, verifyZeroInteractions}
@@ -623,6 +618,18 @@ class AdminTenantRoutesSpec
         } yield ()
       }
 
+      "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
+        tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminTenant.TenantNotFound)))
+        } yield ()
+      }
+
       "return Bad Request when TenantService returns successful IO with Left containing TenantIsNotDeactivatedError" in authorizedFixture {
         tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantIsNotDeactivatedError(publicTenantId_1)))
 
@@ -639,34 +646,22 @@ class AdminTenantRoutesSpec
         } yield ()
       }
 
-      "return Bad Request when TenantService returns successful IO with Left containing CannotDeleteDependencyError" in authorizedFixture {
-        val dependencyError = ResourceServerIsNotDeactivatedError(publicResourceServerId_1)
+      "return Internal Server when TenantService returns successful IO with Left containing CannotDeleteDependencyError" in authorizedFixture {
+        val dependencyError = UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1))
         tenantService.deleteTenant(any[UUID]) returns IO.pure(
           Left(CannotDeleteDependencyError(publicTenantId_1, dependencyError))
         )
 
         for {
           response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.BadRequest
+          _ = response.status shouldBe Status.InternalServerError
           _ <- response
             .as[ErrorInfo]
             .asserting(
-              _ shouldBe ErrorInfo.badRequestErrorInfo(
+              _ shouldBe ErrorInfo.internalServerErrorInfo(
                 Some(ApiErrorMessages.AdminTenant.TenantDependencyCannotBeDeleted(publicTenantId_1))
               )
             )
-        } yield ()
-      }
-
-      "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
-
-        for {
-          response <- adminRoutes.run(request)
-          _ = response.status shouldBe Status.NotFound
-          _ <- response
-            .as[ErrorInfo]
-            .asserting(_ shouldBe ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.AdminTenant.TenantNotFound)))
         } yield ()
       }
 
