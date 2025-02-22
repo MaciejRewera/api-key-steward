@@ -30,243 +30,118 @@ class ResourceServerRepositoryItSpec extends RepositoryItSpecBase {
       transactor
     )
 
-  "ResourceServerRepository on delete" when {
+  "ResourceServerRepository on delete" should {
 
-    "given ResourceServer is active" should {
+    "delete associations between related Permissions and ApiKeyTemplates" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-      "NOT delete associations between related Permissions and ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+        res <- Queries.getAllApiKeyTemplatesPermissionsAssociations.transact(transactor)
+      } yield res
 
-          res <- Queries.getAllApiKeyTemplatesPermissionsAssociations.transact(transactor)
-        } yield res
+      result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+    }
 
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeyTemplatesPermissionsEntityWrite_1_1.toRead,
-            apiKeyTemplatesPermissionsEntityWrite_2_1.toRead,
-            apiKeyTemplatesPermissionsEntityWrite_2_2.toRead
-          )
+    "delete associations between related Permissions and ApiKeyData" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-      "NOT delete associations between related Permissions and ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+        res <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
+      } yield res
 
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+      result.asserting(_ should contain theSameElementsAs List.empty[ApiKeysPermissionsEntity.Read])
+    }
 
-          res <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
-        } yield res
+    "delete related Permissions" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeysPermissionsEntityWrite_1_1.toRead,
-            apiKeysPermissionsEntityWrite_1_2.toRead,
-            apiKeysPermissionsEntityWrite_1_3.toRead,
-            apiKeysPermissionsEntityWrite_2_1.toRead,
-            apiKeysPermissionsEntityWrite_3_2.toRead,
-            apiKeysPermissionsEntityWrite_3_3.toRead
-          )
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
+        res <- Queries.getAllPermissions.transact(transactor)
+      } yield res
 
-      "NOT delete related ApiKeys" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+      result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
+    }
 
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+    "delete this ResourceServer" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-          res <- Queries.getAllApiKeys.transact(transactor)
-        } yield res
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyEntityRead_1, apiKeyEntityRead_2, apiKeyEntityRead_3)
+        res <- Queries.getAllResourceServers.transact(transactor)
+      } yield res
 
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
+      result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
+    }
 
-      "NOT delete related ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+    "NOT delete ApiKeyTemplates" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          res <- Queries.getAllApiKeyData.transact(transactor)
-        } yield res
+        res <- Queries.getAllApiKeyTemplates.transact(transactor)
+      } yield res
 
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2, apiKeyDataEntityRead_3)
+      result.asserting { res =>
+        val expectedEntities = List(
+          apiKeyTemplateEntityRead_1.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_2.copy(tenantId = tenantDbId_1),
+          apiKeyTemplateEntityRead_3.copy(tenantId = tenantDbId_1)
+        )
 
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related Permissions" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllPermissions.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(permissionEntityRead_1, permissionEntityRead_2, permissionEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete this ResourceServer" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllResourceServers.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          res shouldBe List(resourceServerEntityRead_1.copy(id = res.head.id, tenantId = res.head.tenantId))
-        }
+        res should contain theSameElementsAs expectedEntities
       }
     }
 
-    "there are entities in the DB for given inactive ResourceServer" should {
+    "NOT delete ApiKeys" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-      "delete associations between these Permissions and ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+        res <- Queries.getAllApiKeys.transact(transactor)
+      } yield res
 
-          res <- Queries.getAllApiKeyTemplatesPermissionsAssociations.transact(transactor)
-        } yield res
+      result.asserting { res =>
+        val expectedEntities = List(apiKeyEntityRead_1, apiKeyEntityRead_2, apiKeyEntityRead_3)
 
-        result.asserting(_ shouldBe List.empty[ApiKeyTemplatesPermissionsEntity.Read])
+        res should contain theSameElementsAs expectedEntities
       }
+    }
 
-      "delete associations between related Permissions and ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+    "NOT delete ApiKeyData" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          res <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
-        } yield res
+        res <- Queries.getAllApiKeyData.transact(transactor)
+      } yield res
 
-        result.asserting(_ should contain theSameElementsAs List.empty[ApiKeysPermissionsEntity.Read])
+      result.asserting { res =>
+        val expectedEntities = List(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2, apiKeyDataEntityRead_3)
+
+        res should contain theSameElementsAs expectedEntities
       }
+    }
 
-      "delete these Permissions" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
+    "NOT delete the Tenant" in {
+      val result = for {
+        _ <- insertPrerequisiteDataAll()
 
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
+        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
 
-          res <- Queries.getAllPermissions.transact(transactor)
-        } yield res
+        res <- Queries.getAllTenants.transact(transactor)
+      } yield res
 
-        result.asserting(_ shouldBe List.empty[PermissionEntity.Read])
-      }
-
-      "delete this ResourceServer" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllResourceServers.transact(transactor)
-        } yield res
-
-        result.asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-      }
-
-      "NOT delete ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllApiKeyTemplates.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeyTemplateEntityRead_1.copy(tenantId = tenantDbId_1),
-            apiKeyTemplateEntityRead_2.copy(tenantId = tenantDbId_1),
-            apiKeyTemplateEntityRead_3.copy(tenantId = tenantDbId_1)
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related ApiKeys" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllApiKeys.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyEntityRead_1, apiKeyEntityRead_2, apiKeyEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllApiKeyData.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2, apiKeyDataEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete the Tenant" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- repository.deactivate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.delete(publicTenantId_1, publicResourceServerId_1)
-
-          res <- Queries.getAllTenants.transact(transactor)
-        } yield res
-
-        result.asserting(_ shouldBe List(tenantEntityRead_1))
-      }
+      result.asserting(_ shouldBe List(tenantEntityRead_1))
     }
   }
 

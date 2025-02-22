@@ -72,7 +72,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -94,7 +93,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -116,7 +114,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -141,7 +138,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -159,7 +155,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -177,7 +172,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -195,25 +189,19 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
-        result.asserting { res =>
-          val expectedEntities = List(resourceServerEntityRead_1.copy(deactivatedAt = Some(nowInstant)))
-
-          res should contain theSameElementsAs expectedEntities
-        }
+        result.asserting(_ shouldBe List(resourceServerEntityRead_1))
       }
 
       "NOT delete related ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -235,7 +223,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -257,7 +244,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.activate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -268,215 +254,12 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
       }
     }
 
-    "at least one of related ResourceServers is active" should {
-
-      "NOT delete associations between Permissions and ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeyTemplatesPermissionsAssociations.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeyTemplatesPermissionsEntityWrite_1_1.toRead,
-            apiKeyTemplatesPermissionsEntityWrite_2_1.toRead,
-            apiKeyTemplatesPermissionsEntityWrite_2_2.toRead
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete associations between Users and ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeyTemplatesUsersAssociations.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeyTemplatesUsersEntityWrite_1_1.toRead,
-            apiKeyTemplatesUsersEntityWrite_2_1.toRead,
-            apiKeyTemplatesUsersEntityWrite_2_2.toRead
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete associations between Permissions and ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeysPermissionsEntityWrite_1_1.toRead,
-            apiKeysPermissionsEntityWrite_1_2.toRead,
-            apiKeysPermissionsEntityWrite_1_3.toRead,
-            apiKeysPermissionsEntityWrite_2_1.toRead,
-            apiKeysPermissionsEntityWrite_3_2.toRead,
-            apiKeysPermissionsEntityWrite_3_3.toRead
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related ApiKeys" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeys.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyEntityRead_1, apiKeyEntityRead_2, apiKeyEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related ApiKeyData" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeyData.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2, apiKeyDataEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related Permissions" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllPermissions.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(permissionEntityRead_1, permissionEntityRead_2, permissionEntityRead_3)
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related ResourceServers" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllResourceServers.transact(transactor)
-        } yield res
-
-        result.asserting(_ should contain theSameElementsAs List(resourceServerEntityRead_1))
-      }
-
-      "NOT delete related ApiKeyTemplates" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllApiKeyTemplates.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            apiKeyTemplateEntityRead_1.copy(tenantId = tenantDbId_1),
-            apiKeyTemplateEntityRead_2.copy(tenantId = tenantDbId_1),
-            apiKeyTemplateEntityRead_3.copy(tenantId = tenantDbId_1)
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete related Users" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllUsers.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(
-            userEntityRead_1.copy(tenantId = tenantDbId_1),
-            userEntityRead_2.copy(tenantId = tenantDbId_1),
-            userEntityRead_3.copy(tenantId = tenantDbId_1)
-          )
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-
-      "NOT delete this Tenant" in {
-        val result = for {
-          _ <- insertPrerequisiteDataAll()
-
-          _ <- resourceServerRepository.activate(publicTenantId_1, publicResourceServerId_1)
-          _ <- repository.deactivate(publicTenantId_1)
-          _ <- repository.delete(publicTenantId_1)
-
-          res <- Queries.getAllTenants.transact(transactor)
-        } yield res
-
-        result.asserting { res =>
-          val expectedEntities = List(tenantEntityRead_1.copy(deactivatedAt = Some(nowInstant)))
-
-          res should contain theSameElementsAs expectedEntities
-        }
-      }
-    }
-
     "there are entities in the DB, related to given inactive Tenant" should {
 
       "delete associations between Permissions and ApiKeyTemplates" in {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -490,7 +273,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -504,7 +286,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -518,7 +299,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -532,7 +312,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -546,7 +325,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -560,7 +338,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -574,7 +351,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -588,7 +364,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 
@@ -602,7 +377,6 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
         val result = for {
           _ <- insertPrerequisiteDataAll()
 
-          _ <- resourceServerRepository.deactivate(publicTenantId_1, publicResourceServerId_1)
           _ <- repository.deactivate(publicTenantId_1)
           _ <- repository.delete(publicTenantId_1)
 

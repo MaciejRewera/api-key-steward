@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS resource_server
 
     created_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deactivated_at            TIMESTAMPTZ,
 
     UNIQUE (public_resource_server_id),
 

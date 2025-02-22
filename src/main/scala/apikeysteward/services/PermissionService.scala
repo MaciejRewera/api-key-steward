@@ -7,7 +7,7 @@ import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.errors.PermissionDbError.PermissionInsertionError.PermissionAlreadyExistsError
 import apikeysteward.model.errors.PermissionDbError.{PermissionInsertionError, PermissionNotFoundError}
-import apikeysteward.model.errors.GenericError
+import apikeysteward.model.errors.CommonError
 import apikeysteward.model.errors.ResourceServerDbError.ResourceServerNotFoundError
 import apikeysteward.repositories.{ApiKeyTemplateRepository, PermissionRepository, ResourceServerRepository}
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
@@ -84,15 +84,15 @@ class PermissionService(
   def getAllForTemplate(
       publicTenantId: TenantId,
       templateId: ApiKeyTemplateId
-  ): IO[Either[GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]]] =
+  ): IO[Either[CommonError.ApiKeyTemplateDoesNotExistError, List[Permission]]] =
     (for {
       _ <- EitherT(
         apiKeyTemplateRepository
           .getBy(publicTenantId, templateId)
-          .map(_.toRight(GenericError.ApiKeyTemplateDoesNotExistError(templateId)))
+          .map(_.toRight(CommonError.ApiKeyTemplateDoesNotExistError(templateId)))
       )
 
-      result <- EitherT.liftF[IO, GenericError.ApiKeyTemplateDoesNotExistError, List[Permission]](
+      result <- EitherT.liftF[IO, CommonError.ApiKeyTemplateDoesNotExistError, List[Permission]](
         permissionRepository.getAllFor(publicTenantId, templateId)
       )
     } yield result).value

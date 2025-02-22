@@ -14,8 +14,7 @@ object ResourceServerEntity {
       name: String,
       description: Option[String],
       override val createdAt: Instant,
-      override val updatedAt: Instant,
-      deactivatedAt: Option[Instant]
+      override val updatedAt: Instant
   ) extends TimestampedEntity
 
   case class Write(

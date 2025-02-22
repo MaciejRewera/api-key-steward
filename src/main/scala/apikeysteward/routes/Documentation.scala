@@ -41,8 +41,6 @@ object Documentation extends OpenAPIDocsInterpreter {
   private val adminResourceServerEndpoints = List(
     AdminResourceServerEndpoints.createResourceServerEndpoint,
     AdminResourceServerEndpoints.updateResourceServerEndpoint,
-    AdminResourceServerEndpoints.reactivateResourceServerEndpoint,
-    AdminResourceServerEndpoints.deactivateResourceServerEndpoint,
     AdminResourceServerEndpoints.deleteResourceServerEndpoint,
     AdminResourceServerEndpoints.getSingleResourceServerEndpoint,
     AdminResourceServerEndpoints.searchResourceServersEndpoint

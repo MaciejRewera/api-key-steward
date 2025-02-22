@@ -12,8 +12,8 @@ import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError.ApiKeyTempla
 import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError._
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
-import apikeysteward.model.errors.GenericError
-import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
+import apikeysteward.model.errors.CommonError
+import apikeysteward.model.errors.CommonError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.repositories.db.entity.ApiKeyTemplatesPermissionsEntity
@@ -1654,7 +1654,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Not Found when ApiKeyManagementService returns successful IO with Left containing ApiKeyTemplateDoesNotExist" in authorizedFixture {
         permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(GenericError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+          Left(CommonError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
         )
 
         for {

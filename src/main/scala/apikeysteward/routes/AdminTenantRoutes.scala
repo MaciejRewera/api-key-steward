@@ -101,7 +101,7 @@ class AdminTenantRoutes(jwtAuthorizer: JwtAuthorizer, tenantService: TenantServi
 
             case Left(_: CannotDeleteDependencyError) =>
               ErrorInfo
-                .badRequestErrorInfo(Some(ApiErrorMessages.AdminTenant.TenantDependencyCannotBeDeleted(tenantId)))
+                .internalServerErrorInfo(Some(ApiErrorMessages.AdminTenant.TenantDependencyCannotBeDeleted(tenantId)))
                 .asLeft
 
             case Left(_: TenantDbError) =>

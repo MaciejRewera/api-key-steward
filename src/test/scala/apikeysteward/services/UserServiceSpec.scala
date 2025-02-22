@@ -5,7 +5,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesTestData.{apiKeyTemplate_1, pu
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1, tenant_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
-import apikeysteward.model.errors.GenericError.ApiKeyTemplateDoesNotExistError
+import apikeysteward.model.errors.CommonError.ApiKeyTemplateDoesNotExistError
 import apikeysteward.model.errors.UserDbError.UserInsertionError._
 import apikeysteward.model.errors.UserDbError.UserNotFoundError
 import apikeysteward.model.Tenant.TenantId

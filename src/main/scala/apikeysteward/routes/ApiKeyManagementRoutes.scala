@@ -2,7 +2,7 @@ package apikeysteward.routes
 
 import apikeysteward.model.errors.ApiKeyDbError
 import apikeysteward.model.errors.ApiKeyDbError.ApiKeyDataNotFoundError
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.routes.auth.model.JwtPermissions
 import apikeysteward.routes.auth.{JwtAuthorizer, JwtOps}
 import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyManagementEndpoints}

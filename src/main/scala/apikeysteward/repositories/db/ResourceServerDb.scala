@@ -33,8 +33,7 @@ class ResourceServerDb()(implicit clock: Clock) {
           "name",
           "description",
           "created_at",
-          "updated_at",
-          "deactivated_at"
+          "updated_at"
         )
         .attemptSql
 
@@ -69,31 +68,6 @@ class ResourceServerDb()(implicit clock: Clock) {
     )
   }
 
-  def activate(
-      publicTenantId: TenantId,
-      publicResourceServerId: ResourceServerId
-  ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] = {
-    val now = Instant.now(clock)
-    performUpdate(publicTenantId, publicResourceServerId)(
-      TenantIdScopedQueries(publicTenantId).activate(publicResourceServerId, now).run
-    )
-  }
-
-  def deactivate(
-      publicTenantId: TenantId,
-      publicResourceServerId: ResourceServerId
-  ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] = {
-    val now = Instant.now(clock)
-    performUpdate(publicTenantId, publicResourceServerId)(
-      TenantIdScopedQueries(publicTenantId).deactivate(publicResourceServerId, now).run
-    )
-  }
-
-  private def performUpdate(publicTenantId: TenantId, publicResourceServerId: ResourceServerId)(
-      updateAction: => doobie.ConnectionIO[Int]
-  ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] =
-    performUpdate(publicTenantId, publicResourceServerId.toString)(updateAction)
-
   private def performUpdate(publicTenantId: TenantId, publicResourceServerId: String)(
       updateAction: => doobie.ConnectionIO[Int]
   ): doobie.ConnectionIO[Either[ResourceServerNotFoundError, ResourceServerEntity.Read]] =
@@ -105,7 +79,7 @@ class ResourceServerDb()(implicit clock: Clock) {
         else Option.empty[ResourceServerEntity.Read].pure[doobie.ConnectionIO]
     } yield resOpt.toRight(ResourceServerNotFoundError(publicResourceServerId))
 
-  def deleteDeactivated(
+  def delete(
       publicTenantId: TenantId,
       publicResourceServerId: ResourceServerId
   ): doobie.ConnectionIO[Either[ResourceServerDbError, ResourceServerEntity.Read]] =
@@ -114,14 +88,8 @@ class ResourceServerDb()(implicit clock: Clock) {
         _.toRight(resourceServerNotFoundError(publicResourceServerId))
       )
 
-      resultE <- resourceServerToDelete.flatTraverse { result =>
-        Either
-          .cond(
-            result.deactivatedAt.isDefined,
-            TenantIdScopedQueries(publicTenantId).deleteDeactivated(publicResourceServerId).run.map(_ => result),
-            resourceServerIsNotDeactivatedError(publicResourceServerId)
-          )
-          .sequence
+      resultE <- resourceServerToDelete.traverse { result =>
+        TenantIdScopedQueries(publicTenantId).delete(publicResourceServerId).run.map(_ => result)
       }
     } yield resultE
 
@@ -161,7 +129,7 @@ class ResourceServerDb()(implicit clock: Clock) {
     private val TableName = "resource_server"
 
     private val columnNamesSelectFragment =
-      fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at, deactivated_at"
+      fr"SELECT id, tenant_id, public_resource_server_id, name, description, created_at, updated_at"
 
     def update(resourceServerEntity: ResourceServerEntity.Update, now: Instant): doobie.Update0 =
       sql"""UPDATE resource_server
@@ -172,26 +140,9 @@ class ResourceServerDb()(implicit clock: Clock) {
               AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 
-    def activate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
-      sql"""UPDATE resource_server
-            SET deactivated_at = NULL,
-                updated_at = $now
-            WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
-              AND ${tenantIdFr(TableName)}
-           """.stripMargin.update
-
-    def deactivate(publicResourceServerId: ResourceServerId, now: Instant): doobie.Update0 =
-      sql"""UPDATE resource_server
-            SET deactivated_at = $now,
-                updated_at = $now
-            WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
-              AND ${tenantIdFr(TableName)}
-           """.stripMargin.update
-
-    def deleteDeactivated(publicResourceServerId: ResourceServerId): doobie.Update0 =
+    def delete(publicResourceServerId: ResourceServerId): doobie.Update0 =
       sql"""DELETE FROM resource_server
             WHERE resource_server.public_resource_server_id = ${publicResourceServerId.toString}
-              AND resource_server.deactivated_at IS NOT NULL
               AND ${tenantIdFr(TableName)}
            """.stripMargin.update
 

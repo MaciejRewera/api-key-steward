@@ -63,15 +63,6 @@ object ResourceServerDbError {
         message = s"Could not find ResourceServer with publicResourceServerId = [$publicResourceServerId]."
       )
 
-  def resourceServerIsNotDeactivatedError(publicResourceServerId: ResourceServerId): ResourceServerDbError =
-    ResourceServerIsNotDeactivatedError(publicResourceServerId)
-
-  case class ResourceServerIsNotDeactivatedError(publicResourceServerId: ResourceServerId)
-      extends ResourceServerDbError(
-        message =
-          s"Could not delete ResourceServer with publicResourceServerId = [${publicResourceServerId.toString}] because it is not deactivated."
-      )
-
   def cannotDeletePermissionError(
       publicResourceServerId: ResourceServerId,
       permissionNotFoundError: PermissionNotFoundError

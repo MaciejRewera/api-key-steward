@@ -7,7 +7,7 @@ import apikeysteward.base.testdata.UsersTestData.{publicUserId_1, user_1}
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError._
 import apikeysteward.model.errors.ApiKeyTemplateDbError._
-import apikeysteward.model.errors.GenericError.UserDoesNotExistError
+import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
