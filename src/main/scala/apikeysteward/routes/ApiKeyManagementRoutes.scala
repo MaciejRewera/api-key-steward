@@ -9,13 +9,19 @@ import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyManagementEndpo
 import apikeysteward.routes.model.apikey._
 import apikeysteward.services.ApiKeyManagementService
 import apikeysteward.services.ApiKeyManagementService.ApiKeyCreateError.{InsertionError, ValidationError}
+import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps, toTraverseOps}
+import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, managementService: ApiKeyManagementService) {
+class ApiKeyManagementRoutes(
+    jwtOps: JwtOps,
+    jwtAuthorizer: JwtAuthorizer,
+    activeTenantVerifier: ActiveTenantVerifier,
+    managementService: ApiKeyManagementService
+) {
 
   private val serverInterpreter =
     Http4sServerInterpreter(ServerConfiguration.options)
@@ -27,19 +33,24 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => input =>
             val (tenantId, request) = input
-            for {
-              userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.createApiKey(tenantId, _, request).map {
-                case Right((newApiKey, apiKeyData)) =>
-                  (StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
 
-                case Left(validationError: ValidationError) =>
-                  ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
-                case Left(_: InsertionError) =>
-                  ErrorInfo.internalServerErrorInfo().asLeft
-              })
+            (for {
+              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
 
-            } yield result
+              result <- EitherT {
+                managementService.createApiKey(tenantId, userId, request).map {
+                  case Right((newApiKey, apiKeyData)) =>
+                    (StatusCode.Created -> CreateApiKeyResponse(newApiKey.value, apiKeyData)).asRight
+
+                  case Left(validationError: ValidationError) =>
+                    ErrorInfo.badRequestErrorInfo(Some(validationError.message)).asLeft
+                  case Left(_: InsertionError) =>
+                    ErrorInfo.internalServerErrorInfo().asLeft
+                }
+              }
+
+            } yield result).value
           }
       )
 
@@ -49,20 +60,21 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
         ApiKeyManagementEndpoints.getAllApiKeysEndpoint
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => tenantId =>
-            for {
-              userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(
-                managementService.getAllForUser(tenantId, _).map {
+            (for {
+              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
+
+              result <- EitherT {
+                managementService.getAllForUser(tenantId, userId).map {
 
                   case Right(allApiKeyData) =>
                     (StatusCode.Ok -> GetMultipleApiKeysResponse(allApiKeyData)).asRight
 
                   case Left(_: UserDoesNotExistError) =>
                     ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.UserNotFound)).asLeft
-
                 }
-              )
-            } yield result
+              }
+            } yield result).value
           }
       )
 
@@ -73,15 +85,19 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => input =>
             val (tenantId, publicKeyId) = input
-            for {
-              userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(managementService.getApiKey(tenantId, _, publicKeyId).map {
-                case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
-                case None =>
-                  ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound)).asLeft
-              })
 
-            } yield result
+            (for {
+              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
+
+              result <- EitherT {
+                managementService.getApiKey(tenantId, userId, publicKeyId).map {
+                  case Some(apiKeyData) => (StatusCode.Ok -> GetSingleApiKeyResponse(apiKeyData)).asRight
+                  case None =>
+                    ErrorInfo.notFoundErrorInfo(Some(ApiErrorMessages.Management.GetSingleApiKeyNotFound)).asLeft
+                }
+              }
+            } yield result).value
           }
       )
 
@@ -92,10 +108,13 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteApiKey))(_))
           .serverLogic { jwt => input =>
             val (tenantId, publicKeyId) = input
-            for {
-              userIdE <- IO(jwtOps.extractUserId(jwt))
-              result <- userIdE.flatTraverse(
-                managementService.deleteApiKeyBelongingToUserWith(tenantId, _, publicKeyId).map {
+
+            (for {
+              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
+
+              result <- EitherT {
+                managementService.deleteApiKeyBelongingToUserWith(tenantId, userId, publicKeyId).map {
                   case Right(deletedApiKeyData) =>
                     (StatusCode.Ok -> DeleteApiKeyResponse(deletedApiKeyData)).asRight
 
@@ -104,9 +123,8 @@ class ApiKeyManagementRoutes(jwtOps: JwtOps, jwtAuthorizer: JwtAuthorizer, manag
                   case Left(_: ApiKeyDbError) =>
                     ErrorInfo.internalServerErrorInfo().asLeft
                 }
-              )
-
-            } yield result
+              }
+            } yield result).value
           }
       )
 

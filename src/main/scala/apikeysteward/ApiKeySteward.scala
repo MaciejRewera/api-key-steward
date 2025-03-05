@@ -119,14 +119,16 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyTemplateRepository
         )
         userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
+        activeTenantVerifier = new ActiveTenantVerifier(tenantRepository)
 
-        validateRoutes = new ApiKeyValidationRoutes(apiKeyValidationService).allRoutes
+        validateRoutes = new ApiKeyValidationRoutes(activeTenantVerifier, apiKeyValidationService).allRoutes
 
         jwtOps = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
         userApiKeyManagementRoutes = new ApiKeyManagementRoutes(
           jwtOps,
           jwtAuthorizer,
+          activeTenantVerifier,
           apiKeyManagementService
         ).allRoutes
         apiKeyManagementRoutes = new AdminApiKeyManagementRoutes(jwtAuthorizer, apiKeyManagementService).allRoutes

@@ -15,6 +15,8 @@ private[routes] object ApiErrorMessages {
 
     val UserNotFound = "No User found for provided combination of tenantId and userId."
     val ApiKeyTemplateNotFound = "No Template found for provided templateId."
+
+    val TenantIsDeactivated = "No Tenant found for provided tenantId."
   }
 
   object AdminApiKey {

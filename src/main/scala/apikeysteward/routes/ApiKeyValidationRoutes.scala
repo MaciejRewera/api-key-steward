@@ -5,32 +5,43 @@ import apikeysteward.routes.definitions.{ApiErrorMessages, ApiKeyValidationEndpo
 import apikeysteward.routes.model.apikey.ValidateApiKeyResponse
 import apikeysteward.services.ApiKeyValidationService
 import apikeysteward.services.ApiKeyValidationService.ApiKeyValidationError.{ApiKeyExpiredError, ApiKeyIncorrectError}
+import cats.data.EitherT
 import cats.effect.IO
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-class ApiKeyValidationRoutes(apiKeyValidationService: ApiKeyValidationService) {
+class ApiKeyValidationRoutes(
+    activeTenantVerifier: ActiveTenantVerifier,
+    apiKeyValidationService: ApiKeyValidationService
+) {
 
   private val validateApiKeyRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter(ServerConfiguration.options)
       .toRoutes(
         ApiKeyValidationEndpoints.validateApiKeyEndpoint.serverLogic[IO] { input =>
           val (tenantId, request) = input
-          apiKeyValidationService.validateApiKey(tenantId, ApiKey(request.apiKey)).map {
 
-            case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
+          (for {
+            _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
 
-            case Left(ApiKeyIncorrectError) =>
-              Left(ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)))
+            result <- EitherT {
+              apiKeyValidationService.validateApiKey(tenantId, ApiKey(request.apiKey)).map {
 
-            case Left(expiryError: ApiKeyExpiredError) =>
-              Left(
-                ErrorInfo.forbiddenErrorInfo(
-                  Some(ApiErrorMessages.ValidateApiKey.validateApiKeyExpired(expiryError.expiredSince))
-                )
-              )
-          }
+                case Right(apiKeyData) => Right(StatusCode.Ok -> ValidateApiKeyResponse(apiKeyData))
+
+                case Left(ApiKeyIncorrectError) =>
+                  Left(ErrorInfo.forbiddenErrorInfo(Some(ApiErrorMessages.ValidateApiKey.ValidateApiKeyIncorrect)))
+
+                case Left(expiryError: ApiKeyExpiredError) =>
+                  Left(
+                    ErrorInfo.forbiddenErrorInfo(
+                      Some(ApiErrorMessages.ValidateApiKey.validateApiKeyExpired(expiryError.expiredSince))
+                    )
+                  )
+              }
+            }
+          } yield result).value
         }
       )
 
