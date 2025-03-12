@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS api_key_template
     is_default                BOOLEAN      NOT NULL,
     api_key_max_expiry_period VARCHAR(128) NOT NULL,
     api_key_prefix            VARCHAR(128) NOT NULL,
+    random_section_length     INT          NOT NULL,
 
     created_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,

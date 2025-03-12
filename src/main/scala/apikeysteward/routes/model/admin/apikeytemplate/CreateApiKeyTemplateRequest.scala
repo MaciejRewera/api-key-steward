@@ -12,7 +12,8 @@ case class CreateApiKeyTemplateRequest(
     description: Option[String],
     isDefault: Boolean,
     apiKeyMaxExpiryPeriod: Duration,
-    apiKeyPrefix: String
+    apiKeyPrefix: String,
+    randomSectionLength: Int
 )
 
 object CreateApiKeyTemplateRequest extends CodecCommons {

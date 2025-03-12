@@ -98,7 +98,8 @@ class AdminApiKeyTemplateRoutesSpec
       description = apiKeyTemplateDescription_1,
       isDefault = false,
       apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
-      apiKeyPrefix = apiKeyPrefix_1
+      apiKeyPrefix = apiKeyPrefix_1,
+      randomSectionLength = randomSectionLength_1
     )
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)

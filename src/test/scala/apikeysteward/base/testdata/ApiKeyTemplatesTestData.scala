@@ -47,6 +47,10 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val apiKeyPrefix_3: String = "testPrefix_3_"
   val apiKeyPrefix_4: String = "testPrefix_4_"
 
+  val randomSectionLength_1: Int = 31
+  val randomSectionLength_2: Int = 32
+  val randomSectionLength_3: Int = 33
+
   val apiKeyTemplate_1: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_1,
     name = apiKeyTemplateName_1,
@@ -54,6 +58,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
     apiKeyPrefix = apiKeyPrefix_1,
+    randomSectionLength = randomSectionLength_1,
     permissions = List(permission_1)
   )
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
@@ -63,6 +68,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
     apiKeyPrefix = apiKeyPrefix_2,
+    randomSectionLength = randomSectionLength_2,
     permissions = List(permission_2)
   )
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
@@ -72,6 +78,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = false,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
     apiKeyPrefix = apiKeyPrefix_3,
+    randomSectionLength = randomSectionLength_3,
     permissions = List(permission_3)
   )
 
@@ -82,6 +89,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     isDefault = true,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriodUpdated,
     apiKeyPrefix = apiKeyPrefix_4,
+    randomSectionLength = randomSectionLength_1,
     permissions = List(permission_4)
   )
 
@@ -93,7 +101,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_1,
     description = apiKeyTemplateDescription_1,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
-    apiKeyPrefix = apiKeyPrefix_1
+    apiKeyPrefix = apiKeyPrefix_1,
+    randomSectionLength = randomSectionLength_1
   )
   val apiKeyTemplateEntityRead_1: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_1,
@@ -104,6 +113,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_1,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
     apiKeyPrefix = apiKeyPrefix_1,
+    randomSectionLength = randomSectionLength_1,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -116,7 +126,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_2,
     description = apiKeyTemplateDescription_2,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
-    apiKeyPrefix = apiKeyPrefix_2
+    apiKeyPrefix = apiKeyPrefix_2,
+    randomSectionLength = randomSectionLength_2
   )
   val apiKeyTemplateEntityRead_2: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_2,
@@ -127,6 +138,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_2,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_2,
     apiKeyPrefix = apiKeyPrefix_2,
+    randomSectionLength = randomSectionLength_2,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )
@@ -139,7 +151,8 @@ object ApiKeyTemplatesTestData extends FixedClock {
     name = apiKeyTemplateName_3,
     description = apiKeyTemplateDescription_3,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
-    apiKeyPrefix = apiKeyPrefix_3
+    apiKeyPrefix = apiKeyPrefix_3,
+    randomSectionLength = randomSectionLength_3
   )
   val apiKeyTemplateEntityRead_3: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_3,
@@ -150,6 +163,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     description = apiKeyTemplateDescription_3,
     apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_3,
     apiKeyPrefix = apiKeyPrefix_3,
+    randomSectionLength = randomSectionLength_3,
     createdAt = nowInstant,
     updatedAt = nowInstant
   )

@@ -74,12 +74,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           userRepository
         )(transactor)
 
-        apiKeyPrefixProvider: ApiKeyPrefixProvider = new ApiKeyPrefixProvider(apiKeyTemplateRepository)
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
         checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
         checksumCodec: ChecksumCodec = new ChecksumCodec
         apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
-          apiKeyPrefixProvider,
+          apiKeyTemplateRepository,
           randomStringGenerator,
           checksumCalculator,
           checksumCodec

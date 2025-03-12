@@ -20,6 +20,7 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
       isDefault: Boolean,
       apiKeyMaxExpiryPeriod: Duration,
       apiKeyPrefix: String,
+      randomSectionLength: Int,
       override val createdAt: Instant,
       override val updatedAt: Instant
   ) extends TimestampedEntity
@@ -32,7 +33,8 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
       description: Option[String],
       isDefault: Boolean,
       apiKeyMaxExpiryPeriod: Duration,
-      apiKeyPrefix: String
+      apiKeyPrefix: String,
+      randomSectionLength: Int
   )
 
   object Write {
@@ -45,7 +47,8 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
         name = apiKeyTemplate.name,
         description = apiKeyTemplate.description,
         apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod,
-        apiKeyPrefix = apiKeyTemplate.apiKeyPrefix
+        apiKeyPrefix = apiKeyTemplate.apiKeyPrefix,
+        randomSectionLength = apiKeyTemplate.randomSectionLength
       )
   }
 

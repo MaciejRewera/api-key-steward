@@ -17,6 +17,7 @@ case class ApiKeyTemplate(
     isDefault: Boolean,
     apiKeyMaxExpiryPeriod: Duration,
     apiKeyPrefix: String,
+    randomSectionLength: Int,
     permissions: List[Permission]
 )
 
@@ -34,6 +35,7 @@ object ApiKeyTemplate extends CodecCommons {
       isDefault = templateEntity.isDefault,
       apiKeyMaxExpiryPeriod = templateEntity.apiKeyMaxExpiryPeriod,
       apiKeyPrefix = templateEntity.apiKeyPrefix,
+      randomSectionLength = templateEntity.randomSectionLength,
       permissions = permissionEntities.map(Permission.from)
     )
 
@@ -45,6 +47,7 @@ object ApiKeyTemplate extends CodecCommons {
       isDefault = createApiKeyTemplateRequest.isDefault,
       apiKeyMaxExpiryPeriod = createApiKeyTemplateRequest.apiKeyMaxExpiryPeriod,
       apiKeyPrefix = createApiKeyTemplateRequest.apiKeyPrefix,
+      randomSectionLength = createApiKeyTemplateRequest.randomSectionLength,
       permissions = List.empty
     )
 

@@ -42,7 +42,8 @@ private[routes] object EndpointsBase {
     description = Some("API key with basic set of available permissions."),
     isDefault = false,
     apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
-    apiKeyPrefix = "basic_"
+    apiKeyPrefix = "basic_",
+    randomSectionLength = 30
   )
 
   val updateApiKeyTemplateRequest: UpdateApiKeyTemplateRequest = UpdateApiKeyTemplateRequest(
@@ -98,6 +99,7 @@ private[routes] object EndpointsBase {
     isDefault = false,
     apiKeyMaxExpiryPeriod = Duration.apply(42, TimeUnit.DAYS),
     apiKeyPrefix = "basic_",
+    randomSectionLength = 30,
     permissions = List(PermissionExample, PermissionExample)
   )
 

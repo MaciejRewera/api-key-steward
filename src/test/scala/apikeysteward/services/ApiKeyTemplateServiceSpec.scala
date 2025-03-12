@@ -50,7 +50,8 @@ class ApiKeyTemplateServiceSpec
       description = apiKeyTemplateDescription_1,
       isDefault = false,
       apiKeyMaxExpiryPeriod = apiKeyMaxExpiryPeriod_1,
-      apiKeyPrefix = apiKeyPrefix_1
+      apiKeyPrefix = apiKeyPrefix_1,
+      randomSectionLength = randomSectionLength_1
     )
 
     val apiKeyTemplate = apiKeyTemplate_1.copy(permissions = List.empty)
