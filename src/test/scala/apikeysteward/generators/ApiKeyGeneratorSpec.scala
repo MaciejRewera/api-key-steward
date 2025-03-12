@@ -48,7 +48,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
     "everything works correctly" should {
 
-      "call ApiKeyPrefixProvider, RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec" in {
+      "call ApiKeyTemplateRepository, RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec" in {
         apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
         randomStringGenerator.generate(any[Int]) returns IO.pure(apiKeyRandomSection_1)
         checksumCalculator.calcChecksumFor(any[String]) returns 42L

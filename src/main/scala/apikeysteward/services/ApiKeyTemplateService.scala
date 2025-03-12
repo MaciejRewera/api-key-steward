@@ -35,11 +35,11 @@ class ApiKeyTemplateService(
 
   private def validateRequest(
       createApiKeyTemplateRequest: CreateApiKeyTemplateRequest
-  ): IO[Either[IncorrectRandomSectionLength, Unit]] =
+  ): IO[Either[IncorrectRandomSectionLength, CreateApiKeyTemplateRequest]] =
     IO {
       Either.cond(
         createApiKeyTemplateRequest.randomSectionLength > 0,
-        (),
+        createApiKeyTemplateRequest,
         IncorrectRandomSectionLength(createApiKeyTemplateRequest.randomSectionLength)
       )
     }
