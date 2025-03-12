@@ -9,7 +9,6 @@ import scala.concurrent.duration.FiniteDuration
 
 case class ApiKeyConfig(
     prngAmount: Int,
-    randomSectionLength: Int,
     storageHashingAlgorithm: Algorithm
 )
 

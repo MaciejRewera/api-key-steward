@@ -1,6 +1,5 @@
 package apikeysteward.generators
 
-import apikeysteward.base.testdata.ApiKeysTestData.ttl
 import apikeysteward.config.ApiKeyConfig
 import apikeysteward.repositories.SecureHashGenerator.Algorithm.SHA3_256
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -8,46 +7,37 @@ import fs2.Stream
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
-
 class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
+
+  private val config = ApiKeyConfig(
+    prngAmount = 13,
+    storageHashingAlgorithm = SHA3_256
+  )
+  private val randomSectionLength = 42
+
+  private val generator = new RandomStringGenerator(config)
 
   "RandomStringGenerator on generate" should {
 
-    val config = ApiKeyConfig(
-      prngAmount = 13,
-      randomSectionLength = 42,
-      storageHashingAlgorithm = SHA3_256
-    )
-
     "return String with provided length" in {
-      val generator = new RandomStringGenerator(config)
-
-      generator.generate.asserting(_.length shouldBe config.randomSectionLength)
+      generator.generate(randomSectionLength).asserting(_.length shouldBe randomSectionLength)
     }
 
     "return different Strings on subsequent calls" in {
-      val generator = new RandomStringGenerator(config)
-
       for {
-        randomStrings <- Stream.repeatEval(generator.generate).take(42).compile.toVector
+        randomStrings <- Stream.repeatEval(generator.generate(randomSectionLength)).take(13).compile.toVector
 
-        _ = randomStrings.foreach(_.length shouldBe config.randomSectionLength)
+        _ = randomStrings.foreach(_.length shouldBe randomSectionLength)
         _ = randomStrings.distinct should contain theSameElementsAs randomStrings
       } yield ()
     }
 
     "throw exception when provided with length equal to zero" in {
-      val incorrectConfig = config.copy(randomSectionLength = 0)
-
-      a[RuntimeException] shouldBe thrownBy(new RandomStringGenerator(incorrectConfig))
+      a[RuntimeException] shouldBe thrownBy(generator.generate(0))
     }
 
     "throw exception when provided with negative length" in {
-      val incorrectConfig = config.copy(randomSectionLength = -1)
-
-      a[IllegalArgumentException] shouldBe thrownBy(new RandomStringGenerator(incorrectConfig))
+      a[IllegalArgumentException] shouldBe thrownBy(generator.generate(-1))
     }
   }
 }

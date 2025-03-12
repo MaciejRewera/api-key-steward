@@ -3,7 +3,10 @@ package apikeysteward.services
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
-import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ApiKeyTemplateAlreadyExistsError
+import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.{
+  ApiKeyTemplateAlreadyExistsError,
+  IncorrectRandomSectionLength
+}
 import apikeysteward.model.errors.ApiKeyTemplateDbError._
 import apikeysteward.model.errors.CommonError.UserDoesNotExistError
 import apikeysteward.model.{ApiKeyTemplate, ApiKeyTemplateUpdate}
@@ -25,7 +28,21 @@ class ApiKeyTemplateService(
       tenantId: TenantId,
       createApiKeyTemplateRequest: CreateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
-    createApiKeyTemplateWithRetry(tenantId, createApiKeyTemplateRequest)
+    (for {
+      _ <- EitherT(validateRequest(createApiKeyTemplateRequest))
+      res <- EitherT(createApiKeyTemplateWithRetry(tenantId, createApiKeyTemplateRequest))
+    } yield res).value
+
+  private def validateRequest(
+      createApiKeyTemplateRequest: CreateApiKeyTemplateRequest
+  ): IO[Either[IncorrectRandomSectionLength, CreateApiKeyTemplateRequest]] =
+    IO {
+      Either.cond(
+        createApiKeyTemplateRequest.randomSectionLength > 0,
+        createApiKeyTemplateRequest,
+        IncorrectRandomSectionLength(createApiKeyTemplateRequest.randomSectionLength)
+      )
+    }
 
   private def createApiKeyTemplateWithRetry(
       tenantId: TenantId,

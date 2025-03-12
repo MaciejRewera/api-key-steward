@@ -35,6 +35,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
           "is_default",
           "api_key_max_expiry_period",
           "api_key_prefix",
+          "random_section_length",
           "created_at",
           "updated_at"
         )
@@ -112,7 +113,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
   private object Queries {
 
     def insert(templateEntity: ApiKeyTemplateEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO api_key_template(id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, created_at, updated_at)
+      sql"""INSERT INTO api_key_template(id, tenant_id, public_template_id, name, description, is_default, api_key_max_expiry_period, api_key_prefix, random_section_length, created_at, updated_at)
             VALUES(
               ${templateEntity.id},
               ${templateEntity.tenantId},
@@ -122,6 +123,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               ${templateEntity.isDefault},
               ${templateEntity.apiKeyMaxExpiryPeriod.toString},
               ${templateEntity.apiKeyPrefix},
+              ${templateEntity.randomSectionLength},
               $now,
               $now
             )
@@ -142,6 +144,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
             api_key_template.is_default,
             api_key_template.api_key_max_expiry_period,
             api_key_template.api_key_prefix,
+            api_key_template.random_section_length,
             api_key_template.created_at,
             api_key_template.updated_at
           """

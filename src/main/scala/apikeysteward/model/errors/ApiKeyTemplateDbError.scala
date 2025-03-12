@@ -12,6 +12,12 @@ object ApiKeyTemplateDbError {
       extends ApiKeyTemplateDbError(message)
   object ApiKeyTemplateInsertionError {
 
+    case class IncorrectRandomSectionLength(randomSectionLength: Int)
+        extends ApiKeyTemplateInsertionError(
+          message =
+            s"Provided [CreateApiKeyTemplateRequest.randomSectionLength] has value not greater than zero: [$randomSectionLength]."
+        )
+
     case class ApiKeyTemplateAlreadyExistsError(publicTemplateId: String)
         extends ApiKeyTemplateInsertionError(
           message = s"ApiKeyTemplate with publicTemplateId = [$publicTemplateId] already exists."
