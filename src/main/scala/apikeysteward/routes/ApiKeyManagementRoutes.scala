@@ -35,7 +35,7 @@ class ApiKeyManagementRoutes(
             val (tenantId, request) = input
 
             (for {
-              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              _      <- activeTenantVerifier.verifyTenantIsActive(tenantId)
               userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
 
               result <- EitherT {
@@ -61,7 +61,7 @@ class ApiKeyManagementRoutes(
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.ReadApiKey))(_))
           .serverLogic { jwt => tenantId =>
             (for {
-              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              _      <- activeTenantVerifier.verifyTenantIsActive(tenantId)
               userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
 
               result <- EitherT {
@@ -87,7 +87,7 @@ class ApiKeyManagementRoutes(
             val (tenantId, publicKeyId) = input
 
             (for {
-              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              _      <- activeTenantVerifier.verifyTenantIsActive(tenantId)
               userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
 
               result <- EitherT {
@@ -110,7 +110,7 @@ class ApiKeyManagementRoutes(
             val (tenantId, publicKeyId) = input
 
             (for {
-              _ <- activeTenantVerifier.verifyTenantIsActive(tenantId)
+              _      <- activeTenantVerifier.verifyTenantIsActive(tenantId)
               userId <- EitherT.fromEither[IO](jwtOps.extractUserId(jwt))
 
               result <- EitherT {

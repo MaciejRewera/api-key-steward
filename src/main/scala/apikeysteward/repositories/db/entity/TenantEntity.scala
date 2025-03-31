@@ -25,6 +25,7 @@ object TenantEntity {
   )
 
   object Write {
+
     def from(id: UUID, tenant: Tenant): TenantEntity.Write =
       TenantEntity.Write(
         id = id,
@@ -32,6 +33,7 @@ object TenantEntity {
         name = tenant.name,
         description = tenant.description
       )
+
   }
 
   case class Update(
@@ -41,11 +43,14 @@ object TenantEntity {
   )
 
   object Update {
+
     def from(tenantUpdate: TenantUpdate): TenantEntity.Update =
       TenantEntity.Update(
         publicTenantId = tenantUpdate.tenantId.toString,
         name = tenantUpdate.name,
         description = tenantUpdate.description
       )
+
   }
+
 }

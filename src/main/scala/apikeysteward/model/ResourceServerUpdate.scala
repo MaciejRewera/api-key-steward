@@ -12,8 +12,10 @@ case class ResourceServerUpdate(
 )
 
 object ResourceServerUpdate {
+
   implicit val encoder: Encoder[ResourceServerUpdate] =
     deriveEncoder[ResourceServerUpdate].mapJson(_.deepDropNullValues)
+
   implicit val decoder: Decoder[ResourceServerUpdate] = deriveDecoder[ResourceServerUpdate]
 
   def from(
@@ -25,4 +27,5 @@ object ResourceServerUpdate {
       name = updateResourceServerRequest.name,
       description = updateResourceServerRequest.description
     )
+
 }

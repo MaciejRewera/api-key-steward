@@ -8,4 +8,5 @@ object HashedApiKey {
 
   private def bytesToHex(bytes: Array[Byte]): String =
     bytes.foldLeft("")((acc, b) => acc + String.format("%02X", b))
+
 }

@@ -10,12 +10,12 @@ import java.net.ServerSocket
 
 trait WireMockIntegrationSpec extends BeforeAndAfterAll with BeforeAndAfterEach { self: AsyncTestSuite =>
 
-  protected lazy val wireMockPort: Int = findAvailablePort()
+  protected lazy val wireMockPort: Int              = findAvailablePort()
   protected lazy val wireMockServer: WireMockServer = new WireMockServer(wireMockConfig().port(wireMockPort))
-  protected lazy val wireMockUri: Uri = Uri.unsafeFromString(s"http://localhost:$wireMockPort")
+  protected lazy val wireMockUri: Uri               = Uri.unsafeFromString(s"http://localhost:$wireMockPort")
 
   private def findAvailablePort(): Int = {
-    val ss = new ServerSocket(0)
+    val ss   = new ServerSocket(0)
     val port = ss.getLocalPort
     ss.close()
     port
@@ -39,4 +39,5 @@ trait WireMockIntegrationSpec extends BeforeAndAfterAll with BeforeAndAfterEach 
 
     super.afterAll()
   }
+
 }

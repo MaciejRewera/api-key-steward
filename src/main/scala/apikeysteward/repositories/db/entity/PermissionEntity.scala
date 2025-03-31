@@ -28,6 +28,7 @@ object PermissionEntity {
   )
 
   object Write {
+
     def from(tenantId: UUID, resourceServerId: UUID, id: UUID, permission: Permission): PermissionEntity.Write =
       PermissionEntity.Write(
         id = id,
@@ -37,6 +38,7 @@ object PermissionEntity {
         name = permission.name,
         description = permission.description
       )
+
   }
 
 }

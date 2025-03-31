@@ -24,7 +24,7 @@ object AppConfig {
   import pureconfig.module.http4s._
   import pureconfig.module.ip4s._
 
-  implicit val appConfigReader: ConfigReader[AppConfig] = deriveReader[AppConfig]
+  implicit val appConfigReader: ConfigReader[AppConfig]   = deriveReader[AppConfig]
   implicit val httpConfigReader: ConfigReader[HttpConfig] = deriveReader[HttpConfig]
 
   // --------------------- SHOW ---------------------
@@ -42,4 +42,5 @@ object AppConfig {
 
   implicit val showAppConfig: Show[AppConfig] =
     _.asJson.toString()
+
 }

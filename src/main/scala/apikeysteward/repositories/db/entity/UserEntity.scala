@@ -22,11 +22,14 @@ object UserEntity {
   )
 
   object Write {
+
     def from(id: UUID, tenantId: UUID, user: User): UserEntity.Write =
       UserEntity.Write(
         id = id,
         tenantId = tenantId,
         publicUserId = user.userId
       )
+
   }
+
 }

@@ -13,7 +13,7 @@ class JwtOpsSpec extends AnyWordSpec with Matchers with EitherValues {
 
     "return Right containing userId" when {
       "provided with JsonWebToken containing non-empty userId field" in {
-        val jwt = AuthTestData.jwtWithMockedSignature
+        val jwt            = AuthTestData.jwtWithMockedSignature
         val expectedUserId = AuthTestData.jwtWithMockedSignature.claim.userId.get
 
         jwtOps.extractUserId(jwt) shouldBe Right(expectedUserId)

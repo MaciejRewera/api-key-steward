@@ -29,7 +29,7 @@ class ApiKeyTemplateService(
       createApiKeyTemplateRequest: CreateApiKeyTemplateRequest
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
     (for {
-      _ <- EitherT(validateRequest(createApiKeyTemplateRequest))
+      _   <- EitherT(validateRequest(createApiKeyTemplateRequest))
       res <- EitherT(createApiKeyTemplateWithRetry(tenantId, createApiKeyTemplateRequest))
     } yield res).value
 
@@ -57,7 +57,7 @@ class ApiKeyTemplateService(
 
     def createApiKeyTemplateAction: IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
       for {
-        _ <- logger.info("Generating API Key Template ID...")
+        _          <- logger.info("Generating API Key Template ID...")
         templateId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated API Key Template ID."))
 
         _ <- logger.info("Inserting API Key Template into database...")

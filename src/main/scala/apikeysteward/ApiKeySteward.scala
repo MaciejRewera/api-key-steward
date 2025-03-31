@@ -52,11 +52,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         _ <- logger.info(s"Starting api-key-steward service with the following configuration: ${config.show}")
 
         migrationResult <- DatabaseMigrator.migrateDatabase(transactor.kernel, config.database)
-        _ <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
+        _               <- logger.info(s"Finished [${migrationResult.migrationsExecuted}] database migrations.")
 
         uuidGenerator = new UuidGenerator
 
-        apiKeyRepository: ApiKeyRepository = buildApiKeyRepository(uuidGenerator, config)(transactor)
+        apiKeyRepository: ApiKeyRepository                 = buildApiKeyRepository(uuidGenerator, config)(transactor)
         apiKeyTemplateRepository: ApiKeyTemplateRepository = buildApiKeyTemplateRepository(uuidGenerator)(transactor)
         apiKeyTemplatesPermissionsRepository: ApiKeyTemplatesPermissionsRepository =
           buildApiKeyTemplatesPermissionsRepository(transactor)
@@ -75,8 +75,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
         )(transactor)
 
         randomStringGenerator: RandomStringGenerator = new RandomStringGenerator(config.apiKey)
-        checksumCalculator: CRC32ChecksumCalculator = new CRC32ChecksumCalculator
-        checksumCodec: ChecksumCodec = new ChecksumCodec
+        checksumCalculator: CRC32ChecksumCalculator  = new CRC32ChecksumCalculator
+        checksumCodec: ChecksumCodec                 = new ChecksumCodec
         apiKeyGenerator: ApiKeyGenerator = new ApiKeyGenerator(
           apiKeyTemplateRepository,
           randomStringGenerator,
@@ -109,7 +109,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyTemplatesUsersRepository
         )
 
-        tenantService = new TenantService(uuidGenerator, tenantRepository)
+        tenantService         = new TenantService(uuidGenerator, tenantRepository)
         resourceServerService = new ResourceServerService(uuidGenerator, resourceServerRepository)
         permissionService = new PermissionService(
           uuidGenerator,
@@ -117,12 +117,12 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           resourceServerRepository,
           apiKeyTemplateRepository
         )
-        userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
+        userService          = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
         activeTenantVerifier = new ActiveTenantVerifier(tenantRepository)
 
         validateRoutes = new ApiKeyValidationRoutes(activeTenantVerifier, apiKeyValidationService).allRoutes
 
-        jwtOps = new JwtOps
+        jwtOps        = new JwtOps
         jwtAuthorizer = buildJwtAuthorizer(config, httpClient)
         userApiKeyManagementRoutes = new ApiKeyManagementRoutes(
           jwtOps,
@@ -140,9 +140,9 @@ object ApiKeySteward extends IOApp.Simple with Logging {
           apiKeyTemplateAssociationsService
         ).allRoutes
 
-        tenantRoutes = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
+        tenantRoutes         = new AdminTenantRoutes(jwtAuthorizer, tenantService).allRoutes
         resourceServerRoutes = new AdminResourceServerRoutes(jwtAuthorizer, resourceServerService).allRoutes
-        permissionRoutes = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
+        permissionRoutes     = new AdminPermissionRoutes(jwtAuthorizer, permissionService).allRoutes
         userRoutes = new AdminUserRoutes(
           jwtAuthorizer,
           userService,
@@ -179,7 +179,7 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   ): Resource[IO, ExecutionContext] = {
     val threadPoolSize = configOpt match {
       case Some(DatabaseConnectionExecutionContextConfig(poolSize)) => IO.pure(poolSize)
-      case None                                                     => IO.blocking(Runtime.getRuntime.availableProcessors).map(_ + 2)
+      case None => IO.blocking(Runtime.getRuntime.availableProcessors).map(_ + 2)
     }
 
     Resource.eval(threadPoolSize).flatMap(ExecutionContexts.fixedThreadPool[IO])
@@ -189,12 +189,12 @@ object ApiKeySteward extends IOApp.Simple with Logging {
       uuidGenerator: UuidGenerator,
       config: AppConfig
   )(transactor: HikariTransactor[IO]) = {
-    val tenantDb = new TenantDb
-    val apiKeyDb = new ApiKeyDb
-    val apiKeyDataDb = new ApiKeyDataDb
-    val permissionDb = new PermissionDb
-    val userDb = new UserDb
-    val apiKeyTemplateDb = new ApiKeyTemplateDb
+    val tenantDb             = new TenantDb
+    val apiKeyDb             = new ApiKeyDb
+    val apiKeyDataDb         = new ApiKeyDataDb
+    val permissionDb         = new PermissionDb
+    val userDb               = new UserDb
+    val apiKeyTemplateDb     = new ApiKeyTemplateDb
     val apiKeysPermissionsDb = new ApiKeysPermissionsDb
 
     val secureHashGenerator: SecureHashGenerator = new SecureHashGenerator(config.apiKey.storageHashingAlgorithm)
@@ -213,11 +213,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildApiKeyTemplateRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
-    val tenantDb = new TenantDb
-    val apiKeyTemplateDb = new ApiKeyTemplateDb
-    val permissionDb = new PermissionDb
+    val tenantDb                     = new TenantDb
+    val apiKeyTemplateDb             = new ApiKeyTemplateDb
+    val permissionDb                 = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
-    val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
+    val apiKeyTemplatesUsersDb       = new ApiKeyTemplatesUsersDb
 
     new ApiKeyTemplateRepository(
       uuidGenerator,
@@ -230,9 +230,9 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildApiKeyTemplatesPermissionsRepository(transactor: HikariTransactor[IO]) = {
-    val tenantDb = new TenantDb
-    val apiKeyTemplateDb = new ApiKeyTemplateDb
-    val permissionDb = new PermissionDb
+    val tenantDb                     = new TenantDb
+    val apiKeyTemplateDb             = new ApiKeyTemplateDb
+    val permissionDb                 = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
     new ApiKeyTemplatesPermissionsRepository(tenantDb, apiKeyTemplateDb, permissionDb, apiKeyTemplatesPermissionsDb)(
@@ -241,9 +241,9 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildApiKeyTemplatesUsersRepository(transactor: HikariTransactor[IO]) = {
-    val tenantDb = new TenantDb
-    val apiKeyTemplateDb = new ApiKeyTemplateDb
-    val userDb = new UserDb
+    val tenantDb               = new TenantDb
+    val apiKeyTemplateDb       = new ApiKeyTemplateDb
+    val userDb                 = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
     new ApiKeyTemplatesUsersRepository(tenantDb, apiKeyTemplateDb, userDb, apiKeyTemplatesUsersDb)(transactor)
@@ -266,9 +266,9 @@ object ApiKeySteward extends IOApp.Simple with Logging {
       uuidGenerator: UuidGenerator,
       permissionRepository: PermissionRepository
   )(transactor: HikariTransactor[IO]) = {
-    val tenantDb = new TenantDb
+    val tenantDb         = new TenantDb
     val resourceServerDb = new ResourceServerDb
-    val permissionDb = new PermissionDb
+    val permissionDb     = new PermissionDb
 
     new ResourceServerRepository(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)(
       transactor
@@ -276,11 +276,11 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   }
 
   private def buildPermissionRepository(uuidGenerator: UuidGenerator)(transactor: HikariTransactor[IO]) = {
-    val resourceServerDb = new ResourceServerDb
-    val tenantDb = new TenantDb
-    val permissionDb = new PermissionDb
+    val resourceServerDb             = new ResourceServerDb
+    val tenantDb                     = new TenantDb
+    val permissionDb                 = new PermissionDb
     val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
-    val apiKeysPermissionsDb = new ApiKeysPermissionsDb
+    val apiKeysPermissionsDb         = new ApiKeysPermissionsDb
 
     new PermissionRepository(
       uuidGenerator,
@@ -295,8 +295,8 @@ object ApiKeySteward extends IOApp.Simple with Logging {
   private def buildUserRepository(uuidGenerator: UuidGenerator, apiKeyRepository: ApiKeyRepository)(
       transactor: HikariTransactor[IO]
   ) = {
-    val tenantDb = new TenantDb
-    val userDb = new UserDb
+    val tenantDb               = new TenantDb
+    val userDb                 = new UserDb
     val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
     new UserRepository(uuidGenerator, tenantDb, userDb, apiKeyTemplatesUsersDb, apiKeyRepository)(transactor)
@@ -304,10 +304,10 @@ object ApiKeySteward extends IOApp.Simple with Logging {
 
   private def buildJwtAuthorizer(config: AppConfig, httpClient: Client[IO]): JwtAuthorizer = {
     val jwtValidator: JwtValidator = new JwtValidator(config.auth.jwt)
-    val jwkProvider: JwkProvider = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
-    val publicKeyGenerator = new PublicKeyGenerator
-    val jwtCustom = new JwtCustom(clock, config.auth.jwt)
-    val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
+    val jwkProvider: JwkProvider   = new UrlJwkProvider(config.auth.jwks, httpClient)(runtime)
+    val publicKeyGenerator         = new PublicKeyGenerator
+    val jwtCustom                  = new JwtCustom(clock, config.auth.jwt)
+    val jwtDecoder                 = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
 
     new JwtAuthorizer(jwtDecoder)
   }

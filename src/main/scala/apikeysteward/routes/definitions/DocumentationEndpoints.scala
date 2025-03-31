@@ -9,4 +9,5 @@ private[routes] object DocumentationEndpoints {
 
   val getYamlDocs: PublicEndpoint[Unit, Unit, String, Any] =
     endpoint.in("docs" / "v0" / "docs.yaml").out(stringBody)
+
 }

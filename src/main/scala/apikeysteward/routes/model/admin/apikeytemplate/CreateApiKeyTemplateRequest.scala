@@ -21,4 +21,5 @@ object CreateApiKeyTemplateRequest extends CodecCommons {
 
   implicit val createApiKeyTemplateRequestSchema: Schema[CreateApiKeyTemplateRequest] =
     TapirCustomSchemas.createApiKeyTemplateRequestSchema
+
 }

@@ -27,7 +27,7 @@ class ActiveTenantVerifierSpec extends AsyncWordSpec with AsyncIOSpec with Match
   "ActiveTenantVerifier on verifyTenantIsActive" should {
 
     "call TenantRepository" in {
-      tenantRepository.getBy(any[TenantId]) returns IO.pure(Some(tenant_1))
+      tenantRepository.getBy(any[TenantId]).returns(IO.pure(Some(tenant_1)))
 
       for {
         _ <- activeTenantVerifier.verifyTenantIsActive(publicTenantId_1).value
@@ -37,7 +37,7 @@ class ActiveTenantVerifierSpec extends AsyncWordSpec with AsyncIOSpec with Match
     }
 
     "return Right containing Tenant when TenantRepository returns active Tenant" in {
-      tenantRepository.getBy(any[TenantId]) returns IO.pure(Some(tenant_1))
+      tenantRepository.getBy(any[TenantId]).returns(IO.pure(Some(tenant_1)))
 
       activeTenantVerifier
         .verifyTenantIsActive(publicTenantId_1)
@@ -50,7 +50,7 @@ class ActiveTenantVerifierSpec extends AsyncWordSpec with AsyncIOSpec with Match
       val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))
 
       "TenantRepository returns empty Option" in {
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(None)
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(None))
 
         activeTenantVerifier
           .verifyTenantIsActive(publicTenantId_1)
@@ -60,7 +60,7 @@ class ActiveTenantVerifierSpec extends AsyncWordSpec with AsyncIOSpec with Match
 
       "TenantRepository returns deactivated Tenant" in {
         val deactivatedTenant = tenant_1.copy(isActive = false)
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(Some(deactivatedTenant))
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(Some(deactivatedTenant)))
 
         activeTenantVerifier
           .verifyTenantIsActive(publicTenantId_1)

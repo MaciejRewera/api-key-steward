@@ -22,24 +22,24 @@ object ApiKeyTemplatesTestData extends FixedClock {
   val publicTemplateId_2: ApiKeyTemplateId = UUID.randomUUID()
   val publicTemplateId_3: ApiKeyTemplateId = UUID.randomUUID()
   val publicTemplateId_4: ApiKeyTemplateId = UUID.randomUUID()
-  val publicTemplateIdStr_1: String = publicTemplateId_1.toString
-  val publicTemplateIdStr_2: String = publicTemplateId_2.toString
-  val publicTemplateIdStr_3: String = publicTemplateId_3.toString
-  val publicTemplateIdStr_4: String = publicTemplateId_4.toString
+  val publicTemplateIdStr_1: String        = publicTemplateId_1.toString
+  val publicTemplateIdStr_2: String        = publicTemplateId_2.toString
+  val publicTemplateIdStr_3: String        = publicTemplateId_3.toString
+  val publicTemplateIdStr_4: String        = publicTemplateId_4.toString
 
-  val apiKeyTemplateName_1 = "API Key Template no. 1"
-  val apiKeyTemplateName_2 = "API Key Template no. 2"
-  val apiKeyTemplateName_3 = "API Key Template no. 3"
+  val apiKeyTemplateName_1      = "API Key Template no. 1"
+  val apiKeyTemplateName_2      = "API Key Template no. 2"
+  val apiKeyTemplateName_3      = "API Key Template no. 3"
   val apiKeyTemplateNameUpdated = "Updated API Key Template Name"
 
-  val apiKeyTemplateDescription_1: Option[String] = Some("Test API Key Template description no. 1.")
-  val apiKeyTemplateDescription_2: Option[String] = Some("Test API Key Template description no. 2.")
-  val apiKeyTemplateDescription_3: Option[String] = Some("Test API Key Template description no. 3.")
+  val apiKeyTemplateDescription_1: Option[String]      = Some("Test API Key Template description no. 1.")
+  val apiKeyTemplateDescription_2: Option[String]      = Some("Test API Key Template description no. 2.")
+  val apiKeyTemplateDescription_3: Option[String]      = Some("Test API Key Template description no. 3.")
   val apiKeyTemplateDescriptionUpdated: Option[String] = Some("Test Updated API Key Template description.")
 
-  val apiKeyMaxExpiryPeriod_1: FiniteDuration = Duration(101, TimeUnit.MINUTES)
-  val apiKeyMaxExpiryPeriod_2: FiniteDuration = Duration(102, TimeUnit.MINUTES)
-  val apiKeyMaxExpiryPeriod_3: FiniteDuration = Duration(103, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriod_1: FiniteDuration      = Duration(101, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriod_2: FiniteDuration      = Duration(102, TimeUnit.MINUTES)
+  val apiKeyMaxExpiryPeriod_3: FiniteDuration      = Duration(103, TimeUnit.MINUTES)
   val apiKeyMaxExpiryPeriodUpdated: FiniteDuration = Duration(201, TimeUnit.MINUTES)
 
   val apiKeyPrefix_1: String = "testPrefix_1_"
@@ -61,6 +61,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     randomSectionLength = randomSectionLength_1,
     permissions = List(permission_1)
   )
+
   val apiKeyTemplate_2: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_2,
     name = apiKeyTemplateName_2,
@@ -71,6 +72,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     randomSectionLength = randomSectionLength_2,
     permissions = List(permission_2)
   )
+
   val apiKeyTemplate_3: ApiKeyTemplate = ApiKeyTemplate(
     publicTemplateId = publicTemplateId_3,
     name = apiKeyTemplateName_3,
@@ -104,6 +106,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_1,
     randomSectionLength = randomSectionLength_1
   )
+
   val apiKeyTemplateEntityRead_1: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_1,
     tenantId = tenantDbId_1,
@@ -129,6 +132,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_2,
     randomSectionLength = randomSectionLength_2
   )
+
   val apiKeyTemplateEntityRead_2: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_2,
     tenantId = tenantDbId_2,
@@ -154,6 +158,7 @@ object ApiKeyTemplatesTestData extends FixedClock {
     apiKeyPrefix = apiKeyPrefix_3,
     randomSectionLength = randomSectionLength_3
   )
+
   val apiKeyTemplateEntityRead_3: ApiKeyTemplateEntity.Read = ApiKeyTemplateEntity.Read(
     id = templateDbId_3,
     tenantId = tenantDbId_3,

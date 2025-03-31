@@ -29,11 +29,13 @@ class TenantDbSpec
   private val tenantDb = new TenantDb
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
     val getAllTenants: doobie.ConnectionIO[List[TenantEntity.Read]] =
       sql"SELECT * FROM tenant".query[TenantEntity.Read].stream.compile.toList
+
   }
 
   "TenantDb on insert" when {
@@ -94,7 +96,7 @@ class TenantDbSpec
           entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
 
           entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
-          res <- Queries.getAllTenants
+          res          <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
 
         result.asserting { case (allTenants, entityRead_1, entityRead_2) =>
@@ -113,7 +115,7 @@ class TenantDbSpec
           entityRead_1 <- tenantDb.insert(tenantEntityWrite_1)
 
           entityRead_2 <- tenantDb.insert(tenantEntityWrite_2.copy(description = None))
-          res <- Queries.getAllTenants
+          res          <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
 
         result.asserting { case (allTenants, entityRead_1, entityRead_2) =>
@@ -147,7 +149,7 @@ class TenantDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
 
-          _ <- tenantDb.insert(tenantEntityWrite_2.copy(publicTenantId = publicTenantIdStr_1)).transact(transactor)
+          _   <- tenantDb.insert(tenantEntityWrite_2.copy(publicTenantId = publicTenantIdStr_1)).transact(transactor)
           res <- Queries.getAllTenants.transact(transactor)
         } yield res
 
@@ -167,16 +169,15 @@ class TenantDbSpec
 
     "there are NO rows in the DB" should {
 
-      "return Left containing TenantNotFoundError" in {
+      "return Left containing TenantNotFoundError" in
         tenantDb
           .update(tenantEntityUpdate_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
-      }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.update(tenantEntityUpdate_1)
+          _   <- tenantDb.update(tenantEntityUpdate_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -200,7 +201,7 @@ class TenantDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.update(tenantEntityUpdate_1.copy(publicTenantId = publicTenantIdStr_2))
+          _   <- tenantDb.update(tenantEntityUpdate_1.copy(publicTenantId = publicTenantIdStr_2))
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -229,7 +230,7 @@ class TenantDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.update(tenantEntityUpdate_1)
+          _   <- tenantDb.update(tenantEntityUpdate_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -260,7 +261,7 @@ class TenantDbSpec
           entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
           entityRead_3 <- tenantDb.insert(tenantEntityWrite_3)
 
-          _ <- tenantDb.update(tenantEntityUpdate_1)
+          _   <- tenantDb.update(tenantEntityUpdate_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -284,16 +285,15 @@ class TenantDbSpec
 
     "there are NO rows in the DB" should {
 
-      "return Left containing TenantNotFoundError" in {
+      "return Left containing TenantNotFoundError" in
         tenantDb
           .activate(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
-      }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.activate(publicTenantId_1)
+          _   <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -319,7 +319,7 @@ class TenantDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.activate(publicTenantId_2)
+          _   <- tenantDb.activate(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -352,7 +352,7 @@ class TenantDbSpec
             _ <- tenantDb.insert(tenantEntityWrite_1)
             _ <- tenantDb.deactivate(publicTenantId_1)
 
-            _ <- tenantDb.activate(publicTenantId_1)
+            _   <- tenantDb.activate(publicTenantId_1)
             res <- Queries.getAllTenants
           } yield res).transact(transactor)
 
@@ -379,7 +379,7 @@ class TenantDbSpec
           val result = (for {
             _ <- tenantDb.insert(tenantEntityWrite_1)
 
-            _ <- tenantDb.activate(publicTenantId_1)
+            _   <- tenantDb.activate(publicTenantId_1)
             res <- Queries.getAllTenants
           } yield res).transact(transactor)
 
@@ -410,14 +410,14 @@ class TenantDbSpec
 
       "activate only this row and leave others unchanged" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.insert(tenantEntityWrite_2)
-          _ <- tenantDb.insert(tenantEntityWrite_3)
+          _            <- tenantDb.insert(tenantEntityWrite_1)
+          _            <- tenantDb.insert(tenantEntityWrite_2)
+          _            <- tenantDb.insert(tenantEntityWrite_3)
           entityRead_1 <- tenantDb.deactivate(publicTenantId_1)
           entityRead_2 <- tenantDb.deactivate(publicTenantId_2)
           entityRead_3 <- tenantDb.deactivate(publicTenantId_3)
 
-          _ <- tenantDb.activate(publicTenantId_1)
+          _   <- tenantDb.activate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -439,16 +439,15 @@ class TenantDbSpec
 
     "there are NO rows in the DB" should {
 
-      "return Left containing TenantNotFoundError" in {
+      "return Left containing TenantNotFoundError" in
         tenantDb
           .deactivate(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
-      }
 
       "make NO changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.deactivate(publicTenantId_1)
+          _   <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -472,7 +471,7 @@ class TenantDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.deactivate(publicTenantId_2)
+          _   <- tenantDb.deactivate(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -503,7 +502,7 @@ class TenantDbSpec
           val result = (for {
             _ <- tenantDb.insert(tenantEntityWrite_1)
 
-            _ <- tenantDb.deactivate(publicTenantId_1)
+            _   <- tenantDb.deactivate(publicTenantId_1)
             res <- Queries.getAllTenants
           } yield res).transact(transactor)
 
@@ -532,7 +531,7 @@ class TenantDbSpec
             _ <- tenantDb.insert(tenantEntityWrite_1)
             _ <- tenantDb.deactivate(publicTenantId_1)
 
-            _ <- tenantDb.deactivate(publicTenantId_1)
+            _   <- tenantDb.deactivate(publicTenantId_1)
             res <- Queries.getAllTenants
           } yield res).transact(transactor)
 
@@ -564,7 +563,7 @@ class TenantDbSpec
           entityRead_2 <- tenantDb.insert(tenantEntityWrite_2)
           entityRead_3 <- tenantDb.insert(tenantEntityWrite_3)
 
-          _ <- tenantDb.deactivate(publicTenantId_1)
+          _   <- tenantDb.deactivate(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -586,16 +585,15 @@ class TenantDbSpec
 
     "there are no rows in the DB" should {
 
-      "return Left containing TenantNotFoundError" in {
+      "return Left containing TenantNotFoundError" in
         tenantDb
           .deleteDeactivated(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(TenantNotFoundError(publicTenantIdStr_1)))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
+          _   <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -621,7 +619,7 @@ class TenantDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.deleteDeactivated(publicTenantId_2)
+          _   <- tenantDb.deleteDeactivated(publicTenantId_2)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -645,7 +643,7 @@ class TenantDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
+          _   <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -671,7 +669,7 @@ class TenantDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- tenantDb.deactivate(publicTenantId_1)
 
-          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
+          _   <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield res).transact(transactor)
 
@@ -698,14 +696,14 @@ class TenantDbSpec
 
       "delete this row from the DB and leave others intact" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
-          _ <- tenantDb.insert(tenantEntityWrite_2)
-          _ <- tenantDb.insert(tenantEntityWrite_3)
-          _ <- tenantDb.deactivate(publicTenantId_1)
+          _            <- tenantDb.insert(tenantEntityWrite_1)
+          _            <- tenantDb.insert(tenantEntityWrite_2)
+          _            <- tenantDb.insert(tenantEntityWrite_3)
+          _            <- tenantDb.deactivate(publicTenantId_1)
           entityRead_2 <- tenantDb.deactivate(publicTenantId_2)
           entityRead_3 <- tenantDb.deactivate(publicTenantId_3)
 
-          _ <- tenantDb.deleteDeactivated(publicTenantId_1)
+          _   <- tenantDb.deleteDeactivated(publicTenantId_1)
           res <- Queries.getAllTenants
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -722,12 +720,11 @@ class TenantDbSpec
   "TenantDb on getByPublicTenantId" when {
 
     "there are no rows in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         tenantDb
           .getByPublicTenantId(publicTenantId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[TenantEntity.Read])
-      }
     }
 
     "there is a row in the DB with different publicTenantId" should {
@@ -758,9 +755,8 @@ class TenantDbSpec
   "TenantDb on getAll" when {
 
     "there are no rows in the DB" should {
-      "return empty Stream" in {
+      "return empty Stream" in
         tenantDb.getAll.compile.toList.transact(transactor).asserting(_ shouldBe List.empty[TenantEntity.Read])
-      }
     }
 
     "there is a single row in the DB" should {

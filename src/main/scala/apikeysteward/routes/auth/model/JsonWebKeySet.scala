@@ -20,4 +20,5 @@ object JsonWebKeySet {
     JsonWebKeySet(Set.empty),
     (set1, set2) => JsonWebKeySet(set1.keys ++ set2.keys)
   )
+
 }

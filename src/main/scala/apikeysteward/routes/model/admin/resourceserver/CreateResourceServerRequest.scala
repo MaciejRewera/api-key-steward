@@ -17,4 +17,5 @@ object CreateResourceServerRequest {
 
   implicit val createResourceServerRequestSchema: Schema[CreateResourceServerRequest] =
     TapirCustomSchemas.createResourceServerRequestSchema
+
 }

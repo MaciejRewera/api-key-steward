@@ -61,7 +61,7 @@ class ApiKeyTemplateAssociationsServiceSpec
     with BeforeAndAfterEach {
 
   private val apiKeyTemplatesPermissionsRepository = mock[ApiKeyTemplatesPermissionsRepository]
-  private val apiKeyTemplatesUsersRepository = mock[ApiKeyTemplatesUsersRepository]
+  private val apiKeyTemplatesUsersRepository       = mock[ApiKeyTemplatesUsersRepository]
 
   private val theService = new ApiKeyTemplateAssociationsService(
     apiKeyTemplatesPermissionsRepository,
@@ -71,7 +71,7 @@ class ApiKeyTemplateAssociationsServiceSpec
   override def beforeEach(): Unit =
     reset(apiKeyTemplatesPermissionsRepository, apiKeyTemplatesUsersRepository)
 
-  private val testException = new RuntimeException("Test Exception")
+  private val testException    = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
 
   private val apiKeyTemplatesPermissionsInsertionErrors = Seq(
@@ -88,8 +88,8 @@ class ApiKeyTemplateAssociationsServiceSpec
     ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)
   )
 
-  private val inputPublicPermissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
-  private val inputPublicUserIds = List(publicUserId_1, publicUserId_2, publicUserId_3)
+  private val inputPublicPermissionIds     = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
+  private val inputPublicUserIds           = List(publicUserId_1, publicUserId_2, publicUserId_3)
   private val inputPublicApiKeyTemplateIds = List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
 
   "ApiKeyTemplateAssociationsService on associatePermissionsWithApiKeyTemplate" when {
@@ -97,13 +97,17 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          ().asRight
-        )
+        apiKeyTemplatesPermissionsRepository
+          .insertMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              ().asRight
+            )
+          )
 
         for {
           _ <- theService.associatePermissionsWithApiKeyTemplate(
@@ -121,13 +125,17 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          ().asRight
-        )
+        apiKeyTemplatesPermissionsRepository
+          .insertMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              ().asRight
+            )
+          )
 
         val result = theService.associatePermissionsWithApiKeyTemplate(
           publicTenantId_1,
@@ -143,12 +151,16 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.insertMany(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[List[PermissionId]]
-          ) returns IO
-            .pure(insertionError.asLeft)
+          apiKeyTemplatesPermissionsRepository
+            .insertMany(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[List[PermissionId]]
+            )
+            .returns(
+              IO
+                .pure(insertionError.asLeft)
+            )
 
           val result = theService.associatePermissionsWithApiKeyTemplate(
             publicTenantId_1,
@@ -163,12 +175,16 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.insertMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO
-          .raiseError(testException)
+        apiKeyTemplatesPermissionsRepository
+          .insertMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO
+              .raiseError(testException)
+          )
 
         val result =
           theService
@@ -185,13 +201,17 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesPermissionsRepository" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          ().asRight
-        )
+        apiKeyTemplatesPermissionsRepository
+          .deleteMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              ().asRight
+            )
+          )
 
         for {
           _ <- theService.removePermissionsFromApiKeyTemplate(
@@ -209,13 +229,17 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          ().asRight
-        )
+        apiKeyTemplatesPermissionsRepository
+          .deleteMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              ().asRight
+            )
+          )
 
         val result =
           theService.removePermissionsFromApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -236,12 +260,16 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesPermissionsRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesPermissionsRepository.deleteMany(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[List[PermissionId]]
-          ) returns IO
-            .pure(insertionError.asLeft)
+          apiKeyTemplatesPermissionsRepository
+            .deleteMany(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[List[PermissionId]]
+            )
+            .returns(
+              IO
+                .pure(insertionError.asLeft)
+            )
 
           val result = theService.removePermissionsFromApiKeyTemplate(
             publicTenantId_1,
@@ -256,12 +284,16 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesPermissionsRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesPermissionsRepository.deleteMany(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO
-          .raiseError(testException)
+        apiKeyTemplatesPermissionsRepository
+          .deleteMany(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO
+              .raiseError(testException)
+          )
 
         val result =
           theService
@@ -278,11 +310,13 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesUsersRepository" in {
-        apiKeyTemplatesUsersRepository.insertManyUsers(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .insertManyUsers(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- theService.associateUsersWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
@@ -296,11 +330,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesUsersRepository.insertManyUsers(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .insertManyUsers(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(().asRight))
 
         val result =
           theService.associateUsersWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
@@ -313,11 +349,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesUsersRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesUsersRepository.insertManyUsers(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[List[UserId]]
-          ) returns IO.pure(insertionError.asLeft)
+          apiKeyTemplatesUsersRepository
+            .insertManyUsers(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[List[UserId]]
+            )
+            .returns(IO.pure(insertionError.asLeft))
 
           val result =
             theService.associateUsersWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicUserIds)
@@ -329,11 +367,13 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesUsersRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesUsersRepository.insertManyUsers(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplatesUsersRepository
+          .insertManyUsers(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.raiseError(testException))
 
         val result =
           theService.associateUsersWithApiKeyTemplate(publicTenantId_1, publicTemplateId_1, inputPublicUserIds).attempt
@@ -348,11 +388,13 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesUsersRepository" in {
-        apiKeyTemplatesUsersRepository.insertManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .insertManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- theService.associateApiKeyTemplatesWithUser(
@@ -370,11 +412,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesUsersRepository.insertManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .insertManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         val result =
           theService.associateApiKeyTemplatesWithUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -387,11 +431,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesUsersRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesUsersRepository.insertManyTemplates(
-            any[TenantId],
-            any[UserId],
-            any[List[ApiKeyTemplateId]]
-          ) returns IO.pure(insertionError.asLeft)
+          apiKeyTemplatesUsersRepository
+            .insertManyTemplates(
+              any[TenantId],
+              any[UserId],
+              any[List[ApiKeyTemplateId]]
+            )
+            .returns(IO.pure(insertionError.asLeft))
 
           val result =
             theService.associateApiKeyTemplatesWithUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -403,11 +449,13 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesUsersRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesUsersRepository.insertManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplatesUsersRepository
+          .insertManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.raiseError(testException))
 
         val result =
           theService
@@ -424,11 +472,13 @@ class ApiKeyTemplateAssociationsServiceSpec
     "everything works correctly" should {
 
       "call ApiKeyTemplatesUsersRepository" in {
-        apiKeyTemplatesUsersRepository.deleteManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .deleteManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- theService.removeApiKeyTemplatesFromUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -442,11 +492,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
 
       "return Right containing Unit value" in {
-        apiKeyTemplatesUsersRepository.deleteManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplatesUsersRepository
+          .deleteManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         val result =
           theService.removeApiKeyTemplatesFromUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -467,11 +519,13 @@ class ApiKeyTemplateAssociationsServiceSpec
       s"ApiKeyTemplatesUsersRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "return Left containing this error" in {
-          apiKeyTemplatesUsersRepository.deleteManyTemplates(
-            any[TenantId],
-            any[UserId],
-            any[List[ApiKeyTemplateId]]
-          ) returns IO.pure(insertionError.asLeft)
+          apiKeyTemplatesUsersRepository
+            .deleteManyTemplates(
+              any[TenantId],
+              any[UserId],
+              any[List[ApiKeyTemplateId]]
+            )
+            .returns(IO.pure(insertionError.asLeft))
 
           val result =
             theService.removeApiKeyTemplatesFromUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -483,11 +537,13 @@ class ApiKeyTemplateAssociationsServiceSpec
 
     "ApiKeyTemplatesUsersRepository returns failed IO" should {
       "return failed IO containing this exception" in {
-        apiKeyTemplatesUsersRepository.deleteManyTemplates(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplatesUsersRepository
+          .deleteManyTemplates(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.raiseError(testException))
 
         val result = theService
           .removeApiKeyTemplatesFromUser(publicTenantId_1, publicUserId_1, inputPublicApiKeyTemplateIds)
@@ -497,4 +553,5 @@ class ApiKeyTemplateAssociationsServiceSpec
       }
     }
   }
+
 }

@@ -11,9 +11,11 @@ case class DeleteApiKeyTemplatesPermissionsRequest(
 )
 
 object DeleteApiKeyTemplatesPermissionsRequest {
+
   implicit val codec: Codec[DeleteApiKeyTemplatesPermissionsRequest] =
     deriveCodec[DeleteApiKeyTemplatesPermissionsRequest]
 
   implicit val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatesPermissionsRequest] =
     TapirCustomSchemas.deleteApiKeyTemplatesPermissionsRequestSchema
+
 }

@@ -56,11 +56,11 @@ class AdminUserRoutesSpec
     with BeforeAndAfterEach
     with RoutesSpecBase {
 
-  private val jwtAuthorizer = mock[JwtAuthorizer]
-  private val userService = mock[UserService]
-  private val apiKeyTemplateService = mock[ApiKeyTemplateService]
+  private val jwtAuthorizer                     = mock[JwtAuthorizer]
+  private val userService                       = mock[UserService]
+  private val apiKeyTemplateService             = mock[ApiKeyTemplateService]
   private val apiKeyTemplateAssociationsService = mock[ApiKeyTemplateAssociationsService]
-  private val apiKeyManagementService = mock[ApiKeyManagementService]
+  private val apiKeyManagementService           = mock[ApiKeyManagementService]
 
   private val adminUserRoutes: HttpApp[IO] =
     new AdminUserRoutes(
@@ -95,7 +95,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on POST /admin/users" when {
 
-    val uri = Uri.unsafeFromString("/admin/users")
+    val uri         = Uri.unsafeFromString("/admin/users")
     val requestBody = CreateUserRequest(userId = publicUserId_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
@@ -154,7 +154,7 @@ class AdminUserRoutesSpec
 
       "request body is provided with userId longer than 255 characters" should {
 
-        val nameThatIsTooLong = List.fill(256)("A").mkString
+        val nameThatIsTooLong   = List.fill(256)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(userId = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -182,9 +182,13 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call UserService" in authorizedFixture {
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          user_1.asRight
-        )
+        userService
+          .createUser(any[UUID], any[CreateUserRequest])
+          .returns(
+            IO.pure(
+              user_1.asRight
+            )
+          )
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -193,7 +197,7 @@ class AdminUserRoutesSpec
       }
 
       "return successful value returned by UserService" in authorizedFixture {
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(user_1.asRight)
+        userService.createUser(any[UUID], any[CreateUserRequest]).returns(IO.pure(user_1.asRight))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -205,9 +209,13 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when UserService returns successful IO with Left containing UserAlreadyExistsForThisTenantError" in authorizedFixture {
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantDbId_1))
-        )
+        userService
+          .createUser(any[UUID], any[CreateUserRequest])
+          .returns(
+            IO.pure(
+              Left(UserAlreadyExistsForThisTenantError(publicUserId_1, tenantDbId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -221,9 +229,13 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
-        )
+        userService
+          .createUser(any[UUID], any[CreateUserRequest])
+          .returns(
+            IO.pure(
+              Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -238,9 +250,13 @@ class AdminUserRoutesSpec
 
       "return Internal Server Error when UserService returns successful IO with Left containing UserInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.pure(
-          Left(UserInsertionErrorImpl(testSqlException))
-        )
+        userService
+          .createUser(any[UUID], any[CreateUserRequest])
+          .returns(
+            IO.pure(
+              Left(UserInsertionErrorImpl(testSqlException))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -250,7 +266,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.createUser(any[UUID], any[CreateUserRequest]) returns IO.raiseError(testException)
+        userService.createUser(any[UUID], any[CreateUserRequest]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -263,7 +279,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on DELETE /admin/users/{userId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
@@ -273,7 +289,7 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(user_1.asRight)
+        userService.deleteUser(any[TenantId], any[UserId]).returns(IO.pure(user_1.asRight))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -282,7 +298,7 @@ class AdminUserRoutesSpec
       }
 
       "return successful value returned by UserService" in authorizedFixture {
-        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(user_1.asRight)
+        userService.deleteUser(any[TenantId], any[UserId]).returns(IO.pure(user_1.asRight))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -294,9 +310,13 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when UserService returns successful IO with Left containing UserNotFoundError" in authorizedFixture {
-        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1)))
-        )
+        userService
+          .deleteUser(any[TenantId], any[UserId])
+          .returns(
+            IO.pure(
+              Left(UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1)))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -310,9 +330,13 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when UserService returns successful IO with Left containing ApiKeyDbError" in authorizedFixture {
-        userService.deleteUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserRepositoryError(ApiKeyDataNotFoundError(publicKeyId_1)))
-        )
+        userService
+          .deleteUser(any[TenantId], any[UserId])
+          .returns(
+            IO.pure(
+              Left(UserRepositoryError(ApiKeyDataNotFoundError(publicKeyId_1)))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -322,7 +346,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.deleteUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userService.deleteUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -335,7 +359,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on GET /admin/users/{userId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -345,7 +369,7 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(user_1.some)
+        userService.getBy(any[TenantId], any[UserId]).returns(IO.pure(user_1.some))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -354,7 +378,7 @@ class AdminUserRoutesSpec
       }
 
       "return successful value returned by UserService" in authorizedFixture {
-        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(user_1.some)
+        userService.getBy(any[TenantId], any[UserId]).returns(IO.pure(user_1.some))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -366,7 +390,7 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when UserService returns empty Option" in authorizedFixture {
-        userService.getBy(any[TenantId], any[UserId]) returns IO.pure(none)
+        userService.getBy(any[TenantId], any[UserId]).returns(IO.pure(none))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -380,7 +404,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userService.getBy(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -393,7 +417,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on GET /admin/users" when {
 
-    val uri = uri"/admin/users"
+    val uri     = uri"/admin/users"
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -403,7 +427,7 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List.empty))
+        userService.getAllForTenant(any[TenantId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -414,7 +438,7 @@ class AdminUserRoutesSpec
       "return the value returned by UserService" when {
 
         "UserService returns an empty List" in authorizedFixture {
-          userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List.empty))
+          userService.getAllForTenant(any[TenantId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- adminUserRoutes.run(request)
@@ -424,7 +448,7 @@ class AdminUserRoutesSpec
         }
 
         "UserService returns a List with several elements" in authorizedFixture {
-          userService.getAllForTenant(any[TenantId]) returns IO.pure(Right(List(user_1, user_2, user_3)))
+          userService.getAllForTenant(any[TenantId]).returns(IO.pure(Right(List(user_1, user_2, user_3))))
 
           for {
             response <- adminUserRoutes.run(request)
@@ -437,9 +461,13 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when UserService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        userService.getAllForTenant(any[TenantId]) returns IO.pure(
-          Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
-        )
+        userService
+          .getAllForTenant(any[TenantId])
+          .returns(
+            IO.pure(
+              Left(UserInsertionError.ReferencedTenantDoesNotExistError(publicTenantId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -453,7 +481,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        userService.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -572,11 +600,13 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -589,11 +619,13 @@ class AdminUserRoutesSpec
       }
 
       "return Created status and empty body" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -603,11 +635,13 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersAlreadyExistsError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1)))
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1))))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -623,13 +657,17 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -645,11 +683,13 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -666,11 +706,13 @@ class AdminUserRoutesSpec
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        apiKeyTemplateAssociationsService.associateApiKeyTemplatesWithUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)))
+        apiKeyTemplateAssociationsService
+          .associateApiKeyTemplatesWithUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException))))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -680,11 +722,13 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -803,11 +847,13 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -820,11 +866,13 @@ class AdminUserRoutesSpec
       }
 
       "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -834,13 +882,17 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -856,11 +908,13 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -876,21 +930,25 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersNotFoundError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.pure(
-          Left(
-            ApiKeyTemplatesUsersNotFoundError(
-              List(
-                apiKeyTemplatesUsersEntityWrite_1_1,
-                apiKeyTemplatesUsersEntityWrite_1_2,
-                apiKeyTemplatesUsersEntityWrite_1_3
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(
+            IO.pure(
+              Left(
+                ApiKeyTemplatesUsersNotFoundError(
+                  List(
+                    apiKeyTemplatesUsersEntityWrite_1_1,
+                    apiKeyTemplatesUsersEntityWrite_1_2,
+                    apiKeyTemplatesUsersEntityWrite_1_3
+                  )
+                )
               )
             )
           )
-        )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -906,11 +964,13 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(
-          any[TenantId],
-          any[UserId],
-          any[List[ApiKeyTemplateId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -923,7 +983,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on GET /admin/users/{userId}/templates" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
+    val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -933,7 +993,7 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -944,7 +1004,7 @@ class AdminUserRoutesSpec
       "return successful value returned by UserService" when {
 
         "ApiKeyTemplateService returns an empty List" in authorizedFixture {
-          apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+          apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- adminUserRoutes.run(request)
@@ -956,9 +1016,13 @@ class AdminUserRoutesSpec
         }
 
         "ApiKeyTemplateService returns a List with several elements" in authorizedFixture {
-          apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            Right(List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3))
-          )
+          apiKeyTemplateService
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(
+              IO.pure(
+                Right(List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3))
+              )
+            )
 
           for {
             response <- adminUserRoutes.run(request)
@@ -975,9 +1039,13 @@ class AdminUserRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
-        )
+        apiKeyTemplateService
+          .getAllForUser(any[TenantId], any[UserId])
+          .returns(
+            IO.pure(
+              Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -993,7 +1061,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        apiKeyTemplateService.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)
@@ -1006,7 +1074,7 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on GET /admin/users/{userId}/api-keys" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/api-keys")
+    val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/api-keys")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -1016,7 +1084,7 @@ class AdminUserRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ApiKeyManagementService" in authorizedFixture {
-        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- adminUserRoutes.run(request)
@@ -1027,7 +1095,7 @@ class AdminUserRoutesSpec
       "return successful value returned by ManagementService" when {
 
         "ApiKeyManagementService returns empty List" in authorizedFixture {
-          apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+          apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- adminUserRoutes.run(request)
@@ -1037,9 +1105,13 @@ class AdminUserRoutesSpec
         }
 
         "ApiKeyManagementService returns a List with several elements" in authorizedFixture {
-          apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-          )
+          apiKeyManagementService
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(
+              IO.pure(
+                Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
+              )
+            )
 
           for {
             response <- adminUserRoutes.run(request)
@@ -1052,9 +1124,13 @@ class AdminUserRoutesSpec
       }
 
       "return Not Found when ApiKeyManagementService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
-        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
-        )
+        apiKeyManagementService
+          .getAllForUser(any[TenantId], any[UserId])
+          .returns(
+            IO.pure(
+              Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
+            )
+          )
 
         for {
           response <- adminUserRoutes.run(request)
@@ -1070,7 +1146,7 @@ class AdminUserRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyManagementService returns an exception" in authorizedFixture {
-        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        apiKeyManagementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminUserRoutes.run(request)

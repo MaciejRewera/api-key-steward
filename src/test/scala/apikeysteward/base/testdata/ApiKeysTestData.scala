@@ -45,10 +45,10 @@ object ApiKeysTestData extends FixedClock {
   val apiKeyDataDbId_2: UUID = UUID.randomUUID()
   val apiKeyDataDbId_3: UUID = UUID.randomUUID()
 
-  val publicKeyId_1: UUID = UUID.randomUUID()
-  val publicKeyId_2: UUID = UUID.randomUUID()
-  val publicKeyId_3: UUID = UUID.randomUUID()
-  val publicKeyId_4: UUID = UUID.randomUUID()
+  val publicKeyId_1: UUID      = UUID.randomUUID()
+  val publicKeyId_2: UUID      = UUID.randomUUID()
+  val publicKeyId_3: UUID      = UUID.randomUUID()
+  val publicKeyId_4: UUID      = UUID.randomUUID()
   val publicKeyIdStr_1: String = publicKeyId_1.toString
   val publicKeyIdStr_2: String = publicKeyId_2.toString
   val publicKeyIdStr_3: String = publicKeyId_3.toString
@@ -62,7 +62,7 @@ object ApiKeysTestData extends FixedClock {
   val description_2: Option[String] = Some("Test key description no. 2")
   val description_3: Option[String] = Some("Test key description no. 3")
 
-  val nameUpdated = "Updated Test APi Key Name"
+  val nameUpdated                        = "Updated Test APi Key Name"
   val descriptionUpdated: Option[String] = Some("Updated test key description")
 
   val ttl: FiniteDuration = Duration(101, TimeUnit.MINUTES)
@@ -75,6 +75,7 @@ object ApiKeysTestData extends FixedClock {
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     permissions = List(permission_1)
   )
+
   val apiKeyData_2: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_2,
     name = name_2,
@@ -83,6 +84,7 @@ object ApiKeysTestData extends FixedClock {
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit),
     permissions = List(permission_2)
   )
+
   val apiKeyData_3: ApiKeyData = ApiKeyData(
     publicKeyId = publicKeyId_3,
     name = name_3,
@@ -100,6 +102,7 @@ object ApiKeysTestData extends FixedClock {
 
   val apiKeyEntityWrite_1: ApiKeyEntity.Write =
     ApiKeyEntity.Write(id = apiKeyDbId_1, tenantId = tenantDbId_1, apiKey = hashedApiKey_1.value)
+
   val apiKeyEntityRead_1: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_1,
     tenantId = tenantDbId_1,
@@ -109,6 +112,7 @@ object ApiKeysTestData extends FixedClock {
 
   val apiKeyEntityWrite_2: ApiKeyEntity.Write =
     ApiKeyEntity.Write(id = apiKeyDbId_2, tenantId = tenantDbId_1, apiKey = hashedApiKey_2.value)
+
   val apiKeyEntityRead_2: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_2,
     tenantId = tenantDbId_1,
@@ -118,6 +122,7 @@ object ApiKeysTestData extends FixedClock {
 
   val apiKeyEntityWrite_3: ApiKeyEntity.Write =
     ApiKeyEntity.Write(id = apiKeyDbId_3, tenantId = tenantDbId_1, apiKey = hashedApiKey_3.value)
+
   val apiKeyEntityRead_3: ApiKeyEntity.Read = ApiKeyEntity.Read(
     id = apiKeyDbId_3,
     tenantId = tenantDbId_1,
@@ -136,6 +141,7 @@ object ApiKeysTestData extends FixedClock {
     description = description_1,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
+
   val apiKeyDataEntityRead_1: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_1,
     tenantId = tenantDbId_1,
@@ -161,6 +167,7 @@ object ApiKeysTestData extends FixedClock {
     description = description_2,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
+
   val apiKeyDataEntityRead_2: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_2,
     tenantId = tenantDbId_1,
@@ -186,6 +193,7 @@ object ApiKeysTestData extends FixedClock {
     description = description_3,
     expiresAt = nowInstant.plus(ttl.length, ttl.unit.toChronoUnit)
   )
+
   val apiKeyDataEntityRead_3: ApiKeyDataEntity.Read = ApiKeyDataEntity.Read(
     id = apiKeyDataDbId_3,
     tenantId = tenantDbId_1,
@@ -205,4 +213,5 @@ object ApiKeysTestData extends FixedClock {
     name = nameUpdated,
     description = descriptionUpdated
   )
+
 }

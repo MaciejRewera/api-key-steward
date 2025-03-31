@@ -27,8 +27,8 @@ class ApiKeyValidationServiceSpec
     with FixedClock {
 
   private val checksumCalculator = mock[CRC32ChecksumCalculator]
-  private val checksumCodec = mock[ChecksumCodec]
-  private val apiKeyRepository = mock[ApiKeyRepository]
+  private val checksumCodec      = mock[ChecksumCodec]
+  private val apiKeyRepository   = mock[ApiKeyRepository]
 
   private val apiKeyValidationService = new ApiKeyValidationService(checksumCalculator, checksumCodec, apiKeyRepository)
 
@@ -43,9 +43,9 @@ class ApiKeyValidationServiceSpec
 
       "call CRC32ChecksumCalculator, ChecksumCodec and ApiKeyRepository" in {
         val checksum = 42L
-        checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns checksum.asRight
-        apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+        checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+        checksumCodec.decode(any[String]).returns(checksum.asRight)
+        apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData_1)))
 
         for {
           _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
@@ -59,21 +59,21 @@ class ApiKeyValidationServiceSpec
       "return ApiKeyData returned from ApiKeyRepository" when {
 
         "the key's expiresAt is 1 nanosecond in the future" in {
-          val checksum = 42L
+          val checksum   = 42L
           val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.plusNanos(1))
 
-          checksumCalculator.calcChecksumFor(any[String]) returns checksum
-          checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+          checksumCodec.decode(any[String]).returns(checksum.asRight)
+          apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData)))
 
           apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1).asserting(_ shouldBe Right(apiKeyData))
         }
 
         "the key's expiresAt is 1 second in the future" in {
           val checksum = 42L
-          checksumCalculator.calcChecksumFor(any[String]) returns checksum
-          checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData_1))
+          checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+          checksumCodec.decode(any[String]).returns(checksum.asRight)
+          apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData_1)))
 
           apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1).asserting(_ shouldBe Right(apiKeyData_1))
         }
@@ -85,8 +85,8 @@ class ApiKeyValidationServiceSpec
       "ChecksumCodec returns Left containing an error" should {
 
         "NOT call ApiKeyRepository" in {
-          checksumCalculator.calcChecksumFor(any[String]) returns 42L
-          checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
+          checksumCalculator.calcChecksumFor(any[String]).returns(42L)
+          checksumCodec.decode(any[String]).returns(ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft)
 
           for {
             _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
@@ -95,8 +95,8 @@ class ApiKeyValidationServiceSpec
         }
 
         "return Left containing ApiKeyIncorrectError" in {
-          checksumCalculator.calcChecksumFor(any[String]) returns 42L
-          checksumCodec.decode(any[String]) returns ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft
+          checksumCalculator.calcChecksumFor(any[String]).returns(42L)
+          checksumCodec.decode(any[String]).returns(ProvidedEncodedChecksumTooLongError("tooLongChecksum").asLeft)
 
           apiKeyValidationService
             .validateApiKey(publicTenantId_1, apiKey_1)
@@ -109,8 +109,8 @@ class ApiKeyValidationServiceSpec
         "CRC32ChecksumCalculator returns negative number" should {
 
           "NOT call ApiKeyRepository" in {
-            checksumCalculator.calcChecksumFor(any[String]) returns -42
-            checksumCodec.decode(any[String]) returns 42L.asRight
+            checksumCalculator.calcChecksumFor(any[String]).returns(-42)
+            checksumCodec.decode(any[String]).returns(42L.asRight)
 
             for {
               _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
@@ -119,8 +119,8 @@ class ApiKeyValidationServiceSpec
           }
 
           "return Left containing ApiKeyIncorrectError" in {
-            checksumCalculator.calcChecksumFor(any[String]) returns -42
-            checksumCodec.decode(any[String]) returns 42L.asRight
+            checksumCalculator.calcChecksumFor(any[String]).returns(-42)
+            checksumCodec.decode(any[String]).returns(42L.asRight)
 
             apiKeyValidationService
               .validateApiKey(publicTenantId_1, apiKey_1)
@@ -131,8 +131,8 @@ class ApiKeyValidationServiceSpec
         "CRC32ChecksumCalculator returns NON-negative number" should {
 
           "NOT call ApiKeyRepository" in {
-            checksumCalculator.calcChecksumFor(any[String]) returns 43
-            checksumCodec.decode(any[String]) returns 42L.asRight
+            checksumCalculator.calcChecksumFor(any[String]).returns(43)
+            checksumCodec.decode(any[String]).returns(42L.asRight)
 
             for {
               _ <- apiKeyValidationService.validateApiKey(publicTenantId_1, apiKey_1)
@@ -141,8 +141,8 @@ class ApiKeyValidationServiceSpec
           }
 
           "return Left containing ApiKeyIncorrectError" in {
-            checksumCalculator.calcChecksumFor(any[String]) returns 43
-            checksumCodec.decode(any[String]) returns 42L.asRight
+            checksumCalculator.calcChecksumFor(any[String]).returns(43)
+            checksumCodec.decode(any[String]).returns(42L.asRight)
 
             apiKeyValidationService
               .validateApiKey(publicTenantId_1, apiKey_1)
@@ -155,9 +155,9 @@ class ApiKeyValidationServiceSpec
     "provided with a key that passes checksum validation, but ApiKeyRepository returns empty Option" should {
       "return Left containing ApiKeyIncorrectError" in {
         val checksum = 42L
-        checksumCalculator.calcChecksumFor(any[String]) returns checksum
-        checksumCodec.decode(any[String]) returns checksum.asRight
-        apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(None)
+        checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+        checksumCodec.decode(any[String]).returns(checksum.asRight)
+        apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(None))
 
         apiKeyValidationService
           .validateApiKey(publicTenantId_1, apiKey_1)
@@ -170,12 +170,12 @@ class ApiKeyValidationServiceSpec
       "return Left containing ApiKeyExpiredError" when {
 
         "expiresAt equals current time" in {
-          val checksum = 42L
+          val checksum   = 42L
           val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant)
 
-          checksumCalculator.calcChecksumFor(any[String]) returns checksum
-          checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+          checksumCodec.decode(any[String]).returns(checksum.asRight)
+          apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData)))
 
           apiKeyValidationService
             .validateApiKey(publicTenantId_1, apiKey_1)
@@ -183,12 +183,12 @@ class ApiKeyValidationServiceSpec
         }
 
         "expiresAt is 1 nanosecond in the past" in {
-          val checksum = 42L
+          val checksum   = 42L
           val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.minusNanos(1))
 
-          checksumCalculator.calcChecksumFor(any[String]) returns checksum
-          checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+          checksumCodec.decode(any[String]).returns(checksum.asRight)
+          apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData)))
 
           apiKeyValidationService
             .validateApiKey(publicTenantId_1, apiKey_1)
@@ -196,12 +196,12 @@ class ApiKeyValidationServiceSpec
         }
 
         "expiresAt is 1 second in the past" in {
-          val checksum = 42L
+          val checksum   = 42L
           val apiKeyData = apiKeyData_1.copy(expiresAt = nowInstant.minusSeconds(1))
 
-          checksumCalculator.calcChecksumFor(any[String]) returns checksum
-          checksumCodec.decode(any[String]) returns checksum.asRight
-          apiKeyRepository.get(any[TenantId], any[ApiKey]) returns IO.pure(Some(apiKeyData))
+          checksumCalculator.calcChecksumFor(any[String]).returns(checksum)
+          checksumCodec.decode(any[String]).returns(checksum.asRight)
+          apiKeyRepository.get(any[TenantId], any[ApiKey]).returns(IO.pure(Some(apiKeyData)))
 
           apiKeyValidationService
             .validateApiKey(publicTenantId_1, apiKey_1)
@@ -210,4 +210,5 @@ class ApiKeyValidationServiceSpec
       }
     }
   }
+
 }

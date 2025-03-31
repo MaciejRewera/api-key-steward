@@ -35,10 +35,13 @@ object Retry {
   }
 
   object RetryException {
+
     case class MaxNumberOfRetriesExceeded[E <: CustomError](override val error: E)
         extends RetryException[E](error, message = s"Exceeded max number of retries on error: ${error.message}")
 
     case class ReceivedErrorNotConfiguredToRetry[E <: CustomError](override val error: E)
         extends RetryException[E](error, message = s"Re-throwing error not configured for retrying: ${error.message}")
+
   }
+
 }

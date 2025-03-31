@@ -29,7 +29,7 @@ class CreateApiKeyRequestValidatorSpec
     with BeforeAndAfterEach
     with EitherValues {
 
-  private val userRepository = mock[UserRepository]
+  private val userRepository           = mock[UserRepository]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
 
   private val requestValidator =
@@ -58,9 +58,10 @@ class CreateApiKeyRequestValidatorSpec
     "everything works correctly" should {
 
       def initMocks(): Unit = {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns
-          IO.pure(List(apiKeyTemplate, apiKeyTemplate_2))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+        apiKeyTemplateRepository
+          .getAllForUser(any[TenantId], any[UserId])
+          .returns(IO.pure(List(apiKeyTemplate, apiKeyTemplate_2)))
       }
 
       "call UserRepository and ApiKeyTemplateRepository" in {
@@ -124,9 +125,10 @@ class CreateApiKeyRequestValidatorSpec
       "return Left containing appropriate CreateApiKeyRequestValidatorError" when {
 
         "the request contains templateId which is NOT assigned to provided User" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns
-            IO.pure(List(apiKeyTemplate_2, apiKeyTemplate_3))
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+          apiKeyTemplateRepository
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(IO.pure(List(apiKeyTemplate_2, apiKeyTemplate_3)))
 
           requestValidator
             .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -138,8 +140,8 @@ class CreateApiKeyRequestValidatorSpec
         }
 
         "the request contains a permission that is NOT defined in the ApiKeyTemplate" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
           val request = createRequest.copy(permissionIds = List(publicPermissionId_4))
 
@@ -153,8 +155,8 @@ class CreateApiKeyRequestValidatorSpec
         }
 
         "the request contains several permissions, one of which is NOT defined in the ApiKeyTemplate" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
           val request =
             createRequest.copy(permissionIds = List(publicPermissionId_1, publicPermissionId_3, publicPermissionId_4))
@@ -171,7 +173,7 @@ class CreateApiKeyRequestValidatorSpec
         "the request contains ttl value bigger than ApiKeyTemplate.apiKeyMaxExpiryPeriod" in {
           initMocks()
           val requestTtl = apiKeyMaxExpiryPeriod_1.plus(Duration(1, ApiKeyData.ApiKeyTtlResolution))
-          val request = createRequest.copy(ttl = requestTtl)
+          val request    = createRequest.copy(ttl = requestTtl)
 
           requestValidator
             .validateCreateRequest(publicTenantId_1, publicUserId_1, request)
@@ -183,8 +185,8 @@ class CreateApiKeyRequestValidatorSpec
     "UserRepository returns empty Option" should {
 
       "call ApiKeyTemplateRepository anyway" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(None))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -194,8 +196,8 @@ class CreateApiKeyRequestValidatorSpec
       }
 
       "return Left containing appropriate CreateApiKeyRequestValidatorError" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(None))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_2, createRequest)
@@ -206,8 +208,8 @@ class CreateApiKeyRequestValidatorSpec
     "UserRepository returns failed IO" should {
 
       "call ApiKeyTemplateRepository anyway" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest).attempt
@@ -217,8 +219,8 @@ class CreateApiKeyRequestValidatorSpec
       }
 
       "return failed IO containing the same exception" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyTemplate))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyTemplate)))
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -230,8 +232,8 @@ class CreateApiKeyRequestValidatorSpec
     "ApiKeyTemplateRepository returns empty List" should {
 
       "call UserRepository anyway" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List.empty))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -241,8 +243,8 @@ class CreateApiKeyRequestValidatorSpec
       }
 
       "return Left containing appropriate CreateApiKeyRequestValidatorError" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List.empty))
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)
@@ -255,8 +257,8 @@ class CreateApiKeyRequestValidatorSpec
     "ApiKeyTemplateRepository returns failed IO" should {
 
       "call UserRepository anyway" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           _ <- requestValidator.validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest).attempt
@@ -266,8 +268,8 @@ class CreateApiKeyRequestValidatorSpec
       }
 
       "return failed IO containing the same exception" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         requestValidator
           .validateCreateRequest(publicTenantId_1, publicUserId_1, createRequest)

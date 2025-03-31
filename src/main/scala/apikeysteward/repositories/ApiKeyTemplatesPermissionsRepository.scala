@@ -29,8 +29,8 @@ class ApiKeyTemplatesPermissionsRepository(
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsInsertionError, Unit]] =
     (for {
-      tenantId <- getTenantId(publicTenantId)
-      templateId <- getTemplateId(publicTenantId, publicTemplateId)
+      tenantId      <- getTenantId(publicTenantId)
+      templateId    <- getTemplateId(publicTenantId, publicTemplateId)
       permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToInsert = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(tenantId, templateId, _))
@@ -44,8 +44,8 @@ class ApiKeyTemplatesPermissionsRepository(
       publicPermissionIds: List[PermissionId]
   ): IO[Either[ApiKeyTemplatesPermissionsDbError, Unit]] =
     (for {
-      tenantId <- getTenantId(publicTenantId)
-      templateId <- getTemplateId(publicTenantId, publicTemplateId)
+      tenantId      <- getTenantId(publicTenantId)
+      templateId    <- getTemplateId(publicTenantId, publicTemplateId)
       permissionIds <- getPermissionIds(publicTenantId, publicPermissionIds)
 
       entitiesToDelete = permissionIds.map(ApiKeyTemplatesPermissionsEntity.Write(tenantId, templateId, _))

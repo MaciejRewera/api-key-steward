@@ -19,4 +19,5 @@ private[db] trait TenantIdScopedQueriesBase {
           |  WHERE tenant.public_tenant_id = ${publicTenantId.toString}
           |)""".stripMargin
   }
+
 }

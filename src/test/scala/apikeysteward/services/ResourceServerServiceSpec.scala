@@ -31,7 +31,7 @@ class ResourceServerServiceSpec
     with FixedClock
     with BeforeAndAfterEach {
 
-  private val uuidGenerator = mock[UuidGenerator]
+  private val uuidGenerator            = mock[UuidGenerator]
   private val resourceServerRepository = mock[ResourceServerRepository]
 
   private val resourceServerService = new ResourceServerService(uuidGenerator, resourceServerRepository)
@@ -57,13 +57,13 @@ class ResourceServerServiceSpec
     "everything works correctly" should {
 
       "call UuidGenerator and ResourceServerRepository" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
           IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(Right(resourceServer))
+        resourceServerRepository.insert(any[UUID], any[ResourceServer]).returns(IO.pure(Right(resourceServer)))
 
         for {
           _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -74,13 +74,13 @@ class ResourceServerServiceSpec
       }
 
       "return the newly created ResourceServer returned by ResourceServerRepository" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
           IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(Right(resourceServer))
+        resourceServerRepository.insert(any[UUID], any[ResourceServer]).returns(IO.pure(Right(resourceServer)))
 
         resourceServerService
           .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -91,7 +91,7 @@ class ResourceServerServiceSpec
     "UuidGenerator returns failed IO" should {
 
       "NOT call ResourceServerRepository" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest).attempt
@@ -101,7 +101,7 @@ class ResourceServerServiceSpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         resourceServerService
           .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -113,7 +113,7 @@ class ResourceServerServiceSpec
     "ResourceServerRepository returns Left containing ResourceServerAlreadyExistsError on the first try" should {
 
       "call UuidGenerator and ResourceServerRepository again" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
@@ -124,10 +124,12 @@ class ResourceServerServiceSpec
           IO.pure(publicPermissionId_3)
         )
         val insertedResourceServer = resourceServer.copy(resourceServerId = publicResourceServerId_2)
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns (
-          IO.pure(Left(resourceServerAlreadyExistsError)),
-          IO.pure(Right(insertedResourceServer))
-        )
+        resourceServerRepository
+          .insert(any[UUID], any[ResourceServer])
+          .returns(
+            IO.pure(Left(resourceServerAlreadyExistsError)),
+            IO.pure(Right(insertedResourceServer))
+          )
 
         for {
           _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -139,7 +141,7 @@ class ResourceServerServiceSpec
       }
 
       "return the second created ResourceServer returned by ResourceServerRepository" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
@@ -150,10 +152,12 @@ class ResourceServerServiceSpec
           IO.pure(publicPermissionId_3)
         )
         val insertedResourceServer = resourceServer.copy(resourceServerId = publicResourceServerId_2)
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns (
-          IO.pure(Left(resourceServerAlreadyExistsError)),
-          IO.pure(Right(insertedResourceServer))
-        )
+        resourceServerRepository
+          .insert(any[UUID], any[ResourceServer])
+          .returns(
+            IO.pure(Left(resourceServerAlreadyExistsError)),
+            IO.pure(Right(insertedResourceServer))
+          )
 
         resourceServerService
           .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -164,7 +168,7 @@ class ResourceServerServiceSpec
     "ResourceServerRepository keeps returning Left containing ResourceServerAlreadyExistsError" should {
 
       "call UuidGenerator and ResourceServerRepository again until reaching max retries amount" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
@@ -180,11 +184,15 @@ class ResourceServerServiceSpec
           IO.pure(publicResourceServerId_4),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
-          IO.pure(publicPermissionId_3),
+          IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(
-          Left(resourceServerAlreadyExistsError)
-        )
+        resourceServerRepository
+          .insert(any[UUID], any[ResourceServer])
+          .returns(
+            IO.pure(
+              Left(resourceServerAlreadyExistsError)
+            )
+          )
 
         for {
           _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -207,7 +215,7 @@ class ResourceServerServiceSpec
       }
 
       "return successful IO containing Left with ResourceServerAlreadyExistsError" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
@@ -223,11 +231,15 @@ class ResourceServerServiceSpec
           IO.pure(publicResourceServerId_4),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
-          IO.pure(publicPermissionId_3),
+          IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(
-          Left(resourceServerAlreadyExistsError)
-        )
+        resourceServerRepository
+          .insert(any[UUID], any[ResourceServer])
+          .returns(
+            IO.pure(
+              Left(resourceServerAlreadyExistsError)
+            )
+          )
 
         resourceServerService
           .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -244,15 +256,19 @@ class ResourceServerServiceSpec
       s"ResourceServerRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "NOT call UuidGenerator or ResourceServerRepository again" in {
-          uuidGenerator.generateUuid returns (
+          uuidGenerator.generateUuid.returns(
             IO.pure(publicResourceServerId_1),
             IO.pure(publicPermissionId_1),
             IO.pure(publicPermissionId_2),
             IO.pure(publicPermissionId_3)
           )
-          resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(
-            Left(insertionError)
-          )
+          resourceServerRepository
+            .insert(any[UUID], any[ResourceServer])
+            .returns(
+              IO.pure(
+                Left(insertionError)
+              )
+            )
 
           for {
             _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -263,15 +279,19 @@ class ResourceServerServiceSpec
         }
 
         "return failed IO containing this error" in {
-          uuidGenerator.generateUuid returns (
+          uuidGenerator.generateUuid.returns(
             IO.pure(publicResourceServerId_1),
             IO.pure(publicPermissionId_1),
             IO.pure(publicPermissionId_2),
             IO.pure(publicPermissionId_3)
           )
-          resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.pure(
-            Left(insertionError)
-          )
+          resourceServerRepository
+            .insert(any[UUID], any[ResourceServer])
+            .returns(
+              IO.pure(
+                Left(insertionError)
+              )
+            )
 
           resourceServerService
             .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -283,13 +303,13 @@ class ResourceServerServiceSpec
     "ResourceServerRepository returns failed IO" should {
 
       "NOT call UuidGenerator or ResourceServerRepository again" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
           IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.raiseError(testException)
+        resourceServerRepository.insert(any[UUID], any[ResourceServer]).returns(IO.raiseError(testException))
 
         for {
           _ <- resourceServerService.createResourceServer(publicTenantId_1, createResourceServerRequest).attempt
@@ -300,13 +320,13 @@ class ResourceServerServiceSpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicResourceServerId_1),
           IO.pure(publicPermissionId_1),
           IO.pure(publicPermissionId_2),
           IO.pure(publicPermissionId_3)
         )
-        resourceServerRepository.insert(any[UUID], any[ResourceServer]) returns IO.raiseError(testException)
+        resourceServerRepository.insert(any[UUID], any[ResourceServer]).returns(IO.raiseError(testException))
 
         resourceServerService
           .createResourceServer(publicTenantId_1, createResourceServerRequest)
@@ -325,9 +345,13 @@ class ResourceServerServiceSpec
       resourceServer_1.copy(name = resourceServerNameUpdated, description = resourceServerDescriptionUpdated)
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
-        Right(updatedResourceServer)
-      )
+      resourceServerRepository
+        .update(any[TenantId], any[ResourceServerUpdate])
+        .returns(
+          IO.pure(
+            Right(updatedResourceServer)
+          )
+        )
 
       for {
         _ <- resourceServerService.updateResourceServer(
@@ -343,9 +367,13 @@ class ResourceServerServiceSpec
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
-          Right(updatedResourceServer)
-        )
+        resourceServerRepository
+          .update(any[TenantId], any[ResourceServerUpdate])
+          .returns(
+            IO.pure(
+              Right(updatedResourceServer)
+            )
+          )
 
         resourceServerService
           .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
@@ -353,9 +381,13 @@ class ResourceServerServiceSpec
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.pure(
-          Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
-        )
+        resourceServerRepository
+          .update(any[TenantId], any[ResourceServerUpdate])
+          .returns(
+            IO.pure(
+              Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
+            )
+          )
 
         resourceServerService
           .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
@@ -365,7 +397,7 @@ class ResourceServerServiceSpec
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]) returns IO.raiseError(testException)
+        resourceServerRepository.update(any[TenantId], any[ResourceServerUpdate]).returns(IO.raiseError(testException))
 
         resourceServerService
           .updateResourceServer(publicTenantId_1, publicResourceServerId_1, updateResourceServerRequest)
@@ -378,9 +410,13 @@ class ResourceServerServiceSpec
   "ResourceServerService on deleteResourceServer" should {
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
-        Right(resourceServer_1)
-      )
+      resourceServerRepository
+        .delete(any[TenantId], any[ResourceServerId])
+        .returns(
+          IO.pure(
+            Right(resourceServer_1)
+          )
+        )
 
       for {
         _ <- resourceServerService.deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
@@ -392,9 +428,13 @@ class ResourceServerServiceSpec
     "return value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns Right" in {
-        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
-          Right(resourceServer_1)
-        )
+        resourceServerRepository
+          .delete(any[TenantId], any[ResourceServerId])
+          .returns(
+            IO.pure(
+              Right(resourceServer_1)
+            )
+          )
 
         resourceServerService
           .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
@@ -402,9 +442,13 @@ class ResourceServerServiceSpec
       }
 
       "ResourceServerRepository returns Left" in {
-        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.pure(
-          Left(ResourceServerDbError.resourceServerNotFoundError(publicResourceServerIdStr_1))
-        )
+        resourceServerRepository
+          .delete(any[TenantId], any[ResourceServerId])
+          .returns(
+            IO.pure(
+              Left(ResourceServerDbError.resourceServerNotFoundError(publicResourceServerIdStr_1))
+            )
+          )
 
         resourceServerService
           .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
@@ -414,7 +458,7 @@ class ResourceServerServiceSpec
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
+        resourceServerRepository.delete(any[TenantId], any[ResourceServerId]).returns(IO.raiseError(testException))
 
         resourceServerService
           .deleteResourceServer(publicTenantId_1, publicResourceServerId_1)
@@ -427,7 +471,7 @@ class ResourceServerServiceSpec
   "ResourceServerService on getBy(:resourceServerId)" should {
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
+      resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(Some(resourceServer_1)))
 
       for {
         _ <- resourceServerService.getBy(publicTenantId_1, publicResourceServerId_1)
@@ -439,13 +483,13 @@ class ResourceServerServiceSpec
     "return the value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns empty Option" in {
-        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(None)
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(None))
 
         resourceServerService.getBy(publicTenantId_1, publicResourceServerId_1).asserting(_ shouldBe None)
       }
 
       "ResourceServerRepository returns non-empty Option" in {
-        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(Some(resourceServer_1))
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(Some(resourceServer_1)))
 
         resourceServerService
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -455,7 +499,7 @@ class ResourceServerServiceSpec
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
+        resourceServerRepository.getBy(any[TenantId], any[ResourceServerId]).returns(IO.raiseError(testException))
 
         resourceServerService
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -468,7 +512,7 @@ class ResourceServerServiceSpec
   "ResourceServerService on getAllForTenant" should {
 
     "call ResourceServerRepository" in {
-      resourceServerRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+      resourceServerRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
       for {
         _ <- resourceServerService.getAllForTenant(publicTenantId_1)
@@ -480,15 +524,19 @@ class ResourceServerServiceSpec
     "return the value returned by ResourceServerRepository" when {
 
       "ResourceServerRepository returns empty List" in {
-        resourceServerRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        resourceServerRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
         resourceServerService.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List.empty[ResourceServer])
       }
 
       "ResourceServerRepository returns non-empty List" in {
-        resourceServerRepository.getAllForTenant(any[TenantId]) returns IO.pure(
-          List(resourceServer_1, resourceServer_2, resourceServer_3)
-        )
+        resourceServerRepository
+          .getAllForTenant(any[TenantId])
+          .returns(
+            IO.pure(
+              List(resourceServer_1, resourceServer_2, resourceServer_3)
+            )
+          )
 
         resourceServerService
           .getAllForTenant(publicTenantId_1)
@@ -498,7 +546,7 @@ class ResourceServerServiceSpec
 
     "return failed IO" when {
       "ResourceServerRepository returns failed IO" in {
-        resourceServerRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        resourceServerRepository.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         resourceServerService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }

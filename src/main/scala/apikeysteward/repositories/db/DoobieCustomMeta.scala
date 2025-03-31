@@ -10,4 +10,5 @@ trait DoobieCustomMeta {
 
   implicit val DurationMeta: Meta[Duration] =
     Meta[String].timap[Duration](Duration.apply)(_.toString)
+
 }

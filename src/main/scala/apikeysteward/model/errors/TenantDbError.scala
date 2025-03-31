@@ -5,9 +5,11 @@ import apikeysteward.model.Tenant.TenantId
 import java.sql.SQLException
 
 sealed abstract class TenantDbError(override val message: String) extends CustomError
+
 object TenantDbError {
 
   sealed abstract class TenantInsertionError(override val message: String) extends TenantDbError(message)
+
   object TenantInsertionError {
 
     case class TenantAlreadyExistsError(publicTenantId: String)
@@ -17,10 +19,11 @@ object TenantDbError {
 
     case class TenantInsertionErrorImpl(cause: SQLException)
         extends TenantInsertionError(message = s"An error occurred when inserting Tenant: $cause")
+
   }
 
   def tenantNotFoundError(publicTenantId: TenantId): TenantDbError = tenantNotFoundError(publicTenantId.toString)
-  def tenantNotFoundError(publicTenantId: String): TenantDbError = TenantNotFoundError(publicTenantId)
+  def tenantNotFoundError(publicTenantId: String): TenantDbError   = TenantNotFoundError(publicTenantId)
 
   case class TenantNotFoundError(publicTenantId: String)
       extends TenantDbError(message = s"Could not find Tenant with publicTenantId = [$publicTenantId].")

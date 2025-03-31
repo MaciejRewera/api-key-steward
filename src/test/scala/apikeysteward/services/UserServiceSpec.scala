@@ -28,8 +28,8 @@ import java.sql.SQLException
 
 class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock with BeforeAndAfterEach {
 
-  private val userRepository = mock[UserRepository]
-  private val tenantRepository = mock[TenantRepository]
+  private val userRepository           = mock[UserRepository]
+  private val tenantRepository         = mock[TenantRepository]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
 
   private val userService = new UserService(userRepository, tenantRepository, apiKeyTemplateRepository)
@@ -46,7 +46,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "everything works correctly" should {
 
       "call UserRepository" in {
-        userRepository.insert(any[TenantId], any[User]) returns IO.pure(Right(user_1))
+        userRepository.insert(any[TenantId], any[User]).returns(IO.pure(Right(user_1)))
 
         for {
           _ <- userService.createUser(publicTenantId_1, createUserRequest)
@@ -56,7 +56,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return the newly created User returned by UserRepository" in {
-        userRepository.insert(any[TenantId], any[User]) returns IO.pure(Right(user_1))
+        userRepository.insert(any[TenantId], any[User]).returns(IO.pure(Right(user_1)))
 
         userService
           .createUser(publicTenantId_1, createUserRequest)
@@ -64,7 +64,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
     }
 
-    val tenantId = tenantDbId_1
+    val tenantId         = tenantDbId_1
     val testSqlException = new SQLException("Test SQL Exception")
 
     Seq(
@@ -75,7 +75,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       s"UserRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "NOT call UserRepository again" in {
-          userRepository.insert(any[TenantId], any[User]) returns IO.pure(Left(insertionError))
+          userRepository.insert(any[TenantId], any[User]).returns(IO.pure(Left(insertionError)))
 
           for {
             _ <- userService.createUser(publicTenantId_1, createUserRequest)
@@ -85,7 +85,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
 
         "return failed IO containing this error" in {
-          userRepository.insert(any[TenantId], any[User]) returns IO.pure(Left(insertionError))
+          userRepository.insert(any[TenantId], any[User]).returns(IO.pure(Left(insertionError)))
 
           userService.createUser(publicTenantId_1, createUserRequest).asserting(_ shouldBe Left(insertionError))
         }
@@ -95,7 +95,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "UserRepository returns failed IO" should {
 
       "NOT call UserRepository again" in {
-        userRepository.insert(any[TenantId], any[User]) returns IO.raiseError(testException)
+        userRepository.insert(any[TenantId], any[User]).returns(IO.raiseError(testException))
 
         for {
           _ <- userService.createUser(publicTenantId_1, createUserRequest).attempt
@@ -105,7 +105,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return failed IO containing this exception" in {
-        userRepository.insert(any[TenantId], any[User]) returns IO.raiseError(testException)
+        userRepository.insert(any[TenantId], any[User]).returns(IO.raiseError(testException))
 
         userService
           .createUser(publicTenantId_1, createUserRequest)
@@ -118,7 +118,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
   "UserService on deleteUser" should {
 
     "call UserRepository" in {
-      userRepository.delete(any[TenantId], any[UserId]) returns IO.pure(Right(user_1))
+      userRepository.delete(any[TenantId], any[UserId]).returns(IO.pure(Right(user_1)))
 
       for {
         _ <- userService.deleteUser(publicTenantId_1, publicUserId_1)
@@ -130,7 +130,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "return value returned by UserRepository" when {
 
       "UserRepository returns Right" in {
-        userRepository.delete(any[TenantId], any[UserId]) returns IO.pure(Right(user_1))
+        userRepository.delete(any[TenantId], any[UserId]).returns(IO.pure(Right(user_1)))
 
         userService
           .deleteUser(publicTenantId_1, publicUserId_1)
@@ -139,7 +139,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
       "UserRepository returns Left" in {
         val error = UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1))
-        userRepository.delete(any[TenantId], any[UserId]) returns IO.pure(Left(error))
+        userRepository.delete(any[TenantId], any[UserId]).returns(IO.pure(Left(error)))
 
         userService.deleteUser(publicTenantId_1, publicUserId_1).asserting(_ shouldBe Left(error))
       }
@@ -147,7 +147,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "return failed IO" when {
       "UserRepository returns failed IO" in {
-        userRepository.delete(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.delete(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         userService
           .deleteUser(publicTenantId_1, publicUserId_1)
@@ -160,7 +160,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
   "UserService on getBy(:tenantId, :userId)" should {
 
     "call UserRepository" in {
-      userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
+      userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
 
       for {
         _ <- userService.getBy(publicTenantId_1, publicUserId_1)
@@ -172,13 +172,13 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "return the value returned by UserRepository" when {
 
       "UserRepository returns empty Option" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(None)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(None))
 
         userService.getBy(publicTenantId_1, publicUserId_1).asserting(_ shouldBe None)
       }
 
       "UserRepository returns non-empty Option" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Some(user_1))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Some(user_1)))
 
         userService.getBy(publicTenantId_1, publicUserId_1).asserting(_ shouldBe Some(user_1))
       }
@@ -186,7 +186,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "return failed IO" when {
       "UserRepository returns failed IO" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         userService
           .getBy(publicTenantId_1, publicUserId_1)
@@ -201,8 +201,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "everything works correctly" should {
 
       "call TenantRepository and UserRepository" in {
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(Option(tenant_1))
-        userRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(Option(tenant_1)))
+        userRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
         for {
           _ <- userService.getAllForTenant(publicTenantId_1)
@@ -215,8 +215,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "return the value returned by UserRepository" when {
 
         "UserRepository returns empty List" in {
-          tenantRepository.getBy(any[TenantId]) returns IO.pure(Option(tenant_1))
-          userRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+          tenantRepository.getBy(any[TenantId]).returns(IO.pure(Option(tenant_1)))
+          userRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
           userService
             .getAllForTenant(publicTenantId_1)
@@ -224,8 +224,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
 
         "UserRepository returns non-empty List" in {
-          tenantRepository.getBy(any[TenantId]) returns IO.pure(Option(tenant_1))
-          userRepository.getAllForTenant(any[TenantId]) returns IO.pure(List(user_1, user_2, user_3))
+          tenantRepository.getBy(any[TenantId]).returns(IO.pure(Option(tenant_1)))
+          userRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List(user_1, user_2, user_3)))
 
           userService
             .getAllForTenant(publicTenantId_1)
@@ -237,7 +237,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "TenantRepository returns empty Option" should {
 
       "NOT call UserRepository" in {
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(none[Tenant])
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(none[Tenant]))
 
         for {
           _ <- userService.getAllForTenant(publicTenantId_1)
@@ -247,7 +247,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(none[Tenant])
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(none[Tenant]))
 
         userService
           .getAllForTenant(publicTenantId_1)
@@ -257,8 +257,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "UserRepository returns failed IO" should {
       "return failed IO" in {
-        tenantRepository.getBy(any[TenantId]) returns IO.pure(Option(tenant_1))
-        userRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        tenantRepository.getBy(any[TenantId]).returns(IO.pure(Option(tenant_1)))
+        userRepository.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         userService
           .getAllForTenant(publicTenantId_1)
@@ -273,8 +273,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "everything works correctly" should {
 
       "call ApiKeyTemplateRepository and UserRepository" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Option(apiKeyTemplate_1)))
+        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(List.empty))
 
         for {
           _ <- userService.getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -287,8 +287,10 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       "return the value returned by UserRepository" when {
 
         "UserRepository returns empty List" in {
-          apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(List.empty)
+          apiKeyTemplateRepository
+            .getBy(any[TenantId], any[ApiKeyTemplateId])
+            .returns(IO.pure(Option(apiKeyTemplate_1)))
+          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(List.empty))
 
           userService
             .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -296,10 +298,16 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
         }
 
         "UserRepository returns non-empty List" in {
-          apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-          userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-            List(user_1, user_2, user_3)
-          )
+          apiKeyTemplateRepository
+            .getBy(any[TenantId], any[ApiKeyTemplateId])
+            .returns(IO.pure(Option(apiKeyTemplate_1)))
+          userRepository
+            .getAllForTemplate(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(
+                List(user_1, user_2, user_3)
+              )
+            )
 
           userService
             .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -311,7 +319,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
     "ApiKeyTemplateRepository returns empty Option" should {
 
       "NOT call UserRepository" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(none[ApiKeyTemplate]))
 
         for {
           _ <- userService.getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -321,7 +329,7 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
       }
 
       "return Left containing ApiKeyTemplateDoesNotExistError" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(none[ApiKeyTemplate])
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(none[ApiKeyTemplate]))
 
         userService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
@@ -331,8 +339,8 @@ class UserServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with 
 
     "UserRepository returns failed IO" should {
       "return failed IO containing the same exception" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Option(apiKeyTemplate_1))
-        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Option(apiKeyTemplate_1)))
+        userRepository.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         userService
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)

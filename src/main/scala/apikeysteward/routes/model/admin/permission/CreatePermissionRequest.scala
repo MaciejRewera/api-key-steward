@@ -15,4 +15,5 @@ object CreatePermissionRequest {
 
   implicit val createPermissionRequestSchema: Schema[CreatePermissionRequest] =
     TapirCustomSchemas.createPermissionRequestSchema
+
 }

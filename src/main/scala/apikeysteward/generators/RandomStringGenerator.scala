@@ -7,7 +7,7 @@ import fs2.Stream
 
 class RandomStringGenerator(apiKeyConfig: ApiKeyConfig) {
 
-  private val PRNGsAmount: Int = apiKeyConfig.prngAmount
+  private val PRNGsAmount: Int            = apiKeyConfig.prngAmount
   private val rngIo: IO[SecureRandom[IO]] = SecureRandom.javaSecuritySecureRandom[IO](PRNGsAmount)
 
   def generate(stringLength: Int): IO[String] =
@@ -23,4 +23,5 @@ class RandomStringGenerator(apiKeyConfig: ApiKeyConfig) {
         .compile
         .string
     } yield result
+
 }

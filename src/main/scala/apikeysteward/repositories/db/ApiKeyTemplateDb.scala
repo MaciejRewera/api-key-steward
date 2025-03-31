@@ -128,6 +128,7 @@ class ApiKeyTemplateDb()(implicit clock: Clock) extends DoobieCustomMeta {
               $now
             )
            """.stripMargin.update
+
   }
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {

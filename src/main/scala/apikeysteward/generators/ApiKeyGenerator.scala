@@ -24,11 +24,11 @@ class ApiKeyGenerator(
       publicTemplateId: ApiKeyTemplateId
   ): IO[Either[ApiKeyGeneratorError, ApiKey]] =
     (for {
-      config <- fetchConfig(publicTenantId, publicTemplateId)
+      config         <- fetchConfig(publicTenantId, publicTemplateId)
       randomFragment <- EitherT.right[ApiKeyGeneratorError](randomStringGenerator.generate(config.randomSectionLength))
 
       randomFragmentWithPrefix = config.apiKeyPrefix + randomFragment
-      checksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
+      checksum                 = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
       encodedChecksum <- encodeChecksum(checksum)
 
       res = ApiKey(randomFragmentWithPrefix + encodedChecksum)
@@ -61,4 +61,5 @@ object ApiKeyGenerator {
   case class ApiKeyGeneratorError(cause: CustomError) extends CustomError {
     override val message: String = cause.message
   }
+
 }

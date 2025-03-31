@@ -14,6 +14,7 @@ class JwtOps {
 
       case Some(userId) => userId.asRight
     }
+
 }
 
 object JwtOps {
@@ -23,4 +24,5 @@ object JwtOps {
 
   private val SubFieldIsEmptyErrorInfo: ErrorInfo =
     ErrorInfo.unauthorizedErrorInfo(Some("'sub' field in provided JWT cannot be empty."))
+
 }

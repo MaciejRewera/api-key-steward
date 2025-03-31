@@ -31,6 +31,7 @@ private[routes] object EndpointsBase {
   val UserExample_3: User = User("user-123456703")
 
   val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
+
   val tenantIdHeaderInput: EndpointInput[TenantId] = header[TenantId](tenantIdHeaderName.toString)
     .description("Unique ID of the Tenant for which to scope this request.")
 
@@ -167,6 +168,7 @@ private[routes] object EndpointsBase {
           .description(ApiErrorMessages.General.NotFound)
           .example(notFoundErrorInfo(Some(ApiErrorMessages.General.NotFound)))
       ) { case errorInfo: ErrorInfo => errorInfo.error == Errors.NotFound }
+
   }
 
 }

@@ -38,10 +38,10 @@ class ResourceServerRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
-  private val uuidGenerator = mock[UuidGenerator]
-  private val tenantDb = mock[TenantDb]
-  private val resourceServerDb = mock[ResourceServerDb]
-  private val permissionDb = mock[PermissionDb]
+  private val uuidGenerator        = mock[UuidGenerator]
+  private val tenantDb             = mock[TenantDb]
+  private val resourceServerDb     = mock[ResourceServerDb]
+  private val permissionDb         = mock[PermissionDb]
   private val permissionRepository = mock[PermissionRepository]
 
   private val resourceServerRepository =
@@ -53,6 +53,7 @@ class ResourceServerRepositorySpec
     reset(uuidGenerator, tenantDb, resourceServerDb, permissionDb, permissionRepository)
 
   private val resourceServerNotFoundError = ResourceServerNotFoundError(publicResourceServerIdStr_1)
+
   private val resourceServerNotFoundErrorWrapped =
     resourceServerNotFoundError.asLeft[ResourceServerEntity.Read].pure[doobie.ConnectionIO]
 
@@ -83,10 +84,10 @@ class ResourceServerRepositorySpec
     "everything works correctly" should {
 
       "call UuidGenerator, TenantDb, ResourceServerDb and PermissionDb" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
-        permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerEntityReadWrapped)
+        permissionDb.insert(any[PermissionEntity.Write]).returns(permissionEntityReadWrapped)
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1)
@@ -99,10 +100,10 @@ class ResourceServerRepositorySpec
       }
 
       "return Right containing ResourceServer" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
-        permissionDb.insert(any[PermissionEntity.Write]) returns permissionEntityReadWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerEntityReadWrapped)
+        permissionDb.insert(any[PermissionEntity.Write]).returns(permissionEntityReadWrapped)
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -113,7 +114,7 @@ class ResourceServerRepositorySpec
     "UuidGenerator returns failed IO" should {
 
       "NOT call TenantDb, ResourceServerDb or PermissionDb" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1).attempt
@@ -123,7 +124,7 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing the same exception" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -134,8 +135,8 @@ class ResourceServerRepositorySpec
     "TenantDb returns empty Option" should {
 
       "NOT call either ResourceServerDb or PermissionDb" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1)
@@ -145,8 +146,8 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -157,9 +158,13 @@ class ResourceServerRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call either ResourceServerDb or PermissionDb" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1).attempt
@@ -169,9 +174,13 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -183,9 +192,9 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns Left containing ResourceServerInsertionError" should {
 
       "NOT call PermissionDb" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerInsertionErrorWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerInsertionErrorWrapped)
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1)
@@ -195,9 +204,9 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing this error" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerInsertionErrorWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerInsertionErrorWrapped)
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -208,10 +217,11 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns different exception" should {
 
       "NOT call PermissionDb" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         resourceServerDb
-          .insert(any[ResourceServerEntity.Write]) returns testExceptionWrappedE[ResourceServerInsertionError]
+          .insert(any[ResourceServerEntity.Write])
+          .returns(testExceptionWrappedE[ResourceServerInsertionError])
 
         for {
           _ <- resourceServerRepository.insert(publicTenantId_1, resourceServer_1).attempt
@@ -221,10 +231,11 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         resourceServerDb
-          .insert(any[ResourceServerEntity.Write]) returns testExceptionWrappedE[ResourceServerInsertionError]
+          .insert(any[ResourceServerEntity.Write])
+          .returns(testExceptionWrappedE[ResourceServerInsertionError])
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -235,10 +246,10 @@ class ResourceServerRepositorySpec
 
     "PermissionDb.insert returns PermissionInsertionError" should {
       "return Left containing CannotInsertPermissionError" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
-        permissionDb.insert(any[PermissionEntity.Write]) returns permissionInsertionErrorWrapped
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerEntityReadWrapped)
+        permissionDb.insert(any[PermissionEntity.Write]).returns(permissionInsertionErrorWrapped)
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -248,11 +259,15 @@ class ResourceServerRepositorySpec
 
     "PermissionDb.insert returns different exception" should {
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns (IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        resourceServerDb.insert(any[ResourceServerEntity.Write]) returns resourceServerEntityReadWrapped
-        permissionDb.insert(any[PermissionEntity.Write]) returns testException
-          .raiseError[doobie.ConnectionIO, Either[PermissionInsertionError, PermissionEntity.Read]]
+        uuidGenerator.generateUuid.returns(IO.pure(resourceServerDbId_1), IO.pure(permissionDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        resourceServerDb.insert(any[ResourceServerEntity.Write]).returns(resourceServerEntityReadWrapped)
+        permissionDb
+          .insert(any[PermissionEntity.Write])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Either[PermissionInsertionError, PermissionEntity.Read]]
+          )
 
         resourceServerRepository
           .insert(publicTenantId_1, resourceServer_1)
@@ -273,13 +288,19 @@ class ResourceServerRepositorySpec
     "everything works correctly" should {
 
       "call ResourceServerDb and PermissionDb" in {
-        resourceServerDb.update(
-          any[TenantId],
-          any[ResourceServerEntity.Update]
-        ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
+        resourceServerDb
+          .update(
+            any[TenantId],
+            any[ResourceServerEntity.Update]
+          )
+          .returns(updatedResourceServerEntityReadWrapped)
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
 
         for {
           _ <- resourceServerRepository.update(publicTenantId_1, resourceServerUpdate_1)
@@ -293,13 +314,19 @@ class ResourceServerRepositorySpec
       }
 
       "return Right containing updated ResourceServer" in {
-        resourceServerDb.update(
-          any[TenantId],
-          any[ResourceServerEntity.Update]
-        ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
+        resourceServerDb
+          .update(
+            any[TenantId],
+            any[ResourceServerEntity.Update]
+          )
+          .returns(updatedResourceServerEntityReadWrapped)
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
 
         val expectedUpdatedResourceServer =
           resourceServer_1.copy(name = resourceServerNameUpdated, description = resourceServerDescriptionUpdated)
@@ -313,10 +340,12 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns Left containing ResourceServerNotFoundError" should {
 
       "NOT call PermissionDb" in {
-        resourceServerDb.update(
-          any[TenantId],
-          any[ResourceServerEntity.Update]
-        ) returns resourceServerNotFoundErrorWrapped
+        resourceServerDb
+          .update(
+            any[TenantId],
+            any[ResourceServerEntity.Update]
+          )
+          .returns(resourceServerNotFoundErrorWrapped)
 
         for {
           _ <- resourceServerRepository.update(publicTenantId_1, resourceServerUpdate_1)
@@ -325,10 +354,12 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing this error" in {
-        resourceServerDb.update(
-          any[TenantId],
-          any[ResourceServerEntity.Update]
-        ) returns resourceServerNotFoundErrorWrapped
+        resourceServerDb
+          .update(
+            any[TenantId],
+            any[ResourceServerEntity.Update]
+          )
+          .returns(resourceServerNotFoundErrorWrapped)
 
         resourceServerRepository
           .update(publicTenantId_1, resourceServerUpdate_1)
@@ -340,9 +371,12 @@ class ResourceServerRepositorySpec
 
       "NOT call PermissionDb" in {
         resourceServerDb
-          .update(any[TenantId], any[ResourceServerEntity.Update]) returns testExceptionWrappedE[
-          ResourceServerNotFoundError
-        ]
+          .update(any[TenantId], any[ResourceServerEntity.Update])
+          .returns(
+            testExceptionWrappedE[
+              ResourceServerNotFoundError
+            ]
+          )
 
         for {
           _ <- resourceServerRepository.update(publicTenantId_1, resourceServerUpdate_1).attempt
@@ -352,9 +386,12 @@ class ResourceServerRepositorySpec
 
       "return failed IO containing this exception" in {
         resourceServerDb
-          .update(any[TenantId], any[ResourceServerEntity.Update]) returns testExceptionWrappedE[
-          ResourceServerNotFoundError
-        ]
+          .update(any[TenantId], any[ResourceServerEntity.Update])
+          .returns(
+            testExceptionWrappedE[
+              ResourceServerNotFoundError
+            ]
+          )
 
         resourceServerRepository
           .update(publicTenantId_1, resourceServerUpdate_1)
@@ -365,14 +402,20 @@ class ResourceServerRepositorySpec
 
     "PermissionDb returns an exception" should {
       "return failed IO containing this exception" in {
-        resourceServerDb.update(
-          any[TenantId],
-          any[ResourceServerEntity.Update]
-        ) returns updatedResourceServerEntityReadWrapped
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        ) ++ Stream
-          .raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb
+          .update(
+            any[TenantId],
+            any[ResourceServerEntity.Update]
+          )
+          .returns(updatedResourceServerEntityReadWrapped)
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            ) ++ Stream
+              .raiseError[doobie.ConnectionIO](testException)
+          )
 
         resourceServerRepository
           .update(publicTenantId_1, resourceServerUpdate_1)
@@ -395,20 +438,28 @@ class ResourceServerRepositorySpec
     "everything works correctly" should {
 
       "call ResourceServerDb, PermissionDb and PermissionRepository" in {
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
-        )
-        resourceServerDb.delete(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityReadWrapped
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
+          )
+        resourceServerDb
+          .delete(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(deletedResourceServerEntityReadWrapped)
 
         for {
           _ <- resourceServerRepository.delete(publicTenantId_1, publicResourceServerId_1)
@@ -434,24 +485,34 @@ class ResourceServerRepositorySpec
       }
 
       "return Right containing deleted ResourceServer" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some.pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
-        )
-        resourceServerDb.delete(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityReadWrapped
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(deletedResourceServerEntityRead.some.pure[doobie.ConnectionIO])
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionEntityRead_2.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionEntityRead_3.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO]
+          )
+        resourceServerDb
+          .delete(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(deletedResourceServerEntityReadWrapped)
 
         val expectedDeletedResourceServer =
           resourceServer_1.copy(permissions = List(permission_1, permission_2, permission_3))
@@ -465,15 +526,23 @@ class ResourceServerRepositorySpec
     "PermissionDb.getAllBy returns an exception" should {
 
       "NOT call either PermissionDb.delete or ResourceServerDb.deleteDeactivated" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        ) ++ Stream
-          .raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            ) ++ Stream
+              .raiseError[doobie.ConnectionIO](testException)
+          )
 
         for {
           _ <- resourceServerRepository.delete(publicTenantId_1, publicResourceServerId_1).attempt
@@ -484,15 +553,23 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        ) ++
-          Stream.raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            ) ++
+              Stream.raiseError[doobie.ConnectionIO](testException)
+          )
 
         resourceServerRepository
           .delete(publicTenantId_1, publicResourceServerId_1)
@@ -506,20 +583,30 @@ class ResourceServerRepositorySpec
       val permissionNotFoundError = PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1)
 
       "NOT call ResourceServerDb.deleteDeactivated" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- resourceServerRepository.delete(publicTenantId_1, publicResourceServerId_1)
@@ -528,20 +615,30 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing CannotDeletePermissionError" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            permissionNotFoundError.asLeft[PermissionEntity.Read].pure[doobie.ConnectionIO]
+          )
 
         resourceServerRepository
           .delete(publicTenantId_1, publicResourceServerId_1)
@@ -552,20 +649,30 @@ class ResourceServerRepositorySpec
     "PermissionRepository.deleteOp returns different exception" should {
 
       "NOT call ResourceServerDb.delete" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
+          )
 
         for {
           _ <- resourceServerRepository.delete(publicTenantId_1, publicResourceServerId_1).attempt
@@ -575,20 +682,30 @@ class ResourceServerRepositorySpec
       }
 
       "return Left containing CannotDeletePermissionError" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1,
-          permissionEntityRead_2,
-          permissionEntityRead_3
-        )
-        permissionRepository.deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId]) returns (
-          permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
-          testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1,
+              permissionEntityRead_2,
+              permissionEntityRead_3
+            )
+          )
+        permissionRepository
+          .deleteOp(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            permissionEntityRead_1.asRight[PermissionNotFoundError].pure[doobie.ConnectionIO],
+            testException.raiseError[doobie.ConnectionIO, Either[PermissionNotFoundError, PermissionEntity.Read]]
+          )
 
         resourceServerRepository
           .delete(publicTenantId_1, publicResourceServerId_1)
@@ -599,22 +716,34 @@ class ResourceServerRepositorySpec
 
     "ResourceServerDb.delete returns Left containing ResourceServerNotFoundError" should {
       "return Left containing this error" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
-        permissionRepository.deleteOp(
-          any[TenantId],
-          any[ResourceServerId],
-          any[PermissionId]
-        ) returns permissionEntityRead_1
-          .asRight[PermissionNotFoundError]
-          .pure[doobie.ConnectionIO]
-        resourceServerDb.delete(any[TenantId], any[ResourceServerId]) returns resourceServerNotFoundWrapped
+        resourceServerDb
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
+        permissionRepository
+          .deleteOp(
+            any[TenantId],
+            any[ResourceServerId],
+            any[PermissionId]
+          )
+          .returns(
+            permissionEntityRead_1
+              .asRight[PermissionNotFoundError]
+              .pure[doobie.ConnectionIO]
+          )
+        resourceServerDb.delete(any[TenantId], any[ResourceServerId]).returns(resourceServerNotFoundWrapped)
 
         resourceServerRepository
           .delete(publicTenantId_1, publicResourceServerId_1)
@@ -624,23 +753,36 @@ class ResourceServerRepositorySpec
 
     "ResourceServerDb.delete returns different exception" should {
       "return failed IO containing this exception" in {
-        resourceServerDb.getByPublicResourceServerId(
-          any[TenantId],
-          any[ResourceServerId]
-        ) returns deletedResourceServerEntityRead.some
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
-        permissionRepository.deleteOp(
-          any[TenantId],
-          any[ResourceServerId],
-          any[PermissionId]
-        ) returns permissionEntityRead_1
-          .asRight[PermissionNotFoundError]
-          .pure[doobie.ConnectionIO]
         resourceServerDb
-          .delete(any[TenantId], any[ResourceServerId]) returns testExceptionWrappedE[ResourceServerDbError]
+          .getByPublicResourceServerId(
+            any[TenantId],
+            any[ResourceServerId]
+          )
+          .returns(
+            deletedResourceServerEntityRead.some
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
+        permissionRepository
+          .deleteOp(
+            any[TenantId],
+            any[ResourceServerId],
+            any[PermissionId]
+          )
+          .returns(
+            permissionEntityRead_1
+              .asRight[PermissionNotFoundError]
+              .pure[doobie.ConnectionIO]
+          )
+        resourceServerDb
+          .delete(any[TenantId], any[ResourceServerId])
+          .returns(testExceptionWrappedE[ResourceServerDbError])
 
         resourceServerRepository
           .delete(publicTenantId_1, publicResourceServerId_1)
@@ -653,11 +795,15 @@ class ResourceServerRepositorySpec
   "ResourceServerRepository on getBy(:resourceServerId)" when {
 
     "should always call ResourceServerDb" in {
-      resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns Option(
-        resourceServerEntityRead_1
-      )
-        .pure[doobie.ConnectionIO]
-      permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream.empty
+      resourceServerDb
+        .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+        .returns(
+          Option(
+            resourceServerEntityRead_1
+          )
+            .pure[doobie.ConnectionIO]
+        )
+      permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]).returns(Stream.empty)
 
       for {
         _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1)
@@ -673,8 +819,11 @@ class ResourceServerRepositorySpec
 
       "NOT call PermissionDb" in {
         resourceServerDb
-          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns none[ResourceServerEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            none[ResourceServerEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1).attempt
@@ -684,8 +833,11 @@ class ResourceServerRepositorySpec
 
       "return empty Option" in {
         resourceServerDb
-          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns none[ResourceServerEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            none[ResourceServerEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1).asserting(_ shouldBe None)
       }
@@ -694,13 +846,21 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns Option containing ResourceServerEntity" should {
 
       "call PermissionDb with publicResourceServerId" in {
-        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns Option(
-          resourceServerEntityRead_1
-        )
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            Option(
+              resourceServerEntityRead_1
+            )
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
 
         for {
           _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1)
@@ -712,13 +872,21 @@ class ResourceServerRepositorySpec
       }
 
       "return Option containing ResourceServer" in {
-        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns Option(
-          resourceServerEntityRead_1
-        )
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        )
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            Option(
+              resourceServerEntityRead_1
+            )
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            )
+          )
 
         resourceServerRepository
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -729,8 +897,12 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns exception" should {
 
       "NOT call PermissionDb" in {
-        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
+          )
 
         for {
           _ <- resourceServerRepository.getBy(publicTenantId_1, publicResourceServerId_1).attempt
@@ -739,8 +911,12 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ResourceServerEntity.Read]]
+          )
 
         resourceServerRepository
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -751,14 +927,22 @@ class ResourceServerRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        resourceServerDb.getByPublicResourceServerId(any[TenantId], any[ResourceServerId]) returns Option(
-          resourceServerEntityRead_1
-        )
-          .pure[doobie.ConnectionIO]
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        ) ++ Stream
-          .raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb
+          .getByPublicResourceServerId(any[TenantId], any[ResourceServerId])
+          .returns(
+            Option(
+              resourceServerEntityRead_1
+            )
+              .pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            ) ++ Stream
+              .raiseError[doobie.ConnectionIO](testException)
+          )
 
         resourceServerRepository
           .getBy(publicTenantId_1, publicResourceServerId_1)
@@ -771,7 +955,7 @@ class ResourceServerRepositorySpec
   "ResourceServerRepository on getAllForTenant" when {
 
     "should always call ResourceServerDb" in {
-      resourceServerDb.getAllForTenant(any[TenantId]) returns Stream.empty
+      resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream.empty)
 
       for {
         _ <- resourceServerRepository.getAllForTenant(publicTenantId_1)
@@ -783,7 +967,7 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns empty Stream" should {
 
       "NOT call PermissionDb" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream.empty
+        resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream.empty)
 
         for {
           _ <- resourceServerRepository.getAllForTenant(publicTenantId_1)
@@ -792,7 +976,7 @@ class ResourceServerRepositorySpec
       }
 
       "return empty List" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream.empty
+        resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream.empty)
 
         resourceServerRepository.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List.empty[ResourceServer])
       }
@@ -801,16 +985,22 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns ResourceServerEntities in Stream" should {
 
       "call PermissionDb with every publicResourceServerId" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream(
-          resourceServerEntityRead_1,
-          resourceServerEntityRead_2,
-          resourceServerEntityRead_3
-        )
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns (
-          Stream(permissionEntityRead_1),
-          Stream(permissionEntityRead_2),
-          Stream(permissionEntityRead_3)
-        )
+        resourceServerDb
+          .getAllForTenant(any[TenantId])
+          .returns(
+            Stream(
+              resourceServerEntityRead_1,
+              resourceServerEntityRead_2,
+              resourceServerEntityRead_3
+            )
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(permissionEntityRead_1),
+            Stream(permissionEntityRead_2),
+            Stream(permissionEntityRead_3)
+          )
 
         for {
           _ <- resourceServerRepository.getAllForTenant(publicTenantId_1)
@@ -831,16 +1021,22 @@ class ResourceServerRepositorySpec
       }
 
       "return List containing ResourceServers" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream(
-          resourceServerEntityRead_1,
-          resourceServerEntityRead_2,
-          resourceServerEntityRead_3
-        )
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns (
-          Stream(permissionEntityRead_1),
-          Stream(permissionEntityRead_2),
-          Stream(permissionEntityRead_3)
-        )
+        resourceServerDb
+          .getAllForTenant(any[TenantId])
+          .returns(
+            Stream(
+              resourceServerEntityRead_1,
+              resourceServerEntityRead_2,
+              resourceServerEntityRead_3
+            )
+          )
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(permissionEntityRead_1),
+            Stream(permissionEntityRead_2),
+            Stream(permissionEntityRead_3)
+          )
 
         resourceServerRepository
           .getAllForTenant(publicTenantId_1)
@@ -851,7 +1047,7 @@ class ResourceServerRepositorySpec
     "ResourceServerDb returns exception" should {
 
       "NOT call PermissionDb" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream.raiseError[doobie.ConnectionIO](testException))
 
         for {
           _ <- resourceServerRepository.getAllForTenant(publicTenantId_1).attempt
@@ -860,7 +1056,7 @@ class ResourceServerRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream.raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream.raiseError[doobie.ConnectionIO](testException))
 
         resourceServerRepository.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -868,11 +1064,15 @@ class ResourceServerRepositorySpec
 
     "PermissionDb returns exception" should {
       "return failed IO containing this exception" in {
-        resourceServerDb.getAllForTenant(any[TenantId]) returns Stream(resourceServerEntityRead_1)
-        permissionDb.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns Stream(
-          permissionEntityRead_1
-        ) ++ Stream
-          .raiseError[doobie.ConnectionIO](testException)
+        resourceServerDb.getAllForTenant(any[TenantId]).returns(Stream(resourceServerEntityRead_1))
+        permissionDb
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            Stream(
+              permissionEntityRead_1
+            ) ++ Stream
+              .raiseError[doobie.ConnectionIO](testException)
+          )
 
         resourceServerRepository.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }

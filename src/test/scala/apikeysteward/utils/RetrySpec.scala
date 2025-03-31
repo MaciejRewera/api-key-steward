@@ -29,11 +29,11 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
 
     "action succeeds on the first try" should {
 
-      val maxRetries = 0
+      val maxRetries                              = 0
       val isWorthRetrying: CustomError => Boolean = (_: CustomError) => true
 
       "NOT execute action again" in {
-        action.run returns IO.pure(Right[CustomError, String]("Success!"))
+        action.run.returns(IO.pure(Right[CustomError, String]("Success!")))
 
         for {
           _ <- Retry.retry(maxRetries, isWorthRetrying)(action.run)
@@ -42,7 +42,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
 
       "return the action's result" in {
-        action.run returns IO.pure(Right[CustomError, String]("Success!"))
+        action.run.returns(IO.pure(Right[CustomError, String]("Success!")))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).asserting(_ shouldBe "Success!")
       }
@@ -50,11 +50,11 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
 
     "action fails, isWorthRetrying returns true, but maxRetries is zero" should {
 
-      val maxRetries = 0
+      val maxRetries                              = 0
       val isWorthRetrying: CustomError => Boolean = (_: CustomError) => true
 
       "NOT execute action again" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         for {
           _ <- Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt
@@ -64,7 +64,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
 
       "return MaxNumberOfRetriesExceeded exception" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>
           res.isLeft shouldBe true
@@ -76,11 +76,11 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
 
     "action fails, maxRetries is greater than zero, but isWorthRetrying returns false" should {
 
-      val maxRetries = 3
+      val maxRetries                              = 3
       val isWorthRetrying: CustomError => Boolean = (_: CustomError) => false
 
       "NOT execute action again" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         for {
           _ <- Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt
@@ -90,7 +90,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
 
       "return ReceivedErrorNotConfiguredToRetry exception" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>
           res.isLeft shouldBe true
@@ -102,11 +102,11 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
 
     "action fails continuously, isWorthRetrying returns true and maxRetries is greater than zero" should {
 
-      val maxRetries = 3
+      val maxRetries                              = 3
       val isWorthRetrying: CustomError => Boolean = (_: CustomError) => true
 
       "execute action again up to maxRetries times" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         for {
           _ <- Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt
@@ -116,7 +116,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
 
       "return MaxNumberOfRetriesExceeded exception" in {
-        action.run returns IO.pure(Left[CustomError, String](testException))
+        action.run.returns(IO.pure(Left[CustomError, String](testException)))
 
         Retry.retry(maxRetries, isWorthRetrying)(action.run).attempt.asserting { res =>
           res.isLeft shouldBe true
@@ -128,11 +128,11 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
 
     "action fails several times before succeeding, isWorthRetrying returns true and maxRetries is greater than the amount of failed actions" should {
 
-      val maxRetries = 3
+      val maxRetries                              = 3
       val isWorthRetrying: CustomError => Boolean = (_: CustomError) => true
 
       "execute action until it succeeds" in {
-        action.run returns (
+        action.run.returns(
           IO.pure(Left[CustomError, String](testException)),
           IO.pure(Left[CustomError, String](testException)),
           IO.pure(Right[CustomError, String]("Success!"))
@@ -146,7 +146,7 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
 
       "return the action's result" in {
-        action.run returns (
+        action.run.returns(
           IO.pure(Left[CustomError, String](testException)),
           IO.pure(Left[CustomError, String](testException)),
           IO.pure(Right[CustomError, String]("Success!"))
@@ -156,4 +156,5 @@ class RetrySpec extends AsyncWordSpec with AsyncIOSpec with Matchers with Before
       }
     }
   }
+
 }

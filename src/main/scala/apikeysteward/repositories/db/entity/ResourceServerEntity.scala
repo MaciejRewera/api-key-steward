@@ -26,6 +26,7 @@ object ResourceServerEntity {
   )
 
   object Write {
+
     def from(id: UUID, tenantId: UUID, resourceServer: ResourceServer): ResourceServerEntity.Write =
       ResourceServerEntity.Write(
         id = id,
@@ -34,6 +35,7 @@ object ResourceServerEntity {
         name = resourceServer.name,
         description = resourceServer.description
       )
+
   }
 
   case class Update(
@@ -43,12 +45,14 @@ object ResourceServerEntity {
   )
 
   object Update {
+
     def from(resourceServerUpdate: ResourceServerUpdate): ResourceServerEntity.Update =
       ResourceServerEntity.Update(
         publicResourceServerId = resourceServerUpdate.resourceServerId.toString,
         name = resourceServerUpdate.name,
         description = resourceServerUpdate.description
       )
+
   }
 
 }

@@ -19,10 +19,10 @@ object PermissionsTestData extends FixedClock {
   val permissionDbId_2: UUID = UUID.randomUUID()
   val permissionDbId_3: UUID = UUID.randomUUID()
 
-  val publicPermissionId_1: UUID = UUID.randomUUID()
-  val publicPermissionId_2: UUID = UUID.randomUUID()
-  val publicPermissionId_3: UUID = UUID.randomUUID()
-  val publicPermissionId_4: UUID = UUID.randomUUID()
+  val publicPermissionId_1: UUID      = UUID.randomUUID()
+  val publicPermissionId_2: UUID      = UUID.randomUUID()
+  val publicPermissionId_3: UUID      = UUID.randomUUID()
+  val publicPermissionId_4: UUID      = UUID.randomUUID()
   val publicPermissionIdStr_1: String = publicPermissionId_1.toString
   val publicPermissionIdStr_2: String = publicPermissionId_2.toString
   val publicPermissionIdStr_3: String = publicPermissionId_3.toString
@@ -40,8 +40,10 @@ object PermissionsTestData extends FixedClock {
 
   val createPermissionRequest_1: CreatePermissionRequest =
     CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
+
   val createPermissionRequest_2: CreatePermissionRequest =
     CreatePermissionRequest(name = permissionName_2, description = permissionDescription_2)
+
   val createPermissionRequest_3: CreatePermissionRequest =
     CreatePermissionRequest(name = permissionName_3, description = permissionDescription_3)
 
@@ -50,16 +52,19 @@ object PermissionsTestData extends FixedClock {
     name = permissionName_1,
     description = permissionDescription_1
   )
+
   val permission_2: Permission = Permission(
     publicPermissionId = publicPermissionId_2,
     name = permissionName_2,
     description = permissionDescription_2
   )
+
   val permission_3: Permission = Permission(
     publicPermissionId = publicPermissionId_3,
     name = permissionName_3,
     description = permissionDescription_3
   )
+
   val permission_4: Permission = Permission(
     publicPermissionId = publicPermissionId_4,
     name = permissionName_4,
@@ -74,6 +79,7 @@ object PermissionsTestData extends FixedClock {
     name = permissionName_1,
     description = permissionDescription_1
   )
+
   val permissionEntityRead_1: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_1,
     tenantId = tenantDbId_1,
@@ -93,6 +99,7 @@ object PermissionsTestData extends FixedClock {
     name = permissionName_2,
     description = permissionDescription_2
   )
+
   val permissionEntityRead_2: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_2,
     tenantId = tenantDbId_1,
@@ -112,6 +119,7 @@ object PermissionsTestData extends FixedClock {
     name = permissionName_3,
     description = permissionDescription_3
   )
+
   val permissionEntityRead_3: PermissionEntity.Read = PermissionEntity.Read(
     id = permissionDbId_3,
     tenantId = tenantDbId_1,

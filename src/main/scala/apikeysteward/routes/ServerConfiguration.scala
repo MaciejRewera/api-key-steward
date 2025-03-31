@@ -57,4 +57,5 @@ object ServerConfiguration {
     .exceptionHandler(customExceptionHandler)
     .serverLog(Http4sServerOptions.defaultServerLog[IO])
     .options
+
 }

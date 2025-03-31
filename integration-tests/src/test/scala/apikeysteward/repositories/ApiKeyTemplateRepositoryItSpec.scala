@@ -59,7 +59,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyTemplatesUsersAssociations(publicTemplateId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- getApiKeyTemplatesUsersAssociations(publicTemplateId_1)
       } yield res
 
@@ -73,7 +73,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyTemplatesPermissionsAssociations(publicTemplateId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- getApiKeyTemplatesPermissionsAssociations(publicTemplateId_1)
       } yield res
 
@@ -87,7 +87,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyTemplate(publicTemplateId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- getApiKeyTemplate(publicTemplateId_1)
       } yield res
 
@@ -101,7 +101,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- Queries.getAllApiKeysPermissionsAssociations.transact(transactor)
       } yield res
 
@@ -126,7 +126,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeyData.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- Queries.getAllApiKeyData.transact(transactor)
       } yield res
 
@@ -148,7 +148,7 @@ class ApiKeyTemplateRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeys.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicTemplateId_1)
+        _   <- repository.delete(publicTenantId_1, publicTemplateId_1)
         res <- Queries.getAllApiKeys.transact(transactor)
       } yield res
 

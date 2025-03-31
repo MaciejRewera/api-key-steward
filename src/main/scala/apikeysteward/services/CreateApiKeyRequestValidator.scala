@@ -114,11 +114,13 @@ class CreateApiKeyRequestValidator(
       createApiKeyRequest,
       TtlTooLargeError(createApiKeyRequest.ttl, apiKeyTemplate.apiKeyMaxExpiryPeriod)
     )
+
 }
 
 object CreateApiKeyRequestValidator {
 
   sealed abstract class CreateApiKeyRequestValidatorError(override val message: String) extends CustomError
+
   object CreateApiKeyRequestValidatorError {
 
     case class UserNotFoundError(publicTenantId: TenantId, publicUserId: UserId)
@@ -149,6 +151,7 @@ object CreateApiKeyRequestValidator {
           message =
             s"Provided request contains time-to-live (ttl) of: $ttlRequest which is bigger than maximum allowed value of: $ttlMax."
         )
+
   }
 
 }

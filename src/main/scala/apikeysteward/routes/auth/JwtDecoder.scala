@@ -23,10 +23,10 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
   def decode(accessToken: String): IO[Either[JwtDecoderError, JsonWebToken]] =
     (for {
       jwt <- decodeNoSignature(accessToken)
-      _ <- validateToken(jwt)
+      _   <- validateToken(jwt)
 
-      keyId <- extractKeyId(jwt.header)
-      jwk <- fetchJwk(keyId)
+      keyId     <- extractKeyId(jwt.header)
+      jwk       <- fetchJwk(keyId)
       publicKey <- generatePublicKey(jwk)
 
       jsonWebToken <- decodeToken(accessToken, publicKey)
@@ -42,7 +42,7 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
     EitherT(
       for {
         jwkOpt <- jwkProvider.getJsonWebKey(keyId)
-        res <- IO(Either.fromOption(jwkOpt, MatchingJwkNotFoundError(keyId)))
+        res    <- IO(Either.fromOption(jwkOpt, MatchingJwkNotFoundError(keyId)))
       } yield res
     )
 
@@ -57,7 +57,7 @@ class JwtDecoder(jwtValidator: JwtValidator, jwkProvider: JwkProvider, publicKey
       .leftSemiflatTap(decoderError => logger.warn(s"${decoderError.message}. Provided JWK: $jwk"))
 
   private def decodeNoSignature(accessToken: String): EitherT[IO, JwtDecoderError, JsonWebToken] = {
-    val FakeKey = "fakeKey"
+    val FakeKey                             = "fakeKey"
     val VerificationFlagsDecode: JwtOptions = new JwtOptions(signature = false, expiration = true)
 
     decodeToken(accessToken)(
@@ -101,6 +101,7 @@ object JwtDecoder {
       extends JwtDecoderError(
         message = s"An error occurred while validating the JWT: ${errors.map(_.message).mkString("['", "', '", "']")}."
       )
+
   object ValidationError {
     def apply(jwtValidationError: JwtValidatorError): ValidationError = ValidationError(Seq(jwtValidationError))
   }

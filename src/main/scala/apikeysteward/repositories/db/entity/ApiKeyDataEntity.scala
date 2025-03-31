@@ -34,6 +34,7 @@ object ApiKeyDataEntity {
   )
 
   object Write {
+
     def from(
         id: UUID,
         tenantId: UUID,
@@ -53,6 +54,7 @@ object ApiKeyDataEntity {
         description = apiKeyData.description,
         expiresAt = apiKeyData.expiresAt
       )
+
   }
 
   case class Update(
@@ -62,11 +64,14 @@ object ApiKeyDataEntity {
   )
 
   object Update {
+
     def from(apiKeyDataUpdate: ApiKeyDataUpdate): ApiKeyDataEntity.Update =
       ApiKeyDataEntity.Update(
         publicKeyId = apiKeyDataUpdate.publicKeyId.toString,
         name = apiKeyDataUpdate.name,
         description = apiKeyDataUpdate.description
       )
+
   }
+
 }

@@ -14,23 +14,23 @@ object ResourceServersTestData extends FixedClock {
   val resourceServerDbId_2: UUID = UUID.randomUUID()
   val resourceServerDbId_3: UUID = UUID.randomUUID()
 
-  val publicResourceServerId_1: UUID = UUID.randomUUID()
-  val publicResourceServerId_2: UUID = UUID.randomUUID()
-  val publicResourceServerId_3: UUID = UUID.randomUUID()
-  val publicResourceServerId_4: UUID = UUID.randomUUID()
+  val publicResourceServerId_1: UUID      = UUID.randomUUID()
+  val publicResourceServerId_2: UUID      = UUID.randomUUID()
+  val publicResourceServerId_3: UUID      = UUID.randomUUID()
+  val publicResourceServerId_4: UUID      = UUID.randomUUID()
   val publicResourceServerIdStr_1: String = publicResourceServerId_1.toString
   val publicResourceServerIdStr_2: String = publicResourceServerId_2.toString
   val publicResourceServerIdStr_3: String = publicResourceServerId_3.toString
   val publicResourceServerIdStr_4: String = publicResourceServerId_4.toString
 
-  val resourceServerName_1 = "ResourceServer Name 1"
-  val resourceServerName_2 = "ResourceServer Name 2"
-  val resourceServerName_3 = "ResourceServer Name 3"
+  val resourceServerName_1      = "ResourceServer Name 1"
+  val resourceServerName_2      = "ResourceServer Name 2"
+  val resourceServerName_3      = "ResourceServer Name 3"
   val resourceServerNameUpdated = "Updated ResourceServer Name"
 
-  val resourceServerDescription_1: Option[String] = Some("Test ResourceServer description no. 1.")
-  val resourceServerDescription_2: Option[String] = Some("Test ResourceServer description no. 2.")
-  val resourceServerDescription_3: Option[String] = Some("Test ResourceServer description no. 3.")
+  val resourceServerDescription_1: Option[String]      = Some("Test ResourceServer description no. 1.")
+  val resourceServerDescription_2: Option[String]      = Some("Test ResourceServer description no. 2.")
+  val resourceServerDescription_3: Option[String]      = Some("Test ResourceServer description no. 3.")
   val resourceServerDescriptionUpdated: Option[String] = Some("Test Updated ResourceServer description.")
 
   val resourceServer_1: ResourceServer = ResourceServer(
@@ -39,12 +39,14 @@ object ResourceServersTestData extends FixedClock {
     description = resourceServerDescription_1,
     permissions = List(permission_1)
   )
+
   val resourceServer_2: ResourceServer = ResourceServer(
     resourceServerId = publicResourceServerId_2,
     name = resourceServerName_2,
     description = resourceServerDescription_2,
     permissions = List(permission_2)
   )
+
   val resourceServer_3: ResourceServer = ResourceServer(
     resourceServerId = publicResourceServerId_3,
     name = resourceServerName_3,
@@ -66,6 +68,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_1,
     description = resourceServerDescription_1
   )
+
   val resourceServerEntityRead_1: ResourceServerEntity.Read = ResourceServerEntity.Read(
     id = resourceServerDbId_1,
     tenantId = tenantDbId_1,
@@ -83,6 +86,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_2,
     description = resourceServerDescription_2
   )
+
   val resourceServerEntityRead_2: ResourceServerEntity.Read = ResourceServerEntity.Read(
     id = resourceServerDbId_2,
     tenantId = tenantDbId_2,
@@ -100,6 +104,7 @@ object ResourceServersTestData extends FixedClock {
     name = resourceServerName_3,
     description = resourceServerDescription_3
   )
+
   val resourceServerEntityRead_3: ResourceServerEntity.Read = ResourceServerEntity.Read(
     id = resourceServerDbId_3,
     tenantId = tenantDbId_3,

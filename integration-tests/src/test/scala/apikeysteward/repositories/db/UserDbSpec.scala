@@ -30,34 +30,35 @@ class UserDbSpec
     _ <- sql"TRUNCATE tenant, tenant_user, api_key_template, api_key_templates_users CASCADE".update.run
   } yield ()
 
-  private val tenantDb = new TenantDb
-  private val apiKeyTemplateDb = new ApiKeyTemplateDb
+  private val tenantDb               = new TenantDb
+  private val apiKeyTemplateDb       = new ApiKeyTemplateDb
   private val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
 
   private val userDb = new UserDb
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
     val getAllUsers: doobie.ConnectionIO[List[UserEntity.Read]] =
       sql"SELECT * FROM tenant_user".query[UserEntity.Read].stream.compile.toList
+
   }
 
   "UserDb on insert" when {
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing ReferencedTenantDoesNotExistError" in {
+      "return Left containing ReferencedTenantDoesNotExistError" in
         userDb
           .insert(userEntityWrite_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_1)))
-      }
 
       "NOT insert any entity into the DB" in {
         val result = for {
-          _ <- userDb.insert(userEntityWrite_1).transact(transactor)
+          _   <- userDb.insert(userEntityWrite_1).transact(transactor)
           res <- Queries.getAllUsers.transact(transactor)
         } yield res
 
@@ -81,7 +82,7 @@ class UserDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
 
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          _   <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
           res <- Queries.getAllUsers.transact(transactor)
         } yield res
 
@@ -107,7 +108,7 @@ class UserDbSpec
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
 
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _   <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
           res <- Queries.getAllUsers
         } yield (res, tenantId)).transact(transactor)
 
@@ -126,7 +127,7 @@ class UserDbSpec
         val result = (for {
           tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
+          _          <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
 
           res <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
         } yield (res, tenantId_2)).transact(transactor)
@@ -138,12 +139,12 @@ class UserDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+          tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
           entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
 
           entityRead_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
-          res <- Queries.getAllUsers
+          res          <- Queries.getAllUsers
         } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
 
         result.asserting { case (allUsers, entityRead_1, entityRead_2) =>
@@ -163,7 +164,7 @@ class UserDbSpec
       "return inserted entity" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId))
         } yield (res, tenantId)).transact(transactor)
@@ -175,11 +176,11 @@ class UserDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          tenantId     <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           entityRead_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId))
-          res <- Queries.getAllUsers
+          res          <- Queries.getAllUsers
         } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
 
         result.asserting { case (allUsers, entityRead_1, entityRead_2) =>
@@ -214,7 +215,7 @@ class UserDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_2)
           _ <- userDb.insert(userEntityWrite_1)
 
-          _ <- userDb.insert(userEntityWrite_2.copy(publicUserId = publicUserIdStr_1))
+          _   <- userDb.insert(userEntityWrite_2.copy(publicUserId = publicUserIdStr_1))
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -266,16 +267,15 @@ class UserDbSpec
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing UserNotFoundError" in {
+      "return Left containing UserNotFoundError" in
         userDb
           .delete(publicTenantId_1, publicUserId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_1)))
-      }
 
       "NOT insert any entity into the DB" in {
         val result = for {
-          _ <- userDb.delete(publicTenantId_1, publicUserId_1).transact(transactor)
+          _   <- userDb.delete(publicTenantId_1, publicUserId_1).transact(transactor)
           res <- Queries.getAllUsers.transact(transactor)
         } yield res
 
@@ -285,16 +285,15 @@ class UserDbSpec
 
     "there are no rows in the DB" should {
 
-      "return Left containing UserNotFoundError" in {
+      "return Left containing UserNotFoundError" in
         userDb
           .delete(publicTenantId_1, publicUserId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(UserNotFoundError(publicTenantId_1, publicUserId_1)))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- userDb.delete(publicTenantId_1, publicUserId_1)
+          _   <- userDb.delete(publicTenantId_1, publicUserId_1)
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -320,7 +319,7 @@ class UserDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- userDb.insert(userEntityWrite_1)
 
-          _ <- userDb.delete(publicTenantId_2, publicUserId_2)
+          _   <- userDb.delete(publicTenantId_2, publicUserId_2)
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -351,7 +350,7 @@ class UserDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- userDb.insert(userEntityWrite_1)
 
-          _ <- userDb.delete(publicTenantId_1, publicUserId_2)
+          _   <- userDb.delete(publicTenantId_1, publicUserId_2)
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -382,7 +381,7 @@ class UserDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- userDb.insert(userEntityWrite_1)
 
-          _ <- userDb.delete(publicTenantId_2, publicUserId_1)
+          _   <- userDb.delete(publicTenantId_2, publicUserId_1)
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -399,7 +398,7 @@ class UserDbSpec
 
       "return deleted entity" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _          <- tenantDb.insert(tenantEntityWrite_1)
           entityRead <- userDb.insert(userEntityWrite_1)
 
           res <- userDb.delete(publicTenantId_1, publicUserId_1)
@@ -415,7 +414,7 @@ class UserDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- userDb.insert(userEntityWrite_1)
 
-          _ <- userDb.delete(publicTenantId_1, publicUserId_1)
+          _   <- userDb.delete(publicTenantId_1, publicUserId_1)
           res <- Queries.getAllUsers
         } yield res).transact(transactor)
 
@@ -430,8 +429,8 @@ class UserDbSpec
           tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
           entityRead <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
-          _ <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_1))
-          _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
+          _          <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_1))
+          _          <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
 
           res <- userDb.delete(publicTenantId_1, publicUserId_1)
         } yield (res, entityRead.value)).transact(transactor)
@@ -443,13 +442,13 @@ class UserDbSpec
 
       "delete this row from the DB and leave others intact" in {
         val result = (for {
-          tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
+          tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+          _            <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
           entityRead_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_1))
           entityRead_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
 
-          _ <- userDb.delete(publicTenantId_1, publicUserId_1)
+          _   <- userDb.delete(publicTenantId_1, publicUserId_1)
           res <- Queries.getAllUsers
         } yield (res, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -465,12 +464,11 @@ class UserDbSpec
   "UserDb on getByPublicUserId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         userDb
           .getByPublicUserId(publicTenantId_1, publicUserId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[UserEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -489,7 +487,7 @@ class UserDbSpec
       "return empty Option" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.getByPublicUserId(publicTenantId_2, publicUserId_1)
         } yield res).transact(transactor)
@@ -502,7 +500,7 @@ class UserDbSpec
       "return empty Option" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.getByPublicUserId(publicTenantId_1, publicUserId_2)
         } yield res).transact(transactor)
@@ -515,7 +513,7 @@ class UserDbSpec
       "return this entity" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.getByPublicUserId(publicTenantId_1, publicUserId_1)
         } yield res).transact(transactor)
@@ -528,14 +526,13 @@ class UserDbSpec
   "UserDb on getAllForTemplate" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Stream" in {
+      "return empty Stream" in
         userDb
           .getAllForTemplate(publicTenantId_1, publicTemplateId_1)
           .compile
           .toList
           .transact(transactor)
           .asserting(_ shouldBe List.empty[UserEntity.Read])
-      }
     }
 
     "there are NO ApiKeyTemplates in the DB" should {
@@ -632,7 +629,7 @@ class UserDbSpec
           userId_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
           userId_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId)).map(_.value.id)
           userId_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId)).map(_.value.id)
-          _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
+          _        <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_1.copy(tenantId = tenantId))
 
           preExistingEntities = List(
             apiKeyTemplatesUsersEntityWrite_1_1,
@@ -744,21 +741,20 @@ class UserDbSpec
   "UserDb on getAllForTenant" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Stream" in {
+      "return empty Stream" in
         userDb
           .getAllForTenant(publicTenantId_1)
           .compile
           .toList
           .transact(transactor)
           .asserting(_ shouldBe List.empty[UserEntity.Read])
-      }
     }
 
     "there is a Tenant in the DB, but with a different publicTenantId" should {
       "return empty Stream" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.getAllForTenant(publicTenantId_2).compile.toList
         } yield res).transact(transactor)
@@ -783,7 +779,7 @@ class UserDbSpec
       "return this single User" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
+          _        <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
 
           res <- userDb.getAllForTenant(publicTenantId_1).compile.toList
         } yield res).transact(transactor)
@@ -797,7 +793,7 @@ class UserDbSpec
     "there is a Tenant in the DB with multiple Users" should {
       "return all these Users" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          tenantId     <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId))
           entityRead_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId))
           entityRead_3 <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId))
@@ -819,10 +815,10 @@ class UserDbSpec
           val result = (for {
             tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
             tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            _ <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
-            _ <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
-            _ <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
-            _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
+            _          <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            _          <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
+            _          <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
+            _          <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
 
             res <- userDb.getAllForTenant(publicTenantId_3).compile.toList
           } yield res).transact(transactor)
@@ -834,12 +830,12 @@ class UserDbSpec
       "there is a single User for given publicTenantId" should {
         "return this single User" in {
           val result = (for {
-            tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            tenantId_3 <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+            tenantId_3   <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
             entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
-            _ <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
-            _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_3))
+            _            <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_2))
+            _            <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_3))
 
             res <- userDb.getAllForTenant(publicTenantId_1).compile.toList
           } yield (res, entityRead_1.value)).transact(transactor)
@@ -853,12 +849,12 @@ class UserDbSpec
       "there are several Users for given publicTenantId" should {
         "return all these Users" in {
           val result = (for {
-            tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            _ <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+            _            <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
             entityRead_1 <- userDb.insert(userEntityWrite_1.copy(tenantId = tenantId_1))
             entityRead_2 <- userDb.insert(userEntityWrite_2.copy(tenantId = tenantId_1))
-            _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
+            _            <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId_2))
 
             expectedEntities = Seq(entityRead_1, entityRead_2).map(_.value)
 
@@ -876,12 +872,11 @@ class UserDbSpec
   "UserDb on getByDbId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         userDb
           .getByDbId(publicTenantId_1, userDbId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[UserEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -935,4 +930,5 @@ class UserDbSpec
       }
     }
   }
+
 }

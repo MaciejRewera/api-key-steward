@@ -6,10 +6,12 @@ import java.sql.SQLException
 import java.util.UUID
 
 sealed abstract class ApiKeyTemplateDbError(override val message: String) extends CustomError
+
 object ApiKeyTemplateDbError {
 
   sealed abstract class ApiKeyTemplateInsertionError(override val message: String)
       extends ApiKeyTemplateDbError(message)
+
   object ApiKeyTemplateInsertionError {
 
     case class IncorrectRandomSectionLength(randomSectionLength: Int)
@@ -24,6 +26,7 @@ object ApiKeyTemplateDbError {
         )
 
     trait ReferencedTenantDoesNotExistError extends ApiKeyTemplateInsertionError { val errorMessage: String }
+
     object ReferencedTenantDoesNotExistError {
 
       private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
@@ -34,18 +37,22 @@ object ApiKeyTemplateDbError {
         ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
         )
+
       def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError =
         ReferencedTenantDoesNotExistErrorImpl(
           errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
         )
+
     }
 
     case class ApiKeyTemplateInsertionErrorImpl(cause: SQLException)
         extends ApiKeyTemplateInsertionError(message = s"An error occurred when inserting ApiKeyTemplate: $cause")
+
   }
 
   case class ApiKeyTemplateNotFoundError(publicTemplateId: String)
       extends ApiKeyTemplateDbError(
         message = s"Could not find ApiKeyTemplate with publicTemplateId = [$publicTemplateId]."
       )
+
 }

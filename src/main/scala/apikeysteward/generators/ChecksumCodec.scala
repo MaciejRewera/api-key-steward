@@ -21,17 +21,21 @@ class ChecksumCodec {
       ProvidedEncodedChecksumTooLongError(encodedChecksum).asLeft
     else
       Base62.decode(encodedChecksum.toCharArray.dropWhile(_ == paddingChar)).asRight
+
 }
 
 object ChecksumCodec {
   val EncodedChecksumLength: Int = 6
 
   sealed abstract class ChecksumDecodingError(val message: String)
+
   object ChecksumDecodingError {
+
     case class ProvidedEncodedChecksumTooLongError(encodedChecksum: String)
         extends ChecksumDecodingError(
           s"Checksum should have at most $EncodedChecksumLength characters, but received checksum of length ${encodedChecksum.length}: '$encodedChecksum'."
         )
+
   }
 
 }

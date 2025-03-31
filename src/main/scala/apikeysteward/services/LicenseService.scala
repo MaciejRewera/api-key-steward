@@ -26,6 +26,7 @@ class LicenseService(
           .metered(config.validationPeriod)
           .takeThrough(identity)
     ).compile.drain
+
 }
 
 object LicenseService {
@@ -35,4 +36,5 @@ object LicenseService {
       validationPeriod: FiniteDuration,
       licenseConfig: LicenseConfig
   )
+
 }

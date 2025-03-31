@@ -39,7 +39,7 @@ class JwtAuthorizer(jwtDecoder: JwtDecoder) {
 }
 
 object JwtAuthorizer {
-  type AccessToken = String
+  type AccessToken                = String
   private[routes] type Permission = String
 
   def buildNoRequiredPermissionsUnauthorizedErrorInfo(
@@ -50,6 +50,6 @@ object JwtAuthorizer {
 
   private def buildErrorMessage(requiredPermissions: Set[Permission], providedPermissions: Set[Permission]): String =
     s"Provided token does not contain all required permissions: ${requiredPermissions.mkString("[", ", ", "]")}. Permissions provided in the token: ${providedPermissions
-      .mkString("[", ", ", "]")}."
+        .mkString("[", ", ", "]")}."
 
 }

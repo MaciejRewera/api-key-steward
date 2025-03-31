@@ -32,9 +32,9 @@ class ApiKeyTemplateServiceSpec
     with FixedClock
     with BeforeAndAfterEach {
 
-  private val uuidGenerator = mock[UuidGenerator]
+  private val uuidGenerator            = mock[UuidGenerator]
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
-  private val userRepository = mock[UserRepository]
+  private val userRepository           = mock[UserRepository]
 
   private val apiKeyTemplateService = new ApiKeyTemplateService(uuidGenerator, apiKeyTemplateRepository, userRepository)
 
@@ -61,8 +61,8 @@ class ApiKeyTemplateServiceSpec
     "everything works correctly" should {
 
       "call UuidGenerator and ApiKeyTemplateRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(Right(apiKeyTemplate))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]).returns(IO.pure(Right(apiKeyTemplate)))
 
         for {
           _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -73,8 +73,8 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return the newly created ApiKeyTemplate returned by ApiKeyTemplateRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(Right(apiKeyTemplate))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]).returns(IO.pure(Right(apiKeyTemplate)))
 
         apiKeyTemplateService
           .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -85,7 +85,7 @@ class ApiKeyTemplateServiceSpec
     "UuidGenerator returns failed IO" should {
 
       "NOT call ApiKeyTemplateRepository" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest).attempt
@@ -95,7 +95,7 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -107,15 +107,17 @@ class ApiKeyTemplateServiceSpec
     "ApiKeyTemplateRepository returns Left containing ApiKeyTemplateAlreadyExistsError on the first try" should {
 
       "call UuidGenerator and ApiKeyTemplateRepository again" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicTemplateId_1),
           IO.pure(publicTemplateId_2)
         )
         val insertedApiKeyTemplate = apiKeyTemplate.copy(publicTemplateId = publicTemplateId_2)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns (
-          IO.pure(Left(apiKeyTemplateAlreadyExistsError)),
-          IO.pure(Right(insertedApiKeyTemplate))
-        )
+        apiKeyTemplateRepository
+          .insert(any[UUID], any[ApiKeyTemplate])
+          .returns(
+            IO.pure(Left(apiKeyTemplateAlreadyExistsError)),
+            IO.pure(Right(insertedApiKeyTemplate))
+          )
 
         for {
           _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -127,15 +129,17 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return the second created ApiKeyTemplate returned by ApiKeyTemplateRepository" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicTemplateId_1),
           IO.pure(publicTemplateId_2)
         )
         val insertedApiKeyTemplate = apiKeyTemplate.copy(publicTemplateId = publicTemplateId_2)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns (
-          IO.pure(Left(apiKeyTemplateAlreadyExistsError)),
-          IO.pure(Right(insertedApiKeyTemplate))
-        )
+        apiKeyTemplateRepository
+          .insert(any[UUID], any[ApiKeyTemplate])
+          .returns(
+            IO.pure(Left(apiKeyTemplateAlreadyExistsError)),
+            IO.pure(Right(insertedApiKeyTemplate))
+          )
 
         apiKeyTemplateService
           .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -146,15 +150,19 @@ class ApiKeyTemplateServiceSpec
     "ApiKeyTemplateRepository keeps returning Left containing ApiKeyTemplateAlreadyExistsError" should {
 
       "call UuidGenerator and ApiKeyTemplateRepository again until reaching max retries amount" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicTemplateId_1),
           IO.pure(publicTemplateId_2),
           IO.pure(publicTemplateId_3),
-          IO.pure(publicTemplateId_4),
+          IO.pure(publicTemplateId_4)
         )
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(
-          Left(apiKeyTemplateAlreadyExistsError)
-        )
+        apiKeyTemplateRepository
+          .insert(any[UUID], any[ApiKeyTemplate])
+          .returns(
+            IO.pure(
+              Left(apiKeyTemplateAlreadyExistsError)
+            )
+          )
 
         for {
           _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -177,15 +185,19 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return successful IO containing Left with ApiKeyTemplateAlreadyExistsError" in {
-        uuidGenerator.generateUuid returns (
+        uuidGenerator.generateUuid.returns(
           IO.pure(publicTemplateId_1),
           IO.pure(publicTemplateId_2),
           IO.pure(publicTemplateId_3),
-          IO.pure(publicTemplateId_4),
+          IO.pure(publicTemplateId_4)
         )
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(
-          Left(apiKeyTemplateAlreadyExistsError)
-        )
+        apiKeyTemplateRepository
+          .insert(any[UUID], any[ApiKeyTemplate])
+          .returns(
+            IO.pure(
+              Left(apiKeyTemplateAlreadyExistsError)
+            )
+          )
 
         apiKeyTemplateService
           .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -202,10 +214,14 @@ class ApiKeyTemplateServiceSpec
       s"ApiKeyTemplateRepository returns Left containing ${insertionError.getClass.getSimpleName}" should {
 
         "NOT call UuidGenerator or ApiKeyTemplateRepository again" in {
-          uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-          apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(
-            Left(insertionError)
-          )
+          uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+          apiKeyTemplateRepository
+            .insert(any[UUID], any[ApiKeyTemplate])
+            .returns(
+              IO.pure(
+                Left(insertionError)
+              )
+            )
 
           for {
             _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -216,10 +232,14 @@ class ApiKeyTemplateServiceSpec
         }
 
         "return Left containing this error" in {
-          uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-          apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.pure(
-            Left(insertionError)
-          )
+          uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+          apiKeyTemplateRepository
+            .insert(any[UUID], any[ApiKeyTemplate])
+            .returns(
+              IO.pure(
+                Left(insertionError)
+              )
+            )
 
           apiKeyTemplateService
             .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -231,8 +251,8 @@ class ApiKeyTemplateServiceSpec
     "ApiKeyTemplateRepository returns failed IO" should {
 
       "NOT call UuidGenerator or ApiKeyTemplateRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyTemplateService.createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest).attempt
@@ -243,8 +263,8 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTemplateId_1)
-        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]) returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.pure(publicTemplateId_1))
+        apiKeyTemplateRepository.insert(any[UUID], any[ApiKeyTemplate]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .createApiKeyTemplate(publicTenantId_1, createApiKeyTemplateRequest)
@@ -271,9 +291,13 @@ class ApiKeyTemplateServiceSpec
     )
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
-        Right(apiKeyTemplateUpdated)
-      )
+      apiKeyTemplateRepository
+        .update(any[TenantId], any[ApiKeyTemplateUpdate])
+        .returns(
+          IO.pure(
+            Right(apiKeyTemplateUpdated)
+          )
+        )
 
       for {
         _ <- apiKeyTemplateService.updateApiKeyTemplate(
@@ -289,9 +313,13 @@ class ApiKeyTemplateServiceSpec
     "return value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns Right" in {
-        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
-          Right(apiKeyTemplateUpdated)
-        )
+        apiKeyTemplateRepository
+          .update(any[TenantId], any[ApiKeyTemplateUpdate])
+          .returns(
+            IO.pure(
+              Right(apiKeyTemplateUpdated)
+            )
+          )
 
         apiKeyTemplateService
           .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
@@ -299,9 +327,13 @@ class ApiKeyTemplateServiceSpec
       }
 
       "ApiKeyTemplateRepository returns Left" in {
-        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.pure(
-          Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
-        )
+        apiKeyTemplateRepository
+          .update(any[TenantId], any[ApiKeyTemplateUpdate])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
+            )
+          )
 
         apiKeyTemplateService
           .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
@@ -311,7 +343,7 @@ class ApiKeyTemplateServiceSpec
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.update(any[TenantId], any[ApiKeyTemplateUpdate]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .updateApiKeyTemplate(publicTenantId_1, publicTemplateId_1, updateApiKeyTemplateRequest)
@@ -324,7 +356,7 @@ class ApiKeyTemplateServiceSpec
   "ApiKeyTemplateService on deleteApiKeyTemplate" should {
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyTemplate_1))
+      apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(apiKeyTemplate_1)))
 
       for {
         _ <- apiKeyTemplateService.deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
@@ -336,7 +368,7 @@ class ApiKeyTemplateServiceSpec
     "return value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns Right" in {
-        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKeyTemplate_1))
+        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(apiKeyTemplate_1)))
 
         apiKeyTemplateService
           .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
@@ -344,9 +376,13 @@ class ApiKeyTemplateServiceSpec
       }
 
       "ApiKeyTemplateRepository returns Left" in {
-        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
-        )
+        apiKeyTemplateRepository
+          .delete(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
+            )
+          )
 
         apiKeyTemplateService
           .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
@@ -356,7 +392,7 @@ class ApiKeyTemplateServiceSpec
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.delete(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .deleteApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
@@ -369,7 +405,7 @@ class ApiKeyTemplateServiceSpec
   "ApiKeyTemplateService on getBy(:apiKeyTemplateId)" should {
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
+      apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
 
       for {
         _ <- apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1)
@@ -381,13 +417,13 @@ class ApiKeyTemplateServiceSpec
     "return the value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns empty Option" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(None))
 
         apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1).asserting(_ shouldBe None)
       }
 
       "ApiKeyTemplateRepository returns non-empty Option" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
 
         apiKeyTemplateService.getBy(publicTenantId_1, publicTemplateId_1).asserting(_ shouldBe Some(apiKeyTemplate_1))
       }
@@ -395,7 +431,7 @@ class ApiKeyTemplateServiceSpec
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .getBy(publicTenantId_1, publicTemplateId_1)
@@ -408,7 +444,7 @@ class ApiKeyTemplateServiceSpec
   "ApiKeyTemplateService on getAllForTenant" should {
 
     "call ApiKeyTemplateRepository" in {
-      apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+      apiKeyTemplateRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
       for {
         _ <- apiKeyTemplateService.getAllForTenant(publicTenantId_1)
@@ -420,15 +456,19 @@ class ApiKeyTemplateServiceSpec
     "return the value returned by ApiKeyTemplateRepository" when {
 
       "ApiKeyTemplateRepository returns empty List" in {
-        apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        apiKeyTemplateRepository.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
         apiKeyTemplateService.getAllForTenant(publicTenantId_1).asserting(_ shouldBe List.empty[ApiKeyTemplate])
       }
 
       "ApiKeyTemplateRepository returns non-empty List" in {
-        apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.pure(
-          List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-        )
+        apiKeyTemplateRepository
+          .getAllForTenant(any[TenantId])
+          .returns(
+            IO.pure(
+              List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+            )
+          )
 
         apiKeyTemplateService
           .getAllForTenant(publicTenantId_1)
@@ -438,7 +478,7 @@ class ApiKeyTemplateServiceSpec
 
     "return failed IO" when {
       "ApiKeyTemplateRepository returns failed IO" in {
-        apiKeyTemplateRepository.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService.getAllForTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -450,8 +490,8 @@ class ApiKeyTemplateServiceSpec
     "everything works correctly" should {
 
       "call UserRepository and ApiKeyTemplateRepository" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List.empty))
 
         for {
           _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -464,8 +504,8 @@ class ApiKeyTemplateServiceSpec
       "return the value returns by ApiKeyTemplateRepository" when {
 
         "ApiKeyTemplateRepository returns empty List" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List.empty))
 
           apiKeyTemplateService
             .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -473,10 +513,14 @@ class ApiKeyTemplateServiceSpec
         }
 
         "ApiKeyTemplateRepository returns non-empty List" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-          apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-          )
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+          apiKeyTemplateRepository
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(
+              IO.pure(
+                List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+              )
+            )
 
           apiKeyTemplateService
             .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -488,7 +532,7 @@ class ApiKeyTemplateServiceSpec
     "UserRepository returns empty Option" should {
 
       "NOT call ApiKeyTemplateRepository" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option.empty))
 
         for {
           _ <- apiKeyTemplateService.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -498,7 +542,7 @@ class ApiKeyTemplateServiceSpec
       }
 
       "return Left containing UserDoesNotExist" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option.empty))
 
         apiKeyTemplateService
           .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -508,8 +552,8 @@ class ApiKeyTemplateServiceSpec
 
     "ApiKeyTemplateRepository returns failed IO" should {
       "return failed IO containing the same exception" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+        apiKeyTemplateRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         apiKeyTemplateService
           .getAllForUser(publicTenantId_1, publicUserId_1)

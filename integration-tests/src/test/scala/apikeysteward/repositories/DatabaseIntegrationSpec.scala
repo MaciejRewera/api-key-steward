@@ -19,7 +19,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll { this: AsyncTestSuite =>
 
   implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-  implicit val runtime: IORuntime = cats.effect.unsafe.implicits.global
+  implicit val runtime: IORuntime           = cats.effect.unsafe.implicits.global
 
   private lazy val databaseConfig: DatabaseConfig = ConfigSource.default
     .load[AppConfig]
@@ -60,7 +60,7 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
             .load()
         )
 
-      _ <- IO.blocking(flyway.clean())
+      _   <- IO.blocking(flyway.clean())
       res <- IO.blocking(flyway.migrate())
     } yield res
 
@@ -71,4 +71,5 @@ trait DatabaseIntegrationSpec extends BeforeAndAfterEach with BeforeAndAfterAll 
         _ <- IO.blocking(dataSource.close())
       } yield ()
     ).unsafeRunSync
+
 }

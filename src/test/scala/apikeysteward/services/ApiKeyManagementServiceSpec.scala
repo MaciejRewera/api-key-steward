@@ -49,12 +49,12 @@ class ApiKeyManagementServiceSpec
     with FixedClock
     with BeforeAndAfterEach {
 
-  private val uuidGenerator = mock[UuidGenerator]
+  private val uuidGenerator                = mock[UuidGenerator]
   private val createApiKeyRequestValidator = mock[CreateApiKeyRequestValidator]
-  private val apiKeyGenerator = mock[ApiKeyGenerator]
-  private val apiKeyRepository = mock[ApiKeyRepository]
-  private val userRepository = mock[UserRepository]
-  private val permissionRepository = mock[PermissionRepository]
+  private val apiKeyGenerator              = mock[ApiKeyGenerator]
+  private val apiKeyRepository             = mock[ApiKeyRepository]
+  private val userRepository               = mock[UserRepository]
+  private val permissionRepository         = mock[PermissionRepository]
 
   private val managementService = new ApiKeyManagementService(
     createApiKeyRequestValidator,
@@ -72,6 +72,7 @@ class ApiKeyManagementServiceSpec
     ttl = ttl,
     permissionIds = List(publicPermissionId_1, publicPermissionId_2, publicPermissionId_3)
   )
+
   private val testApiKeyData = apiKeyData_1.copy(permissions = List(permission_1, permission_2, permission_3))
 
   override def beforeEach(): Unit = {
@@ -84,15 +85,18 @@ class ApiKeyManagementServiceSpec
       permissionRepository
     )
 
-    createApiKeyRequestValidator.validateCreateRequest(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-      IO.pure(Right(createApiKeyRequest))
-    apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKey_1))
-    uuidGenerator.generateUuid returns IO.pure(publicKeyId_1)
-    apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns
-      IO.pure(Right(testApiKeyData))
+    createApiKeyRequestValidator
+      .validateCreateRequest(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+      .returns(IO.pure(Right(createApiKeyRequest)))
+    apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(apiKey_1)))
+    uuidGenerator.generateUuid.returns(IO.pure(publicKeyId_1))
+    apiKeyRepository
+      .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+      .returns(IO.pure(Right(testApiKeyData)))
 
-    permissionRepository.getBy(any[TenantId], any[List[PermissionId]]) returns
-      IO.pure(List(permission_1, permission_2, permission_3).asRight[PermissionNotFoundError])
+    permissionRepository
+      .getBy(any[TenantId], any[List[PermissionId]])
+      .returns(IO.pure(List(permission_1, permission_2, permission_3).asRight[PermissionNotFoundError]))
   }
 
   private val testException = new RuntimeException("Test Exception")
@@ -125,11 +129,10 @@ class ApiKeyManagementServiceSpec
         } yield ()
       }
 
-      "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
+      "return the newly created Api Key together with the ApiKeyData returned by ApiKeyRepository" in
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
           .asserting(_ shouldBe Right(apiKey_1 -> testApiKeyData))
-      }
     }
 
     "CreateApiKeyRequestValidator returns Left" should {
@@ -137,11 +140,13 @@ class ApiKeyManagementServiceSpec
       val error = TtlTooLargeError(ttl, ttl.minus(Duration(1, ttl.unit)))
 
       "NOT call ApiKeyGenerator, UuidGenerator or ApiKeyRepository" in {
-        createApiKeyRequestValidator.validateCreateRequest(
-          any[TenantId],
-          any[UserId],
-          any[CreateApiKeyRequest]
-        ) returns IO.pure(Left(error))
+        createApiKeyRequestValidator
+          .validateCreateRequest(
+            any[TenantId],
+            any[UserId],
+            any[CreateApiKeyRequest]
+          )
+          .returns(IO.pure(Left(error)))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -151,11 +156,13 @@ class ApiKeyManagementServiceSpec
       }
 
       "return successful IO containing Left with ValidationError" in {
-        createApiKeyRequestValidator.validateCreateRequest(
-          any[TenantId],
-          any[UserId],
-          any[CreateApiKeyRequest]
-        ) returns IO.pure(Left(error))
+        createApiKeyRequestValidator
+          .validateCreateRequest(
+            any[TenantId],
+            any[UserId],
+            any[CreateApiKeyRequest]
+          )
+          .returns(IO.pure(Left(error)))
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -168,9 +175,13 @@ class ApiKeyManagementServiceSpec
       val customError = new CustomError { override val message = "Test CustomError" }
 
       "NOT call ApiKeyGenerator again" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyGeneratorError(customError))
-        )
+        apiKeyGenerator
+          .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyGeneratorError(customError))
+            )
+          )
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -180,9 +191,13 @@ class ApiKeyManagementServiceSpec
       }
 
       "NOT call UuidGenerator or ApiKeyRepository" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyGeneratorError(customError))
-        )
+        apiKeyGenerator
+          .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyGeneratorError(customError))
+            )
+          )
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -191,9 +206,13 @@ class ApiKeyManagementServiceSpec
       }
 
       "return Left containing ApiKeyCreateErrorImpl" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyGeneratorError(customError))
-        )
+        apiKeyGenerator
+          .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyGeneratorError(customError))
+            )
+          )
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -204,7 +223,7 @@ class ApiKeyManagementServiceSpec
     "ApiKeyGenerator returns failed IO" should {
 
       "NOT call ApiKeyGenerator again" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -214,7 +233,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "NOT call UuidGenerator or ApiKeyRepository" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -223,7 +242,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -235,7 +254,7 @@ class ApiKeyManagementServiceSpec
     "UuidGenerator returns failed IO" should {
 
       "NOT call UuidGenerator again" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -245,7 +264,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "NOT call ApiKeyRepository" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -254,7 +273,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "return failed IO containing the same exception" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -267,15 +286,19 @@ class ApiKeyManagementServiceSpec
       s"ApiKeyRepository returns ${insertionError.getClass.getSimpleName} on the first try" should {
 
         "call ApiKeyGenerator, UuidGenerator and ApiKeyRepository again" in {
-          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
-            IO.pure(Right(apiKey_1)),
-            IO.pure(Right(apiKey_2))
-          )
-          uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns (
-            IO.pure(Left(insertionError)),
-            IO.pure(Right(testApiKeyData))
-          )
+          apiKeyGenerator
+            .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Right(apiKey_1)),
+              IO.pure(Right(apiKey_2))
+            )
+          uuidGenerator.generateUuid.returns(IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
+          apiKeyRepository
+            .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Left(insertionError)),
+              IO.pure(Right(testApiKeyData))
+            )
 
           for {
             _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -307,15 +330,19 @@ class ApiKeyManagementServiceSpec
         }
 
         "return the second created Api Key together with the ApiKeyData returned by ApiKeyRepository" in {
-          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
-            IO.pure(Right(apiKey_1)),
-            IO.pure(Right(apiKey_2))
-          )
-          uuidGenerator.generateUuid returns (IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns (
-            IO.pure(Left(insertionError)),
-            IO.pure(Right(testApiKeyData))
-          )
+          apiKeyGenerator
+            .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Right(apiKey_1)),
+              IO.pure(Right(apiKey_2))
+            )
+          uuidGenerator.generateUuid.returns(IO.pure(publicKeyId_1), IO.pure(publicKeyId_2))
+          apiKeyRepository
+            .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Left(insertionError)),
+              IO.pure(Right(testApiKeyData))
+            )
 
           managementService
             .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -328,18 +355,27 @@ class ApiKeyManagementServiceSpec
       s"ApiKeyRepository keeps returning ${dbInsertionError.getClass.getSimpleName}" should {
 
         "call ApiKeyGenerator and ApiKeyRepository again until reaching max retries amount (3)" in {
-          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
-            IO.pure(Right(apiKey_1)),
-            IO.pure(Right(apiKey_2)),
-            IO.pure(Right(apiKey_3)),
-            IO.pure(Right(apiKey_4))
+          apiKeyGenerator
+            .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Right(apiKey_1)),
+              IO.pure(Right(apiKey_2)),
+              IO.pure(Right(apiKey_3)),
+              IO.pure(Right(apiKey_4))
+            )
+          uuidGenerator.generateUuid.returns(
+            IO.pure(publicKeyId_1),
+            IO.pure(publicKeyId_2),
+            IO.pure(publicKeyId_3),
+            IO.pure(publicKeyId_4)
           )
-          uuidGenerator.generateUuid returns (
-            IO.pure(publicKeyId_1), IO.pure(publicKeyId_2), IO.pure(publicKeyId_3), IO.pure(publicKeyId_4)
-          )
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO.pure(
-            Left(dbInsertionError)
-          )
+          apiKeyRepository
+            .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(
+                Left(dbInsertionError)
+              )
+            )
 
           for {
             _ <- managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).attempt
@@ -391,18 +427,27 @@ class ApiKeyManagementServiceSpec
         }
 
         "return successful IO containing Left with InsertionError" in {
-          apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns (
-            IO.pure(Right(apiKey_1)),
-            IO.pure(Right(apiKey_2)),
-            IO.pure(Right(apiKey_3)),
-            IO.pure(Right(apiKey_4))
+          apiKeyGenerator
+            .generateApiKey(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(Right(apiKey_1)),
+              IO.pure(Right(apiKey_2)),
+              IO.pure(Right(apiKey_3)),
+              IO.pure(Right(apiKey_4))
+            )
+          uuidGenerator.generateUuid.returns(
+            IO.pure(publicKeyId_1),
+            IO.pure(publicKeyId_2),
+            IO.pure(publicKeyId_3),
+            IO.pure(publicKeyId_4)
           )
-          uuidGenerator.generateUuid returns (
-            IO.pure(publicKeyId_1), IO.pure(publicKeyId_2), IO.pure(publicKeyId_3), IO.pure(publicKeyId_4)
-          )
-          apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO.pure(
-            Left(dbInsertionError)
-          )
+          apiKeyRepository
+            .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(
+                Left(dbInsertionError)
+              )
+            )
 
           managementService.createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest).asserting { result =>
             result shouldBe Left(InsertionError(dbInsertionError))
@@ -413,9 +458,13 @@ class ApiKeyManagementServiceSpec
 
     "ApiKeyRepository returns a different exception" should {
       "return IO with this exception" in {
-        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(apiKey_1))
-        apiKeyRepository.insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId]) returns IO
-          .raiseError(testException)
+        apiKeyGenerator.generateApiKey(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(apiKey_1)))
+        apiKeyRepository
+          .insert(any[TenantId], any[ApiKey], any[ApiKeyData], any[ApiKeyTemplateId])
+          .returns(
+            IO
+              .raiseError(testException)
+          )
 
         managementService
           .createApiKey(publicTenantId_1, publicUserId_1, createApiKeyRequest)
@@ -439,7 +488,7 @@ class ApiKeyManagementServiceSpec
     )
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
+      apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]).returns(IO.pure(Right(outputApiKeyData)))
 
       for {
         _ <- managementService.updateApiKey(publicTenantId_1, publicKeyId_1, updateApiKeyRequest)
@@ -450,7 +499,7 @@ class ApiKeyManagementServiceSpec
     "return the value returned by ApiKeyRepository" when {
 
       "ApiKeyRepository returns Right" in {
-        apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]) returns IO.pure(Right(outputApiKeyData))
+        apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]).returns(IO.pure(Right(outputApiKeyData)))
 
         managementService
           .updateApiKey(publicTenantId_1, publicKeyId_1, updateApiKeyRequest)
@@ -460,9 +509,13 @@ class ApiKeyManagementServiceSpec
       }
 
       "ApiKeyRepository returns Left" in {
-        apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]) returns IO.pure(
-          Left(ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1))
-        )
+        apiKeyRepository
+          .update(any[TenantId], any[ApiKeyDataUpdate])
+          .returns(
+            IO.pure(
+              Left(ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1))
+            )
+          )
 
         managementService
           .updateApiKey(publicTenantId_1, publicKeyId_1, updateApiKeyRequest)
@@ -474,7 +527,7 @@ class ApiKeyManagementServiceSpec
 
     "return failed IO" when {
       "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]) returns IO.raiseError(testException)
+        apiKeyRepository.update(any[TenantId], any[ApiKeyDataUpdate]).returns(IO.raiseError(testException))
 
         managementService
           .updateApiKey(publicTenantId_1, publicKeyId_1, updateApiKeyRequest)
@@ -487,7 +540,7 @@ class ApiKeyManagementServiceSpec
   "ManagementService on deleteApiKeyBelongingToUserWith" should {
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
       for {
         _ <- managementService.deleteApiKeyBelongingToUserWith(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -498,7 +551,7 @@ class ApiKeyManagementServiceSpec
     "return the value returned by ApiKeyRepository" when {
 
       "ApiKeyRepository returns Right" in {
-        apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+        apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
         managementService
           .deleteApiKeyBelongingToUserWith(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -506,9 +559,13 @@ class ApiKeyManagementServiceSpec
       }
 
       "ApiKeyRepository returns Left" in {
-        apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
-        )
+        apiKeyRepository
+          .delete(any[TenantId], any[String], any[ApiKeyId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyDbError.apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
+            )
+          )
 
         managementService
           .deleteApiKeyBelongingToUserWith(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -518,7 +575,7 @@ class ApiKeyManagementServiceSpec
 
     "return failed IO" when {
       "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]) returns IO.raiseError(testException)
+        apiKeyRepository.delete(any[TenantId], any[String], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         managementService
           .deleteApiKeyBelongingToUserWith(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -531,7 +588,7 @@ class ApiKeyManagementServiceSpec
   "ManagementService on deleteApiKey" should {
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.delete(any[TenantId], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+      apiKeyRepository.delete(any[TenantId], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
       for {
         _ <- managementService.deleteApiKey(publicTenantId_1, publicKeyId_1)
@@ -542,15 +599,19 @@ class ApiKeyManagementServiceSpec
     "return the value returned by ApiKeyRepository" when {
 
       "ApiKeyRepository returns Right" in {
-        apiKeyRepository.delete(any[TenantId], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+        apiKeyRepository.delete(any[TenantId], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
         managementService.deleteApiKey(publicTenantId_1, publicKeyId_1).asserting(_ shouldBe Right(apiKeyData_1))
       }
 
       "ApiKeyRepository returns Left" in {
-        apiKeyRepository.delete(any[TenantId], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyId_1))
-        )
+        apiKeyRepository
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyDbError.apiKeyDataNotFoundError(publicKeyId_1))
+            )
+          )
 
         managementService
           .deleteApiKey(publicTenantId_1, publicKeyId_1)
@@ -560,7 +621,7 @@ class ApiKeyManagementServiceSpec
 
     "return failed IO" when {
       "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.delete(any[TenantId], any[ApiKeyId]) returns IO.raiseError(testException)
+        apiKeyRepository.delete(any[TenantId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         managementService
           .deleteApiKey(publicTenantId_1, publicKeyId_1)
@@ -575,8 +636,8 @@ class ApiKeyManagementServiceSpec
     "everything works correctly" should {
 
       "call UserRepository and ApiKeyRepository" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-        apiKeyRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List(apiKeyData_1))
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+        apiKeyRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List(apiKeyData_1)))
 
         for {
           _ <- managementService.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -589,8 +650,8 @@ class ApiKeyManagementServiceSpec
       "return the value returned by ApiKeyRepository" when {
 
         "ApiKeyRepository returns empty List" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-          apiKeyRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(List.empty)
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+          apiKeyRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(List.empty))
 
           managementService
             .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -598,10 +659,14 @@ class ApiKeyManagementServiceSpec
         }
 
         "ApiKeyRepository returns List with elements" in {
-          userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-          apiKeyRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            List(apiKeyData_1, apiKeyData_1, apiKeyData_1)
-          )
+          userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+          apiKeyRepository
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(
+              IO.pure(
+                List(apiKeyData_1, apiKeyData_1, apiKeyData_1)
+              )
+            )
 
           managementService
             .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -613,7 +678,7 @@ class ApiKeyManagementServiceSpec
     "UserRepository returns empty Option" should {
 
       "NOT call ApiKeyRepository" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option.empty))
 
         for {
           _ <- managementService.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -623,7 +688,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option.empty)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option.empty))
 
         managementService
           .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -633,8 +698,8 @@ class ApiKeyManagementServiceSpec
 
     "ApiKeyRepository returns failed IO" should {
       "return failed IO containing the same exception" in {
-        userRepository.getBy(any[TenantId], any[UserId]) returns IO.pure(Option(user_1))
-        apiKeyRepository.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        userRepository.getBy(any[TenantId], any[UserId]).returns(IO.pure(Option(user_1)))
+        apiKeyRepository.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         managementService
           .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -647,7 +712,7 @@ class ApiKeyManagementServiceSpec
   "ManagementService on getApiKey(:userId, :publicKeyId)" should {
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+      apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
       for {
         _ <- managementService.getApiKey(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -658,7 +723,7 @@ class ApiKeyManagementServiceSpec
     "return the value returned by ApiKeyRepository" when {
 
       "ApiKeyRepository returns empty Option" in {
-        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(None)
+        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(None))
 
         managementService
           .getApiKey(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -666,7 +731,7 @@ class ApiKeyManagementServiceSpec
       }
 
       "ApiKeyRepository returns Option containing ApiKeyData" in {
-        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         managementService
           .getApiKey(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -676,7 +741,7 @@ class ApiKeyManagementServiceSpec
 
     "return failed IO" when {
       "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.raiseError(testException)
+        apiKeyRepository.get(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         managementService
           .getApiKey(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -689,7 +754,7 @@ class ApiKeyManagementServiceSpec
   "ManagementService on getApiKey(:publicKeyId)" should {
 
     "call ApiKeyRepository" in {
-      apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+      apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
       for {
         _ <- managementService.getApiKey(publicTenantId_1, publicKeyId_1)
@@ -700,13 +765,13 @@ class ApiKeyManagementServiceSpec
     "return the value returned by ApiKeyRepository" when {
 
       "ApiKeyRepository returns empty Option" in {
-        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns IO.pure(None)
+        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]).returns(IO.pure(None))
 
         managementService.getApiKey(publicTenantId_1, publicKeyId_1).asserting(_ shouldBe none[ApiKeyData])
       }
 
       "ApiKeyRepository returns Option containing ApiKeyData" in {
-        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         managementService.getApiKey(publicTenantId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
@@ -714,7 +779,7 @@ class ApiKeyManagementServiceSpec
 
     "return failed IO" when {
       "ApiKeyRepository returns failed IO" in {
-        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns IO.raiseError(testException)
+        apiKeyRepository.getByPublicKeyId(any[TenantId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         managementService
           .getApiKey(publicTenantId_1, publicKeyId_1)

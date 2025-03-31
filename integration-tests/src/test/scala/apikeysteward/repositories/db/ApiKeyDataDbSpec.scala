@@ -12,13 +12,7 @@ import apikeysteward.model.errors.ApiKeyDbError.{
   ReferencedApiKeyTemplateDoesNotExistError,
   ReferencedUserDoesNotExistError
 }
-import apikeysteward.repositories.TestDataInsertions.{
-  PermissionDbId,
-  ResourceServerDbId,
-  TemplateDbId,
-  TenantDbId,
-  UserDbId
-}
+import apikeysteward.repositories.TestDataInsertions._
 import apikeysteward.repositories.db.entity.ApiKeyDataEntity
 import apikeysteward.repositories.{DatabaseIntegrationSpec, TestDataInsertions}
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -42,16 +36,17 @@ class ApiKeyDataDbSpec
       sql"TRUNCATE tenant, tenant_user, resource_server, permission, api_key_template, api_key, api_key_data CASCADE".update.run
   } yield ()
 
-  private val tenantDb = new TenantDb()
+  private val tenantDb         = new TenantDb()
   private val resourceServerDb = new ResourceServerDb
-  private val permissionDb = new PermissionDb
-  private val userDb = new UserDb
+  private val permissionDb     = new PermissionDb
+  private val userDb           = new UserDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
-  private val apiKeyDb = new ApiKeyDb
+  private val apiKeyDb         = new ApiKeyDb
 
   private val apiKeyDataDb = new ApiKeyDataDb()
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
@@ -63,6 +58,7 @@ class ApiKeyDataDbSpec
 
     val deleteAllTemplates: doobie.ConnectionIO[Int] =
       sql"DELETE FROM api_key_template".update.run
+
   }
 
   private def insertPrerequisiteData()
@@ -79,16 +75,15 @@ class ApiKeyDataDbSpec
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing ReferencedTenantDoesNotExistError" in {
+      "return Left containing ReferencedTenantDoesNotExistError" in
         apiKeyDataDb
           .insert(apiKeyDataEntityWrite_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_1)))
-      }
 
       "NOT insert any entity into DB" in {
         val result = for {
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _          <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
           resApiKeys <- Queries.getAllApiKeysData.transact(transactor)
         } yield resApiKeys
 
@@ -114,7 +109,7 @@ class ApiKeyDataDbSpec
           _ <- insertPrerequisiteData().transact(transactor)
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -142,7 +137,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
           _ <- Queries.deleteAllUsers.transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -168,7 +163,7 @@ class ApiKeyDataDbSpec
           _ <- insertPrerequisiteData().transact(transactor)
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(userId = userDbId_4)).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(userId = userDbId_4)).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -196,7 +191,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
           _ <- Queries.deleteAllTemplates.transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -224,7 +219,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
           _ <- Queries.deleteAllTemplates.transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(templateId = templateDbId_4)).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(templateId = templateDbId_4)).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -248,7 +243,7 @@ class ApiKeyDataDbSpec
         val result = for {
           _ <- insertPrerequisiteData().transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -274,7 +269,7 @@ class ApiKeyDataDbSpec
           _ <- insertPrerequisiteData().transact(transactor)
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyDbId_2)).transact(transactor)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1.copy(apiKeyId = apiKeyDbId_2)).transact(transactor)
           res <- Queries.getAllApiKeysData.transact(transactor)
         } yield res
 
@@ -300,7 +295,7 @@ class ApiKeyDataDbSpec
           _ <- insertPrerequisiteData()
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          _              <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
           resApiKeysData <- Queries.getAllApiKeysData
         } yield resApiKeysData).transact(transactor)
 
@@ -364,7 +359,7 @@ class ApiKeyDataDbSpec
           _ <- insertPrerequisiteData()
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(apiKeyId = apiKeyDbId_1))
         } yield res).transact(transactor)
 
@@ -397,7 +392,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1).map(_.value.id)
           _ <- apiKeyDb.insert(apiKeyEntityWrite_2).map(_.value.id)
 
-          _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
+          _   <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
           res <- apiKeyDataDb.insert(apiKeyDataEntityWrite_2.copy(publicKeyId = publicKeyIdStr_1))
 
         } yield res).transact(transactor)
@@ -436,12 +431,11 @@ class ApiKeyDataDbSpec
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing ApiKeyDataNotFoundError" in {
+      "return Left containing ApiKeyDataNotFoundError" in
         apiKeyDataDb
           .update(publicTenantId_1, apiKeyDataEntityUpdate_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
@@ -470,7 +464,7 @@ class ApiKeyDataDbSpec
         val result = (for {
           _ <- insertPrerequisiteData()
 
-          _ <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
+          _   <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -498,7 +492,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.update(publicTenantId_2, apiKeyDataEntityUpdate_1)
+          _   <- apiKeyDataDb.update(publicTenantId_2, apiKeyDataEntityUpdate_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -526,7 +520,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1.copy(publicKeyId = publicKeyIdStr_2))
+          _   <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1.copy(publicKeyId = publicKeyIdStr_2))
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -554,7 +548,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
+          _   <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -594,7 +588,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_3)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3)
 
-          _ <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
+          _   <- apiKeyDataDb.update(publicTenantId_1, apiKeyDataEntityUpdate_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -608,9 +602,8 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getByApiKeyId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         apiKeyDataDb.getByApiKeyId(publicTenantId_1, apiKeyDbId_1).transact(transactor).asserting(_ shouldBe None)
-      }
     }
 
     "there are no rows in the DB" should {
@@ -671,14 +664,13 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getByUserId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Stream" in {
+      "return empty Stream" in
         apiKeyDataDb
           .getByUserId(publicTenantId_1, publicUserId_1)
           .compile
           .toList
           .transact(transactor)
           .asserting(_ shouldBe List.empty[ApiKeyDataEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -764,12 +756,11 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getByPublicKeyId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         apiKeyDataDb
           .getByPublicKeyId(publicTenantId_1, publicKeyId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[ApiKeyDataEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -850,12 +841,11 @@ class ApiKeyDataDbSpec
   "ApiKeyDataDb on getBy(:userId, :publicKeyId)" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         apiKeyDataDb
           .getBy(publicTenantId_1, publicUserId_1, publicKeyId_1)
           .transact(transactor)
           .asserting(_ shouldBe None)
-      }
     }
 
     "there are no rows in the DB" should {
@@ -948,16 +938,15 @@ class ApiKeyDataDbSpec
 
     "there are no Tenants in the DB" should {
 
-      "return Left containing ApiKeyDataNotFoundError" in {
+      "return Left containing ApiKeyDataNotFoundError" in
         apiKeyDataDb
           .delete(publicTenantId_1, publicKeyId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ApiKeyDataNotFoundError(publicKeyId_1)))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
+          _   <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -981,7 +970,7 @@ class ApiKeyDataDbSpec
         val result = (for {
           _ <- insertPrerequisiteData()
 
-          _ <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
+          _   <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -1009,7 +998,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.delete(publicTenantId_2, publicKeyId_1)
+          _   <- apiKeyDataDb.delete(publicTenantId_2, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -1037,7 +1026,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_2)
+          _   <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_2)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -1065,7 +1054,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_1)
 
-          _ <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
+          _   <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -1106,7 +1095,7 @@ class ApiKeyDataDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_3)
           _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3)
 
-          _ <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
+          _   <- apiKeyDataDb.delete(publicTenantId_1, publicKeyId_1)
           res <- Queries.getAllApiKeysData
         } yield res).transact(transactor)
 
@@ -1114,4 +1103,5 @@ class ApiKeyDataDbSpec
       }
     }
   }
+
 }

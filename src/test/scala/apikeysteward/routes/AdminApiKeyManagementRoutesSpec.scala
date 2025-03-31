@@ -44,7 +44,7 @@ class AdminApiKeyManagementRoutesSpec
     with EitherValues
     with RoutesSpecBase {
 
-  private val jwtAuthorizer = mock[JwtAuthorizer]
+  private val jwtAuthorizer     = mock[JwtAuthorizer]
   private val managementService = mock[ApiKeyManagementService]
 
   private val adminRoutes: HttpApp[IO] =
@@ -136,7 +136,7 @@ class AdminApiKeyManagementRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -396,9 +396,13 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
-          (apiKey_1, apiKeyData_1).asRight
-        )
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(
+            IO.pure(
+              (apiKey_1, apiKeyData_1).asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -421,9 +425,13 @@ class AdminApiKeyManagementRoutesSpec
       "return successful value returned by ManagementService" when {
 
         "provided with description" in authorizedFixture {
-          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
-            (apiKey_1, apiKeyData_1).asRight
-          )
+          managementService
+            .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+            .returns(
+              IO.pure(
+                (apiKey_1, apiKeyData_1).asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -436,9 +444,13 @@ class AdminApiKeyManagementRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
-            (apiKey_1, apiKeyDataWithoutDescription).asRight
-          )
+          managementService
+            .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+            .returns(
+              IO.pure(
+                (apiKey_1, apiKeyDataWithoutDescription).asRight
+              )
+            )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -454,9 +466,13 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
         val error = ValidationError(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit))))
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
-          Left(error)
-        )
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(
+            IO.pure(
+              Left(error)
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -466,9 +482,13 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns successful IO with Left containing InsertionError" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.pure(
-          Left(InsertionError(ApiKeyIdAlreadyExistsError))
-        )
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(
+            IO.pure(
+              Left(InsertionError(ApiKeyIdAlreadyExistsError))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -478,9 +498,13 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns IO.raiseError(
-          testException
-        )
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -493,7 +517,7 @@ class AdminApiKeyManagementRoutesSpec
 
   "AdminApiKeyRoutes on PUT /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
+    val uri         = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val requestBody = UpdateApiKeyAdminRequest(name = name_1, description = description_1)
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
@@ -504,7 +528,7 @@ class AdminApiKeyManagementRoutesSpec
 
     "provided with publicKeyId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
+      val uri                             = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -575,7 +599,7 @@ class AdminApiKeyManagementRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -652,9 +676,13 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
-          apiKeyData_1.asRight
-        )
+        managementService
+          .updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest])
+          .returns(
+            IO.pure(
+              apiKeyData_1.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -665,9 +693,13 @@ class AdminApiKeyManagementRoutesSpec
       "return successful value returned by ManagementService" when {
 
         "provided with description" in authorizedFixture {
-          managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
-            apiKeyData_1.asRight
-          )
+          managementService
+            .updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest])
+            .returns(
+              IO.pure(
+                apiKeyData_1.asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -680,9 +712,13 @@ class AdminApiKeyManagementRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val apiKeyDataWithoutDescription = apiKeyData_1.copy(description = None)
-          managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
-            apiKeyDataWithoutDescription.asRight
-          )
+          managementService
+            .updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest])
+            .returns(
+              IO.pure(
+                apiKeyDataWithoutDescription.asRight
+              )
+            )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -698,9 +734,13 @@ class AdminApiKeyManagementRoutesSpec
 
       "return Not Found when ManagementService returns successful IO with Left containing ApiKeyDataNotFoundError" in authorizedFixture {
         val error = ApiKeyDbError.ApiKeyDataNotFoundError(publicUserId_1, publicKeyIdStr_1)
-        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO.pure(
-          Left(error)
-        )
+        managementService
+          .updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest])
+          .returns(
+            IO.pure(
+              Left(error)
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -712,8 +752,12 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest]) returns IO
-          .raiseError(testException)
+        managementService
+          .updateApiKey(any[TenantId], any[ApiKeyId], any[UpdateApiKeyAdminRequest])
+          .returns(
+            IO
+              .raiseError(testException)
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -726,7 +770,7 @@ class AdminApiKeyManagementRoutesSpec
 
   "AdminApiKeyRoutes on GET /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
@@ -735,7 +779,7 @@ class AdminApiKeyManagementRoutesSpec
 
     "provided with publicKeyId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
+      val uri                             = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -759,7 +803,7 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         for {
           _ <- adminRoutes.run(request)
@@ -768,7 +812,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return successful value returned by ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         for {
           response <- adminRoutes.run(request)
@@ -778,7 +822,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(None)
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(None))
 
         for {
           response <- adminRoutes.run(request)
@@ -792,7 +836,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[ApiKeyId]) returns IO.raiseError(testException)
+        managementService.getApiKey(any[TenantId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -806,7 +850,7 @@ class AdminApiKeyManagementRoutesSpec
 
   "AdminApiKeyRoutes on DELETE /admin/api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
@@ -815,7 +859,7 @@ class AdminApiKeyManagementRoutesSpec
 
     "provided with publicKeyId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
+      val uri                             = Uri.unsafeFromString(s"/admin/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -839,7 +883,7 @@ class AdminApiKeyManagementRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ManagementService" in authorizedFixture {
-        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           _ <- adminRoutes.run(request)
@@ -848,7 +892,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
-        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Right(apiKeyData_1))
+        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           response <- adminRoutes.run(request)
@@ -858,9 +902,13 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns Left containing ApiKeyDataNotFoundError" in authorizedFixture {
-        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
-        )
+        managementService
+          .deleteApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -872,7 +920,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
-        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]) returns IO.pure(Left(ApiKeyNotFoundError))
+        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]).returns(IO.pure(Left(ApiKeyNotFoundError)))
 
         for {
           response <- adminRoutes.run(request)
@@ -884,7 +932,7 @@ class AdminApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]) returns IO.raiseError(testException)
+        managementService.deleteApiKey(any[TenantId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -894,4 +942,5 @@ class AdminApiKeyManagementRoutesSpec
       }
     }
   }
+
 }

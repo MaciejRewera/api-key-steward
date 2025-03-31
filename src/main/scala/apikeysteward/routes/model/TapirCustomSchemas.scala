@@ -166,24 +166,25 @@ object TapirCustomSchemas {
   private def validateNameLength280(schema: Schema[String]): Schema[String] = validateName(280)(schema)
 
   private def validateName(maxLength: Int)(schema: Schema[String]): Schema[String] =
-    schema.validate(Validator.nonEmptyString and Validator.maxLength(maxLength))
+    schema.validate(Validator.nonEmptyString.and(Validator.maxLength(maxLength)))
 
   private def validateDescriptionLength250(schema: Schema[Option[String]]): Schema[Option[String]] =
     validateDescription(250)(schema)
+
   private def validateDescriptionLength500(schema: Schema[Option[String]]): Schema[Option[String]] =
     validateDescription(500)(schema)
 
   private def validateDescription(maxLength: Int)(schema: Schema[Option[String]]): Schema[Option[String]] =
-    schema.validateOption(Validator.nonEmptyString and Validator.maxLength(maxLength))
+    schema.validateOption(Validator.nonEmptyString.and(Validator.maxLength(maxLength)))
 
   private def validateApiKeyPrefix(schema: Schema[String]): Schema[String] =
-    schema.validate(Validator.nonEmptyString and Validator.maxLength(120))
+    schema.validate(Validator.nonEmptyString.and(Validator.maxLength(120)))
 
   private def validateUserId(schema: Schema[String]): Schema[String] =
     schema.validate(userIdValidator)
 
   private def userIdValidator: Validator[String] =
-    Validator.nonEmptyString and Validator.maxLength(255)
+    Validator.nonEmptyString.and(Validator.maxLength(255))
 
   private def validateTtl(schema: Schema[Duration]): Schema[Duration] =
     schema

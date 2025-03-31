@@ -17,8 +17,10 @@ case class ApiKeyTemplateUpdate(
 )
 
 object ApiKeyTemplateUpdate extends CodecCommons {
+
   implicit val encoder: Encoder[ApiKeyTemplateUpdate] =
     deriveEncoder[ApiKeyTemplateUpdate].mapJson(_.deepDropNullValues)
+
   implicit val decoder: Decoder[ApiKeyTemplateUpdate] = deriveDecoder[ApiKeyTemplateUpdate]
 
   def from(

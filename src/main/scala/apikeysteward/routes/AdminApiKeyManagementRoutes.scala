@@ -27,7 +27,7 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
           .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
           .serverLogic { _ => input =>
             val (tenantId, adminRequest) = input
-            val (userId, request) = adminRequest.toUserRequest
+            val (userId, request)        = adminRequest.toUserRequest
 
             managementService.createApiKey(tenantId, userId, request).map {
 
@@ -103,4 +103,5 @@ class AdminApiKeyManagementRoutes(jwtAuthorizer: JwtAuthorizer, managementServic
       updateApiKeyRoutes <+>
       getApiKeyRoutes <+>
       deleteApiKeyRoutes
+
 }

@@ -60,7 +60,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeysPermissionsAssociations(publicPermissionId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- getApiKeysPermissionsAssociations(publicPermissionId_1)
       } yield res
 
@@ -74,7 +74,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyTemplatesPermissionsAssociations(publicPermissionId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- getApiKeyTemplatesPermissionsAssociations(publicPermissionId_1)
       } yield res
 
@@ -88,7 +88,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getPermission(publicPermissionId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- getPermission(publicPermissionId_1)
       } yield res
 
@@ -102,7 +102,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeyData.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- Queries.getAllApiKeyData.transact(transactor)
       } yield res
 
@@ -120,7 +120,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeys.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- Queries.getAllApiKeys.transact(transactor)
       } yield res
 
@@ -138,7 +138,7 @@ class PermissionRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeyTemplates.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
+        _   <- repository.delete(publicTenantId_1, publicResourceServerId_1, publicPermissionId_1)
         res <- Queries.getAllApiKeyTemplates.transact(transactor)
       } yield res
 

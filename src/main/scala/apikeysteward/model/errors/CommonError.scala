@@ -5,6 +5,7 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model.User.UserId
 
 sealed abstract class CommonError(override val message: String) extends CustomError
+
 object CommonError {
 
   case class ApiKeyTemplateDoesNotExistError(publicApiKeyTemplateId: ApiKeyTemplateId)

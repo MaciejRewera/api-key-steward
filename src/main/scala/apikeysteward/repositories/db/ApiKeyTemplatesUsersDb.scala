@@ -176,4 +176,5 @@ class ApiKeyTemplatesUsersDb {
            """.stripMargin.update
 
   }
+
 }

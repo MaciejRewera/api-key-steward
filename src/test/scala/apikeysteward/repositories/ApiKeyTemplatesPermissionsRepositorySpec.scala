@@ -32,9 +32,9 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
-  private val tenantDb = mock[TenantDb]
-  private val apiKeyTemplateDb = mock[ApiKeyTemplateDb]
-  private val permissionDb = mock[PermissionDb]
+  private val tenantDb                     = mock[TenantDb]
+  private val apiKeyTemplateDb             = mock[ApiKeyTemplateDb]
+  private val permissionDb                 = mock[PermissionDb]
   private val apiKeyTemplatesPermissionsDb = mock[ApiKeyTemplatesPermissionsDb]
 
   private val apiKeyTemplatesPermissionsRepository =
@@ -63,16 +63,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "everything works correctly" should {
 
       "call TenantDb, ApiKeyTemplateDb, PermissionDb and ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.insertMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsEntitiesReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .insertMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsEntitiesReadWrapped)
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.insertMany(
@@ -91,16 +97,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Right containing Unit value" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.insertMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsEntitiesReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .insertMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsEntitiesReadWrapped)
 
         val result = apiKeyTemplatesPermissionsRepository.insertMany(
           publicTenantId_1,
@@ -115,7 +127,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "TenantDb returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb, PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.insertMany(
@@ -129,7 +141,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -140,8 +152,12 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call ApiKeyTemplateDb, PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -157,8 +173,12 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -170,10 +190,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns empty Option" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         apiKeyTemplateDb
-          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            none[ApiKeyTemplateEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.insertMany(
@@ -187,10 +210,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         apiKeyTemplateDb
-          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            none[ApiKeyTemplateEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -201,9 +227,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns exception" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -215,9 +245,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -229,13 +263,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            none[PermissionEntity.Read].pure[doobie.ConnectionIO],
+            permissionEntityWrapped_3
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.insertMany(
@@ -249,13 +287,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedPermissionDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            none[PermissionEntity.Read].pure[doobie.ConnectionIO],
+            permissionEntityWrapped_3
+          )
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -266,13 +308,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
+            permissionEntityWrapped_3
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -284,13 +330,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
+            permissionEntityWrapped_3
+          )
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -309,16 +359,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             .asLeft[List[ApiKeyTemplatesPermissionsEntity.Read]]
             .pure[doobie.ConnectionIO]
 
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.insertMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsInsertionErrorWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .insertMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsInsertionErrorWrapped)
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -328,16 +384,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
 
     "ApiKeyTemplatesPermissionsDb returns exception" should {
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.insertMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns testExceptionWrappedE[ApiKeyTemplatesPermissionsInsertionError]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .insertMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(testExceptionWrappedE[ApiKeyTemplatesPermissionsInsertionError])
 
         apiKeyTemplatesPermissionsRepository
           .insertMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -355,16 +417,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "everything works correctly" should {
 
       "call TenantDb, ApiKeyTemplateDb, PermissionDb and ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.deleteMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsEntitiesReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .deleteMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsEntitiesReadWrapped)
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.deleteMany(
@@ -383,16 +451,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Right containing Unit value" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.deleteMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsEntitiesReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .deleteMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsEntitiesReadWrapped)
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -403,7 +477,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "TenantDb returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb, PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.deleteMany(
@@ -417,7 +491,7 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(
@@ -432,8 +506,12 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call ApiKeyTemplateDb, PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -449,8 +527,12 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(
@@ -466,10 +548,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns empty Option" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         apiKeyTemplateDb
-          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            none[ApiKeyTemplateEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.deleteMany(
@@ -483,10 +568,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
         apiKeyTemplateDb
-          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns none[ApiKeyTemplateEntity.Read]
-          .pure[doobie.ConnectionIO]
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            none[ApiKeyTemplateEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -497,9 +585,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "ApiKeyTemplateDb returns exception" should {
 
       "NOT call PermissionDb or ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -511,9 +603,13 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+          )
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -525,13 +621,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns empty Option for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            none[PermissionEntity.Read].pure[doobie.ConnectionIO],
+            permissionEntityWrapped_3
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository.deleteMany(
@@ -545,13 +645,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return Left containing ReferencedPermissionDoesNotExistError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            none[PermissionEntity.Read].pure[doobie.ConnectionIO],
+            permissionEntityWrapped_3
+          )
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -562,13 +666,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
     "PermissionDb returns exception for one of the calls" should {
 
       "NOT call ApiKeyTemplatesPermissionsDb" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
+            permissionEntityWrapped_3
+          )
 
         for {
           _ <- apiKeyTemplatesPermissionsRepository
@@ -580,13 +688,17 @@ class ApiKeyTemplatesPermissionsRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
-          permissionEntityWrapped_3
-        )
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]],
+            permissionEntityWrapped_3
+          )
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -604,16 +716,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
             .asLeft[List[ApiKeyTemplatesPermissionsEntity.Read]]
             .pure[doobie.ConnectionIO]
 
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.deleteMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns apiKeyTemplatesPermissionsNotFoundErrorWrapped
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .deleteMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(apiKeyTemplatesPermissionsNotFoundErrorWrapped)
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)
@@ -623,16 +741,22 @@ class ApiKeyTemplatesPermissionsRepositorySpec
 
     "ApiKeyTemplatesPermissionsDb returns exception" should {
       "return failed IO containing this exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns apiKeyTemplateEntityWrapped
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns (
-          permissionEntityWrapped_1,
-          permissionEntityWrapped_2,
-          permissionEntityWrapped_3
-        )
-        apiKeyTemplatesPermissionsDb.deleteMany(
-          any[List[ApiKeyTemplatesPermissionsEntity.Write]]
-        ) returns testExceptionWrappedE[ApiKeyTemplatesPermissionsNotFoundError]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(apiKeyTemplateEntityWrapped)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(
+            permissionEntityWrapped_1,
+            permissionEntityWrapped_2,
+            permissionEntityWrapped_3
+          )
+        apiKeyTemplatesPermissionsDb
+          .deleteMany(
+            any[List[ApiKeyTemplatesPermissionsEntity.Write]]
+          )
+          .returns(testExceptionWrappedE[ApiKeyTemplatesPermissionsNotFoundError])
 
         apiKeyTemplatesPermissionsRepository
           .deleteMany(publicTenantId_1, publicTemplateId_1, inputPublicPermissionIds)

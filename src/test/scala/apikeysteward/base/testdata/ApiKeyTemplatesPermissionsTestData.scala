@@ -14,8 +14,10 @@ object ApiKeyTemplatesPermissionsTestData extends FixedClock {
 
   val permissionEntityWrapped_1: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Option(permissionEntityRead_1).pure[doobie.ConnectionIO]
+
   val permissionEntityWrapped_2: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Option(permissionEntityRead_2).pure[doobie.ConnectionIO]
+
   val permissionEntityWrapped_3: doobie.ConnectionIO[Option[PermissionEntity.Read]] =
     Option(permissionEntityRead_3).pure[doobie.ConnectionIO]
 
@@ -73,11 +75,13 @@ object ApiKeyTemplatesPermissionsTestData extends FixedClock {
   implicit class apiKeyTemplatesPermissionsEntityWriteToRead(
       entityWrite: ApiKeyTemplatesPermissionsEntity.Write
   ) {
+
     def toRead: ApiKeyTemplatesPermissionsEntity.Read = ApiKeyTemplatesPermissionsEntity.Read(
       tenantId = entityWrite.tenantId,
       apiKeyTemplateId = entityWrite.apiKeyTemplateId,
       permissionId = entityWrite.permissionId
     )
+
   }
 
 }

@@ -228,8 +228,8 @@ class UrlJwkProviderSpec
           stubUrl(url_1, StatusCode.Ok.code)(responseJsonEmpty)
 
           val cacheRefreshPeriod = 100.milliseconds
-          val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
-          val jwksConfig = jwksConfigSingleUrl.copy(cacheRefreshPeriod = cacheRefreshPeriod)
+          val sleepDuration      = cacheRefreshPeriod.plus(10.millisecond)
+          val jwksConfig         = jwksConfigSingleUrl.copy(cacheRefreshPeriod = cacheRefreshPeriod)
 
           val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
             BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
@@ -274,7 +274,7 @@ class UrlJwkProviderSpec
       "the JWKS provider returns response other than 200 OK, but only on the first try" should {
 
         def stubUrlInternalServerErrorOnFirstTry(): StubMapping = {
-          val scenarioName = "First try fails"
+          val scenarioName         = "First try fails"
           val scenarioStateSuccess = "Success next"
 
           stubFor(
@@ -329,10 +329,10 @@ class UrlJwkProviderSpec
       "the JWKS provider returns response other than 200 OK on the first call to UrlJwkProvider, but returns 200 on subsequent calls before cache expires" should {
 
         def stubUrls(): StubMapping = {
-          val scenarioName = "First try fails"
+          val scenarioName           = "First try fails"
           val scenarioStateFailure_1 = "Failure next 1"
           val scenarioStateFailure_2 = "Failure next 2"
-          val scenarioStateSuccess = "Success next"
+          val scenarioStateSuccess   = "Success next"
 
           stubFor(
             get(url_1)
@@ -398,7 +398,7 @@ class UrlJwkProviderSpec
 
           for {
             result <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
-            _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+            _      <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
 
             _ = result shouldBe None
           } yield ()
@@ -435,7 +435,7 @@ class UrlJwkProviderSpec
       "the JWKS provider returns 200 OK on the first call to UrlJwkProvider, but returns error response on subsequent calls after cache expires" should {
 
         def stubUrls(): StubMapping = {
-          val scenarioName = "First try fails"
+          val scenarioName         = "First try fails"
           val scenarioStateFailure = "Failure next 1"
 
           stubFor(
@@ -462,8 +462,8 @@ class UrlJwkProviderSpec
         }
 
         val cacheRefreshPeriod = 100.milliseconds
-        val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
-        val jwksConfig = jwksConfigSingleUrl.copy(cacheRefreshPeriod = cacheRefreshPeriod)
+        val sleepDuration      = cacheRefreshPeriod.plus(10.millisecond)
+        val jwksConfig         = jwksConfigSingleUrl.copy(cacheRefreshPeriod = cacheRefreshPeriod)
 
         val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
           BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
@@ -690,8 +690,8 @@ class UrlJwkProviderSpec
           stubUrl(url_3, StatusCode.Ok.code)(responseJsonEmpty)
 
           val cacheRefreshPeriod = 100.milliseconds
-          val sleepDuration = cacheRefreshPeriod.plus(10.millisecond)
-          val jwksConfig = jwksConfigMultipleUrls.copy(cacheRefreshPeriod = cacheRefreshPeriod)
+          val sleepDuration      = cacheRefreshPeriod.plus(10.millisecond)
+          val jwksConfig         = jwksConfigMultipleUrls.copy(cacheRefreshPeriod = cacheRefreshPeriod)
 
           val urlJwkProviderRes: Resource[IO, UrlJwkProvider] =
             BlazeClientBuilder[IO].resource.map(new UrlJwkProvider(jwksConfig, _))
@@ -780,9 +780,9 @@ class UrlJwkProviderSpec
       "all JWKS providers return response other than 200 OK, but only on the first few tries" should {
 
         def stubUrlInternalServerErrorOnFirstTry(): StubMapping = {
-          val scenarioName_1 = "First try fails 1"
-          val scenarioName_2 = "First try fails 2"
-          val scenarioName_3 = "First try fails 3"
+          val scenarioName_1       = "First try fails 1"
+          val scenarioName_2       = "First try fails 2"
+          val scenarioName_3       = "First try fails 3"
           val scenarioStateFailure = "Failure next"
           val scenarioStateSuccess = "Success next"
 
@@ -895,8 +895,8 @@ class UrlJwkProviderSpec
       "some of the JWKS providers return response other than 200 OK, but only on the first few tries" should {
 
         def stubUrlInternalServerErrorOnFirstTry(): StubMapping = {
-          val scenarioName_2 = "First try fails 2"
-          val scenarioName_3 = "First try fails 3"
+          val scenarioName_2       = "First try fails 2"
+          val scenarioName_3       = "First try fails 3"
           val scenarioStateFailure = "Failure next"
           val scenarioStateSuccess = "Success next"
 
@@ -996,10 +996,10 @@ class UrlJwkProviderSpec
       "one of the JWKS providers returns response other than 200 OK on the first call to UrlJwkProvider, but returns 200 on subsequent calls before cache expires" should {
 
         def stubUrls(): StubMapping = {
-          val scenarioName_1 = "First try fails"
+          val scenarioName_1         = "First try fails"
           val scenarioStateFailure_1 = "Failure next 1"
           val scenarioStateFailure_2 = "Failure next 2"
-          val scenarioStateSuccess = "Success next"
+          val scenarioStateSuccess   = "Success next"
 
           stubFor(
             get(url_1)
@@ -1084,7 +1084,7 @@ class UrlJwkProviderSpec
 
           for {
             result <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
-            _ <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
+            _      <- urlJwkProviderRes.use(_.getJsonWebKey(kid_1))
 
             _ = result shouldBe None
           } yield ()
@@ -1133,4 +1133,5 @@ class UrlJwkProviderSpec
       }
     }
   }
+
 }

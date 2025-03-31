@@ -26,7 +26,7 @@ class TenantRepository(
   def insert(tenant: Tenant): IO[Either[TenantInsertionError, Tenant]] =
     for {
       tenantDbId <- uuidGenerator.generateUuid
-      result <- insert(tenantDbId, tenant)
+      result     <- insert(tenantDbId, tenant)
     } yield result
 
   private def insert(tenantDbId: UUID, tenant: Tenant): IO[Either[TenantInsertionError, Tenant]] =
@@ -99,7 +99,7 @@ class TenantRepository(
     EitherT {
       for {
         userIdsToDelete <- userRepository.getAllForTenantOp(publicTenantId).map(_.userId).compile.toList
-        deletedUsers <- userIdsToDelete.traverse(userRepository.deleteOp(publicTenantId, _))
+        deletedUsers    <- userIdsToDelete.traverse(userRepository.deleteOp(publicTenantId, _))
       } yield deletedUsers
         .map(_.left.map(CannotDeleteDependencyError(publicTenantId, _)))
         .sequence

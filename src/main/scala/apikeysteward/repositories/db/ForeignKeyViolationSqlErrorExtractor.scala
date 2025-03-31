@@ -29,4 +29,5 @@ private[db] object ForeignKeyViolationSqlErrorExtractor {
 
     (UUID.fromString(rawArray.head), UUID.fromString(rawArray(1)))
   }
+
 }

@@ -16,11 +16,11 @@ import java.util.UUID
 
 private[repositories] object TestDataInsertions extends EitherValues {
 
-  type TenantDbId = UUID
+  type TenantDbId         = UUID
   type ResourceServerDbId = UUID
-  type PermissionDbId = UUID
-  type TemplateDbId = UUID
-  type UserDbId = UUID
+  type PermissionDbId     = UUID
+  type TemplateDbId       = UUID
+  type UserDbId           = UUID
 
   def insertPrerequisiteTemplatesAndPermissions(
       tenantDb: TenantDb,
@@ -29,7 +29,7 @@ private[repositories] object TestDataInsertions extends EitherValues {
       apiKeyTemplateDb: ApiKeyTemplateDb
   ): doobie.ConnectionIO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[PermissionDbId])] =
     for {
-      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+      tenantId         <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
       _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
@@ -40,7 +40,7 @@ private[repositories] object TestDataInsertions extends EitherValues {
       _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
       _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-      templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
+      templateIds   = List(templateDbId_1, templateDbId_2, templateDbId_3)
       permissionIds = List(permissionDbId_1, permissionDbId_2, permissionDbId_3)
     } yield (tenantId, resourceServerId, templateIds, permissionIds)
 
@@ -61,7 +61,7 @@ private[repositories] object TestDataInsertions extends EitherValues {
       _ <- userDb.insert(userEntityWrite_3.copy(tenantId = tenantId))
 
       templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
-      userIds = List(userDbId_1, userDbId_2, userDbId_3)
+      userIds     = List(userDbId_1, userDbId_2, userDbId_3)
     } yield (tenantId, templateIds, userIds)
 
   def insertPrerequisiteTemplatesAndUsersAndPermissions(
@@ -72,7 +72,7 @@ private[repositories] object TestDataInsertions extends EitherValues {
       apiKeyTemplateDb: ApiKeyTemplateDb
   ): doobie.ConnectionIO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[UserDbId], List[PermissionDbId])] =
     for {
-      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+      tenantId         <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
       _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
@@ -87,8 +87,8 @@ private[repositories] object TestDataInsertions extends EitherValues {
       _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_2.copy(tenantId = tenantId))
       _ <- apiKeyTemplateDb.insert(apiKeyTemplateEntityWrite_3.copy(tenantId = tenantId))
 
-      templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
-      userIds = List(userDbId_1, userDbId_2, userDbId_3)
+      templateIds   = List(templateDbId_1, templateDbId_2, templateDbId_3)
+      userIds       = List(userDbId_1, userDbId_2, userDbId_3)
       permissionIds = List(permissionDbId_1, permissionDbId_2, permissionDbId_3)
     } yield (tenantId, resourceServerId, templateIds, userIds, permissionIds)
 
@@ -102,7 +102,7 @@ private[repositories] object TestDataInsertions extends EitherValues {
       apiKeyDataDb: ApiKeyDataDb
   ): doobie.ConnectionIO[(TenantDbId, ResourceServerDbId, List[TemplateDbId], List[UserDbId], List[PermissionDbId])] =
     for {
-      tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+      tenantId         <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
       resourceServerId <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId)).map(_.value.id)
 
       _ <- permissionDb.insert(permissionEntityWrite_1.copy(resourceServerId = resourceServerId))
@@ -124,8 +124,8 @@ private[repositories] object TestDataInsertions extends EitherValues {
       _ <- apiKeyDb.insert(apiKeyEntityWrite_3)
       _ <- apiKeyDataDb.insert(apiKeyDataEntityWrite_3)
 
-      templateIds = List(templateDbId_1, templateDbId_2, templateDbId_3)
-      userIds = List(userDbId_1, userDbId_2, userDbId_3)
+      templateIds   = List(templateDbId_1, templateDbId_2, templateDbId_3)
+      userIds       = List(userDbId_1, userDbId_2, userDbId_3)
       permissionIds = List(permissionDbId_1, permissionDbId_2, permissionDbId_3)
     } yield (tenantId, resourceServerId, templateIds, userIds, permissionIds)
 
@@ -188,4 +188,5 @@ private[repositories] object TestDataInsertions extends EitherValues {
       )
       _ <- apiKeysPermissionsDb.insertMany(associationEntities)
     } yield ()
+
 }

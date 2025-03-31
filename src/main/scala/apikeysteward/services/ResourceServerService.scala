@@ -35,7 +35,7 @@ class ResourceServerService(uuidGenerator: UuidGenerator, resourceServerReposito
 
     def createResourceServerAction: IO[Either[ResourceServerInsertionError, ResourceServer]] =
       for {
-        _ <- logger.info("Generating ResourceServer ID...")
+        _                <- logger.info("Generating ResourceServer ID...")
         resourceServerId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated ResourceServer ID."))
 
         _ <- logger.info("Generating Permission IDs...")

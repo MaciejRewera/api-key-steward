@@ -188,4 +188,5 @@ class ApiKeyTemplatesPermissionsDb {
            """.stripMargin.update
 
   }
+
 }

@@ -44,6 +44,7 @@ class TenantRepositoryItSpec extends RepositoryItSpecBase {
     )(transactor)
 
   private val secureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
+
   private val apiKeyRepository = new ApiKeyRepository(
     uuidGenerator,
     secureHashGenerator,

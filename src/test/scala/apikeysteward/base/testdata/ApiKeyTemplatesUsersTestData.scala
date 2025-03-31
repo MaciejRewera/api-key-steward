@@ -52,6 +52,7 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
     apiKeyTemplatesUsersEntityWrite_1_2,
     apiKeyTemplatesUsersEntityWrite_1_3
   )
+
   val apiKeyTemplatesUsersEntitiesRead_sameTemplate: List[ApiKeyTemplatesUsersEntity.Read] =
     apiKeyTemplatesUsersEntitiesWrite_sameTemplate.map { entityWrite =>
       ApiKeyTemplatesUsersEntity.Read(
@@ -66,6 +67,7 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
     apiKeyTemplatesUsersEntityWrite_2_1,
     apiKeyTemplatesUsersEntityWrite_3_1
   )
+
   val apiKeyTemplatesUsersEntitiesRead_sameUser: List[ApiKeyTemplatesUsersEntity.Read] =
     apiKeyTemplatesUsersEntitiesWrite_sameUser.map { entityWrite =>
       ApiKeyTemplatesUsersEntity.Read(
@@ -76,11 +78,13 @@ object ApiKeyTemplatesUsersTestData extends FixedClock {
     }
 
   implicit class apiKeyTemplatesUsersEntityWriteToRead(entityWrite: ApiKeyTemplatesUsersEntity.Write) {
+
     def toRead: ApiKeyTemplatesUsersEntity.Read = ApiKeyTemplatesUsersEntity.Read(
       tenantId = entityWrite.tenantId,
       apiKeyTemplateId = entityWrite.apiKeyTemplateId,
       userId = entityWrite.userId
     )
+
   }
 
 }
