@@ -16,8 +16,8 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers with EitherValues
   private val publicKeyGenerator = new PublicKeyGenerator
 
   private val SupportedAlgorithm = "RS256"
-  private val SupportedKeyType = "RSA"
-  private val SupportedKeyUse = "sig"
+  private val SupportedKeyType   = "RSA"
+  private val SupportedKeyUse    = "sig"
 
   "PublicKeyGenerator on generateFrom" should {
 
@@ -90,4 +90,5 @@ class PublicKeyGeneratorSpec extends AnyWordSpec with Matchers with EitherValues
       }
     }
   }
+
 }

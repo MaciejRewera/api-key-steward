@@ -14,14 +14,14 @@ import java.security.{KeyFactory, PublicKey}
 class PublicKeyGenerator {
 
   private val SupportedAlgorithm = "RS256"
-  private val SupportedKeyType = "RSA"
-  private val SupportedKeyUse = "sig"
+  private val SupportedKeyType   = "RSA"
+  private val SupportedKeyUse    = "sig"
 
   def generateFrom(jsonWebKey: JsonWebKey): Either[NonEmptyChain[PublicKeyGeneratorError], PublicKey] =
     validateJwk(jsonWebKey).map { jwk =>
-      val modulo = new BigInteger(1, JwtBase64.decode(jwk.n))
+      val modulo   = new BigInteger(1, JwtBase64.decode(jwk.n))
       val exponent = new BigInteger(1, JwtBase64.decode(jwk.e))
-      val keySpec = new RSAPublicKeySpec(modulo, exponent)
+      val keySpec  = new RSAPublicKeySpec(modulo, exponent)
 
       KeyFactory.getInstance(SupportedKeyType).generatePublic(keySpec)
     }.toEither
@@ -70,6 +70,7 @@ class PublicKeyGenerator {
         jwk,
         KeyUseNotSupportedError(SupportedKeyUse, jwk.use)
       )
+
 }
 
 object PublicKeyGenerator {
@@ -92,4 +93,5 @@ object PublicKeyGenerator {
       extends PublicKeyGeneratorError(
         message = s"Public Key Use $actualKeyUse is not supported. Please use $supportedKeyUse."
       )
+
 }

@@ -45,14 +45,14 @@ class ApiKeyRepositorySpec
     with BeforeAndAfterEach
     with EitherValues {
 
-  private val uuidGenerator = mock[UuidGenerator]
-  private val secureHashGenerator = mock[SecureHashGenerator]
-  private val apiKeyDb = mock[ApiKeyDb]
-  private val tenantDb = mock[TenantDb]
-  private val apiKeyDataDb = mock[ApiKeyDataDb]
-  private val permissionDb = mock[PermissionDb]
-  private val userDb = mock[UserDb]
-  private val apiKeyTemplateDb = mock[ApiKeyTemplateDb]
+  private val uuidGenerator        = mock[UuidGenerator]
+  private val secureHashGenerator  = mock[SecureHashGenerator]
+  private val apiKeyDb             = mock[ApiKeyDb]
+  private val tenantDb             = mock[TenantDb]
+  private val apiKeyDataDb         = mock[ApiKeyDataDb]
+  private val permissionDb         = mock[PermissionDb]
+  private val userDb               = mock[UserDb]
+  private val apiKeyTemplateDb     = mock[ApiKeyTemplateDb]
   private val apiKeysPermissionsDb = mock[ApiKeysPermissionsDb]
 
   private val apiKeyRepository =
@@ -101,7 +101,7 @@ class ApiKeyRepositorySpec
       .asLeft[ApiKeyDataEntity.Read]
       .pure[doobie.ConnectionIO]
 
-  private val testException = new RuntimeException("Test Exception")
+  private val testException    = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
 
   override def beforeEach(): Unit = {
@@ -117,14 +117,14 @@ class ApiKeyRepositorySpec
       apiKeysPermissionsDb
     )
 
-    userDb.getByDbId(any[TenantId], any[UUID]) returns userEntityReadWrapped_1
-    apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns templateEntityReadWrapped_1
-    permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns Stream(permissionEntityRead_1)
+    userDb.getByDbId(any[TenantId], any[UUID]).returns(userEntityReadWrapped_1)
+    apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]).returns(templateEntityReadWrapped_1)
+    permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]).returns(Stream(permissionEntityRead_1))
   }
 
   "ApiKeyRepository on insert" when {
 
-    val apiKeyEntityReadWrapped = apiKeyEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
+    val apiKeyEntityReadWrapped     = apiKeyEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
     val apiKeyDataEntityReadWrapped = apiKeyDataEntityRead_1.asRight[ApiKeyInsertionError].pure[doobie.ConnectionIO]
 
     val apiKeyAlreadyExistsErrorWrapped =
@@ -135,16 +135,17 @@ class ApiKeyRepositorySpec
         .Read(tenantId = tenantDbId_1, apiKeyDataId = apiKeyDataDbId_1, permissionId = permissionDbId_1)
 
     def initMocks(): Unit = {
-      secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-      uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-      tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-      userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-      apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-      permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-      apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
-      apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
-      apiKeysPermissionsDb.insertMany(any[List[ApiKeysPermissionsEntity.Write]]) returns
-        List(apiKeysPermissionsEntityRead_1_1).asRight[ApiKeysPermissionsDbError].pure[doobie.ConnectionIO]
+      secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+      uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+      tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+      userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+      apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]).returns(templateEntityReadWrapped_1)
+      permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+      apiKeyDb.insert(any[ApiKeyEntity.Write]).returns(apiKeyEntityReadWrapped)
+      apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(apiKeyDataEntityReadWrapped)
+      apiKeysPermissionsDb
+        .insertMany(any[List[ApiKeysPermissionsEntity.Write]])
+        .returns(List(apiKeysPermissionsEntityRead_1_1).asRight[ApiKeysPermissionsDbError].pure[doobie.ConnectionIO])
     }
 
     "everything works correctly" should {
@@ -183,7 +184,7 @@ class ApiKeyRepositorySpec
     "SecureHashGenerator returns failed IO" should {
 
       "NOT call UuidGenerator, TenantDb, UserDb, ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb or PermissionDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -201,7 +202,7 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing the same exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.raiseError(testException))
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -213,8 +214,8 @@ class ApiKeyRepositorySpec
     "UuidGenerator returns failed IO" should {
 
       "NOT call TenantDb, UserDb, ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb or PermissionDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -224,8 +225,8 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing the same exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -237,9 +238,9 @@ class ApiKeyRepositorySpec
     "TenantDb returns empty Option" should {
 
       "NOT call UserDb, ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb or PermissionDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -249,9 +250,9 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ReferencedTenantDoesNotExistError" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns none[TenantEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(none[TenantEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -262,10 +263,14 @@ class ApiKeyRepositorySpec
     "TenantDb returns exception" should {
 
       "NOT call UserDb, ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb or PermissionDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -275,10 +280,14 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns testException
-          .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb
+          .getByPublicTenantId(any[TenantId])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Option[TenantEntity.Read]]
+          )
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -290,10 +299,10 @@ class ApiKeyRepositorySpec
     "UserDb.getByPublicUserId returns empty Option" should {
 
       "NOT call ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb, PermissionDb or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(none[UserEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -304,10 +313,10 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(none[UserEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -318,11 +327,12 @@ class ApiKeyRepositorySpec
     "UserDb.getByPublicUserId returns exception" should {
 
       "NOT call ApiKeyTemplateDb, ApiKeyDb, ApiKeyDataDb, PermissionDb or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb
+          .getByPublicUserId(any[TenantId], any[UserId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -333,11 +343,12 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb
+          .getByPublicUserId(any[TenantId], any[UserId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -349,12 +360,13 @@ class ApiKeyRepositorySpec
     "ApiKeyTemplateDb.getByPublicTemplateId returns empty Option" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb, PermissionDb, ApiKeyTemplateDb.getByDbId or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns
-          none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -366,12 +378,13 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns
-          none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(none[ApiKeyTemplateEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -382,12 +395,13 @@ class ApiKeyRepositorySpec
     "ApiKeyTemplateDb.getByPublicTemplateId returns exception" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb, PermissionDb, ApiKeyTemplateDb.getByDbId or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -399,12 +413,13 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[ApiKeyTemplateEntity.Read]])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -416,13 +431,16 @@ class ApiKeyRepositorySpec
     "PermissionDb.getByPublicPermissionId returns empty Option" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb, PermissionDb, ApiKeyTemplateDb.getByDbId or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(none[PermissionEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -435,13 +453,16 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ReferencedApiKeyTemplateDoesNotExistError" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns
-          none[PermissionEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(none[PermissionEntity.Read].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -452,13 +473,16 @@ class ApiKeyRepositorySpec
     "PermissionDb.getByPublicPermissionId returns exception" should {
 
       "NOT call ApiKeyDb, ApiKeyDataDb, PermissionDb, ApiKeyTemplateDb.getByDbId or UserDb.getByDbId" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]])
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -471,13 +495,16 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb
+          .getByPublicPermissionId(any[TenantId], any[PermissionId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[PermissionEntity.Read]])
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -489,13 +516,15 @@ class ApiKeyRepositorySpec
     "ApiKeyDb returns Left containing ApiKeyAlreadyExistsError" should {
 
       "NOT call ApiKeyDataDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+        apiKeyDb.insert(any[ApiKeyEntity.Write]).returns(apiKeyAlreadyExistsErrorWrapped)
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -505,13 +534,15 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyAlreadyExistsError" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyAlreadyExistsErrorWrapped
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+        apiKeyDb.insert(any[ApiKeyEntity.Write]).returns(apiKeyAlreadyExistsErrorWrapped)
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -522,14 +553,20 @@ class ApiKeyRepositorySpec
     "ApiKeyDb returns different exception" should {
 
       "NOT call ApiKeyDataDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
-          .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+        apiKeyDb
+          .insert(any[ApiKeyEntity.Write])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
+          )
 
         for {
           _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -539,14 +576,20 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns testException
-          .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+        apiKeyDb
+          .insert(any[ApiKeyEntity.Write])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyEntity.Read]]
+          )
 
         apiKeyRepository
           .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -558,19 +601,21 @@ class ApiKeyRepositorySpec
     "ApiKeyDb returns Right containing ApiKeyEntity.Read" when {
 
       def fixture[T](test: => IO[T]): IO[T] = IO {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        uuidGenerator.generateUuid returns (IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        userDb.getByPublicUserId(any[TenantId], any[UserId]) returns userEntityReadWrapped_1
-        apiKeyTemplateDb.getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId]) returns templateEntityReadWrapped_1
-        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]) returns permissionEntityReadWrapped_1
-        apiKeyDb.insert(any[ApiKeyEntity.Write]) returns apiKeyEntityReadWrapped
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        uuidGenerator.generateUuid.returns(IO.pure(apiKeyDbId_1), IO.pure(apiKeyDataDbId_1))
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        userDb.getByPublicUserId(any[TenantId], any[UserId]).returns(userEntityReadWrapped_1)
+        apiKeyTemplateDb
+          .getByPublicTemplateId(any[TenantId], any[ApiKeyTemplateId])
+          .returns(templateEntityReadWrapped_1)
+        permissionDb.getByPublicPermissionId(any[TenantId], any[PermissionId]).returns(permissionEntityReadWrapped_1)
+        apiKeyDb.insert(any[ApiKeyEntity.Write]).returns(apiKeyEntityReadWrapped)
       }.flatMap(_ => test)
 
       "ApiKeyDataDb returns Left containing ApiKeyIdAlreadyExistsError" should {
 
         "NOT call ApiKeysPermissionsDb" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(apiKeyIdAlreadyExistsErrorWrapped)
 
           for {
             _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -580,7 +625,7 @@ class ApiKeyRepositorySpec
         }
 
         "return Left containing ApiKeyIdAlreadyExistsError" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyIdAlreadyExistsErrorWrapped
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(apiKeyIdAlreadyExistsErrorWrapped)
 
           apiKeyRepository
             .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -591,7 +636,7 @@ class ApiKeyRepositorySpec
       "ApiKeyDataDb returns Left containing PublicKeyIdAlreadyExistsError" should {
 
         "NOT call ApiKeysPermissionsDb" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(publicKeyIdAlreadyExistsErrorWrapped)
 
           for {
             _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -601,7 +646,7 @@ class ApiKeyRepositorySpec
         }
 
         "return Left containing PublicKeyIdAlreadyExistsError" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns publicKeyIdAlreadyExistsErrorWrapped
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(publicKeyIdAlreadyExistsErrorWrapped)
 
           apiKeyRepository
             .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -612,8 +657,12 @@ class ApiKeyRepositorySpec
       "ApiKeyDataDb returns different exception" should {
 
         "NOT call ApiKeysPermissionsDb" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns testException
-            .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
+          apiKeyDataDb
+            .insert(any[ApiKeyDataEntity.Write])
+            .returns(
+              testException
+                .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
+            )
 
           for {
             _ <- apiKeyRepository.insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1).attempt
@@ -623,8 +672,12 @@ class ApiKeyRepositorySpec
         }
 
         "return failed IO containing this exception" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns testException
-            .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
+          apiKeyDataDb
+            .insert(any[ApiKeyDataEntity.Write])
+            .returns(
+              testException
+                .raiseError[doobie.ConnectionIO, Either[ApiKeyInsertionError, ApiKeyDataEntity.Read]]
+            )
 
           apiKeyRepository
             .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -635,12 +688,15 @@ class ApiKeyRepositorySpec
 
       "ApiKeysPermissionsDb returns Left containing ApiKeysPermissionsDbError" should {
         "return failed IO containing ApiKeyPermissionAssociationCannotBeCreated" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
-          apiKeysPermissionsDb.insertMany(any[List[ApiKeysPermissionsEntity.Write]]) returns
-            ApiKeysPermissionsInsertionErrorImpl(testSqlException)
-              .asInstanceOf[ApiKeysPermissionsDbError]
-              .asLeft[List[ApiKeysPermissionsEntity.Read]]
-              .pure[doobie.ConnectionIO]
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(apiKeyDataEntityReadWrapped)
+          apiKeysPermissionsDb
+            .insertMany(any[List[ApiKeysPermissionsEntity.Write]])
+            .returns(
+              ApiKeysPermissionsInsertionErrorImpl(testSqlException)
+                .asInstanceOf[ApiKeysPermissionsDbError]
+                .asLeft[List[ApiKeysPermissionsEntity.Read]]
+                .pure[doobie.ConnectionIO]
+            )
 
           apiKeyRepository
             .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -654,9 +710,13 @@ class ApiKeyRepositorySpec
 
       "ApiKeysPermissionsDb returns exception" should {
         "return failed IO containing this exception" in fixture {
-          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]) returns apiKeyDataEntityReadWrapped
-          apiKeysPermissionsDb.insertMany(any[List[ApiKeysPermissionsEntity.Write]]) returns testException
-            .raiseError[doobie.ConnectionIO, Either[ApiKeysPermissionsDbError, List[ApiKeysPermissionsEntity.Read]]]
+          apiKeyDataDb.insert(any[ApiKeyDataEntity.Write]).returns(apiKeyDataEntityReadWrapped)
+          apiKeysPermissionsDb
+            .insertMany(any[List[ApiKeysPermissionsEntity.Write]])
+            .returns(
+              testException
+                .raiseError[doobie.ConnectionIO, Either[ApiKeysPermissionsDbError, List[ApiKeysPermissionsEntity.Read]]]
+            )
 
           apiKeyRepository
             .insert(publicTenantId_1, apiKey_1, apiKeyData_1, publicTemplateId_1)
@@ -680,8 +740,8 @@ class ApiKeyRepositorySpec
       "ApiKeyData under update has scopes" should {
 
         "call ApiKeyDataDb, providing correct entities" in {
-          tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-          apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns apiKeyDataEntityReadWrappedUpdated
+          tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+          apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]).returns(apiKeyDataEntityReadWrappedUpdated)
 
           val expectedApiKeyDataEntityUpdate = ApiKeyDataEntity.Update(
             publicKeyId = publicKeyId_1.toString,
@@ -697,8 +757,8 @@ class ApiKeyRepositorySpec
         }
 
         "return Right containing ApiKeyData" in {
-          tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-          apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns apiKeyDataEntityReadWrappedUpdated
+          tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+          apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]).returns(apiKeyDataEntityReadWrappedUpdated)
 
           val expectedApiKeyData = apiKeyData_1.copy(name = nameUpdated, description = descriptionUpdated)
 
@@ -709,12 +769,16 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns Left containing ApiKeyDataNotFoundError" should {
       "return Left containing ApiKeyDataNotFoundError" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns ApiKeyDataNotFoundError(publicKeyId_1)
-          .asInstanceOf[ApiKeyDbError]
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]).returns(apiKeyDataEntityReadWrapped)
+        apiKeyDataDb
+          .update(any[TenantId], any[ApiKeyDataEntity.Update])
+          .returns(
+            ApiKeyDataNotFoundError(publicKeyId_1)
+              .asInstanceOf[ApiKeyDbError]
+              .asLeft[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .update(publicTenantId_1, apiKeyDataUpdate_1)
@@ -726,10 +790,14 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns exception" should {
       "return failed IO containing the same exception" in {
-        tenantDb.getByPublicTenantId(any[TenantId]) returns tenantEntityReadWrapped
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns apiKeyDataEntityReadWrapped
-        apiKeyDataDb.update(any[TenantId], any[ApiKeyDataEntity.Update]) returns testException
-          .raiseError[doobie.ConnectionIO, Either[ApiKeyDbError, ApiKeyDataEntity.Read]]
+        tenantDb.getByPublicTenantId(any[TenantId]).returns(tenantEntityReadWrapped)
+        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]).returns(apiKeyDataEntityReadWrapped)
+        apiKeyDataDb
+          .update(any[TenantId], any[ApiKeyDataEntity.Update])
+          .returns(
+            testException
+              .raiseError[doobie.ConnectionIO, Either[ApiKeyDbError, ApiKeyDataEntity.Read]]
+          )
 
         apiKeyRepository.update(publicTenantId_1, apiKeyDataUpdate_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -739,7 +807,7 @@ class ApiKeyRepositorySpec
   "ApiKeyRepository on get(:apiKey)" when {
 
     "should always call SecureHashGenerator" in {
-      secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+      secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.raiseError(testException))
 
       for {
         _ <- apiKeyRepository.get(publicTenantId_1, apiKey_1).attempt
@@ -751,7 +819,7 @@ class ApiKeyRepositorySpec
     "SecureHashGenerator returns failed IO" should {
 
       "NOT call ApiKeyDb or ApiKeyDataDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyRepository.get(publicTenantId_1, apiKey_1).attempt
@@ -761,7 +829,7 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing the same exception" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.raiseError(testException)
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.raiseError(testException))
 
         apiKeyRepository
           .get(publicTenantId_1, apiKey_1)
@@ -773,8 +841,10 @@ class ApiKeyRepositorySpec
     "SecureHashGenerator returns IO containing HashedApiKey" when {
 
       "should call ApiKeyDb" in {
-        secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-        apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns none[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+        secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+        apiKeyDb
+          .getByApiKey(any[TenantId], any[HashedApiKey])
+          .returns(none[ApiKeyEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.get(publicTenantId_1, apiKey_1)
@@ -786,9 +856,13 @@ class ApiKeyRepositorySpec
       "ApiKeyDb returns empty Option" should {
 
         "NOT call ApiKeyDataDb" in {
-          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-          apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns none[ApiKeyEntity.Read]
-            .pure[doobie.ConnectionIO]
+          secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+          apiKeyDb
+            .getByApiKey(any[TenantId], any[HashedApiKey])
+            .returns(
+              none[ApiKeyEntity.Read]
+                .pure[doobie.ConnectionIO]
+            )
 
           for {
             _ <- apiKeyRepository.get(publicTenantId_1, apiKey_1)
@@ -798,9 +872,13 @@ class ApiKeyRepositorySpec
         }
 
         "return empty Option" in {
-          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-          apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns none[ApiKeyEntity.Read]
-            .pure[doobie.ConnectionIO]
+          secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+          apiKeyDb
+            .getByApiKey(any[TenantId], any[HashedApiKey])
+            .returns(
+              none[ApiKeyEntity.Read]
+                .pure[doobie.ConnectionIO]
+            )
 
           apiKeyRepository.get(publicTenantId_1, apiKey_1).asserting(_ shouldBe None)
         }
@@ -809,11 +887,19 @@ class ApiKeyRepositorySpec
       "ApiKeyDb returns ApiKeyEntity" when {
 
         "should always call ApiKeyDataDb" in {
-          secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-          apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns Option(apiKeyEntityRead_1)
-            .pure[doobie.ConnectionIO]
-          apiKeyDataDb.getByApiKeyId(any[TenantId], any[UUID]) returns none[ApiKeyDataEntity.Read]
-            .pure[doobie.ConnectionIO]
+          secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+          apiKeyDb
+            .getByApiKey(any[TenantId], any[HashedApiKey])
+            .returns(
+              Option(apiKeyEntityRead_1)
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeyDataDb
+            .getByApiKeyId(any[TenantId], any[UUID])
+            .returns(
+              none[ApiKeyDataEntity.Read]
+                .pure[doobie.ConnectionIO]
+            )
 
           for {
             _ <- apiKeyRepository.get(publicTenantId_1, apiKey_1)
@@ -824,11 +910,19 @@ class ApiKeyRepositorySpec
 
         "ApiKeyDataDb returns empty Option" should {
           "return empty Option" in {
-            secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-            apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns Option(apiKeyEntityRead_1)
-              .pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[TenantId], any[UUID]) returns none[ApiKeyDataEntity.Read]
-              .pure[doobie.ConnectionIO]
+            secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+            apiKeyDb
+              .getByApiKey(any[TenantId], any[HashedApiKey])
+              .returns(
+                Option(apiKeyEntityRead_1)
+                  .pure[doobie.ConnectionIO]
+              )
+            apiKeyDataDb
+              .getByApiKeyId(any[TenantId], any[UUID])
+              .returns(
+                none[ApiKeyDataEntity.Read]
+                  .pure[doobie.ConnectionIO]
+              )
 
             apiKeyRepository.get(publicTenantId_1, apiKey_1).asserting(_ shouldBe None)
           }
@@ -836,11 +930,19 @@ class ApiKeyRepositorySpec
 
         "ApiKeyDataDb returns ApiKeyDataEntity" when {
           "return ApiKeyData" in {
-            secureHashGenerator.generateHashFor(any[ApiKey]) returns IO.pure(hashedApiKey_1)
-            apiKeyDb.getByApiKey(any[TenantId], any[HashedApiKey]) returns Option(apiKeyEntityRead_1)
-              .pure[doobie.ConnectionIO]
-            apiKeyDataDb.getByApiKeyId(any[TenantId], any[UUID]) returns Option(apiKeyDataEntityRead_1)
-              .pure[doobie.ConnectionIO]
+            secureHashGenerator.generateHashFor(any[ApiKey]).returns(IO.pure(hashedApiKey_1))
+            apiKeyDb
+              .getByApiKey(any[TenantId], any[HashedApiKey])
+              .returns(
+                Option(apiKeyEntityRead_1)
+                  .pure[doobie.ConnectionIO]
+              )
+            apiKeyDataDb
+              .getByApiKeyId(any[TenantId], any[UUID])
+              .returns(
+                Option(apiKeyDataEntityRead_1)
+                  .pure[doobie.ConnectionIO]
+              )
 
             apiKeyRepository.get(publicTenantId_1, apiKey_1).asserting(_ shouldBe Some(apiKeyData_1))
           }
@@ -852,8 +954,12 @@ class ApiKeyRepositorySpec
   "ApiKeyRepository on get(:userId, :publicKeyId)" when {
 
     "should always call ApiKeyDataDb" in {
-      apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-        .pure[doobie.ConnectionIO]
+      apiKeyDataDb
+        .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+        .returns(
+          none[ApiKeyDataEntity.Read]
+            .pure[doobie.ConnectionIO]
+        )
 
       for {
         _ <- apiKeyRepository.get(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -863,8 +969,12 @@ class ApiKeyRepositorySpec
     }
 
     "should NOT call ApiKeyDb" in {
-      apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-        .pure[doobie.ConnectionIO]
+      apiKeyDataDb
+        .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+        .returns(
+          none[ApiKeyDataEntity.Read]
+            .pure[doobie.ConnectionIO]
+        )
 
       for {
         _ <- apiKeyRepository.get(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -875,8 +985,12 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns empty Option" should {
       "return empty Option" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .get(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -886,8 +1000,12 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns ApiKeyDataEntity" when {
       "return Option containing ApiKeyData" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository.get(publicTenantId_1, publicUserId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
@@ -897,8 +1015,12 @@ class ApiKeyRepositorySpec
   "ApiKeyRepository on getByPublicKeyId" when {
 
     "should always call ApiKeyDataDb" in {
-      apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-        .pure[doobie.ConnectionIO]
+      apiKeyDataDb
+        .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+        .returns(
+          none[ApiKeyDataEntity.Read]
+            .pure[doobie.ConnectionIO]
+        )
 
       for {
         _ <- apiKeyRepository.getByPublicKeyId(publicTenantId_1, publicKeyId_1)
@@ -908,8 +1030,12 @@ class ApiKeyRepositorySpec
     }
 
     "should NOT call ApiKeyDb" in {
-      apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-        .pure[doobie.ConnectionIO]
+      apiKeyDataDb
+        .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+        .returns(
+          none[ApiKeyDataEntity.Read]
+            .pure[doobie.ConnectionIO]
+        )
 
       for {
         _ <- apiKeyRepository.getByPublicKeyId(publicTenantId_1, publicKeyId_1)
@@ -920,8 +1046,12 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns empty Option" should {
       "return empty Option" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .getByPublicKeyId(publicTenantId_1, publicKeyId_1)
@@ -931,8 +1061,12 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns ApiKeyDataEntity" when {
       "return Option containing ApiKeyData" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository.getByPublicKeyId(publicTenantId_1, publicKeyId_1).asserting(_ shouldBe Some(apiKeyData_1))
       }
@@ -942,7 +1076,7 @@ class ApiKeyRepositorySpec
   "ApiKeyRepository on getAll(:userId)" when {
 
     "should always call ApiKeyDataDb" in {
-      apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream.empty
+      apiKeyDataDb.getByUserId(any[TenantId], any[UserId]).returns(Stream.empty)
 
       for {
         _ <- apiKeyRepository.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -952,7 +1086,7 @@ class ApiKeyRepositorySpec
     }
 
     "should NOT call ApiKeyDb" in {
-      apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream.empty
+      apiKeyDataDb.getByUserId(any[TenantId], any[UserId]).returns(Stream.empty)
 
       for {
         _ <- apiKeyRepository.getAllForUser(publicTenantId_1, publicUserId_1)
@@ -963,7 +1097,7 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns empty Stream" should {
       "return empty List" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream.empty
+        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]).returns(Stream.empty)
 
         apiKeyRepository
           .getAllForUser(publicTenantId_1, publicUserId_1)
@@ -973,22 +1107,32 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDataDb returns elements in Stream" when {
       "return ApiKeyData with empty scopes fields" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream(
-          apiKeyDataEntityRead_1,
-          apiKeyDataEntityRead_2
-        )
-        userDb.getByDbId(any[TenantId], any[UUID]) returns (
-          Option(userEntityRead_1).pure[doobie.ConnectionIO],
-          Option(userEntityRead_2).pure[doobie.ConnectionIO]
-        )
-        apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns (
-          Option(apiKeyTemplateEntityRead_1).pure[doobie.ConnectionIO],
-          Option(apiKeyTemplateEntityRead_2).pure[doobie.ConnectionIO]
-        )
-        permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          Stream(permissionEntityRead_1),
-          Stream(permissionEntityRead_2)
-        )
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(
+            Stream(
+              apiKeyDataEntityRead_1,
+              apiKeyDataEntityRead_2
+            )
+          )
+        userDb
+          .getByDbId(any[TenantId], any[UUID])
+          .returns(
+            Option(userEntityRead_1).pure[doobie.ConnectionIO],
+            Option(userEntityRead_2).pure[doobie.ConnectionIO]
+          )
+        apiKeyTemplateDb
+          .getByDbId(any[TenantId], any[UUID])
+          .returns(
+            Option(apiKeyTemplateEntityRead_1).pure[doobie.ConnectionIO],
+            Option(apiKeyTemplateEntityRead_2).pure[doobie.ConnectionIO]
+          )
+        permissionDb
+          .getAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            Stream(permissionEntityRead_1),
+            Stream(permissionEntityRead_2)
+          )
 
         apiKeyRepository.getAllForUser(publicTenantId_1, publicUserId_1).asserting { result =>
           result.size shouldBe 2
@@ -1006,15 +1150,27 @@ class ApiKeyRepositorySpec
 
       "ApiKeysPermissionsDb.deleteAllForApiKey returns value greater than zero" should {
         def initMocks(): Unit = {
-          apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-            .pure[doobie.ConnectionIO]
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-            .asRight[ApiKeyDbError]
-            .pure[doobie.ConnectionIO]
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns apiKeyEntityRead_1
-            .asRight[ApiKeyNotFoundError.type]
-            .pure[doobie.ConnectionIO]
+          apiKeyDataDb
+            .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+            .returns(
+              Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1
+                .asRight[ApiKeyDbError]
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1
+                .asRight[ApiKeyNotFoundError.type]
+                .pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb" in {
@@ -1043,15 +1199,27 @@ class ApiKeyRepositorySpec
       "ApiKeysPermissionsDb.deleteAllForApiKey returns zero" should {
 
         def initMocks(): Unit = {
-          apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-            .pure[doobie.ConnectionIO]
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 0.pure[doobie.ConnectionIO]
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-            .asRight[ApiKeyDbError]
-            .pure[doobie.ConnectionIO]
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns apiKeyEntityRead_1
-            .asRight[ApiKeyNotFoundError.type]
-            .pure[doobie.ConnectionIO]
+          apiKeyDataDb
+            .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+            .returns(
+              Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(0.pure[doobie.ConnectionIO])
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1
+                .asRight[ApiKeyDbError]
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1
+                .asRight[ApiKeyNotFoundError.type]
+                .pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb" in {
@@ -1069,7 +1237,7 @@ class ApiKeyRepositorySpec
 
         "return Right containing deleted ApiKeyData without any Permission" in {
           initMocks()
-          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns Stream.empty
+          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]).returns(Stream.empty)
 
           apiKeyRepository
             .delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1081,8 +1249,12 @@ class ApiKeyRepositorySpec
     "ApiKeyDataDb.getBy returns empty Option" should {
 
       "NOT call ApiKeysPermissionsDb, ApiKeyDb or ApiKeyDataDb.delete" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1093,8 +1265,12 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFound" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1105,10 +1281,12 @@ class ApiKeyRepositorySpec
     "ApiKeysPermissionsDb.deleteAllForApiKey returns exception" should {
 
       "NOT call ApiKeyDataDb.delete or ApiKeyDb" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns
-          Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-          testException.raiseError[doobie.ConnectionIO, Int]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO])
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Int])
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicUserId_1, publicKeyId_1).attempt
@@ -1118,10 +1296,12 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing this exception" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns
-          Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-          testException.raiseError[doobie.ConnectionIO, Int]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO])
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Int])
 
         apiKeyRepository
           .delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1133,13 +1313,21 @@ class ApiKeyRepositorySpec
     "ApiKeyDataDb.delete returns Left containing ApiKeyDataNotFoundError" should {
 
       "NOT call ApiKeyDb" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            ApiKeyDbError
+              .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
+              .asLeft[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1149,13 +1337,21 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFoundError" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            ApiKeyDbError
+              .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
+              .asLeft[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1165,15 +1361,27 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDb.delete returns Left containing ApiKeyNotFoundError" should {
       "return Left containing ApiKeyNotFoundError" in {
-        apiKeyDataDb.getBy(any[TenantId], any[UserId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-          .asRight[ApiKeyDbError]
-          .pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns ApiKeyNotFoundError
-          .asLeft[ApiKeyEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getBy(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            apiKeyDataEntityRead_1
+              .asRight[ApiKeyDbError]
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(
+            ApiKeyNotFoundError
+              .asLeft[ApiKeyEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .delete(publicTenantId_1, publicUserId_1, publicKeyId_1)
@@ -1191,15 +1399,27 @@ class ApiKeyRepositorySpec
       "ApiKeysPermissionsDb.deleteAllForApiKey returns value greater than zero" should {
 
         def initMocks(): Unit = {
-          apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-            .pure[doobie.ConnectionIO]
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-            .asRight[ApiKeyDbError]
-            .pure[doobie.ConnectionIO]
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns apiKeyEntityRead_1
-            .asRight[ApiKeyNotFoundError.type]
-            .pure[doobie.ConnectionIO]
+          apiKeyDataDb
+            .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+            .returns(
+              Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1
+                .asRight[ApiKeyDbError]
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1
+                .asRight[ApiKeyNotFoundError.type]
+                .pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb" in {
@@ -1225,15 +1445,27 @@ class ApiKeyRepositorySpec
       "ApiKeysPermissionsDb.deleteAllForApiKey returns zero" should {
 
         def initMocks(): Unit = {
-          apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-            .pure[doobie.ConnectionIO]
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 0.pure[doobie.ConnectionIO]
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-            .asRight[ApiKeyDbError]
-            .pure[doobie.ConnectionIO]
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns apiKeyEntityRead_1
-            .asRight[ApiKeyNotFoundError.type]
-            .pure[doobie.ConnectionIO]
+          apiKeyDataDb
+            .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+            .returns(
+              Option(apiKeyDataEntityRead_1)
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(0.pure[doobie.ConnectionIO])
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1
+                .asRight[ApiKeyDbError]
+                .pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1
+                .asRight[ApiKeyNotFoundError.type]
+                .pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb" in {
@@ -1251,7 +1483,7 @@ class ApiKeyRepositorySpec
 
         "return Right containing deleted ApiKeyData without any Permission" in {
           initMocks()
-          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns Stream.empty
+          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]).returns(Stream.empty)
 
           apiKeyRepository
             .delete(publicTenantId_1, publicKeyId_1)
@@ -1263,8 +1495,12 @@ class ApiKeyRepositorySpec
     "ApiKeyDataDb.getByPublicKeyId returns empty Option" should {
 
       "NOT call ApiKeysPermissionsDb, ApiKeyDb or ApiKeyDataDb.delete" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicKeyId_1)
@@ -1275,8 +1511,12 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFound" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns none[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            none[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .delete(publicTenantId_1, publicKeyId_1)
@@ -1287,10 +1527,12 @@ class ApiKeyRepositorySpec
     "ApiKeysPermissionsDb.deleteAllForApiKey returns exception" should {
 
       "NOT call ApiKeyDataDb.delete or ApiKeyDb" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns
-          Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-          testException.raiseError[doobie.ConnectionIO, Int]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO])
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Int])
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicKeyId_1).attempt
@@ -1300,10 +1542,12 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing this exception" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns
-          Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-          testException.raiseError[doobie.ConnectionIO, Int]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(Option(apiKeyDataEntityRead_1).pure[doobie.ConnectionIO])
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(testException.raiseError[doobie.ConnectionIO, Int])
 
         apiKeyRepository
           .delete(publicTenantId_1, publicKeyId_1)
@@ -1315,13 +1559,21 @@ class ApiKeyRepositorySpec
     "ApiKeyDataDb.delete returns Left containing ApiKeyDataNotFoundError" should {
 
       "NOT call ApiKeyDb" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            ApiKeyDbError
+              .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
+              .asLeft[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         for {
           _ <- apiKeyRepository.delete(publicTenantId_1, publicKeyId_1)
@@ -1331,13 +1583,21 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFoundError" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns ApiKeyDbError
-          .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
-          .asLeft[ApiKeyDataEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            ApiKeyDbError
+              .apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
+              .asLeft[ApiKeyDataEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .delete(publicTenantId_1, publicKeyId_1)
@@ -1347,15 +1607,27 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDb.delete returns Left containing ApiKeyNotFoundError" should {
       "return Left containing ApiKeyNotFoundError" in {
-        apiKeyDataDb.getByPublicKeyId(any[TenantId], any[ApiKeyId]) returns Option(apiKeyDataEntityRead_1)
-          .pure[doobie.ConnectionIO]
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns 1.pure[doobie.ConnectionIO]
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns apiKeyDataEntityRead_1
-          .asRight[ApiKeyDbError]
-          .pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns ApiKeyNotFoundError
-          .asLeft[ApiKeyEntity.Read]
-          .pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByPublicKeyId(any[TenantId], any[ApiKeyId])
+          .returns(
+            Option(apiKeyDataEntityRead_1)
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]).returns(1.pure[doobie.ConnectionIO])
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            apiKeyDataEntityRead_1
+              .asRight[ApiKeyDbError]
+              .pure[doobie.ConnectionIO]
+          )
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(
+            ApiKeyNotFoundError
+              .asLeft[ApiKeyEntity.Read]
+              .pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository.delete(publicTenantId_1, publicKeyId_1).asserting(_ shouldBe Left(ApiKeyNotFoundError))
       }
@@ -1369,27 +1641,36 @@ class ApiKeyRepositorySpec
       "ApiKeysPermissionsDb.deleteAllForApiKey returns value greater than zero" should {
 
         def initMocks(): Unit = {
-          apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-            Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
+          apiKeyDataDb
+            .getByUserId(any[TenantId], any[UserId])
+            .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
 
-          userDb.getByDbId(any[TenantId], any[UUID]) returns (userEntityReadWrapped_1, userEntityReadWrapped_2)
-          apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-            (templateEntityReadWrapped_1, templateEntityReadWrapped_2)
-          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-            (Stream(permissionEntityRead_1), Stream(permissionEntityRead_2))
+          userDb.getByDbId(any[TenantId], any[UUID]).returns(userEntityReadWrapped_1, userEntityReadWrapped_2)
+          apiKeyTemplateDb
+            .getByDbId(any[TenantId], any[UUID])
+            .returns(templateEntityReadWrapped_1, templateEntityReadWrapped_2)
+          permissionDb
+            .getAllForApiKey(any[TenantId], any[ApiKeyId])
+            .returns(Stream(permissionEntityRead_1), Stream(permissionEntityRead_2))
 
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-            1.pure[doobie.ConnectionIO],
-            1.pure[doobie.ConnectionIO]
-          )
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns (
-            apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
-            apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
-          )
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns (
-            apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
-            apiKeyEntityRead_2.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
-          )
+          apiKeysPermissionsDb
+            .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+            .returns(
+              1.pure[doobie.ConnectionIO],
+              1.pure[doobie.ConnectionIO]
+            )
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
+              apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
+              apiKeyEntityRead_2.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb for each deleted API key" in {
@@ -1423,27 +1704,36 @@ class ApiKeyRepositorySpec
       "ApiKeysPermissionsDb.deleteAllForApiKey returns zero" should {
 
         def initMocks(): Unit = {
-          apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-            Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
+          apiKeyDataDb
+            .getByUserId(any[TenantId], any[UserId])
+            .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
 
-          userDb.getByDbId(any[TenantId], any[UUID]) returns (userEntityReadWrapped_1, userEntityReadWrapped_2)
-          apiKeyTemplateDb.getByDbId(any[TenantId], any[UUID]) returns
-            (templateEntityReadWrapped_1, templateEntityReadWrapped_2)
-          permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-            (Stream.empty, Stream(permissionEntityRead_2))
+          userDb.getByDbId(any[TenantId], any[UUID]).returns(userEntityReadWrapped_1, userEntityReadWrapped_2)
+          apiKeyTemplateDb
+            .getByDbId(any[TenantId], any[UUID])
+            .returns(templateEntityReadWrapped_1, templateEntityReadWrapped_2)
+          permissionDb
+            .getAllForApiKey(any[TenantId], any[ApiKeyId])
+            .returns(Stream.empty, Stream(permissionEntityRead_2))
 
-          apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-            0.pure[doobie.ConnectionIO],
-            1.pure[doobie.ConnectionIO]
-          )
-          apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns (
-            apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
-            apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
-          )
-          apiKeyDb.delete(any[TenantId], any[UUID]) returns (
-            apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
-            apiKeyEntityRead_2.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
-          )
+          apiKeysPermissionsDb
+            .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+            .returns(
+              0.pure[doobie.ConnectionIO],
+              1.pure[doobie.ConnectionIO]
+            )
+          apiKeyDataDb
+            .delete(any[TenantId], any[ApiKeyId])
+            .returns(
+              apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
+              apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
+            )
+          apiKeyDb
+            .delete(any[TenantId], any[UUID])
+            .returns(
+              apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
+              apiKeyEntityRead_2.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+            )
         }
 
         "call ApiKeysPermissionsDb, ApiKeyDb and ApiKeyDataDb" in {
@@ -1478,7 +1768,7 @@ class ApiKeyRepositorySpec
     "ApiKeyDataDb.getByUserId returns empty Stream" should {
 
       "NOT call ApiKeysPermissionsDb, ApiKeyDb or ApiKeyDataDb.delete" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream.empty
+        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]).returns(Stream.empty)
 
         for {
           _ <- apiKeyRepository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(noopTransactor)
@@ -1489,7 +1779,7 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFound" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns Stream.empty
+        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]).returns(Stream.empty)
 
         apiKeyRepository
           .deleteAllForUserOp(publicTenantId_1, publicUserId_1)
@@ -1502,16 +1792,21 @@ class ApiKeyRepositorySpec
     "ApiKeysPermissionsDb.deleteAllForApiKey returns exception for subsequent call" should {
 
       "call ApiKeyDataDb.delete and ApiKeyDb only for the successful call" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-          Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          1.pure[doobie.ConnectionIO],
-          testException.raiseError[doobie.ConnectionIO, Int]
-        )
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns
-          apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns
-          apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            1.pure[doobie.ConnectionIO],
+            testException.raiseError[doobie.ConnectionIO, Int]
+          )
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO])
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository
@@ -1529,16 +1824,21 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing this exception" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-          Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          testException.raiseError[doobie.ConnectionIO, Int],
-          1.pure[doobie.ConnectionIO]
-        )
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns
-          apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns
-          apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            testException.raiseError[doobie.ConnectionIO, Int],
+            1.pure[doobie.ConnectionIO]
+          )
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO])
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .deleteAllForUserOp(publicTenantId_1, publicUserId_1)
@@ -1554,18 +1854,24 @@ class ApiKeyRepositorySpec
       val error: ApiKeyDbError = ApiKeyDbError.apiKeyDataNotFoundError(publicUserId_1, publicKeyId_1)
 
       "call ApiKeyDb only for the successful call" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-          Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          1.pure[doobie.ConnectionIO],
-          1.pure[doobie.ConnectionIO]
-        )
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns (
-          apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
-          error.asLeft[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
-        )
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns
-          apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            1.pure[doobie.ConnectionIO],
+            1.pure[doobie.ConnectionIO]
+          )
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
+            error.asLeft[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+          )
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO])
 
         for {
           _ <- apiKeyRepository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(noopTransactor)
@@ -1576,18 +1882,24 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ApiKeyDataNotFoundError" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-          Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          1.pure[doobie.ConnectionIO],
-          1.pure[doobie.ConnectionIO]
-        )
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns (
-          apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
-          error.asLeft[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
-        )
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns
-          apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO]
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            1.pure[doobie.ConnectionIO],
+            1.pure[doobie.ConnectionIO]
+          )
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
+            error.asLeft[ApiKeyDataEntity.Read].pure[doobie.ConnectionIO]
+          )
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO])
 
         apiKeyRepository
           .deleteAllForUserOp(publicTenantId_1, publicUserId_1)
@@ -1599,20 +1911,27 @@ class ApiKeyRepositorySpec
 
     "ApiKeyDb.delete returns Left containing ApiKeyNotFoundError for subsequent call" should {
       "return Left containing ApiKeyNotFoundError" in {
-        apiKeyDataDb.getByUserId(any[TenantId], any[UserId]) returns
-          Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2)
-        apiKeysPermissionsDb.deleteAllForApiKey(any[TenantId], any[ApiKeyId]) returns (
-          1.pure[doobie.ConnectionIO],
-          1.pure[doobie.ConnectionIO]
-        )
-        apiKeyDataDb.delete(any[TenantId], any[ApiKeyId]) returns (
-          apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
-          apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
-        )
-        apiKeyDb.delete(any[TenantId], any[UUID]) returns (
-          apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
-          ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
-        )
+        apiKeyDataDb
+          .getByUserId(any[TenantId], any[UserId])
+          .returns(Stream(apiKeyDataEntityRead_1, apiKeyDataEntityRead_2))
+        apiKeysPermissionsDb
+          .deleteAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            1.pure[doobie.ConnectionIO],
+            1.pure[doobie.ConnectionIO]
+          )
+        apiKeyDataDb
+          .delete(any[TenantId], any[ApiKeyId])
+          .returns(
+            apiKeyDataEntityRead_1.asRight[ApiKeyDbError].pure[doobie.ConnectionIO],
+            apiKeyDataEntityRead_2.asRight[ApiKeyDbError].pure[doobie.ConnectionIO]
+          )
+        apiKeyDb
+          .delete(any[TenantId], any[UUID])
+          .returns(
+            apiKeyEntityRead_1.asRight[ApiKeyNotFoundError.type].pure[doobie.ConnectionIO],
+            ApiKeyNotFoundError.asLeft[ApiKeyEntity.Read].pure[doobie.ConnectionIO]
+          )
 
         apiKeyRepository
           .deleteAllForUserOp(publicTenantId_1, publicUserId_1)
@@ -1647,16 +1966,15 @@ class ApiKeyRepositorySpec
         } yield ()
       }
 
-      "return Right containing ApiKeyData" in {
+      "return Right containing ApiKeyData" in
         methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
           .asserting(_ shouldBe Right(apiKeyData_1))
-      }
     }
 
     "UserDb.getByDbId returns empty Option" should {
 
       "NOT call PermissionDb" in {
-        userDb.getByDbId(any[TenantId], any[UUID]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
+        userDb.getByDbId(any[TenantId], any[UUID]).returns(none[UserEntity.Read].pure[doobie.ConnectionIO])
 
         for {
           _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
@@ -1666,7 +1984,7 @@ class ApiKeyRepositorySpec
       }
 
       "return Left containing ReferencedUserDoesNotExistError" in {
-        userDb.getByDbId(any[TenantId], any[UUID]) returns none[UserEntity.Read].pure[doobie.ConnectionIO]
+        userDb.getByDbId(any[TenantId], any[UUID]).returns(none[UserEntity.Read].pure[doobie.ConnectionIO])
 
         methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1)
           .asserting(_ shouldBe Left(ReferencedUserDoesNotExistError.fromDbId(userDbId_1)))
@@ -1676,8 +1994,9 @@ class ApiKeyRepositorySpec
     "UserDb.getByDbId returns exception" should {
 
       "NOT call PermissionDb" in {
-        userDb.getByDbId(any[TenantId], any[UUID]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
+        userDb
+          .getByDbId(any[TenantId], any[UUID])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]])
 
         for {
           _ <- methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt
@@ -1687,8 +2006,9 @@ class ApiKeyRepositorySpec
       }
 
       "return failed IO containing this exception" in {
-        userDb.getByDbId(any[TenantId], any[UUID]) returns
-          testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]]
+        userDb
+          .getByDbId(any[TenantId], any[UUID])
+          .returns(testException.raiseError[doobie.ConnectionIO, Option[UserEntity.Read]])
 
         methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -1696,9 +2016,12 @@ class ApiKeyRepositorySpec
 
     "PermissionDb.getAllForApiKey returns exception" should {
       "return failed IO containing this exception" in {
-        permissionDb.getAllForApiKey(any[TenantId], any[ApiKeyId]) returns
-          Stream(permissionEntityRead_1, permissionEntityRead_2) ++
-          Stream.raiseError[doobie.ConnectionIO](testException)
+        permissionDb
+          .getAllForApiKey(any[TenantId], any[ApiKeyId])
+          .returns(
+            Stream(permissionEntityRead_1, permissionEntityRead_2) ++
+              Stream.raiseError[doobie.ConnectionIO](testException)
+          )
 
         methodUnderTest(publicTenantId_1, apiKeyDataEntityRead_1).attempt.asserting(_ shouldBe Left(testException))
       }

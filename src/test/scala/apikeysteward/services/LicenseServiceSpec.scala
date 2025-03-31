@@ -18,6 +18,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
   private val licenseValidator = mock[LicenseValidator]
 
   private val LicenseKey = "TEST-LICENSE-KEY"
+
   private val config = LicenseService.Configuration(
     initialDelay = 0.millis,
     validationPeriod = 0.millis,
@@ -35,7 +36,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
   "LicenseService on periodicallyValidateLicense" when {
 
     "should always call LicenseValidator" in {
-      licenseValidator.isValid(any[String]) returns IO.pure(false)
+      licenseValidator.isValid(any[String]).returns(IO.pure(false))
 
       for {
         _ <- licenseService.periodicallyValidateLicense()
@@ -48,7 +49,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
 
       "call LicenseValidator only once (it's IO program that is called multiple times, not LicenseValidator method)" in {
         val it = Seq(true, false).iterator
-        licenseValidator.isValid(any[String]) returns IO(it.next())
+        licenseValidator.isValid(any[String]).returns(IO(it.next()))
 
         for {
           _ <- licenseService.periodicallyValidateLicense()
@@ -62,7 +63,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
     "LicenseValidator returns false" should {
 
       "call LicenseValidator only once" in {
-        licenseValidator.isValid(any[String]) returns IO.pure(false)
+        licenseValidator.isValid(any[String]).returns(IO.pure(false))
 
         for {
           _ <- licenseService.periodicallyValidateLicense()
@@ -73,7 +74,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
       }
 
       "return completed IO" in {
-        licenseValidator.isValid(any[String]) returns IO.pure(false)
+        licenseValidator.isValid(any[String]).returns(IO.pure(false))
 
         licenseService.periodicallyValidateLicense().asserting(_ shouldBe ())
       }
@@ -83,7 +84,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
 
       "call LicenseValidator only once (it's IO program that is called multiple times, not LicenseValidator method)" in {
         val it = Seq(true, true, true, true, true, true, true, true, false).iterator
-        licenseValidator.isValid(any[String]) returns IO(it.next())
+        licenseValidator.isValid(any[String]).returns(IO(it.next()))
 
         for {
           _ <- licenseService.periodicallyValidateLicense()
@@ -95,7 +96,7 @@ class LicenseServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wi
 
       "return completed IO" in {
         val it = Seq(true, true, true, true, true, true, true, true, false).iterator
-        licenseValidator.isValid(any[String]) returns IO(it.next())
+        licenseValidator.isValid(any[String]).returns(IO(it.next()))
 
         licenseService.periodicallyValidateLicense().asserting(_ shouldBe ())
       }

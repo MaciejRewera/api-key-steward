@@ -91,6 +91,7 @@ class UserDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+
   }
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
@@ -144,4 +145,5 @@ class UserDb()(implicit clock: Clock) {
              |""".stripMargin).query[UserEntity.Read]
 
   }
+
 }

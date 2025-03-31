@@ -21,4 +21,5 @@ object TenantUpdate {
       name = updateTenantRequest.name,
       description = updateTenantRequest.description
     )
+
 }

@@ -28,7 +28,7 @@ class SecureHashGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matche
           val secureHashGenerator = new SecureHashGenerator(algorithm)
 
           val expectedResult = {
-            val messageDigest = MessageDigest.getInstance(algorithm.name)
+            val messageDigest     = MessageDigest.getInstance(algorithm.name)
             val apiKeyHashedBytes = messageDigest.digest(input.toCharArray.map(_.toByte))
             HashedApiKey(bytesToHex(apiKeyHashedBytes))
           }
@@ -49,4 +49,5 @@ class SecureHashGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matche
       }
     }
   }
+
 }

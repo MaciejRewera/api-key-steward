@@ -13,15 +13,15 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
     prngAmount = 13,
     storageHashingAlgorithm = SHA3_256
   )
+
   private val randomSectionLength = 42
 
   private val generator = new RandomStringGenerator(config)
 
   "RandomStringGenerator on generate" should {
 
-    "return String with provided length" in {
+    "return String with provided length" in
       generator.generate(randomSectionLength).asserting(_.length shouldBe randomSectionLength)
-    }
 
     "return different Strings on subsequent calls" in {
       for {
@@ -40,4 +40,5 @@ class RandomStringGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matc
       a[IllegalArgumentException] shouldBe thrownBy(generator.generate(-1))
     }
   }
+
 }

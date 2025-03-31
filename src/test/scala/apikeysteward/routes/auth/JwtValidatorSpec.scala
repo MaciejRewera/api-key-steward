@@ -18,7 +18,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
   private val jwtConfig = mock[JwtConfig]
 
-  implicit private def fixedClock: Clock = Clock.fixed(nowInstant, ZoneOffset.UTC)
+  private implicit def fixedClock: Clock = Clock.fixed(nowInstant, ZoneOffset.UTC)
 
   private val jwtValidator = new JwtValidator(jwtConfig)
 
@@ -27,15 +27,15 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
     reset(jwtConfig)
 
-    jwtConfig.allowedIssuers returns Set(issuer_1, issuer_2)
-    jwtConfig.allowedAudiences returns Set(AuthTestData.audience_1, AuthTestData.audience_2)
-    jwtConfig.maxAge returns None
+    jwtConfig.allowedIssuers.returns(Set(issuer_1, issuer_2))
+    jwtConfig.allowedAudiences.returns(Set(AuthTestData.audience_1, AuthTestData.audience_2))
+    jwtConfig.maxAge.returns(None)
 
-    jwtConfig.requireExp returns true
-    jwtConfig.requireNbf returns true
-    jwtConfig.requireIat returns true
-    jwtConfig.requireIss returns true
-    jwtConfig.requireAud returns true
+    jwtConfig.requireExp.returns(true)
+    jwtConfig.requireNbf.returns(true)
+    jwtConfig.requireIat.returns(true)
+    jwtConfig.requireIss.returns(true)
+    jwtConfig.requireAud.returns(true)
   }
 
   "JwtValidator on validateKeyId" should {
@@ -80,7 +80,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireExp' field is set to TRUE" should {
         "return Left containing MissingExpirationTimeClaimError" in {
-          jwtConfig.requireExp returns true
+          jwtConfig.requireExp.returns(true)
 
           jwtValidator.validateExpirationTimeClaim(noExpirationTimeClaim) shouldBe Left(MissingExpirationTimeClaimError)
         }
@@ -88,7 +88,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireExp' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireExp returns false
+          jwtConfig.requireExp.returns(false)
 
           jwtValidator.validateExpirationTimeClaim(noExpirationTimeClaim) shouldBe Right(noExpirationTimeClaim)
         }
@@ -99,7 +99,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireExp' field is set to TRUE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireExp returns true
+          jwtConfig.requireExp.returns(true)
 
           jwtValidator.validateExpirationTimeClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
         }
@@ -107,7 +107,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireExp' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireExp returns false
+          jwtConfig.requireExp.returns(false)
 
           jwtValidator.validateExpirationTimeClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
         }
@@ -129,7 +129,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireNbf' field is set to TRUE" should {
         "return Left containing MissingNotBeforeClaimError" in {
-          jwtConfig.requireNbf returns true
+          jwtConfig.requireNbf.returns(true)
 
           jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Left(MissingNotBeforeClaimError)
         }
@@ -137,7 +137,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireNbf' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireNbf returns false
+          jwtConfig.requireNbf.returns(false)
 
           jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
         }
@@ -150,7 +150,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireNbf' field is set to TRUE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireNbf returns true
+          jwtConfig.requireNbf.returns(true)
 
           jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
         }
@@ -158,7 +158,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireNbf' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireNbf returns false
+          jwtConfig.requireNbf.returns(false)
 
           jwtValidator.validateNotBeforeClaim(noNotBeforeClaim) shouldBe Right(noNotBeforeClaim)
         }
@@ -173,7 +173,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
       "return Right containing JwtClaim" when {
 
         "provided with a token younger than configured max token age" in {
-          jwtConfig.maxAge returns Some(5.minutes)
+          jwtConfig.maxAge.returns(Some(5.minutes))
 
           jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Right(jwtClaim)
         }
@@ -192,7 +192,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to TRUE" should {
         "return Left containing MissingIssuedAtClaimError" in {
-          jwtConfig.requireIat returns true
+          jwtConfig.requireIat.returns(true)
 
           jwtValidator.validateIssuedAtClaim(noIssuedAtClaim) shouldBe Left(MissingIssuedAtClaimError)
         }
@@ -200,7 +200,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireIat returns false
+          jwtConfig.requireIat.returns(false)
 
           jwtValidator.validateIssuedAtClaim(noIssuedAtClaim) shouldBe Right(noIssuedAtClaim)
         }
@@ -213,8 +213,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to TRUE" should {
         "return Left containing TokenTooOldError" in {
-          jwtConfig.requireIat returns true
-          jwtConfig.maxAge returns Some(1.minute)
+          jwtConfig.requireIat.returns(true)
+          jwtConfig.maxAge.returns(Some(1.minute))
 
           jwtValidator.validateIssuedAtClaim(jwtTooOld) shouldBe Left(TokenTooOldError(1.minute))
         }
@@ -222,8 +222,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to FALSE" should {
         "return Left containing TokenTooOldError" in {
-          jwtConfig.requireIat returns false
-          jwtConfig.maxAge returns Some(1.minute)
+          jwtConfig.requireIat.returns(false)
+          jwtConfig.maxAge.returns(Some(1.minute))
 
           jwtValidator.validateIssuedAtClaim(jwtTooOld) shouldBe Left(TokenTooOldError(1.minute))
         }
@@ -234,8 +234,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to TRUE" should {
         "return Left containing TokenTooOldError" in {
-          jwtConfig.requireIat returns true
-          jwtConfig.maxAge returns Some(1.minute)
+          jwtConfig.requireIat.returns(true)
+          jwtConfig.maxAge.returns(Some(1.minute))
 
           jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Left(TokenTooOldError(1.minute))
         }
@@ -243,8 +243,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to FALSE" should {
         "return Left containing TokenTooOldError" in {
-          jwtConfig.requireIat returns false
-          jwtConfig.maxAge returns Some(1.minute)
+          jwtConfig.requireIat.returns(false)
+          jwtConfig.maxAge.returns(Some(1.minute))
 
           jwtValidator.validateIssuedAtClaim(jwtClaim) shouldBe Left(TokenTooOldError(1.minute))
         }
@@ -255,8 +255,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to TRUE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireIat returns true
-          jwtConfig.maxAge returns Some(10.minutes)
+          jwtConfig.requireIat.returns(true)
+          jwtConfig.maxAge.returns(Some(10.minutes))
 
           jwtValidator.validateIssuedAtClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
         }
@@ -264,8 +264,8 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIat' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireIat returns false
-          jwtConfig.maxAge returns Some(10.minutes)
+          jwtConfig.requireIat.returns(false)
+          jwtConfig.maxAge.returns(Some(10.minutes))
 
           jwtValidator.validateIssuedAtClaim(expiredJwtClaim) shouldBe Right(expiredJwtClaim)
         }
@@ -287,7 +287,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to TRUE" should {
         "return Left containing MissingIssuerClaimError" in {
-          jwtConfig.requireIss returns true
+          jwtConfig.requireIss.returns(true)
 
           jwtValidator.validateIssuerClaim(noIssuerClaim) shouldBe Left(MissingIssuerClaimError)
         }
@@ -295,7 +295,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireIss returns false
+          jwtConfig.requireIss.returns(false)
 
           jwtValidator.validateIssuerClaim(noIssuerClaim) shouldBe Right(noIssuerClaim)
         }
@@ -308,7 +308,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to TRUE" should {
         "return Left containing MissingIssuerClaimError" in {
-          jwtConfig.requireIss returns true
+          jwtConfig.requireIss.returns(true)
 
           jwtValidator.validateIssuerClaim(emptyIssuerClaim) shouldBe Left(MissingIssuerClaimError)
         }
@@ -316,7 +316,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireIss returns false
+          jwtConfig.requireIss.returns(false)
 
           jwtValidator.validateIssuerClaim(emptyIssuerClaim) shouldBe Right(emptyIssuerClaim)
         }
@@ -329,7 +329,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to TRUE" should {
         "return Left containing IncorrectIssuerClaimError" in {
-          jwtConfig.requireIss returns true
+          jwtConfig.requireIss.returns(true)
 
           jwtValidator.validateIssuerClaim(notSupportedIssuerClaim) shouldBe Left(IncorrectIssuerClaimError(issuer_3))
         }
@@ -337,7 +337,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireIss' field is set to FALSE" should {
         "return Left containing IncorrectIssuerClaimError" in {
-          jwtConfig.requireIss returns false
+          jwtConfig.requireIss.returns(false)
 
           jwtValidator.validateIssuerClaim(notSupportedIssuerClaim) shouldBe Left(IncorrectIssuerClaimError(issuer_3))
         }
@@ -355,12 +355,12 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
     "provided with a token with a single allowed audience" when {
 
-      val audience = Set(AuthTestData.audience_2)
+      val audience             = Set(AuthTestData.audience_2)
       val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
         }
@@ -368,7 +368,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
         }
@@ -377,12 +377,12 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
     "provided with a token with at least one of allowed audiences" when {
 
-      val audience = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
+      val audience             = Set(AuthTestData.audience_2, "some-other-audience-1", "some-other-audience-2")
       val updatedAudienceClaim = jwtClaim.copy(audience = Some(audience))
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
         }
@@ -390,7 +390,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           jwtValidator.validateAudienceClaim(updatedAudienceClaim) shouldBe Right(updatedAudienceClaim)
         }
@@ -399,12 +399,12 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
     "provided with a token with different audiences" when {
 
-      val incorrectAudience = Set(AuthTestData.audience_3, "some-other-audience-1", "some-other-audience-2")
+      val incorrectAudience      = Set(AuthTestData.audience_3, "some-other-audience-1", "some-other-audience-2")
       val incorrectAudienceClaim = jwtClaim.copy(audience = Some(incorrectAudience))
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Left containing IncorrectAudienceClaimError" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
 
@@ -414,7 +414,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Left containing IncorrectAudienceClaimError" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           val result = jwtValidator.validateAudienceClaim(incorrectAudienceClaim)
 
@@ -429,7 +429,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Left containing MissingAudienceClaimError" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
         }
@@ -437,7 +437,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
         }
@@ -450,7 +450,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Left containing MissingAudienceClaimError" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
         }
@@ -458,7 +458,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
         }
@@ -471,7 +471,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to TRUE" should {
         "return Left containing MissingAudienceClaimError" in {
-          jwtConfig.requireAud returns true
+          jwtConfig.requireAud.returns(true)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Left(MissingAudienceClaimError)
         }
@@ -479,7 +479,7 @@ class JwtValidatorSpec extends AnyWordSpec with Matchers with BeforeAndAfterEach
 
       "AuthConfig 'requireAud' field is set to FALSE" should {
         "return Right containing JwtClaim" in {
-          jwtConfig.requireAud returns false
+          jwtConfig.requireAud.returns(false)
 
           jwtValidator.validateAudienceClaim(noAudienceClaim) shouldBe Right(noAudienceClaim)
         }

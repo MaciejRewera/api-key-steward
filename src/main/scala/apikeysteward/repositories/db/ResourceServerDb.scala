@@ -122,6 +122,7 @@ class ResourceServerDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+
   }
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
@@ -161,4 +162,5 @@ class ResourceServerDb()(implicit clock: Clock) {
              """.stripMargin).query[ResourceServerEntity.Read]
 
   }
+
 }

@@ -44,7 +44,7 @@ class ApiKeyManagementService(
   ): IO[Either[ApiKeyCreateError, (ApiKey, ApiKeyData)]] =
     (for {
       validatedRequest <- validateRequest(publicTenantId, publicUserId, createApiKeyRequest)
-      result <- createApiKeyWithRetry(publicTenantId, publicUserId, validatedRequest)
+      result           <- createApiKeyWithRetry(publicTenantId, publicUserId, validatedRequest)
     } yield result).value
 
   private def validateRequest(
@@ -97,7 +97,7 @@ class ApiKeyManagementService(
           .flatTap(_ => logger.info("Generated API Key."))
       ).leftMap(ApiKeyCreateErrorImpl)
 
-      _ <- logInfoT("Generating public key ID...")
+      _           <- logInfoT("Generating public key ID...")
       publicKeyId <- EitherT.right(uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated public key ID.")))
 
       _ <- logInfoT("Fetching Permissions for new API Key...")
@@ -137,7 +137,7 @@ class ApiKeyManagementService(
       updateApiKeyRequest: UpdateApiKeyAdminRequest
   ): IO[Either[ApiKeyDbError, ApiKeyData]] =
     apiKeyRepository.update(publicTenantId, ApiKeyDataUpdate.from(publicKeyId, updateApiKeyRequest)).flatTap {
-      case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [${publicKeyId}].")
+      case Right(_) => logger.info(s"Updated Api Key with publicKeyId: [$publicKeyId].")
       case Left(e)  => logger.warn(s"Could not update Api Key with publicKeyId: [$publicKeyId] because: ${e.message}")
     }
 
@@ -184,6 +184,7 @@ class ApiKeyManagementService(
 object ApiKeyManagementService {
 
   sealed abstract class ApiKeyCreateError(override val message: String) extends CustomError
+
   object ApiKeyCreateError {
 
     case class ValidationError(error: CreateApiKeyRequestValidatorError)
@@ -195,4 +196,5 @@ object ApiKeyManagementService {
 
     case class ApiKeyCreateErrorImpl(cause: CustomError) extends ApiKeyCreateError(cause.message)
   }
+
 }

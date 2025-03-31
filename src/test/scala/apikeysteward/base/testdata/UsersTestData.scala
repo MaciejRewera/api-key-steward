@@ -16,10 +16,10 @@ object UsersTestData extends FixedClock {
   val userDbId_3: UUID = UUID.randomUUID()
   val userDbId_4: UUID = UUID.randomUUID()
 
-  val publicUserId_1: UserId = Random.alphanumeric.take(42).mkString
-  val publicUserId_2: UserId = Random.alphanumeric.take(42).mkString
-  val publicUserId_3: UserId = Random.alphanumeric.take(42).mkString
-  val publicUserId_4: UserId = Random.alphanumeric.take(42).mkString
+  val publicUserId_1: UserId    = Random.alphanumeric.take(42).mkString
+  val publicUserId_2: UserId    = Random.alphanumeric.take(42).mkString
+  val publicUserId_3: UserId    = Random.alphanumeric.take(42).mkString
+  val publicUserId_4: UserId    = Random.alphanumeric.take(42).mkString
   val publicUserIdStr_1: String = publicUserId_1
   val publicUserIdStr_2: String = publicUserId_2
   val publicUserIdStr_3: String = publicUserId_3
@@ -34,6 +34,7 @@ object UsersTestData extends FixedClock {
     tenantId = tenantDbId_1,
     publicUserId = publicUserIdStr_1
   )
+
   val userEntityRead_1: UserEntity.Read = UserEntity.Read(
     id = userDbId_1,
     tenantId = tenantDbId_1,
@@ -47,6 +48,7 @@ object UsersTestData extends FixedClock {
     tenantId = tenantDbId_2,
     publicUserId = publicUserIdStr_2
   )
+
   val userEntityRead_2: UserEntity.Read = UserEntity.Read(
     id = userDbId_2,
     tenantId = tenantDbId_2,
@@ -60,6 +62,7 @@ object UsersTestData extends FixedClock {
     tenantId = tenantDbId_3,
     publicUserId = publicUserIdStr_3
   )
+
   val userEntityRead_3: UserEntity.Read = UserEntity.Read(
     id = userDbId_3,
     tenantId = tenantDbId_3,

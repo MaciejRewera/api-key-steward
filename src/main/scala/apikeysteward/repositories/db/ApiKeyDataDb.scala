@@ -155,6 +155,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
                 $now,
                 $now
              )""".stripMargin).update
+
   }
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
@@ -215,5 +216,7 @@ class ApiKeyDataDb()(implicit clock: Clock) {
           |   WHERE tenant_user.public_user_id = $publicUserId
           | )
           |""".stripMargin
+
   }
+
 }

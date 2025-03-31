@@ -95,15 +95,15 @@ object Documentation extends OpenAPIDocsInterpreter {
   val allYamlDocs: String = allOpenApiDocs.toYaml
 
   private object Tags {
-    val AdminApiKeys = "API keys"
+    val AdminApiKeys         = "API keys"
     val AdminApiKeyTemplates = "Templates"
-    val AdminTenants = "Tenants"
+    val AdminTenants         = "Tenants"
     val AdminResourceServers = "ResourceServers"
-    val AdminPermissions = "Permissions"
-    val AdminUsers = "Users"
+    val AdminPermissions     = "Permissions"
+    val AdminUsers           = "Users"
 
     val UserApiKeys = "User - API keys"
-    val Public = "Public"
+    val Public      = "Public"
   }
 
 }

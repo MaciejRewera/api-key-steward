@@ -40,7 +40,7 @@ class PermissionRepository(
   ): IO[Either[PermissionInsertionError, Permission]] =
     for {
       permissionDbId <- uuidGenerator.generateUuid
-      result <- insert(permissionDbId, publicTenantId, publicResourceServerId, permission)
+      result         <- insert(permissionDbId, publicTenantId, publicResourceServerId, permission)
     } yield result
 
   private def insert(
@@ -107,14 +107,17 @@ class PermissionRepository(
       publicTenantId: TenantId,
       publicPermissionIds: List[PermissionId]
   ): IO[Either[PermissionNotFoundError, List[Permission]]] =
-    publicPermissionIds.traverse { permissionId =>
-      EitherT
-        .fromOptionF(
-          permissionDb.getByPublicPermissionId(publicTenantId, permissionId),
-          PermissionNotFoundError.forTenant(publicTenantId, permissionId)
-        )
-        .map(Permission.from)
-    }.value.transact(transactor)
+    publicPermissionIds
+      .traverse { permissionId =>
+        EitherT
+          .fromOptionF(
+            permissionDb.getByPublicPermissionId(publicTenantId, permissionId),
+            PermissionNotFoundError.forTenant(publicTenantId, permissionId)
+          )
+          .map(Permission.from)
+      }
+      .value
+      .transact(transactor)
 
   def getAllFor(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[List[Permission]] =
     permissionDb

@@ -29,9 +29,9 @@ class ApiKeyTemplatesUsersRepository(
       publicUserIds: List[UserId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
-      tenantId <- getTenantId(publicTenantId)
+      tenantId   <- getTenantId(publicTenantId)
       templateId <- getSingleTemplateId(publicTenantId, publicTemplateId)
-      userIds <- getUserIds(publicTenantId, publicUserIds)
+      userIds    <- getUserIds(publicTenantId, publicUserIds)
 
       entitiesToInsert = userIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, templateId, _))
 
@@ -44,8 +44,8 @@ class ApiKeyTemplatesUsersRepository(
       publicTemplateIds: List[ApiKeyTemplateId]
   ): IO[Either[ApiKeyTemplatesUsersInsertionError, Unit]] =
     (for {
-      tenantId <- getTenantId(publicTenantId)
-      userId <- getSingleUserId(publicTenantId, publicUserId)
+      tenantId    <- getTenantId(publicTenantId)
+      userId      <- getSingleUserId(publicTenantId, publicUserId)
       templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
       entitiesToInsert = templateIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, _, userId))
@@ -59,8 +59,8 @@ class ApiKeyTemplatesUsersRepository(
       publicTemplateIds: List[ApiKeyTemplateId]
   ): IO[Either[ApiKeyTemplatesUsersDbError, Unit]] =
     (for {
-      tenantId <- getTenantId(publicTenantId)
-      userId <- getSingleUserId(publicTenantId, publicUserId)
+      tenantId    <- getTenantId(publicTenantId)
+      userId      <- getSingleUserId(publicTenantId, publicUserId)
       templateIds <- getTemplateIds(publicTenantId, publicTemplateIds)
 
       entitiesToDelete = templateIds.map(ApiKeyTemplatesUsersEntity.Write(tenantId, _, userId))

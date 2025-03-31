@@ -18,4 +18,5 @@ object ApiKeyDataUpdate {
       name = updateApiKeyRequest.name,
       description = updateApiKeyRequest.description
     )
+
 }

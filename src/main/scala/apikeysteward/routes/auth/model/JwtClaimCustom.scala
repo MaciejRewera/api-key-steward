@@ -31,13 +31,13 @@ object JwtClaimCustom {
 
       val definedFields = (
         Seq(
-          "iss" -> claim.issuer.map(Json.fromString),
-          "sub" -> claim.subject.map(Json.fromString),
-          "aud" -> claim.audience.map(set => Json.fromValues(set.map(Json.fromString))),
-          "exp" -> claim.expiration.map(Json.fromLong),
-          "nbf" -> claim.notBefore.map(Json.fromLong),
-          "iat" -> claim.issuedAt.map(Json.fromLong),
-          "jti" -> claim.jwtId.map(Json.fromString),
+          "iss"         -> claim.issuer.map(Json.fromString),
+          "sub"         -> claim.subject.map(Json.fromString),
+          "aud"         -> claim.audience.map(set => Json.fromValues(set.map(Json.fromString))),
+          "exp"         -> claim.expiration.map(Json.fromLong),
+          "nbf"         -> claim.notBefore.map(Json.fromLong),
+          "iat"         -> claim.issuedAt.map(Json.fromLong),
+          "jti"         -> claim.jwtId.map(Json.fromString),
           "permissions" -> claim.permissions.map(set => Json.fromValues(set.map(Json.fromString)))
         ) ++ userIdFieldOpt
       ).collect { case (key, Some(value)) =>
@@ -77,4 +77,5 @@ object JwtClaimCustom {
         }
       ).map(Option(_))
   }
+
 }

@@ -32,14 +32,15 @@ class ApiKeyTemplatesPermissionsDbSpec
       sql"TRUNCATE tenant, resource_server, permission, api_key_template, api_key_templates_permissions CASCADE".update.run
   } yield ()
 
-  private val tenantDb = new TenantDb
+  private val tenantDb         = new TenantDb
   private val resourceServerDb = new ResourceServerDb
-  private val permissionDb = new PermissionDb
+  private val permissionDb     = new PermissionDb
   private val apiKeyTemplateDb = new ApiKeyTemplateDb
 
   private val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
@@ -49,6 +50,7 @@ class ApiKeyTemplatesPermissionsDbSpec
         .stream
         .compile
         .toList
+
   }
 
   private def insertPrerequisiteData()
@@ -85,7 +87,7 @@ class ApiKeyTemplatesPermissionsDbSpec
         val result = (for {
           _ <- insertPrerequisiteData()
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(List.empty)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(List.empty)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -136,7 +138,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToInsert = List(apiKeyTemplatesPermissionsEntityWrite_1_1.copy(tenantId = tenantDbId_2))
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield res
 
@@ -175,7 +177,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_2_1
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
           res <- Queries.getAllAssociations
         } yield (res, entitiesToInsert)).transact(transactor)
 
@@ -222,7 +224,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_3
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
 
@@ -269,7 +271,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_3
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
 
@@ -316,7 +318,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_3_1
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities ++ entitiesToInsert)).transact(transactor)
 
@@ -362,7 +364,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_1
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield (res, preExistingEntities)
 
@@ -403,7 +405,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_3
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield res
 
@@ -443,7 +445,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_3_1
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield res
 
@@ -489,7 +491,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_3
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
+          _   <- apiKeyTemplatesPermissionsDb.insertMany(entitiesToInsert).transact(transactor)
           res <- Queries.getAllAssociations.transact(transactor)
         } yield (res, preExistingEntities)
 
@@ -505,12 +507,11 @@ class ApiKeyTemplatesPermissionsDbSpec
 
     "there is no Tenant in the DB" should {
 
-      "return zero" in {
+      "return zero" in
         apiKeyTemplatesPermissionsDb
           .deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
           .transact(transactor)
           .asserting(_ shouldBe 0)
-      }
 
       "make no changes to the DB" in {
         val result = (for {
@@ -539,7 +540,7 @@ class ApiKeyTemplatesPermissionsDbSpec
         val result = (for {
           _ <- insertPrerequisiteData()
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -569,7 +570,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_2, publicPermissionId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_2, publicPermissionId_1)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -603,7 +604,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_2)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_2)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -637,7 +638,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -683,7 +684,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForPermission(publicTenantId_1, publicPermissionId_1)
           res <- Queries.getAllAssociations
         } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
 
@@ -700,12 +701,11 @@ class ApiKeyTemplatesPermissionsDbSpec
 
     "there is no Tenant in the DB" should {
 
-      "return zero" in {
+      "return zero" in
         apiKeyTemplatesPermissionsDb
           .deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           .transact(transactor)
           .asserting(_ shouldBe 0)
-      }
 
       "make no changes to the DB" in {
         val result = (for {
@@ -734,7 +734,7 @@ class ApiKeyTemplatesPermissionsDbSpec
         val result = (for {
           _ <- insertPrerequisiteData()
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -764,7 +764,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_2, publicTemplateId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_2, publicTemplateId_1)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -798,7 +798,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_2)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_2)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -832,7 +832,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -878,7 +878,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
+          _   <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId_1, publicTemplateId_1)
           res <- Queries.getAllAssociations
         } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
 
@@ -895,9 +895,8 @@ class ApiKeyTemplatesPermissionsDbSpec
 
     "provided with an empty List" should {
 
-      "return Right containing empty List" in {
+      "return Right containing empty List" in
         apiKeyTemplatesPermissionsDb.deleteMany(List.empty).transact(transactor).asserting(_ shouldBe Right(List.empty))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
@@ -913,7 +912,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
 
@@ -970,7 +969,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToDelete = List(apiKeyTemplatesPermissionsEntityWrite_1_1)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield res).transact(transactor)
 
@@ -1006,7 +1005,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToDelete = preExistingEntities.map(_.copy(tenantId = tenantDbId_2))
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -1046,7 +1045,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToDelete = List(apiKeyTemplatesPermissionsEntityWrite_1_2)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -1086,7 +1085,7 @@ class ApiKeyTemplatesPermissionsDbSpec
 
           entitiesToDelete = List(apiKeyTemplatesPermissionsEntityWrite_2_1)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 
@@ -1143,7 +1142,7 @@ class ApiKeyTemplatesPermissionsDbSpec
           preExistingEntities = entitiesToDelete ++ entitiesExpectedNotToBeDeleted
           _ <- apiKeyTemplatesPermissionsDb.insertMany(preExistingEntities)
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, entitiesExpectedNotToBeDeleted)).transact(transactor)
 
@@ -1205,7 +1204,7 @@ class ApiKeyTemplatesPermissionsDbSpec
             apiKeyTemplatesPermissionsEntityWrite_1_3
           )
 
-          _ <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
+          _   <- apiKeyTemplatesPermissionsDb.deleteMany(entitiesToDelete)
           res <- Queries.getAllAssociations
         } yield (res, preExistingEntities)).transact(transactor)
 

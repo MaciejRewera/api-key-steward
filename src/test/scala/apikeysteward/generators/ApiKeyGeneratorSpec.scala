@@ -27,9 +27,9 @@ import org.scalatest.wordspec.AsyncWordSpec
 class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with BeforeAndAfterEach {
 
   private val apiKeyTemplateRepository = mock[ApiKeyTemplateRepository]
-  private val randomStringGenerator = mock[RandomStringGenerator]
-  private val checksumCalculator = mock[CRC32ChecksumCalculator]
-  private val checksumCodec = mock[ChecksumCodec]
+  private val randomStringGenerator    = mock[RandomStringGenerator]
+  private val checksumCalculator       = mock[CRC32ChecksumCalculator]
+  private val checksumCodec            = mock[ChecksumCodec]
 
   private val apiKeyGenerator =
     new ApiKeyGenerator(apiKeyTemplateRepository, randomStringGenerator, checksumCalculator, checksumCodec)
@@ -49,10 +49,10 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "everything works correctly" should {
 
       "call ApiKeyTemplateRepository, RandomStringGenerator, CRC32ChecksumCalculator and ChecksumCodec" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.pure(apiKeyRandomSection_1))
+        checksumCalculator.calcChecksumFor(any[String]).returns(42L)
+        checksumCodec.encode(any[Long]).returns(Right(encodedValue_42))
 
         for {
           _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1)
@@ -60,16 +60,16 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
           _ = verify(apiKeyTemplateRepository).getBy(eqTo(publicTenantId_1), eqTo(publicTemplateId_1))
           _ = verify(randomStringGenerator).generate(eqTo(randomSectionLength_1))
           expectedApiKeyWithPrefix = apiKeyPrefix_1 + apiKeyRandomSection_1
-          _ = verify(checksumCalculator).calcChecksumFor(eqTo(expectedApiKeyWithPrefix))
-          _ = verify(checksumCodec).encode(eqTo(42L))
+          _                        = verify(checksumCalculator).calcChecksumFor(eqTo(expectedApiKeyWithPrefix))
+          _                        = verify(checksumCodec).encode(eqTo(42L))
         } yield ()
       }
 
       "return Right containing the newly created Api Key" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns 42L
-        checksumCodec.encode(any[Long]) returns Right(encodedValue_42)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.pure(apiKeyRandomSection_1))
+        checksumCalculator.calcChecksumFor(any[String]).returns(42L)
+        checksumCodec.encode(any[Long]).returns(Right(encodedValue_42))
 
         apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).asserting {
           _ shouldBe Right(ApiKey(apiKeyPrefix_1 + apiKeyRandomSection_1 + encodedValue_42))
@@ -80,7 +80,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "ApiKeyTemplateRepository returns empty Option" should {
 
       "NOT call either RandomStringGenerator, CRC32ChecksumCalculator or ChecksumCodec" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(None))
 
         for {
           _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1)
@@ -90,7 +90,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       }
 
       "return Left containing ApiKeyGeneratorError" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(None)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(None))
 
         apiKeyGenerator
           .generateApiKey(publicTenantId_1, publicTemplateId_1)
@@ -101,7 +101,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "ApiKeyTemplateRepository returns failed IO" should {
 
       "NOT call either RandomStringGenerator, CRC32ChecksumCalculator or ChecksumCodec" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
@@ -111,7 +111,7 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         apiKeyGenerator
           .generateApiKey(publicTenantId_1, publicTemplateId_1)
@@ -123,8 +123,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
     "RandomStringGenerator returns failed IO" should {
 
       "call ApiKeyPrefixProvider anyway" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
@@ -133,8 +133,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       }
 
       "NOT call either CRC32ChecksumCalculator or ChecksumCodec" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.raiseError(testException))
 
         for {
           _ <- apiKeyGenerator.generateApiKey(publicTenantId_1, publicTemplateId_1).attempt
@@ -143,8 +143,8 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
       }
 
       "return failed IO containing the same exception" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.raiseError(testException)
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.raiseError(testException))
 
         apiKeyGenerator
           .generateApiKey(publicTenantId_1, publicTemplateId_1)
@@ -155,10 +155,10 @@ class ApiKeyGeneratorSpec extends AsyncWordSpec with AsyncIOSpec with Matchers w
 
     "ChecksumCodec returns Left containing ProvidedWithNegativeNumberError" should {
       "return Left containing ApiKeyGeneratorError" in {
-        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Some(apiKeyTemplate_1))
-        randomStringGenerator.generate(any[Int]) returns IO.pure(apiKeyRandomSection_1)
-        checksumCalculator.calcChecksumFor(any[String]) returns -42L
-        checksumCodec.encode(any[Long]) returns Left(ProvidedWithNegativeNumberError(-42L))
+        apiKeyTemplateRepository.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Some(apiKeyTemplate_1)))
+        randomStringGenerator.generate(any[Int]).returns(IO.pure(apiKeyRandomSection_1))
+        checksumCalculator.calcChecksumFor(any[String]).returns(-42L)
+        checksumCodec.encode(any[Long]).returns(Left(ProvidedWithNegativeNumberError(-42L)))
 
         apiKeyGenerator
           .generateApiKey(publicTenantId_1, publicTemplateId_1)

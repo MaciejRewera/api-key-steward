@@ -51,7 +51,7 @@ class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging 
     }
 
   private def isYoungerThanMaxAllowed(issuedAtClaim: Long, maxTokenAge: FiniteDuration): Boolean = {
-    val issuedAt = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
+    val issuedAt     = FiniteDuration(issuedAtClaim, TimeUnit.SECONDS)
     val nowInSeconds = FiniteDuration(Instant.now(clock).getEpochSecond, TimeUnit.SECONDS)
 
     issuedAt.plus(maxTokenAge) > nowInSeconds
@@ -109,6 +109,7 @@ class JwtValidator(jwtConfig: JwtConfig)(implicit clock: Clock) extends Logging 
 object JwtValidator {
 
   sealed abstract class JwtValidatorError(override val message: String) extends CustomError
+
   object JwtValidatorError {
 
     case object MissingKeyIdFieldError extends JwtValidatorError("Key ID (kid) claim is missing.")
@@ -133,4 +134,5 @@ object JwtValidator {
         extends JwtValidatorError(s"The provided JWT is older than maximum allowed age of: ${maxTokenAge.toString}")
 
   }
+
 }

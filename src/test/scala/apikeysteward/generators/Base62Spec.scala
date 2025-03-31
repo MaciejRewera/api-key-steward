@@ -15,7 +15,7 @@ class Base62Spec extends AnyWordSpec with Matchers with EitherValues {
 
     "have characters set starting with numbers, continuing with upper and then lower case alphabet" in {
       val alphabetUpperCase: Array[Char] = ('A' to 'Z').toArray
-      val alphabetLowerCase = alphabetUpperCase.map(_.toLower)
+      val alphabetLowerCase              = alphabetUpperCase.map(_.toLower)
 
       Base62.CharacterSet.take(10).mkString shouldBe "0123456789"
       Base62.CharacterSet.slice(10, 36) shouldBe alphabetUpperCase
@@ -150,4 +150,5 @@ class Base62Spec extends AnyWordSpec with Matchers with EitherValues {
       }
     }
   }
+
 }

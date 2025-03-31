@@ -9,11 +9,12 @@ import java.security.MessageDigest
 class SecureHashGenerator(algorithm: Algorithm) {
 
   def generateHashFor(input: ApiKey): IO[HashedApiKey] = IO {
-    val messageDigest = MessageDigest.getInstance(algorithm.name)
+    val messageDigest     = MessageDigest.getInstance(algorithm.name)
     val apiKeyHashedBytes = messageDigest.digest(input.value.toCharArray.map(_.toByte))
 
     HashedApiKey(apiKeyHashedBytes)
   }
+
 }
 
 object SecureHashGenerator {
@@ -40,5 +41,7 @@ object SecureHashGenerator {
       SHA3_384,
       SHA3_512
     )
+
   }
+
 }

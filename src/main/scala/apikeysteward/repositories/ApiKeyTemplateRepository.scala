@@ -32,7 +32,7 @@ class ApiKeyTemplateRepository(
   ): IO[Either[ApiKeyTemplateInsertionError, ApiKeyTemplate]] =
     for {
       apiKeyTemplateDbId <- uuidGenerator.generateUuid
-      result <- insert(apiKeyTemplateDbId, publicTenantId, apiKeyTemplate)
+      result             <- insert(apiKeyTemplateDbId, publicTenantId, apiKeyTemplate)
     } yield result
 
   private def insert(
@@ -84,8 +84,8 @@ class ApiKeyTemplateRepository(
         .compile
         .toList
 
-      _ <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
-      _ <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
+      _                     <- apiKeyTemplatesPermissionsDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
+      _                     <- apiKeyTemplatesUsersDb.deleteAllForApiKeyTemplate(publicTenantId, publicTemplateId)
       deletedTemplateEntity <- apiKeyTemplateDb.delete(publicTenantId, publicTemplateId)
 
       deletedTemplate = deletedTemplateEntity.map(ApiKeyTemplate.from(_, permissionEntitiesToDeleteAssociationWith))
@@ -94,7 +94,7 @@ class ApiKeyTemplateRepository(
   def getBy(publicTenantId: TenantId, publicTemplateId: ApiKeyTemplateId): IO[Option[ApiKeyTemplate]] =
     (for {
       templateEntityRead <- OptionT(apiKeyTemplateDb.getByPublicTemplateId(publicTenantId, publicTemplateId))
-      resultTemplate <- OptionT.liftF(constructApiKeyTemplate(publicTenantId, templateEntityRead))
+      resultTemplate     <- OptionT.liftF(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate).value.transact(transactor)
 
   def getAllForTenant(publicTenantId: TenantId): IO[List[ApiKeyTemplate]] =
@@ -103,7 +103,7 @@ class ApiKeyTemplateRepository(
   private[repositories] def getAllForTenantOp(publicTenantId: TenantId): Stream[ConnectionIO, ApiKeyTemplate] =
     for {
       templateEntityRead <- apiKeyTemplateDb.getAllForTenant(publicTenantId)
-      resultTemplate <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
+      resultTemplate     <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate
 
   private def constructApiKeyTemplate(
@@ -122,7 +122,7 @@ class ApiKeyTemplateRepository(
   def getAllForUser(publicTenantId: TenantId, publicUserId: UserId): IO[List[ApiKeyTemplate]] =
     (for {
       templateEntityRead <- apiKeyTemplateDb.getAllForUser(publicTenantId, publicUserId)
-      resultTemplate <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
+      resultTemplate     <- Stream.eval(constructApiKeyTemplate(publicTenantId, templateEntityRead))
     } yield resultTemplate).compile.toList.transact(transactor)
 
 }

@@ -10,4 +10,5 @@ class CRC32ChecksumCalculator {
 
     crc32.getValue
   }
+
 }

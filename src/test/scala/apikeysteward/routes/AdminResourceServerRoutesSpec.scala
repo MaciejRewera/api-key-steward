@@ -41,7 +41,7 @@ class AdminResourceServerRoutesSpec
     with BeforeAndAfterEach
     with RoutesSpecBase {
 
-  private val jwtAuthorizer = mock[JwtAuthorizer]
+  private val jwtAuthorizer         = mock[JwtAuthorizer]
   private val resourceServerService = mock[ResourceServerService]
 
   private val adminRoutes: HttpApp[IO] =
@@ -126,7 +126,7 @@ class AdminResourceServerRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -203,9 +203,13 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-          resourceServer_1.asRight
-        )
+        resourceServerService
+          .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+          .returns(
+            IO.pure(
+              resourceServer_1.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -216,9 +220,13 @@ class AdminResourceServerRoutesSpec
       "return successful value returned by ResourceServerService" when {
 
         "provided with description" in authorizedFixture {
-          resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-            resourceServer_1.asRight
-          )
+          resourceServerService
+            .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+            .returns(
+              IO.pure(
+                resourceServer_1.asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -231,9 +239,13 @@ class AdminResourceServerRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val resourceServerWithoutDescription = resourceServer_1.copy(description = None)
-          resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-            resourceServerWithoutDescription.asRight
-          )
+          resourceServerService
+            .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+            .returns(
+              IO.pure(
+                resourceServerWithoutDescription.asRight
+              )
+            )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -248,9 +260,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns successful IO with Left containing ResourceServerAlreadyExistsError" in authorizedFixture {
-        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-          Left(ResourceServerAlreadyExistsError(publicResourceServerIdStr_1))
-        )
+        resourceServerService
+          .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+          .returns(
+            IO.pure(
+              Left(ResourceServerAlreadyExistsError(publicResourceServerIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -261,9 +277,13 @@ class AdminResourceServerRoutesSpec
 
       "return Internal Server Error when ResourceServerService returns successful IO with Left containing ResourceServerInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-          Left(ResourceServerInsertionErrorImpl(testSqlException))
-        )
+        resourceServerService
+          .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+          .returns(
+            IO.pure(
+              Left(ResourceServerInsertionErrorImpl(testSqlException))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -273,9 +293,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Bad Request when ResourceServerService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO.pure(
-          Left(ReferencedTenantDoesNotExistError(publicResourceServerId_1))
-        )
+        resourceServerService
+          .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+          .returns(
+            IO.pure(
+              Left(ReferencedTenantDoesNotExistError(publicResourceServerId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -291,9 +315,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.createResourceServer(any[TenantId], any[CreateResourceServerRequest]) returns IO
-          .raiseError(
-            testException
+        resourceServerService
+          .createResourceServer(any[TenantId], any[CreateResourceServerRequest])
+          .returns(
+            IO
+              .raiseError(
+                testException
+              )
           )
 
         for {
@@ -392,7 +420,7 @@ class AdminResourceServerRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -469,11 +497,13 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.updateResourceServer(
-          any[TenantId],
-          any[ResourceServerId],
-          any[UpdateResourceServerRequest]
-        ) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService
+          .updateResourceServer(
+            any[TenantId],
+            any[ResourceServerId],
+            any[UpdateResourceServerRequest]
+          )
+          .returns(IO.pure(resourceServer_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -486,11 +516,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.updateResourceServer(
-          any[TenantId],
-          any[ResourceServerId],
-          any[UpdateResourceServerRequest]
-        ) returns IO.pure(resourceServer_1.asRight)
+        resourceServerService
+          .updateResourceServer(
+            any[TenantId],
+            any[ResourceServerId],
+            any[UpdateResourceServerRequest]
+          )
+          .returns(IO.pure(resourceServer_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -502,11 +534,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.updateResourceServer(
-          any[TenantId],
-          any[ResourceServerId],
-          any[UpdateResourceServerRequest]
-        ) returns IO.pure(Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
+        resourceServerService
+          .updateResourceServer(
+            any[TenantId],
+            any[ResourceServerId],
+            any[UpdateResourceServerRequest]
+          )
+          .returns(IO.pure(Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -520,11 +554,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.updateResourceServer(
-          any[TenantId],
-          any[ResourceServerId],
-          any[UpdateResourceServerRequest]
-        ) returns IO.raiseError(testException)
+        resourceServerService
+          .updateResourceServer(
+            any[TenantId],
+            any[ResourceServerId],
+            any[UpdateResourceServerRequest]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -537,7 +573,7 @@ class AdminResourceServerRoutesSpec
 
   "AdminResourceServerRoutes on DELETE /admin/resource-servers/{resourceServerId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
@@ -572,8 +608,9 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
-          IO.pure(resourceServer_1.asRight)
+        resourceServerService
+          .deleteResourceServer(any[TenantId], any[ResourceServerId])
+          .returns(IO.pure(resourceServer_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -582,8 +619,9 @@ class AdminResourceServerRoutesSpec
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
-          IO.pure(resourceServer_1.asRight)
+        resourceServerService
+          .deleteResourceServer(any[TenantId], any[ResourceServerId])
+          .returns(IO.pure(resourceServer_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -595,9 +633,13 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns successful IO with Left containing ResourceServerNotFoundError" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns IO.pure(
-          Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
-        )
+        resourceServerService
+          .deleteResourceServer(any[TenantId], any[ResourceServerId])
+          .returns(
+            IO.pure(
+              Left(ResourceServerNotFoundError(publicResourceServerIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -611,8 +653,9 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.deleteResourceServer(any[TenantId], any[ResourceServerId]) returns
-          IO.raiseError(testException)
+        resourceServerService
+          .deleteResourceServer(any[TenantId], any[ResourceServerId])
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -625,7 +668,7 @@ class AdminResourceServerRoutesSpec
 
   "AdminResourceServerRoutes on GET /admin/resource-servers/{resourceServerId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -660,7 +703,7 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(resourceServer_1.some)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(resourceServer_1.some))
 
         for {
           _ <- adminRoutes.run(request)
@@ -669,7 +712,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return successful value returned by ResourceServerService" in authorizedFixture {
-        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(resourceServer_1.some)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(resourceServer_1.some))
 
         for {
           response <- adminRoutes.run(request)
@@ -681,7 +724,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Not Found when ResourceServerService returns empty Option" in authorizedFixture {
-        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.pure(none)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]).returns(IO.pure(none))
 
         for {
           response <- adminRoutes.run(request)
@@ -695,7 +738,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.getBy(any[TenantId], any[ResourceServerId]) returns IO.raiseError(testException)
+        resourceServerService.getBy(any[TenantId], any[ResourceServerId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -708,7 +751,7 @@ class AdminResourceServerRoutesSpec
 
   "AdminResourceServerRoutes on GET /admin/resource-servers" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/resource-servers")
+    val uri     = Uri.unsafeFromString(s"/admin/resource-servers")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -718,7 +761,7 @@ class AdminResourceServerRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ResourceServerService" in authorizedFixture {
-        resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        resourceServerService.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
         for {
           _ <- adminRoutes.run(request)
@@ -729,7 +772,7 @@ class AdminResourceServerRoutesSpec
       "return successful value returned by ResourceServerService" when {
 
         "ResourceServerService returns an empty List" in authorizedFixture {
-          resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+          resourceServerService.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
           for {
             response <- adminRoutes.run(request)
@@ -741,9 +784,13 @@ class AdminResourceServerRoutesSpec
         }
 
         "ResourceServerService returns a List with several elements" in authorizedFixture {
-          resourceServerService.getAllForTenant(any[TenantId]) returns IO.pure(
-            List(resourceServer_1, resourceServer_2, resourceServer_3)
-          )
+          resourceServerService
+            .getAllForTenant(any[TenantId])
+            .returns(
+              IO.pure(
+                List(resourceServer_1, resourceServer_2, resourceServer_3)
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -760,7 +807,7 @@ class AdminResourceServerRoutesSpec
       }
 
       "return Internal Server Error when ResourceServerService returns failed IO" in authorizedFixture {
-        resourceServerService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        resourceServerService.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)

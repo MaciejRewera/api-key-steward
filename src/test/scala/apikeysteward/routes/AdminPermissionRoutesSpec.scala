@@ -38,7 +38,7 @@ class AdminPermissionRoutesSpec
     with BeforeAndAfterEach
     with RoutesSpecBase {
 
-  private val jwtAuthorizer = mock[JwtAuthorizer]
+  private val jwtAuthorizer     = mock[JwtAuthorizer]
   private val permissionService = mock[PermissionService]
 
   private val adminRoutes: HttpApp[IO] =
@@ -60,7 +60,7 @@ class AdminPermissionRoutesSpec
 
   "AdminPermissionRoutes on POST /admin/resource-servers/{resourceServerId}/permissions" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
+    val uri         = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
     val requestBody = CreatePermissionRequest(name = permissionName_1, description = permissionDescription_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders)
@@ -145,7 +145,7 @@ class AdminPermissionRoutesSpec
 
       "request body is provided with name longer than 280 characters" should {
 
-        val nameThatIsTooLong = List.fill(281)("A").mkString
+        val nameThatIsTooLong   = List.fill(281)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -222,13 +222,17 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.pure(
-          permission_1.asRight
-        )
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(
+            IO.pure(
+              permission_1.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -243,13 +247,17 @@ class AdminPermissionRoutesSpec
       "return successful value returned by PermissionService" when {
 
         "provided with description" in authorizedFixture {
-          permissionService.createPermission(
-            any[TenantId],
-            any[ResourceServerId],
-            any[CreatePermissionRequest]
-          ) returns IO.pure(
-            permission_1.asRight
-          )
+          permissionService
+            .createPermission(
+              any[TenantId],
+              any[ResourceServerId],
+              any[CreatePermissionRequest]
+            )
+            .returns(
+              IO.pure(
+                permission_1.asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -262,13 +270,17 @@ class AdminPermissionRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val permissionWithoutDescription = permission_1.copy(description = None)
-          permissionService.createPermission(
-            any[TenantId],
-            any[ResourceServerId],
-            any[CreatePermissionRequest]
-          ) returns IO.pure(
-            permissionWithoutDescription.asRight
-          )
+          permissionService
+            .createPermission(
+              any[TenantId],
+              any[ResourceServerId],
+              any[CreatePermissionRequest]
+            )
+            .returns(
+              IO.pure(
+                permissionWithoutDescription.asRight
+              )
+            )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -283,13 +295,17 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns successful IO with Left containing PermissionAlreadyExistsError" in authorizedFixture {
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.pure(
-          Left(PermissionAlreadyExistsError(publicPermissionIdStr_1))
-        )
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(
+            IO.pure(
+              Left(PermissionAlreadyExistsError(publicPermissionIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -300,13 +316,17 @@ class AdminPermissionRoutesSpec
 
       "return Internal Server Error when PermissionService returns successful IO with Left containing PermissionInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.pure(
-          Left(PermissionInsertionErrorImpl(testSqlException))
-        )
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(
+            IO.pure(
+              Left(PermissionInsertionErrorImpl(testSqlException))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -317,13 +337,17 @@ class AdminPermissionRoutesSpec
 
       "return Bad Request when PermissionService returns successful IO with Left containing PermissionAlreadyExistsForThisResourceServerError" in authorizedFixture {
         val resourceServerId = 13L
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.pure(
-          Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerDbId_1))
-        )
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(
+            IO.pure(
+              Left(PermissionAlreadyExistsForThisResourceServerError(permissionName_1, resourceServerDbId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -339,13 +363,17 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns successful IO with Left containing ReferencedResourceServerDoesNotExistError" in authorizedFixture {
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.pure(
-          Left(ReferencedResourceServerDoesNotExistError(publicResourceServerId_1))
-        )
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(
+            IO.pure(
+              Left(ReferencedResourceServerDoesNotExistError(publicResourceServerId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -361,11 +389,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.createPermission(
-          any[TenantId],
-          any[ResourceServerId],
-          any[CreatePermissionRequest]
-        ) returns IO.raiseError(testException)
+        permissionService
+          .createPermission(
+            any[TenantId],
+            any[ResourceServerId],
+            any[CreatePermissionRequest]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -441,9 +471,13 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(
-          permission_1.asRight
-        )
+        permissionService
+          .deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.pure(
+              permission_1.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -456,9 +490,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(
-          permission_1.asRight
-        )
+        permissionService
+          .deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.pure(
+              permission_1.asRight
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -470,9 +508,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns successful IO with Left containing PermissionNotFoundError" in authorizedFixture {
-        permissionService.deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(
-          Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1))
-        )
+        permissionService
+          .deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.pure(
+              Left(PermissionNotFoundError(publicResourceServerId_1, publicPermissionId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -486,9 +528,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO
-          .raiseError(
-            testException
+        permissionService
+          .deletePermission(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO
+              .raiseError(
+                testException
+              )
           )
 
         for {
@@ -565,9 +611,13 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(
-          permission_1.some
-        )
+        permissionService
+          .getBy(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.pure(
+              permission_1.some
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -580,9 +630,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return successful value returned by PermissionService" in authorizedFixture {
-        permissionService.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(
-          permission_1.some
-        )
+        permissionService
+          .getBy(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.pure(
+              permission_1.some
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -594,7 +648,7 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns empty Option" in authorizedFixture {
-        permissionService.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.pure(none)
+        permissionService.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]).returns(IO.pure(none))
 
         for {
           response <- adminRoutes.run(request)
@@ -608,9 +662,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getBy(any[TenantId], any[ResourceServerId], any[PermissionId]) returns IO.raiseError(
-          testException
-        )
+        permissionService
+          .getBy(any[TenantId], any[ResourceServerId], any[PermissionId])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -662,9 +720,13 @@ class AdminPermissionRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService providing nameFragment when request contains 'name' query param" in authorizedFixture {
-        permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.pure(
-          List.empty.asRight
-        )
+        permissionService
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            IO.pure(
+              List.empty.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -675,12 +737,16 @@ class AdminPermissionRoutesSpec
       }
 
       "call PermissionService providing empty Option when request contains NO query param" in authorizedFixture {
-        val uri = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
+        val uri     = Uri.unsafeFromString(s"/admin/resource-servers/$publicResourceServerId_1/permissions")
         val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
-        permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.pure(
-          List.empty.asRight
-        )
+        permissionService
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            IO.pure(
+              List.empty.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -693,9 +759,13 @@ class AdminPermissionRoutesSpec
       "return successful value returned by PermissionService" when {
 
         "PermissionService returns an empty List" in authorizedFixture {
-          permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.pure(
-            List.empty.asRight
-          )
+          permissionService
+            .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+            .returns(
+              IO.pure(
+                List.empty.asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -707,9 +777,13 @@ class AdminPermissionRoutesSpec
         }
 
         "PermissionService returns a List with several elements" in authorizedFixture {
-          permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.pure(
-            List(permission_1, permission_2, permission_3).asRight
-          )
+          permissionService
+            .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+            .returns(
+              IO.pure(
+                List(permission_1, permission_2, permission_3).asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -724,9 +798,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Not Found when PermissionService returns ResourceServerNotFoundError" in authorizedFixture {
-        permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.pure(
-          ResourceServerNotFoundError(publicResourceServerId_1.toString).asLeft
-        )
+        permissionService
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            IO.pure(
+              ResourceServerNotFoundError(publicResourceServerId_1.toString).asLeft
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -742,9 +820,13 @@ class AdminPermissionRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]]) returns IO.raiseError(
-          testException
-        )
+        permissionService
+          .getAllBy(any[TenantId], any[ResourceServerId])(any[Option[String]])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)

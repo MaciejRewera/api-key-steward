@@ -11,9 +11,11 @@ case class AssociateApiKeyTemplatesWithUserRequest(
 )
 
 object AssociateApiKeyTemplatesWithUserRequest {
+
   implicit val codec: Codec[AssociateApiKeyTemplatesWithUserRequest] =
     deriveCodec[AssociateApiKeyTemplatesWithUserRequest]
 
   implicit val associateApiKeyTemplatesWithUserRequestSchema: Schema[AssociateApiKeyTemplatesWithUserRequest] =
     TapirCustomSchemas.associateApiKeyTemplatesWithUserRequestSchema
+
 }

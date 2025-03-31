@@ -89,6 +89,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
 
   private def combineSets(setsMap: Map[Uri, JsonWebKeySet])(implicit M: Monoid[JsonWebKeySet]): JsonWebKeySet =
     M.combineAll(setsMap.values)
+
 }
 
 object UrlJwkProvider {

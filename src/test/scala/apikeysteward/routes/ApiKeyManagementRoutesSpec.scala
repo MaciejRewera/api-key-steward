@@ -44,10 +44,10 @@ class ApiKeyManagementRoutesSpec
     with EitherValues
     with RoutesSpecBase {
 
-  private val jwtOps = mock[JwtOps]
-  private val jwtAuthorizer = mock[JwtAuthorizer]
+  private val jwtOps               = mock[JwtOps]
+  private val jwtAuthorizer        = mock[JwtAuthorizer]
   private val activeTenantVerifier = mock[ActiveTenantVerifier]
-  private val managementService = mock[ApiKeyManagementService]
+  private val managementService    = mock[ApiKeyManagementService]
 
   private val managementRoutes: HttpApp[IO] =
     new ApiKeyManagementRoutes(jwtOps, jwtAuthorizer, activeTenantVerifier, managementService).allRoutes.orNotFound
@@ -60,8 +60,8 @@ class ApiKeyManagementRoutesSpec
   }
 
   private def authorizedFixture[T](test: => IO[T]): IO[T] = {
-    activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-    jwtOps.extractUserId(any[JsonWebToken]) returns AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight
+    activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+    jwtOps.extractUserId(any[JsonWebToken]).returns(AuthTestData.jwtWithMockedSignature.claim.subject.get.asRight)
     authorizedFixture(jwtAuthorizer)(test)
   }
 
@@ -95,22 +95,24 @@ class ApiKeyManagementRoutesSpec
     "everything works correctly" should {
 
       "call ActiveTenantVerifier, JwtOps and ManagementService" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-          IO.pure((apiKey_1, apiKeyData_1).asRight)
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(IO.pure((apiKey_1, apiKeyData_1).asRight))
 
         for {
           _ <- managementRoutes.run(request)
 
-          _ = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
-          _ = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
+          _              = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
+          _              = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
           expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
           _ = verify(managementService).createApiKey(eqTo(publicTenantId_1), eqTo(expectedUserId), eqTo(requestBody))
         } yield ()
       }
 
       "return Ok and successful value returned by ManagementService" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-          IO.pure((apiKey_1, apiKeyData_1).asRight)
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(IO.pure((apiKey_1, apiKeyData_1).asRight))
 
         for {
           response <- managementRoutes.run(request)
@@ -123,8 +125,9 @@ class ApiKeyManagementRoutesSpec
 
       "return Bad Request when ManagementService returns successful IO with Left containing ValidationError" in authorizedFixture {
         val error = ValidationError(TtlTooLargeError(requestBody.ttl, ttl.minus(Duration(1, ttl.unit))))
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-          IO.pure(Left(error))
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(IO.pure(Left(error)))
 
         for {
           response <- managementRoutes.run(request)
@@ -134,8 +137,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns successful IO with Left containing InsertionError" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-          IO.pure(Left(InsertionError(ApiKeyIdAlreadyExistsError)))
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(IO.pure(Left(InsertionError(ApiKeyIdAlreadyExistsError))))
 
         for {
           response <- managementRoutes.run(request)
@@ -145,8 +149,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns failed IO" in authorizedFixture {
-        managementService.createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest]) returns
-          IO.raiseError(testException)
+        managementService
+          .createApiKey(any[TenantId], any[UserId], any[CreateApiKeyRequest])
+          .returns(IO.raiseError(testException))
 
         for {
           response <- managementRoutes.run(request)
@@ -159,8 +164,9 @@ class ApiKeyManagementRoutesSpec
     "ActiveTenantVerifier returns Left containing error" should {
 
       "NOT call JwtOps or ManagementService" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           _ <- managementRoutes.run(request)
@@ -169,8 +175,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return BadRequest" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           response <- managementRoutes.run(request)
@@ -189,10 +196,11 @@ class ApiKeyManagementRoutesSpec
       )
 
       "return Unauthorized" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns
-          IO.pure(jwtWithEmptySubField.asRight)
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(IO.pure(jwtWithEmptySubField.asRight))
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           response <- managementRoutes.run(request)
@@ -202,10 +210,11 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns
-          IO.pure(jwtWithEmptySubField.asRight)
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(IO.pure(jwtWithEmptySubField.asRight))
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           _ <- managementRoutes.run(request)
@@ -217,10 +226,14 @@ class ApiKeyManagementRoutesSpec
     "JwtOps throws an exception" should {
 
       "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           response <- managementRoutes.run(request)
@@ -229,10 +242,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           _ <- managementRoutes.run(request)
@@ -291,7 +308,7 @@ class ApiKeyManagementRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -477,7 +494,7 @@ class ApiKeyManagementRoutesSpec
 
   "ManagementRoutes on GET /api-keys" when {
 
-    val uri = Uri.unsafeFromString("/api-keys")
+    val uri     = Uri.unsafeFromString("/api-keys")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
@@ -487,22 +504,22 @@ class ApiKeyManagementRoutesSpec
     "everything works correctly" should {
 
       "call ActiveTenantVerifier, JwtOps and ManagementService" in authorizedFixture {
-        managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+        managementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- managementRoutes.run(request)
 
-          _ = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
-          _ = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
+          _              = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
+          _              = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
           expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
-          _ = verify(managementService).getAllForUser(eqTo(publicTenantId_1), eqTo(expectedUserId))
+          _              = verify(managementService).getAllForUser(eqTo(publicTenantId_1), eqTo(expectedUserId))
         } yield ()
       }
 
       "return successful value returned by ManagementService" when {
 
         "ManagementService returns empty List" in authorizedFixture {
-          managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(Right(List.empty))
+          managementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- managementRoutes.run(request)
@@ -514,9 +531,13 @@ class ApiKeyManagementRoutesSpec
         }
 
         "ManagementService returns a List with several elements" in authorizedFixture {
-          managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-            Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
-          )
+          managementService
+            .getAllForUser(any[TenantId], any[UserId])
+            .returns(
+              IO.pure(
+                Right(List(apiKeyData_1, apiKeyData_2, apiKeyData_3))
+              )
+            )
 
           for {
             response <- managementRoutes.run(request)
@@ -529,9 +550,13 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Bad Request when ManagementService returns ReferencedUserDoesNotExistError" in authorizedFixture {
-        managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.pure(
-          Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
-        )
+        managementService
+          .getAllForUser(any[TenantId], any[UserId])
+          .returns(
+            IO.pure(
+              Left(UserDoesNotExistError(publicTenantId_1, publicUserId_1))
+            )
+          )
 
         for {
           response <- managementRoutes.run(request)
@@ -543,7 +568,7 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getAllForUser(any[TenantId], any[UserId]) returns IO.raiseError(testException)
+        managementService.getAllForUser(any[TenantId], any[UserId]).returns(IO.raiseError(testException))
 
         for {
           response <- managementRoutes.run(request)
@@ -556,8 +581,9 @@ class ApiKeyManagementRoutesSpec
     "ActiveTenantVerifier returns Left containing error" should {
 
       "NOT call JwtOps or ManagementService" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           _ <- managementRoutes.run(request)
@@ -566,8 +592,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return BadRequest" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           response <- managementRoutes.run(request)
@@ -586,10 +613,11 @@ class ApiKeyManagementRoutesSpec
       )
 
       "return Unauthorized" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns
-          IO.pure(jwtWithEmptySubField.asRight)
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(IO.pure(jwtWithEmptySubField.asRight))
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           response <- managementRoutes.run(request)
@@ -599,10 +627,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtWithEmptySubField.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              jwtWithEmptySubField.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           _ <- managementRoutes.run(request)
@@ -614,10 +646,14 @@ class ApiKeyManagementRoutesSpec
     "JwtOps throws an exception" should {
 
       "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           response <- managementRoutes.run(request)
@@ -626,10 +662,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           _ <- managementRoutes.run(request)
@@ -641,7 +681,7 @@ class ApiKeyManagementRoutesSpec
 
   "ManagementRoutes on GET /api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
+    val uri     = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadApiKey))
@@ -650,7 +690,7 @@ class ApiKeyManagementRoutesSpec
 
     "provided with publicKeyId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+      val uri                             = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -674,20 +714,20 @@ class ApiKeyManagementRoutesSpec
     "everything works correctly" should {
 
       "call ActiveTenantVerifier, JwtOps and ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         for {
           _ <- managementRoutes.run(request)
 
-          _ = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
-          _ = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
+          _              = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
+          _              = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
           expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
           _ = verify(managementService).getApiKey(eqTo(publicTenantId_1), eqTo(expectedUserId), eqTo(publicKeyId_1))
         } yield ()
       }
 
       "return successful value returned by ManagementService" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(Some(apiKeyData_1))
+        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(Some(apiKeyData_1)))
 
         for {
           response <- managementRoutes.run(request)
@@ -697,7 +737,7 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns empty Option" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(None)
+        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.pure(None))
 
         for {
           response <- managementRoutes.run(request)
@@ -711,7 +751,7 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.raiseError(testException)
+        managementService.getApiKey(any[TenantId], any[UserId], any[ApiKeyId]).returns(IO.raiseError(testException))
 
         for {
           response <- managementRoutes.run(request)
@@ -724,8 +764,9 @@ class ApiKeyManagementRoutesSpec
     "ActiveTenantVerifier returns Left containing error" should {
 
       "NOT call JwtOps or ManagementService" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           _ <- managementRoutes.run(request)
@@ -734,8 +775,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return BadRequest" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           response <- managementRoutes.run(request)
@@ -754,10 +796,11 @@ class ApiKeyManagementRoutesSpec
       )
 
       "return Unauthorized" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns
-          IO.pure(jwtWithEmptySubField.asRight)
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(IO.pure(jwtWithEmptySubField.asRight))
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           response <- managementRoutes.run(request)
@@ -767,10 +810,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtWithEmptySubField.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              jwtWithEmptySubField.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           _ <- managementRoutes.run(request)
@@ -782,10 +829,14 @@ class ApiKeyManagementRoutesSpec
     "JwtOps throws an exception" should {
 
       "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           response <- managementRoutes.run(request)
@@ -794,10 +845,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           _ <- managementRoutes.run(request)
@@ -809,7 +864,7 @@ class ApiKeyManagementRoutesSpec
 
   "ManagementRoutes on DELETE /api-keys/{publicKeyId}" when {
 
-    val uri = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
+    val uri     = Uri.unsafeFromString(s"/api-keys/$publicKeyId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteApiKey))
@@ -818,7 +873,7 @@ class ApiKeyManagementRoutesSpec
 
     "provided with publicKeyId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
+      val uri                             = Uri.unsafeFromString("/api-keys/this-is-not-a-valid-uuid")
       val requestWithIncorrectPublicKeyId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -842,14 +897,15 @@ class ApiKeyManagementRoutesSpec
     "everything works correctly" should {
 
       "call ActiveTenantVerifier, JwtOps and ManagementService" in authorizedFixture {
-        managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns
-          IO.pure(Right(apiKeyData_1))
+        managementService
+          .deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           _ <- managementRoutes.run(request)
 
-          _ = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
-          _ = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
+          _              = verify(jwtOps).extractUserId(eqTo(AuthTestData.jwtWithMockedSignature))
+          _              = verify(activeTenantVerifier).verifyTenantIsActive(eqTo(publicTenantId_1))
           expectedUserId = AuthTestData.jwtWithMockedSignature.claim.subject.get
           _ = verify(managementService)
             .deleteApiKeyBelongingToUserWith(eqTo(publicTenantId_1), eqTo(expectedUserId), eqTo(publicKeyId_1))
@@ -857,8 +913,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Ok and ApiKeyData returned by ManagementService" in authorizedFixture {
-        managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns
-          IO.pure(Right(apiKeyData_1))
+        managementService
+          .deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           response <- managementRoutes.run(request)
@@ -868,9 +925,13 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Not Found when ManagementService returns Left containing ApiKeyDataNotFound" in authorizedFixture {
-        managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
-        )
+        managementService
+          .deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyDataNotFoundError(publicUserId_1, publicKeyId_1))
+            )
+          )
 
         for {
           response <- managementRoutes.run(request)
@@ -882,9 +943,13 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns Left containing ApiKeyNotFoundError" in authorizedFixture {
-        managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO.pure(
-          Left(ApiKeyNotFoundError)
-        )
+        managementService
+          .deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyNotFoundError)
+            )
+          )
 
         for {
           response <- managementRoutes.run(request)
@@ -896,8 +961,12 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return Internal Server Error when ManagementService returns an exception" in authorizedFixture {
-        managementService.deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId]) returns IO
-          .raiseError(testException)
+        managementService
+          .deleteApiKeyBelongingToUserWith(any[TenantId], any[UserId], any[ApiKeyId])
+          .returns(
+            IO
+              .raiseError(testException)
+          )
 
         for {
           response <- managementRoutes.run(request)
@@ -910,8 +979,9 @@ class ApiKeyManagementRoutesSpec
     "ActiveTenantVerifier returns Left containing error" should {
 
       "NOT call JwtOps or ManagementService" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           _ <- managementRoutes.run(request)
@@ -920,8 +990,9 @@ class ApiKeyManagementRoutesSpec
       }
 
       "return BadRequest" in authorizedFixture {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns
-          EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated)))
+        activeTenantVerifier
+          .verifyTenantIsActive(any[TenantId])
+          .returns(EitherT.leftT(ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))))
 
         for {
           response <- managementRoutes.run(request)
@@ -940,10 +1011,11 @@ class ApiKeyManagementRoutesSpec
       )
 
       "return Unauthorized" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns
-          IO.pure(jwtWithEmptySubField.asRight)
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(IO.pure(jwtWithEmptySubField.asRight))
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           response <- managementRoutes.run(request)
@@ -953,10 +1025,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtWithEmptySubField.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) returns Left(jwtOpsTestError)
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              jwtWithEmptySubField.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).returns(Left(jwtOpsTestError))
 
         for {
           _ <- managementRoutes.run(request)
@@ -968,10 +1044,14 @@ class ApiKeyManagementRoutesSpec
     "JwtOps throws an exception" should {
 
       "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           response <- managementRoutes.run(request)
@@ -980,10 +1060,14 @@ class ApiKeyManagementRoutesSpec
       }
 
       "NOT call ManagementService" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          AuthTestData.jwtWithMockedSignature.asRight
-        )
-        jwtOps.extractUserId(any[JsonWebToken]) throws testException
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              AuthTestData.jwtWithMockedSignature.asRight
+            )
+          )
+        jwtOps.extractUserId(any[JsonWebToken]).throws(testException)
 
         for {
           _ <- managementRoutes.run(request)
@@ -992,4 +1076,5 @@ class ApiKeyManagementRoutesSpec
       }
     }
   }
+
 }

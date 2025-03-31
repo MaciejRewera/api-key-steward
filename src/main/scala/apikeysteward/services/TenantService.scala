@@ -29,7 +29,7 @@ class TenantService(uuidGenerator: UuidGenerator, tenantRepository: TenantReposi
 
     def createTenantAction: IO[Either[TenantInsertionError, Tenant]] =
       for {
-        _ <- logger.info("Generating Tenant ID...")
+        _        <- logger.info("Generating Tenant ID...")
         tenantId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Tenant ID."))
 
         _ <- logger.info("Inserting Tenant into database...")

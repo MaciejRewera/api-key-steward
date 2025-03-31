@@ -19,6 +19,7 @@ case class CreateApiKeyAdminRequest(
     override val templateId: ApiKeyTemplateId,
     override val permissionIds: List[PermissionId]
 ) extends CreateApiKeyRequestBase {
+
   def toUserRequest: (String, CreateApiKeyRequest) = userId -> CreateApiKeyRequest(
     name = this.name,
     description = this.description,
@@ -34,4 +35,5 @@ object CreateApiKeyAdminRequest extends CodecCommons {
 
   implicit val createApiKeyAdminRequestSchema: Schema[CreateApiKeyAdminRequest] =
     TapirCustomSchemas.createApiKeyAdminRequestSchema
+
 }

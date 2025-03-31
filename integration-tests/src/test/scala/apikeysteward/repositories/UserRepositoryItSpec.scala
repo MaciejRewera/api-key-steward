@@ -15,7 +15,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
   import doobie.postgres._
   import doobie.postgres.implicits._
 
-  private val uuidGenerator = new UuidGenerator
+  private val uuidGenerator       = new UuidGenerator
   private val secureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
 
   private val apiKeyRepository = new ApiKeyRepository(
@@ -82,7 +82,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyTemplatesUsersAssociations(publicUserId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        _   <- repository.delete(publicTenantId_1, publicUserId_1)
         res <- getApiKeyTemplatesUsersAssociations(publicUserId_1)
       } yield res
 
@@ -96,7 +96,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeysPermissionsAssociations(publicUserId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        _   <- repository.delete(publicTenantId_1, publicUserId_1)
         res <- getApiKeysPermissionsAssociations(publicUserId_1)
       } yield res
 
@@ -110,7 +110,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyData(publicUserId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        _   <- repository.delete(publicTenantId_1, publicUserId_1)
         res <- getApiKeyData(publicUserId_1)
       } yield res
 
@@ -124,7 +124,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeys(publicUserId_1)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        _   <- repository.delete(publicTenantId_1, publicUserId_1)
         res <- getApiKeys(publicUserId_1)
       } yield res
 
@@ -138,7 +138,7 @@ class UserRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- Queries.getAllApiKeyTemplates.transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicUserId_1)
+        _   <- repository.delete(publicTenantId_1, publicUserId_1)
         res <- Queries.getAllApiKeyTemplates.transact(transactor)
       } yield res
 

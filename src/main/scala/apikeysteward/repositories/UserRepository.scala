@@ -30,7 +30,7 @@ class UserRepository(
   def insert(publicTenantId: TenantId, user: User): IO[Either[UserInsertionError, User]] =
     for {
       userDbId <- uuidGenerator.generateUuid
-      result <- insert(userDbId, publicTenantId, user)
+      result   <- insert(userDbId, publicTenantId, user)
     } yield result
 
   private def insert(userDbId: UUID, publicTenantId: TenantId, user: User): IO[Either[UserInsertionError, User]] =
@@ -55,8 +55,8 @@ class UserRepository(
       publicUserId: UserId
   ): ConnectionIO[Either[UserRepositoryError, User]] =
     (for {
-      _ <- apiKeyRepository.deleteAllForUserOp(publicTenantId, publicUserId).leftMap(UserRepositoryError)
-      _ <- EitherT.liftF(apiKeyTemplatesUsersDb.deleteAllForUser(publicTenantId, publicUserId))
+      _              <- apiKeyRepository.deleteAllForUserOp(publicTenantId, publicUserId).leftMap(UserRepositoryError)
+      _              <- EitherT.liftF(apiKeyTemplatesUsersDb.deleteAllForUser(publicTenantId, publicUserId))
       userEntityRead <- EitherT(userDb.delete(publicTenantId, publicUserId)).leftMap(UserRepositoryError)
 
       resultUser = User.from(userEntityRead)
@@ -90,4 +90,5 @@ object UserRepository {
   case class UserRepositoryError(cause: CustomError) extends CustomError {
     override val message: String = cause.message
   }
+
 }

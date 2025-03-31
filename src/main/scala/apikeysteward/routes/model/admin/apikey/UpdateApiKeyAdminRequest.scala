@@ -15,4 +15,5 @@ object UpdateApiKeyAdminRequest {
 
   implicit val updateApiKeyAdminRequestSchema: Schema[UpdateApiKeyAdminRequest] =
     TapirCustomSchemas.updateApiKeyAdminRequestSchema
+
 }

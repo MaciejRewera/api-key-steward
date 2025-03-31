@@ -35,6 +35,7 @@ class ApiKeyDbSpec
   private val apiKeyDb = new ApiKeyDb()
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
@@ -42,22 +43,22 @@ class ApiKeyDbSpec
 
     val getAllApiKeys: doobie.ConnectionIO[List[ApiKeyEntityRaw]] =
       sql"SELECT * FROM api_key".query[ApiKeyEntityRaw].stream.compile.toList
+
   }
 
   "ApiKeyDb on insert" when {
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing ReferencedTenantDoesNotExistError" in {
+      "return Left containing ReferencedTenantDoesNotExistError" in
         apiKeyDb
           .insert(apiKeyEntityWrite_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(tenantDbId_1)))
-      }
 
       "NOT insert any entity into DB" in {
         val result = for {
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
           resApiKeys <- Queries.getAllApiKeys.transact(transactor)
         } yield resApiKeys
 
@@ -81,7 +82,7 @@ class ApiKeyDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          _   <- apiKeyDb.insert(apiKeyEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
           res <- Queries.getAllApiKeys.transact(transactor)
         } yield res
 
@@ -105,7 +106,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_1)
           resApiKeys <- Queries.getAllApiKeys
         } yield resApiKeys).transact(transactor)
 
@@ -124,7 +125,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _        <- apiKeyDb.insert(apiKeyEntityWrite_1)
           inserted <- apiKeyDb.insert(apiKeyEntityWrite_2)
         } yield inserted).transact(transactor)
 
@@ -135,8 +136,8 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_2)
           resApiKeys <- Queries.getAllApiKeys
         } yield resApiKeys).transact(transactor)
 
@@ -158,7 +159,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _   <- apiKeyDb.insert(apiKeyEntityWrite_1)
           res <- apiKeyDb.insert(apiKeyEntityWrite_1)
         } yield res).transact(transactor)
 
@@ -173,8 +174,8 @@ class ApiKeyDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor).attempt
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor)
+          _          <- apiKeyDb.insert(apiKeyEntityWrite_1).transact(transactor).attempt
           resApiKeys <- Queries.getAllApiKeys.transact(transactor)
         } yield resApiKeys
 
@@ -191,12 +192,11 @@ class ApiKeyDbSpec
   "ApiKeyDb on get" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         apiKeyDb
           .getByApiKey(publicTenantId_1, hashedApiKey_1)
           .transact(transactor)
           .asserting(_ shouldBe none[ApiKeyEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -216,7 +216,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _   <- apiKeyDb.insert(apiKeyEntityWrite_1)
           res <- apiKeyDb.getByApiKey(publicTenantId_2, hashedApiKey_1)
         } yield res).transact(transactor)
 
@@ -229,7 +229,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _   <- apiKeyDb.insert(apiKeyEntityWrite_1)
           res <- apiKeyDb.getByApiKey(publicTenantId_1, hashedApiKey_2)
         } yield res).transact(transactor)
 
@@ -242,7 +242,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
+          _   <- apiKeyDb.insert(apiKeyEntityWrite_1)
           res <- apiKeyDb.getByApiKey(publicTenantId_1, hashedApiKey_1)
         } yield res).transact(transactor)
 
@@ -258,16 +258,15 @@ class ApiKeyDbSpec
 
     "there are no Tenants in the DB" should {
 
-      "return Left containing ApiKeyNotFound" in {
+      "return Left containing ApiKeyNotFound" in
         apiKeyDb
           .delete(publicTenantId_1, apiKeyDbId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ApiKeyNotFoundError))
-      }
 
       "make no changes to the DB" in {
         val result = (for {
-          _ <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
+          _   <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -291,7 +290,7 @@ class ApiKeyDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
+          _   <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -319,7 +318,7 @@ class ApiKeyDbSpec
 
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
 
-          _ <- apiKeyDb.delete(publicTenantId_2, apiKeyDbId_1)
+          _   <- apiKeyDb.delete(publicTenantId_2, apiKeyDbId_1)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -352,7 +351,7 @@ class ApiKeyDbSpec
 
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
 
-          _ <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_2)
+          _   <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_2)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -385,7 +384,7 @@ class ApiKeyDbSpec
 
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
 
-          _ <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
+          _   <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -415,7 +414,7 @@ class ApiKeyDbSpec
           _ <- apiKeyDb.insert(apiKeyEntityWrite_1)
           _ <- apiKeyDb.insert(apiKeyEntityWrite_2)
 
-          _ <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
+          _   <- apiKeyDb.delete(publicTenantId_1, apiKeyDbId_1)
           res <- Queries.getAllApiKeys
         } yield res).transact(transactor)
 
@@ -428,4 +427,5 @@ class ApiKeyDbSpec
       }
     }
   }
+
 }

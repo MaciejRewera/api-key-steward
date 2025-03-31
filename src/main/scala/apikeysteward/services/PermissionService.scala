@@ -45,7 +45,7 @@ class PermissionService(
 
     def createPermissionAction: IO[Either[PermissionInsertionError, Permission]] =
       for {
-        _ <- logger.info("Generating Permission ID...")
+        _            <- logger.info("Generating Permission ID...")
         permissionId <- uuidGenerator.generateUuid.flatTap(_ => logger.info("Generated Permission ID."))
 
         _ <- logger.info("Inserting Permission into database...")

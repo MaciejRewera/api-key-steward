@@ -4,6 +4,7 @@ import apikeysteward.config.JwtConfig
 import apikeysteward.routes.auth.model.JwtCustom
 
 trait FixedJwtCustom extends FixedClock {
+
   val jwtConfigWithoutUserIdFieldName: JwtConfig = JwtConfig(
     allowedIssuers = Set.empty,
     allowedAudiences = Set.empty,

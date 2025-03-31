@@ -10,10 +10,10 @@ object ErrorInfo {
 
   object Errors {
     val InternalServerError = "Internal Server Error"
-    val BadRequest = "Bad Request"
-    val Forbidden = "Access Denied"
-    val Unauthorized = "Invalid Credentials"
-    val NotFound = "Not Found"
+    val BadRequest          = "Bad Request"
+    val Forbidden           = "Access Denied"
+    val Unauthorized        = "Invalid Credentials"
+    val NotFound            = "Not Found"
   }
 
   def internalServerErrorInfo(detail: Option[String] = None): ErrorInfo = ErrorInfo(
@@ -40,4 +40,5 @@ object ErrorInfo {
     error = Errors.NotFound,
     errorDetail = detail
   )
+
 }

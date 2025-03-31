@@ -53,7 +53,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on POST /admin/tenants" when {
 
-    val uri = Uri.unsafeFromString("/admin/tenants")
+    val uri         = Uri.unsafeFromString("/admin/tenants")
     val requestBody = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val request = Request[IO](method = Method.POST, uri = uri, headers = Headers(authorizationHeader))
@@ -111,7 +111,7 @@ class AdminTenantRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -188,7 +188,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenant_1.asRight)
+        tenantService.createTenant(any[CreateTenantRequest]).returns(IO.pure(tenant_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -199,7 +199,7 @@ class AdminTenantRoutesSpec
       "return successful value returned by TenantService" when {
 
         "provided with description" in authorizedFixture {
-          tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenant_1.asRight)
+          tenantService.createTenant(any[CreateTenantRequest]).returns(IO.pure(tenant_1.asRight))
 
           for {
             response <- adminRoutes.run(request)
@@ -212,7 +212,7 @@ class AdminTenantRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val tenantWithoutDescription = tenant_1.copy(description = None)
-          tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(tenantWithoutDescription.asRight)
+          tenantService.createTenant(any[CreateTenantRequest]).returns(IO.pure(tenantWithoutDescription.asRight))
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -227,9 +227,13 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns successful IO with Left containing TenantInsertionError" in authorizedFixture {
-        tenantService.createTenant(any[CreateTenantRequest]) returns IO.pure(
-          Left(TenantAlreadyExistsError(publicTenantIdStr_1))
-        )
+        tenantService
+          .createTenant(any[CreateTenantRequest])
+          .returns(
+            IO.pure(
+              Left(TenantAlreadyExistsError(publicTenantIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -239,7 +243,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.createTenant(any[CreateTenantRequest]) returns IO.raiseError(testException)
+        tenantService.createTenant(any[CreateTenantRequest]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -252,7 +256,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on PUT /admin/tenants/{tenantId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
+    val uri         = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
     val requestBody = UpdateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
@@ -334,7 +338,7 @@ class AdminTenantRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -362,7 +366,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]) returns IO.pure(tenant_1.asRight)
+        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]).returns(IO.pure(tenant_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -371,7 +375,7 @@ class AdminTenantRoutesSpec
       }
 
       "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]) returns IO.pure(tenant_1.asRight)
+        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]).returns(IO.pure(tenant_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -383,9 +387,13 @@ class AdminTenantRoutesSpec
       }
 
       "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
-        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]) returns IO.pure(
-          Left(TenantNotFoundError(publicTenantIdStr_1))
-        )
+        tenantService
+          .updateTenant(any[UUID], any[UpdateTenantRequest])
+          .returns(
+            IO.pure(
+              Left(TenantNotFoundError(publicTenantIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -397,7 +405,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]) returns IO.raiseError(testException)
+        tenantService.updateTenant(any[UUID], any[UpdateTenantRequest]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -410,7 +418,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on PUT /admin/tenants/{tenantId}/reactivation" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1/reactivation")
+    val uri     = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1/reactivation")
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
@@ -442,7 +450,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.reactivateTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.reactivateTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -451,7 +459,7 @@ class AdminTenantRoutesSpec
       }
 
       "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.reactivateTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.reactivateTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -463,7 +471,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
-        tenantService.reactivateTenant(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantService.reactivateTenant(any[UUID]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -475,7 +483,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.reactivateTenant(any[UUID]) returns IO.raiseError(testException)
+        tenantService.reactivateTenant(any[UUID]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -488,7 +496,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on PUT /admin/tenants/{tenantId}/deactivation" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1/deactivation")
+    val uri     = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1/deactivation")
     val request = Request[IO](method = Method.PUT, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
@@ -520,7 +528,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.deactivateTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.deactivateTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -529,7 +537,7 @@ class AdminTenantRoutesSpec
       }
 
       "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.deactivateTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.deactivateTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -541,7 +549,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
-        tenantService.deactivateTenant(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantService.deactivateTenant(any[UUID]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -553,7 +561,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.deactivateTenant(any[UUID]) returns IO.raiseError(testException)
+        tenantService.deactivateTenant(any[UUID]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -566,7 +574,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on DELETE /admin/tenants/{tenantId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.WriteAdmin))
@@ -598,7 +606,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.deleteTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -607,7 +615,7 @@ class AdminTenantRoutesSpec
       }
 
       "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(tenant_1.asRight)
+        tenantService.deleteTenant(any[UUID]).returns(IO.pure(tenant_1.asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -619,7 +627,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Not Found when TenantService returns successful IO with Left containing TenantNotFoundError" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantService.deleteTenant(any[UUID]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -631,7 +639,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Bad Request when TenantService returns successful IO with Left containing TenantIsNotDeactivatedError" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(Left(TenantIsNotDeactivatedError(publicTenantId_1)))
+        tenantService.deleteTenant(any[UUID]).returns(IO.pure(Left(TenantIsNotDeactivatedError(publicTenantId_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -648,9 +656,13 @@ class AdminTenantRoutesSpec
 
       "return Internal Server when TenantService returns successful IO with Left containing CannotDeleteDependencyError" in authorizedFixture {
         val dependencyError = UserRepositoryError(UserNotFoundError(publicTenantId_1, publicUserId_1))
-        tenantService.deleteTenant(any[UUID]) returns IO.pure(
-          Left(CannotDeleteDependencyError(publicTenantId_1, dependencyError))
-        )
+        tenantService
+          .deleteTenant(any[UUID])
+          .returns(
+            IO.pure(
+              Left(CannotDeleteDependencyError(publicTenantId_1, dependencyError))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -666,7 +678,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.deleteTenant(any[UUID]) returns IO.raiseError(testException)
+        tenantService.deleteTenant(any[UUID]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -679,7 +691,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on GET /admin/tenants/{tenantId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/tenants/$publicTenantId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
@@ -711,7 +723,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.getBy(any[UUID]) returns IO.pure(tenant_1.some)
+        tenantService.getBy(any[UUID]).returns(IO.pure(tenant_1.some))
 
         for {
           _ <- adminRoutes.run(request)
@@ -720,7 +732,7 @@ class AdminTenantRoutesSpec
       }
 
       "return successful value returned by TenantService" in authorizedFixture {
-        tenantService.getBy(any[UUID]) returns IO.pure(tenant_1.some)
+        tenantService.getBy(any[UUID]).returns(IO.pure(tenant_1.some))
 
         for {
           response <- adminRoutes.run(request)
@@ -732,7 +744,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Not Found when TenantService returns empty Option" in authorizedFixture {
-        tenantService.getBy(any[UUID]) returns IO.pure(none)
+        tenantService.getBy(any[UUID]).returns(IO.pure(none))
 
         for {
           response <- adminRoutes.run(request)
@@ -744,7 +756,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.getBy(any[UUID]) returns IO.raiseError(testException)
+        tenantService.getBy(any[UUID]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -757,7 +769,7 @@ class AdminTenantRoutesSpec
 
   "AdminTenantRoutes on GET /admin/tenants" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/tenants")
+    val uri     = Uri.unsafeFromString(s"/admin/tenants")
     val request = Request[IO](method = Method.GET, uri = uri, headers = Headers(authorizationHeader))
 
     runCommonJwtTests(request)(Set(JwtPermissions.ReadAdmin))
@@ -765,7 +777,7 @@ class AdminTenantRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call TenantService" in authorizedFixture {
-        tenantService.getAll returns IO.pure(List.empty)
+        tenantService.getAll.returns(IO.pure(List.empty))
 
         for {
           _ <- adminRoutes.run(request)
@@ -776,7 +788,7 @@ class AdminTenantRoutesSpec
       "return successful value returned by TenantService" when {
 
         "TenantService returns an empty List" in authorizedFixture {
-          tenantService.getAll returns IO.pure(List.empty)
+          tenantService.getAll.returns(IO.pure(List.empty))
 
           for {
             response <- adminRoutes.run(request)
@@ -788,7 +800,7 @@ class AdminTenantRoutesSpec
         }
 
         "TenantService returns a List with several elements" in authorizedFixture {
-          tenantService.getAll returns IO.pure(List(tenant_1, tenant_2, tenant_3))
+          tenantService.getAll.returns(IO.pure(List(tenant_1, tenant_2, tenant_3)))
 
           for {
             response <- adminRoutes.run(request)
@@ -801,7 +813,7 @@ class AdminTenantRoutesSpec
       }
 
       "return Internal Server Error when TenantService returns failed IO" in authorizedFixture {
-        tenantService.getAll returns IO.raiseError(testException)
+        tenantService.getAll.returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)

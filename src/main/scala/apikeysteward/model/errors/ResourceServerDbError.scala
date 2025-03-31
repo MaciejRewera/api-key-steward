@@ -8,10 +8,12 @@ import java.sql.SQLException
 import java.util.UUID
 
 sealed abstract class ResourceServerDbError(override val message: String) extends CustomError
+
 object ResourceServerDbError {
 
   sealed abstract class ResourceServerInsertionError(override val message: String)
       extends ResourceServerDbError(message)
+
   object ResourceServerInsertionError {
 
     case class ResourceServerAlreadyExistsError(publicResourceServerId: String)
@@ -20,6 +22,7 @@ object ResourceServerDbError {
         )
 
     trait ReferencedTenantDoesNotExistError extends ResourceServerInsertionError { val errorMessage: String }
+
     object ReferencedTenantDoesNotExistError {
 
       private case class ReferencedTenantDoesNotExistErrorImpl(override val errorMessage: String)
@@ -29,9 +32,11 @@ object ResourceServerDbError {
       def fromDbId(tenantId: UUID): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
         errorMessage = s"Tenant with ID = [${tenantId.toString}] does not exist."
       )
+
       def apply(publicTenantId: TenantId): ReferencedTenantDoesNotExistError = ReferencedTenantDoesNotExistErrorImpl(
         errorMessage = s"Tenant with publicTenantId = [$publicTenantId] does not exist."
       )
+
     }
 
     def cannotInsertPermissionError(
@@ -50,6 +55,7 @@ object ResourceServerDbError {
 
     case class ResourceServerInsertionErrorImpl(cause: SQLException)
         extends ResourceServerInsertionError(message = s"An error occurred when inserting ResourceServer: $cause")
+
   }
 
   def resourceServerNotFoundError(publicResourceServerId: ResourceServerId): ResourceServerDbError =

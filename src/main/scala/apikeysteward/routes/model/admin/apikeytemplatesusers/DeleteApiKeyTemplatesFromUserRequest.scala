@@ -15,4 +15,5 @@ object DeleteApiKeyTemplatesFromUserRequest {
 
   implicit val deleteApiKeyTemplatesWithUserRequestSchema: Schema[DeleteApiKeyTemplatesFromUserRequest] =
     TapirCustomSchemas.deleteApiKeyTemplatesWithUserRequestSchema
+
 }

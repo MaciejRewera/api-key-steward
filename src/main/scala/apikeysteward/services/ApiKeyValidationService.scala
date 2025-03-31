@@ -44,7 +44,7 @@ class ApiKeyValidationService(
       .value
 
   private def validateChecksum(apiKey: ApiKey): EitherT[IO, ApiKeyValidationError, ApiKey] = EitherT {
-    val splitIndex = apiKey.value.length - ChecksumCodec.EncodedChecksumLength
+    val splitIndex                           = apiKey.value.length - ChecksumCodec.EncodedChecksumLength
     val (randomFragmentWithPrefix, checksum) = apiKey.value.splitAt(splitIndex)
 
     val calculatedChecksum = checksumCalculator.calcChecksumFor(randomFragmentWithPrefix)
@@ -77,8 +77,9 @@ class ApiKeyValidationService(
 object ApiKeyValidationService {
 
   sealed abstract class ApiKeyValidationError
+
   object ApiKeyValidationError {
-    case object ApiKeyIncorrectError extends ApiKeyValidationError
+    case object ApiKeyIncorrectError                     extends ApiKeyValidationError
     case class ApiKeyExpiredError(expiredSince: Instant) extends ApiKeyValidationError
   }
 

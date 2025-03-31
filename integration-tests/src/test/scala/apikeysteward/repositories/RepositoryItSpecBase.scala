@@ -33,18 +33,19 @@ trait RepositoryItSpecBase
               |CASCADE""".stripMargin.update.run
   } yield ()
 
-  val tenantDb = new TenantDb
-  val resourceServerDb = new ResourceServerDb
-  val permissionDb = new PermissionDb
+  val tenantDb                     = new TenantDb
+  val resourceServerDb             = new ResourceServerDb
+  val permissionDb                 = new PermissionDb
   val apiKeyTemplatesPermissionsDb = new ApiKeyTemplatesPermissionsDb
-  val apiKeyTemplatesUsersDb = new ApiKeyTemplatesUsersDb
-  val apiKeyTemplateDb = new ApiKeyTemplateDb
-  val userDb = new UserDb
-  val apiKeyDb = new ApiKeyDb
-  val apiKeyDataDb = new ApiKeyDataDb
-  val apiKeysPermissionsDb = new ApiKeysPermissionsDb
+  val apiKeyTemplatesUsersDb       = new ApiKeyTemplatesUsersDb
+  val apiKeyTemplateDb             = new ApiKeyTemplateDb
+  val userDb                       = new UserDb
+  val apiKeyDb                     = new ApiKeyDb
+  val apiKeyDataDb                 = new ApiKeyDataDb
+  val apiKeysPermissionsDb         = new ApiKeysPermissionsDb
 
   object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 

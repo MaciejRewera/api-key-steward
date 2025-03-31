@@ -15,7 +15,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
   import doobie.postgres._
   import doobie.postgres.implicits._
 
-  private val uuidGenerator = new UuidGenerator
+  private val uuidGenerator       = new UuidGenerator
   private val secureHashGenerator = new SecureHashGenerator(Algorithm.SHA3_256)
 
   private val repository = new ApiKeyRepository(
@@ -66,7 +66,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeysPermissionsAssociations(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicKeyId_1)
+        _   <- repository.delete(publicTenantId_1, publicKeyId_1)
         res <- getApiKeysPermissionsAssociations(publicKeyId_1).transact(transactor)
       } yield res
 
@@ -80,7 +80,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyData(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicKeyId_1)
+        _   <- repository.delete(publicTenantId_1, publicKeyId_1)
         res <- getApiKeyData(publicKeyId_1).transact(transactor)
       } yield res
 
@@ -94,7 +94,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeys(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.delete(publicTenantId_1, publicKeyId_1)
+        _   <- repository.delete(publicTenantId_1, publicKeyId_1)
         res <- getApiKeys(publicKeyId_1).transact(transactor)
       } yield res
 
@@ -111,7 +111,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeysPermissionsAssociations(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
+        _   <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
         res <- getApiKeysPermissionsAssociations(publicKeyId_1).transact(transactor)
       } yield res
 
@@ -125,7 +125,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeyData(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
+        _   <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
         res <- getApiKeyData(publicKeyId_1).transact(transactor)
       } yield res
 
@@ -139,7 +139,7 @@ class ApiKeyRepositoryItSpec extends RepositoryItSpecBase {
         entitiesBeforeDeletion <- getApiKeys(publicKeyId_1).transact(transactor)
         _ = entitiesBeforeDeletion should not be empty
 
-        _ <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
+        _   <- repository.deleteAllForUserOp(publicTenantId_1, publicUserId_1).value.transact(transactor)
         res <- getApiKeys(publicKeyId_1).transact(transactor)
       } yield res
 

@@ -27,8 +27,8 @@ class JwtDecoderSpec
     with EitherValues
     with FixedJwtCustom {
 
-  private val jwtValidator = mock[JwtValidator]
-  private val jwkProvider = mock[JwkProvider]
+  private val jwtValidator       = mock[JwtValidator]
+  private val jwkProvider        = mock[JwkProvider]
   private val publicKeyGenerator = mock[PublicKeyGenerator]
 
   private val jwtDecoder = new JwtDecoder(jwtValidator, jwkProvider, publicKeyGenerator)(jwtCustom)
@@ -38,10 +38,10 @@ class JwtDecoderSpec
 
     reset(jwtValidator, jwkProvider, publicKeyGenerator)
 
-    jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-    publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Right(publicKey)
+    jwkProvider.getJsonWebKey(any[String]).returns(IO.pure(Some(jsonWebKey)))
+    publicKeyGenerator.generateFrom(any[JsonWebKey]).returns(Right(publicKey))
 
-    jwtValidator.validateAll(any[JsonWebToken]) returns Right(jwtWithMockedSignature)
+    jwtValidator.validateAll(any[JsonWebToken]).returns(Right(jwtWithMockedSignature))
   }
 
   private val testException = new RuntimeException("Test Exception")
@@ -74,11 +74,10 @@ class JwtDecoderSpec
         } yield ()
       }
 
-      "return Right containing JsonWebToken" in {
+      "return Right containing JsonWebToken" in
         jwtDecoder.decode(jwtString).asserting { result =>
           result shouldBe Right(jwtWithMockedSignature.copy(signature = result.value.signature))
         }
-      }
     }
 
     "provided with expired token" should {
@@ -91,19 +90,18 @@ class JwtDecoderSpec
         } yield ()
       }
 
-      "return Left containing DecodingError" in {
+      "return Left containing DecodingError" in
         jwtDecoder.decode(expiredJwtString).asserting { result =>
           result.isLeft shouldBe true
           result.left.value shouldBe an[DecodingError]
           result.left.value.message should include("Exception occurred while decoding JWT: ")
           result.left.value.message should include("The token is expired since ")
         }
-      }
     }
 
     "provided with a token with nbf value in the future" should {
 
-      val jwtClaimNbfInTheFuture = jwtClaim.copy(notBefore = Some(now.plus(1.minute).toSeconds))
+      val jwtClaimNbfInTheFuture  = jwtClaim.copy(notBefore = Some(now.plus(1.minute).toSeconds))
       val jwtNbfInTheFutureString = jwtCustom.encode(jwtHeader, jwtClaimNbfInTheFuture, privateKey)
 
       "NOT call either JwtValidator, JwkProvider, nor PublicKeyGenerator" in {
@@ -113,14 +111,13 @@ class JwtDecoderSpec
         } yield ()
       }
 
-      "return Left containing DecodingError" in {
+      "return Left containing DecodingError" in
         jwtDecoder.decode(jwtNbfInTheFutureString).asserting { result =>
           result.isLeft shouldBe true
           result.left.value shouldBe an[DecodingError]
           result.left.value.message should include("Exception occurred while decoding JWT: ")
           result.left.value.message should include("The token will only be valid after ")
         }
-      }
     }
 
     "provided with a token without kid (Key ID)" should {
@@ -131,11 +128,11 @@ class JwtDecoderSpec
         for {
           _ <- jwtDecoder.decode(jwtWithoutKidString)
 
-          _ = verify(jwtValidator).validateAll(jwtCaptor.capture)
+          _   = verify(jwtValidator).validateAll(jwtCaptor.capture)
           jwt = jwtCaptor.getValue
-          _ = jwt.content shouldBe jwtWithoutKidString
-          _ = jwt.header shouldBe jwtHeaderWithoutKid
-          _ = jwt.claim shouldBe jwtClaim
+          _   = jwt.content shouldBe jwtWithoutKidString
+          _   = jwt.header shouldBe jwtHeaderWithoutKid
+          _   = jwt.claim shouldBe jwtClaim
         } yield ()
       }
 
@@ -146,15 +143,14 @@ class JwtDecoderSpec
         } yield ()
       }
 
-      "return Left containing ValidationError" in {
+      "return Left containing ValidationError" in
         jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
-      }
     }
 
     "JwtValidator returns Left containing JwtValidatorError" should {
 
       "NOT call either JwkProvider, nor PublicKeyGenerator" in {
-        jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
+        jwtValidator.validateAll(any[JsonWebToken]).returns(Left(NonEmptyChain(MissingKeyIdFieldError)))
 
         for {
           _ <- jwtDecoder.decode(jwtWithoutKidString)
@@ -164,7 +160,7 @@ class JwtDecoderSpec
 
       "return Left containing ValidationError" in {
 
-        jwtValidator.validateAll(any[JsonWebToken]) returns Left(NonEmptyChain(MissingKeyIdFieldError))
+        jwtValidator.validateAll(any[JsonWebToken]).returns(Left(NonEmptyChain(MissingKeyIdFieldError)))
 
         jwtDecoder.decode(jwtWithoutKidString).asserting(_ shouldBe Left(ValidationError(MissingKeyIdFieldError)))
       }
@@ -173,16 +169,20 @@ class JwtDecoderSpec
     "JwtValidator returns Left containing several JwtValidatorErrors" should {
 
       "NOT call either JwkProvider, nor PublicKeyGenerator" in {
-        jwtValidator.validateAll(any[JsonWebToken]) returns Left(
-          NonEmptyChain(
-            MissingKeyIdFieldError,
-            MissingExpirationTimeClaimError,
-            MissingNotBeforeClaimError,
-            MissingIssuedAtClaimError,
-            MissingIssuerClaimError,
-            MissingAudienceClaimError
+        jwtValidator
+          .validateAll(any[JsonWebToken])
+          .returns(
+            Left(
+              NonEmptyChain(
+                MissingKeyIdFieldError,
+                MissingExpirationTimeClaimError,
+                MissingNotBeforeClaimError,
+                MissingIssuedAtClaimError,
+                MissingIssuerClaimError,
+                MissingAudienceClaimError
+              )
+            )
           )
-        )
 
         for {
           _ <- jwtDecoder.decode(jwtWithoutKidString)
@@ -191,16 +191,20 @@ class JwtDecoderSpec
       }
 
       "return Left containing several ValidationErrors" in {
-        jwtValidator.validateAll(any[JsonWebToken]) returns Left(
-          NonEmptyChain(
-            MissingKeyIdFieldError,
-            MissingExpirationTimeClaimError,
-            MissingNotBeforeClaimError,
-            MissingIssuedAtClaimError,
-            MissingIssuerClaimError,
-            MissingAudienceClaimError
+        jwtValidator
+          .validateAll(any[JsonWebToken])
+          .returns(
+            Left(
+              NonEmptyChain(
+                MissingKeyIdFieldError,
+                MissingExpirationTimeClaimError,
+                MissingNotBeforeClaimError,
+                MissingIssuedAtClaimError,
+                MissingIssuerClaimError,
+                MissingAudienceClaimError
+              )
+            )
           )
-        )
 
         val validationErrors = Seq(
           MissingKeyIdFieldError,
@@ -218,7 +222,7 @@ class JwtDecoderSpec
     "JwkProvider returns empty Option" should {
 
       "NOT call PublicKeyGenerator" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.pure(None))
 
         for {
           _ <- jwtDecoder.decode(jwtString)
@@ -227,7 +231,7 @@ class JwtDecoderSpec
       }
 
       "return Left containing MatchingJwkNotFoundError" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(None)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.pure(None))
 
         jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(MatchingJwkNotFoundError(kid_1)))
       }
@@ -236,7 +240,7 @@ class JwtDecoderSpec
     "JwkProvider returns failed IO" should {
 
       "NOT call PublicKeyGenerator" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.raiseError(testException)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.raiseError(testException))
 
         for {
           _ <- jwtDecoder.decode(jwtString).attempt
@@ -245,7 +249,7 @@ class JwtDecoderSpec
       }
 
       "return failed IO containing the same error" in {
-        jwkProvider.getJsonWebKey(any[String]) returns IO.raiseError(testException)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.raiseError(testException))
 
         jwtDecoder.decode(jwtString).attempt.asserting(result => result shouldBe Left(testException))
       }
@@ -259,8 +263,8 @@ class JwtDecoderSpec
           KeyTypeNotSupportedError("RSA", "HSA"),
           KeyUseNotSupportedError("sig", "no-use")
         )
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Left(failureReasons)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.pure(Some(jsonWebKey)))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]).returns(Left(failureReasons))
 
         for {
           _ <- jwtDecoder.decode(jwtString)
@@ -274,8 +278,8 @@ class JwtDecoderSpec
           KeyTypeNotSupportedError("RSA", "HSA"),
           KeyUseNotSupportedError("sig", "no-use")
         )
-        jwkProvider.getJsonWebKey(any[String]) returns IO.pure(Some(jsonWebKey))
-        publicKeyGenerator.generateFrom(any[JsonWebKey]) returns Left(failureReasons)
+        jwkProvider.getJsonWebKey(any[String]).returns(IO.pure(Some(jsonWebKey)))
+        publicKeyGenerator.generateFrom(any[JsonWebKey]).returns(Left(failureReasons))
 
         jwtDecoder.decode(jwtString).asserting(_ shouldBe Left(PublicKeyGenerationError(failureReasons.iterator.toSeq)))
       }

@@ -21,18 +21,22 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
   val testException = new RuntimeException("Test Exception")
 
-  val tokenString: AccessToken = "TOKEN"
+  val tokenString: AccessToken           = "TOKEN"
   val authorizationHeader: Authorization = Authorization(Credentials.Token(Bearer, tokenString))
 
   val tenantIdHeaderName: CIString = ci"ApiKeySteward-TenantId"
-  val tenantIdHeader: Header.Raw = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
+  val tenantIdHeader: Header.Raw   = Header.Raw(tenantIdHeaderName, publicTenantIdStr_1)
 
   val allHeaders: Headers = Headers(authorizationHeader, tenantIdHeader)
 
   def authorizedFixture[T](jwtAuthorizer: JwtAuthorizer)(test: => IO[T]): IO[T] = IO {
-    jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-      AuthTestData.jwtWithMockedSignature.asRight
-    )
+    jwtAuthorizer
+      .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+      .returns(
+        IO.pure(
+          AuthTestData.jwtWithMockedSignature.asRight
+        )
+      )
   }.flatMap(_ => test)
 
   def runCommonJwtTests[Service <: AnyRef](
@@ -71,9 +75,13 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
     "the JWT is provided" should {
       "call JwtAuthorizer providing access token" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          ErrorInfo.unauthorizedErrorInfo().asLeft
-        )
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              ErrorInfo.unauthorizedErrorInfo().asLeft
+            )
+          )
 
         for {
           _ <- routes.run(request)
@@ -87,9 +95,13 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       val jwtValidatorError = ErrorInfo.unauthorizedErrorInfo(Some("A message explaining why auth validation failed."))
 
       "return Unauthorized" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              jwtValidatorError.asLeft
+            )
+          )
 
         for {
           response <- routes.run(request)
@@ -99,9 +111,13 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       }
 
       "NOT call the Services" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.pure(
-          jwtValidatorError.asLeft
-        )
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.pure(
+              jwtValidatorError.asLeft
+            )
+          )
 
         for {
           _ <- routes.run(request)
@@ -113,9 +129,13 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
     "JwtAuthorizer returns failed IO" should {
 
       "return Internal Server Error" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           response <- routes.run(request)
@@ -125,9 +145,13 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       }
 
       "NOT call the Services" in {
-        jwtAuthorizer.authorisedWithPermissions(any[Set[Permission]])(any[AccessToken]) returns IO.raiseError(
-          testException
-        )
+        jwtAuthorizer
+          .authorisedWithPermissions(any[Set[Permission]])(any[AccessToken])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           _ <- routes.run(request)
@@ -243,4 +267,5 @@ trait RoutesSpecBase extends AsyncWordSpec with AsyncIOSpec with Matchers {
       }
     }
   }
+
 }

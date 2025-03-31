@@ -58,4 +58,5 @@ object ApiKeyData {
       expiresAt = ApiKeyExpirationCalculator.calcExpiresAtFromNow(createApiKeyRequest.ttl),
       permissions = permissions
     )
+
 }

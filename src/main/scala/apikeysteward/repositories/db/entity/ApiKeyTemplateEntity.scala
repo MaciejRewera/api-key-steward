@@ -38,6 +38,7 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
   )
 
   object Write {
+
     def from(id: UUID, tenantId: UUID, apiKeyTemplate: ApiKeyTemplate): ApiKeyTemplateEntity.Write =
       ApiKeyTemplateEntity.Write(
         id = id,
@@ -50,6 +51,7 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
         apiKeyPrefix = apiKeyTemplate.apiKeyPrefix,
         randomSectionLength = apiKeyTemplate.randomSectionLength
       )
+
   }
 
   case class Update(
@@ -61,6 +63,7 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
   )
 
   object Update {
+
     def from(apiKeyTemplate: ApiKeyTemplateUpdate): ApiKeyTemplateEntity.Update =
       ApiKeyTemplateEntity.Update(
         publicTemplateId = apiKeyTemplate.publicTemplateId.toString,
@@ -69,6 +72,7 @@ object ApiKeyTemplateEntity extends DoobieCustomMeta {
         description = apiKeyTemplate.description,
         apiKeyMaxExpiryPeriod = apiKeyTemplate.apiKeyMaxExpiryPeriod
       )
+
   }
 
 }

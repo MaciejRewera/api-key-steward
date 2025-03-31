@@ -17,4 +17,5 @@ object ApiKeyEntity {
       tenantId: UUID,
       apiKey: String
   )
+
 }

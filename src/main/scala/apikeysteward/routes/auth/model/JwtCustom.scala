@@ -12,7 +12,7 @@ import javax.crypto.SecretKey
 
 class JwtCustom(override val clock: Clock, config: JwtConfig) extends JwtCirceParser[JwtHeader, JwtClaimCustom] {
 
-  implicit private val implicitConfig: JwtConfig = config
+  private implicit val implicitConfig: JwtConfig = config
 
   override def parseHeader(header: String): JwtHeader = parseHeaderHelp(header)
 
@@ -44,4 +44,5 @@ class JwtCustom(override val clock: Clock, config: JwtConfig) extends JwtCircePa
         "The key type doesn't match the algorithm type. It's either a SecretKey and a HMAC algorithm or a PrivateKey and a RSA or ECDSA algorithm. And an algorithm is required of course."
       )
   }
+
 }

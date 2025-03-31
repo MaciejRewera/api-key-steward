@@ -157,4 +157,5 @@ class TenantDb()(implicit clock: Clock) {
         sql"FROM tenant").query[TenantEntity.Read]
 
   }
+
 }

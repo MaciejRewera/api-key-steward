@@ -32,7 +32,8 @@ class ApiKeyValidationRoutesSpec
     with FixedClock {
 
   private val activeTenantVerifier = mock[ActiveTenantVerifier]
-  private val apiKeyService = mock[ApiKeyValidationService]
+  private val apiKeyService        = mock[ApiKeyValidationService]
+
   private val validateApiKeyRoutes: HttpApp[IO] =
     new ApiKeyValidationRoutes(activeTenantVerifier, apiKeyService).allRoutes.orNotFound
 
@@ -46,17 +47,17 @@ class ApiKeyValidationRoutesSpec
 
   "ValidateApiKeyRoutes on POST /api-keys/validation" when {
 
-    val uri = uri"/api-keys/validation"
+    val uri         = uri"/api-keys/validation"
     val requestBody = ValidateApiKeyRequest(apiKey_1.value)
-    val request = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
+    val request     = Request[IO](method = Method.POST, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
 
     runCommonTenantIdHeaderTests(request)
 
     "everything works correctly" should {
 
       "call ActiveTenantVerifier and ApiKeyService" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]).returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           _ <- validateApiKeyRoutes.run(request)
@@ -65,8 +66,8 @@ class ApiKeyValidationRoutesSpec
       }
 
       "return Ok and ApiKeyData when ApiKeyService returns Right" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Right(apiKeyData_1))
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]).returns(IO.pure(Right(apiKeyData_1)))
 
         for {
           response <- validateApiKeyRoutes.run(request)
@@ -78,8 +79,8 @@ class ApiKeyValidationRoutesSpec
       }
 
       "return Forbidden when ApiKeyService returns Left containing ApiKeyIncorrectError" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(Left(ApiKeyIncorrectError))
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]).returns(IO.pure(Left(ApiKeyIncorrectError)))
 
         for {
           response <- validateApiKeyRoutes.run(request)
@@ -93,10 +94,14 @@ class ApiKeyValidationRoutesSpec
       }
 
       "return Forbidden when ApiKeyService returns Left containing ApiKeyExpiredError" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.pure(
-          Left(ApiKeyExpiredError(nowInstant.minusSeconds(1).plusMillis(123).plusNanos(456)))
-        )
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        apiKeyService
+          .validateApiKey(any[TenantId], any[ApiKey])
+          .returns(
+            IO.pure(
+              Left(ApiKeyExpiredError(nowInstant.minusSeconds(1).plusMillis(123).plusNanos(456)))
+            )
+          )
 
         for {
           response <- validateApiKeyRoutes.run(request)
@@ -111,8 +116,8 @@ class ApiKeyValidationRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyService returns an exception" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.rightT(tenant_1)
-        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]) returns IO.raiseError(testException)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.rightT(tenant_1))
+        apiKeyService.validateApiKey(any[TenantId], any[ApiKey]).returns(IO.raiseError(testException))
 
         for {
           response <- validateApiKeyRoutes.run(request)
@@ -127,7 +132,7 @@ class ApiKeyValidationRoutesSpec
       val tenantIsDeactivatedError = ErrorInfo.badRequestErrorInfo(Some(ApiErrorMessages.General.TenantIsDeactivated))
 
       "NOT call ApiKeyService" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.leftT(tenantIsDeactivatedError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.leftT(tenantIsDeactivatedError))
 
         for {
           _ <- validateApiKeyRoutes.run(request)
@@ -136,7 +141,7 @@ class ApiKeyValidationRoutesSpec
       }
 
       "return Bad Request" in {
-        activeTenantVerifier.verifyTenantIsActive(any[TenantId]) returns EitherT.leftT(tenantIsDeactivatedError)
+        activeTenantVerifier.verifyTenantIsActive(any[TenantId]).returns(EitherT.leftT(tenantIsDeactivatedError))
 
         for {
           response <- validateApiKeyRoutes.run(request)

@@ -43,7 +43,7 @@ class JwtAuthorizerSpec
   "JwtAuthorizer on authorised" when {
 
     "should always call JwtDecoder providing access token" in {
-      jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
+      jwtDecoder.decode(any[String]).returns(IO.pure(Right(jwtWithMockedSignature)))
 
       for {
         _ <- jwtAuthorizer.authorised(jwtString)
@@ -54,7 +54,7 @@ class JwtAuthorizerSpec
 
     "JwtDecoder returns Right containing JsonWebToken" should {
       "return Right containing JsonWebToken returned from JwtDecoder" in {
-        jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
+        jwtDecoder.decode(any[String]).returns(IO.pure(Right(jwtWithMockedSignature)))
 
         jwtAuthorizer.authorised(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
       }
@@ -65,7 +65,7 @@ class JwtAuthorizerSpec
 
         "the error is DecodingError" in {
           val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -75,7 +75,7 @@ class JwtAuthorizerSpec
 
         "the error is MissingKeyIdFieldError" in {
           val error = ValidationError(MissingKeyIdFieldError)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -85,7 +85,7 @@ class JwtAuthorizerSpec
 
         "the error is MatchingJwkNotFoundError" in {
           val error = MatchingJwkNotFoundError(kid_1)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -100,7 +100,7 @@ class JwtAuthorizerSpec
             KeyUseNotSupportedError("sig", "no-use")
           )
           val error = PublicKeyGenerationError(failureReasons)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           jwtAuthorizer.authorised(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -113,7 +113,7 @@ class JwtAuthorizerSpec
 
     "JwtDecoder returns failed IO" should {
       "return this failed IO" in {
-        jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
+        jwtDecoder.decode(any[String]).returns(IO.raiseError(testException))
 
         jwtAuthorizer.authorised(jwtString).attempt.asserting { result =>
           result.isLeft shouldBe true
@@ -126,7 +126,7 @@ class JwtAuthorizerSpec
   "JwtAuthorizer on authorisedWithPermissions" when {
 
     "should always call JwtDecoder providing access token" in {
-      jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
+      jwtDecoder.decode(any[String]).returns(IO.pure(Right(jwtWithMockedSignature)))
 
       for {
         _ <- jwtAuthorizer.authorisedWithPermissions(Set(permissionRead_1))(jwtString)
@@ -146,8 +146,8 @@ class JwtAuthorizerSpec
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val accessToken: String =
               jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
@@ -156,7 +156,7 @@ class JwtAuthorizerSpec
           }
 
           "provided token contains permissions" in {
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jwtWithMockedSignature)))
 
             subjectFuncNoPermissions(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
           }
@@ -173,17 +173,17 @@ class JwtAuthorizerSpec
 
           "provided token contains this single permission" in {
             val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncSinglePermission(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
 
           "provided token contains this permission together with other permissions" in {
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jwtWithMockedSignature))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jwtWithMockedSignature)))
 
             subjectFuncSinglePermission(jwtString).asserting(_ shouldBe Right(jwtWithMockedSignature))
           }
@@ -193,8 +193,8 @@ class JwtAuthorizerSpec
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val accessToken: String =
               jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
@@ -206,8 +206,8 @@ class JwtAuthorizerSpec
 
           "provided token contains different permissions" in {
             val tokenPermissions = Some(Set(permissionWrite_1, permissionRead_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val accessToken: String =
               jwtCustom.encode(jwtHeader, jwtClaim.copy(permissions = tokenPermissions), privateKey)
@@ -234,22 +234,22 @@ class JwtAuthorizerSpec
 
           "provided token contains all required permissions" in {
             val tokenPermissions = Some(requiredPermissions)
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
 
           "provided token contains all required permissions together with other permissions" in {
             val tokenPermissions = Some(requiredPermissions ++ Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(_ shouldBe Right(jsonWebToken))
           }
@@ -259,11 +259,11 @@ class JwtAuthorizerSpec
 
           "provided token contains NO permissions" in {
             val tokenPermissions = None
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(buildNoRequiredPermissionsUnauthorizedErrorInfo(requiredPermissions, Set.empty))
@@ -272,11 +272,11 @@ class JwtAuthorizerSpec
 
           "provided token contains different permissions" in {
             val tokenPermissions = Some(Set(permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(
@@ -287,11 +287,11 @@ class JwtAuthorizerSpec
 
           "provided token contains only a subset of required permissions" in {
             val tokenPermissions = Some(Set(permissionRead_1))
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(
@@ -302,11 +302,11 @@ class JwtAuthorizerSpec
 
           "provided token contains only a subset of required permissions together with other permissions" in {
             val tokenPermissions = Some(Set(permissionRead_1, permissionRead_2, permissionWrite_2))
-            val jsonWebToken = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
-            jwtDecoder.decode(any[String]) returns IO.pure(Right(jsonWebToken))
+            val jsonWebToken     = jwtWithMockedSignature.copy(claim = jwtClaim.copy(permissions = tokenPermissions))
+            jwtDecoder.decode(any[String]).returns(IO.pure(Right(jsonWebToken)))
 
             val jwtClaimSinglePermission = jwtClaim.copy(permissions = tokenPermissions)
-            val accessToken: String = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
+            val accessToken: String      = jwtCustom.encode(jwtHeader, jwtClaimSinglePermission, privateKey)
 
             subjectFuncMultiplePermissions(accessToken).asserting(
               _ shouldBe Left(
@@ -327,7 +327,7 @@ class JwtAuthorizerSpec
 
         "the error is DecodingError" in {
           val error = DecodingError(new JwtExpirationException(Instant.now().toEpochMilli))
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -337,7 +337,7 @@ class JwtAuthorizerSpec
 
         "the error is MissingKeyIdFieldError" in {
           val error = ValidationError(MissingKeyIdFieldError)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -347,7 +347,7 @@ class JwtAuthorizerSpec
 
         "the error is MatchingJwkNotFoundError" in {
           val error = MatchingJwkNotFoundError(kid_1)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -362,7 +362,7 @@ class JwtAuthorizerSpec
             KeyUseNotSupportedError("sig", "no-use")
           )
           val error = PublicKeyGenerationError(failureReasons)
-          jwtDecoder.decode(any[String]) returns IO.pure(Left(error))
+          jwtDecoder.decode(any[String]).returns(IO.pure(Left(error)))
 
           subjectFuncSinglePermission(jwtString).asserting { result =>
             result.isLeft shouldBe true
@@ -374,7 +374,7 @@ class JwtAuthorizerSpec
 
     "JwtDecoder returns failed IO" should {
       "return this failed IO" in {
-        jwtDecoder.decode(any[String]) returns IO.raiseError(testException)
+        jwtDecoder.decode(any[String]).returns(IO.raiseError(testException))
 
         jwtAuthorizer.authorisedWithPermissions(Set(permissionRead_1))(jwtString).attempt.asserting { result =>
           result.isLeft shouldBe true

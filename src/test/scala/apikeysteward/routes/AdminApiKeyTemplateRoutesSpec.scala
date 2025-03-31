@@ -53,10 +53,10 @@ class AdminApiKeyTemplateRoutesSpec
     with BeforeAndAfterEach
     with RoutesSpecBase {
 
-  private val jwtAuthorizer = mock[JwtAuthorizer]
-  private val apiKeyTemplateService = mock[ApiKeyTemplateService]
-  private val permissionService = mock[PermissionService]
-  private val userService = mock[UserService]
+  private val jwtAuthorizer                     = mock[JwtAuthorizer]
+  private val apiKeyTemplateService             = mock[ApiKeyTemplateService]
+  private val permissionService                 = mock[PermissionService]
+  private val userService                       = mock[UserService]
   private val apiKeyTemplateAssociationsService = mock[ApiKeyTemplateAssociationsService]
 
   private val adminRoutes: HttpApp[IO] =
@@ -158,7 +158,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -361,7 +361,7 @@ class AdminApiKeyTemplateRoutesSpec
       "request body is provided with apiKeyPrefix longer than 120 characters" should {
 
         val apiKeyPrefixThatIsTooLong = List.fill(121)("A").mkString
-        val requestWithLongName = request.withEntity(requestBody.copy(apiKeyPrefix = apiKeyPrefixThatIsTooLong))
+        val requestWithLongName       = request.withEntity(requestBody.copy(apiKeyPrefix = apiKeyPrefixThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
             s"""Invalid value for: body (expected apiKeyPrefix to have length less than or equal to 120, but got: "$apiKeyPrefixThatIsTooLong")"""
@@ -390,9 +390,13 @@ class AdminApiKeyTemplateRoutesSpec
       "call ApiKeyTemplateService" when {
 
         "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
-          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-            apiKeyTemplate_1.asRight
-          )
+          apiKeyTemplateService
+            .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+            .returns(
+              IO.pure(
+                apiKeyTemplate_1.asRight
+              )
+            )
 
           for {
             _ <- adminRoutes.run(request)
@@ -402,12 +406,16 @@ class AdminApiKeyTemplateRoutesSpec
 
         "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
           val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-            apiKeyTemplate.asRight
-          )
+          apiKeyTemplateService
+            .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+            .returns(
+              IO.pure(
+                apiKeyTemplate.asRight
+              )
+            )
 
           val requestBodyWithInfiniteExpiryPeriod = requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          val requestWithInfiniteExpiryPeriod = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
+          val requestWithInfiniteExpiryPeriod     = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
 
           for {
             _ <- adminRoutes.run(requestWithInfiniteExpiryPeriod)
@@ -422,9 +430,13 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by ApiKeyTemplateService" when {
 
         "provided with description" in authorizedFixture {
-          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-            apiKeyTemplate_1.asRight
-          )
+          apiKeyTemplateService
+            .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+            .returns(
+              IO.pure(
+                apiKeyTemplate_1.asRight
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -437,9 +449,13 @@ class AdminApiKeyTemplateRoutesSpec
 
         "provided with NO description" in authorizedFixture {
           val apiKeyTemplateWithoutDescription = apiKeyTemplate_1.copy(description = None)
-          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-            apiKeyTemplateWithoutDescription.asRight
-          )
+          apiKeyTemplateService
+            .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+            .returns(
+              IO.pure(
+                apiKeyTemplateWithoutDescription.asRight
+              )
+            )
 
           val requestWithoutDescription = request.withEntity(requestBody.copy(description = None))
 
@@ -454,9 +470,13 @@ class AdminApiKeyTemplateRoutesSpec
 
         "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
           val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-            apiKeyTemplate.asRight
-          )
+          apiKeyTemplateService
+            .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+            .returns(
+              IO.pure(
+                apiKeyTemplate.asRight
+              )
+            )
 
           val requestWithInfiniteExpiryPeriod =
             request.withEntity(requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf))
@@ -472,9 +492,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateService returns successful IO with Left containing ReferencedTenantDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          Left(ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateService
+          .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -490,9 +514,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateAlreadyExistsError" in authorizedFixture {
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          Left(ApiKeyTemplateAlreadyExistsError(publicTemplateIdStr_1))
-        )
+        apiKeyTemplateService
+          .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateAlreadyExistsError(publicTemplateIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -503,9 +531,13 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Internal Server Error when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO.pure(
-          Left(ApiKeyTemplateInsertionErrorImpl(testSqlException))
-        )
+        apiKeyTemplateService
+          .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateInsertionErrorImpl(testSqlException))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -515,9 +547,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest]) returns IO
-          .raiseError(
-            testException
+        apiKeyTemplateService
+          .createApiKeyTemplate(any[TenantId], any[CreateApiKeyTemplateRequest])
+          .returns(
+            IO
+              .raiseError(
+                testException
+              )
           )
 
         for {
@@ -548,7 +584,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
+      val uri                                  = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -621,7 +657,7 @@ class AdminApiKeyTemplateRoutesSpec
 
       "request body is provided with name longer than 250 characters" should {
 
-        val nameThatIsTooLong = List.fill(251)("A").mkString
+        val nameThatIsTooLong   = List.fill(251)("A").mkString
         val requestWithLongName = request.withEntity(requestBody.copy(name = nameThatIsTooLong))
         val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
           Some(
@@ -776,12 +812,13 @@ class AdminApiKeyTemplateRoutesSpec
       "call ApiKeyTemplateService" when {
 
         "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
-          apiKeyTemplateService.updateApiKeyTemplate(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[UpdateApiKeyTemplateRequest]
-          ) returns
-            IO.pure(apiKeyTemplate_1.asRight)
+          apiKeyTemplateService
+            .updateApiKeyTemplate(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[UpdateApiKeyTemplateRequest]
+            )
+            .returns(IO.pure(apiKeyTemplate_1.asRight))
 
           for {
             _ <- adminRoutes.run(request)
@@ -795,15 +832,16 @@ class AdminApiKeyTemplateRoutesSpec
 
         "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
           val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          apiKeyTemplateService.updateApiKeyTemplate(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[UpdateApiKeyTemplateRequest]
-          ) returns
-            IO.pure(apiKeyTemplate.asRight)
+          apiKeyTemplateService
+            .updateApiKeyTemplate(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[UpdateApiKeyTemplateRequest]
+            )
+            .returns(IO.pure(apiKeyTemplate.asRight))
 
           val requestBodyWithInfiniteExpiryPeriod = requestBody.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          val requestWithInfiniteExpiryPeriod = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
+          val requestWithInfiniteExpiryPeriod     = request.withEntity(requestBodyWithInfiniteExpiryPeriod)
 
           for {
             _ <- adminRoutes.run(requestWithInfiniteExpiryPeriod)
@@ -819,12 +857,13 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by ApiKeyTemplateService" when {
 
         "provided with finite apiKeyMaxExpiryPeriod value" in authorizedFixture {
-          apiKeyTemplateService.updateApiKeyTemplate(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[UpdateApiKeyTemplateRequest]
-          ) returns
-            IO.pure(apiKeyTemplate_1.asRight)
+          apiKeyTemplateService
+            .updateApiKeyTemplate(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[UpdateApiKeyTemplateRequest]
+            )
+            .returns(IO.pure(apiKeyTemplate_1.asRight))
 
           for {
             response <- adminRoutes.run(request)
@@ -837,12 +876,13 @@ class AdminApiKeyTemplateRoutesSpec
 
         "provided with Inf apiKeyMaxExpiryPeriod value" in authorizedFixture {
           val apiKeyTemplate = apiKeyTemplate_1.copy(apiKeyMaxExpiryPeriod = Duration.Inf)
-          apiKeyTemplateService.updateApiKeyTemplate(
-            any[TenantId],
-            any[ApiKeyTemplateId],
-            any[UpdateApiKeyTemplateRequest]
-          ) returns
-            IO.pure(apiKeyTemplate.asRight)
+          apiKeyTemplateService
+            .updateApiKeyTemplate(
+              any[TenantId],
+              any[ApiKeyTemplateId],
+              any[UpdateApiKeyTemplateRequest]
+            )
+            .returns(IO.pure(apiKeyTemplate.asRight))
 
           for {
             response <- adminRoutes.run(request)
@@ -855,12 +895,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateNotFoundError" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[UpdateApiKeyTemplateRequest]
-        ) returns
-          IO.pure(Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1)))
+        apiKeyTemplateService
+          .updateApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[UpdateApiKeyTemplateRequest]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -874,12 +915,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.updateApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[UpdateApiKeyTemplateRequest]
-        ) returns
-          IO.raiseError(testException)
+        apiKeyTemplateService
+          .updateApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[UpdateApiKeyTemplateRequest]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -892,7 +934,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
@@ -901,7 +943,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
+      val uri                                  = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -927,9 +969,13 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          apiKeyTemplate_1.asRight
-        )
+        apiKeyTemplateService
+          .deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              apiKeyTemplate_1.asRight
+            )
+          )
 
         for {
           _ <- adminRoutes.run(request)
@@ -938,9 +984,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          apiKeyTemplate_1.asRight
-        )
+        apiKeyTemplateService
+          .deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              apiKeyTemplate_1.asRight
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -952,9 +1002,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateService returns successful IO with Left containing ApiKeyTemplateNotFoundError" in authorizedFixture {
-        apiKeyTemplateService.deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
-        )
+        apiKeyTemplateService
+          .deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateNotFoundError(publicTemplateIdStr_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -968,9 +1022,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(
-          testException
-        )
+        apiKeyTemplateService
+          .deleteApiKeyTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.raiseError(
+              testException
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -983,7 +1041,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
+    val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -992,7 +1050,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "provided with apiKeyTemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
+      val uri                                  = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid")
       val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -1018,7 +1076,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(apiKeyTemplate_1.some)
+        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(apiKeyTemplate_1.some))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1027,7 +1085,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return successful value returned by ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(apiKeyTemplate_1.some)
+        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(apiKeyTemplate_1.some))
 
         for {
           response <- adminRoutes.run(request)
@@ -1039,7 +1097,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateService returns empty Option" in authorizedFixture {
-        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(none)
+        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(none))
 
         for {
           response <- adminRoutes.run(request)
@@ -1053,7 +1111,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        apiKeyTemplateService.getBy(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1066,7 +1124,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   "AdminApiKeyTemplateRoutes on GET /admin/templates" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/templates")
+    val uri     = Uri.unsafeFromString(s"/admin/templates")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -1076,7 +1134,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call ApiKeyTemplateService" in authorizedFixture {
-        apiKeyTemplateService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+        apiKeyTemplateService.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1087,7 +1145,7 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by ApiKeyTemplateService" when {
 
         "ApiKeyTemplateService returns an empty List" in authorizedFixture {
-          apiKeyTemplateService.getAllForTenant(any[TenantId]) returns IO.pure(List.empty)
+          apiKeyTemplateService.getAllForTenant(any[TenantId]).returns(IO.pure(List.empty))
 
           for {
             response <- adminRoutes.run(request)
@@ -1099,9 +1157,13 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "ApiKeyTemplateService returns a List with several elements" in authorizedFixture {
-          apiKeyTemplateService.getAllForTenant(any[TenantId]) returns IO.pure(
-            List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
-          )
+          apiKeyTemplateService
+            .getAllForTenant(any[TenantId])
+            .returns(
+              IO.pure(
+                List(apiKeyTemplate_1, apiKeyTemplate_2, apiKeyTemplate_3)
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -1118,7 +1180,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateService returns failed IO" in authorizedFixture {
-        apiKeyTemplateService.getAllForTenant(any[TenantId]) returns IO.raiseError(testException)
+        apiKeyTemplateService.getAllForTenant(any[TenantId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1230,11 +1292,13 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1247,11 +1311,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -1261,13 +1327,17 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsAlreadyExistsError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesPermissionsAlreadyExistsError(templateDbId_1, permissionDbId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplatesPermissionsAlreadyExistsError(templateDbId_1, permissionDbId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1283,13 +1353,19 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              Left(
+                ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1)
+              )
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1305,13 +1381,17 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          Left(ReferencedPermissionDoesNotExistError(publicPermissionId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ReferencedPermissionDoesNotExistError(publicPermissionId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1328,11 +1408,13 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesPermissionsInsertionErrorImpl(testSqlException)))
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplatesPermissionsInsertionErrorImpl(testSqlException))))
 
         for {
           response <- adminRoutes.run(request)
@@ -1342,12 +1424,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associatePermissionsWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns
-          IO.raiseError(testException)
+        apiKeyTemplateAssociationsService
+          .associatePermissionsWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1459,11 +1542,13 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1476,11 +1561,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -1490,13 +1577,19 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              Left(
+                ApiKeyTemplatesPermissionsInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1)
+              )
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1512,11 +1605,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedPermissionDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(Left(ReferencedPermissionDoesNotExistError(publicPermissionId_1)))
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.pure(Left(ReferencedPermissionDoesNotExistError(publicPermissionId_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -1532,21 +1627,25 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesPermissionsNotFoundError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.pure(
-          Left(
-            ApiKeyTemplatesPermissionsNotFoundError(
-              List(
-                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_1, permissionDbId_1),
-                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_2, permissionDbId_2),
-                ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_3, permissionDbId_3)
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(
+            IO.pure(
+              Left(
+                ApiKeyTemplatesPermissionsNotFoundError(
+                  List(
+                    ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_1, permissionDbId_1),
+                    ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_2, permissionDbId_2),
+                    ApiKeyTemplatesPermissionsEntity.Write(tenantDbId_1, templateDbId_3, permissionDbId_3)
+                  )
+                )
               )
             )
           )
-        )
 
         for {
           response <- adminRoutes.run(request)
@@ -1562,11 +1661,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
-        apiKeyTemplateAssociationsService.removePermissionsFromApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[PermissionId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplateAssociationsService
+          .removePermissionsFromApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[PermissionId]]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1579,7 +1680,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}/permissions" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions")
+    val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -1614,7 +1715,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call PermissionService" in authorizedFixture {
-        permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
+        permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1625,7 +1726,7 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by PermissionService" when {
 
         "PermissionService returns an empty List" in authorizedFixture {
-          permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
+          permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- adminRoutes.run(request)
@@ -1637,9 +1738,13 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "PermissionService returns a List with several elements" in authorizedFixture {
-          permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-            Right(List(permission_1, permission_2, permission_3))
-          )
+          permissionService
+            .getAllForTemplate(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(
+                Right(List(permission_1, permission_2, permission_3))
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -1654,9 +1759,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyManagementService returns successful IO with Left containing ApiKeyTemplateDoesNotExist" in authorizedFixture {
-        permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(CommonError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        permissionService
+          .getAllForTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(CommonError.ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1672,7 +1781,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when PermissionService returns failed IO" in authorizedFixture {
-        permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        permissionService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1698,7 +1807,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
+      val uri                                  = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
       val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -1784,11 +1893,13 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1801,11 +1912,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Created status and empty body" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(().asRight)
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(().asRight))
 
         for {
           response <- adminRoutes.run(request)
@@ -1815,11 +1928,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersAlreadyExistsError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1)))
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplatesUsersAlreadyExistsError(templateDbId_1, userDbId_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -1835,13 +1950,17 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(
-          Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -1857,11 +1976,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1)))
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))))
 
         for {
           response <- adminRoutes.run(request)
@@ -1878,11 +1999,13 @@ class AdminApiKeyTemplateRoutesSpec
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersInsertionErrorImpl" in authorizedFixture {
         val testSqlException = new SQLException("Test SQL Exception")
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException)))
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.pure(Left(ApiKeyTemplatesUsersInsertionErrorImpl(testSqlException))))
 
         for {
           response <- adminRoutes.run(request)
@@ -1892,11 +2015,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
-        apiKeyTemplateAssociationsService.associateUsersWithApiKeyTemplate(
-          any[TenantId],
-          any[ApiKeyTemplateId],
-          any[List[UserId]]
-        ) returns IO.raiseError(testException)
+        apiKeyTemplateAssociationsService
+          .associateUsersWithApiKeyTemplate(
+            any[TenantId],
+            any[ApiKeyTemplateId],
+            any[List[UserId]]
+          )
+          .returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -1909,7 +2034,7 @@ class AdminApiKeyTemplateRoutesSpec
 
   "AdminApiKeyTemplateRoutes on GET /admin/templates/{templateId}/users" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users")
+    val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users")
     val request = Request[IO](method = Method.GET, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.ReadAdmin))
@@ -1918,7 +2043,7 @@ class AdminApiKeyTemplateRoutesSpec
 
     "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
-      val uri = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
+      val uri                                  = Uri.unsafeFromString("/admin/templates/this-is-not-a-valid-uuid/users")
       val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
       "return Bad Request" in {
@@ -1944,7 +2069,7 @@ class AdminApiKeyTemplateRoutesSpec
     "JwtAuthorizer returns Right containing JsonWebToken" should {
 
       "call UserService" in authorizedFixture {
-        userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
+        userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(List.empty)))
 
         for {
           _ <- adminRoutes.run(request)
@@ -1955,7 +2080,7 @@ class AdminApiKeyTemplateRoutesSpec
       "return successful value returned by UserService" when {
 
         "UserService returns an empty List" in authorizedFixture {
-          userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(Right(List.empty))
+          userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.pure(Right(List.empty)))
 
           for {
             response <- adminRoutes.run(request)
@@ -1967,9 +2092,13 @@ class AdminApiKeyTemplateRoutesSpec
         }
 
         "UserService returns a List with several elements" in authorizedFixture {
-          userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-            Right(List(user_1, user_2, user_3))
-          )
+          userService
+            .getAllForTemplate(any[TenantId], any[ApiKeyTemplateId])
+            .returns(
+              IO.pure(
+                Right(List(user_1, user_2, user_3))
+              )
+            )
 
           for {
             response <- adminRoutes.run(request)
@@ -1984,9 +2113,13 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Not Found when UserService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
-        userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.pure(
-          Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
-        )
+        userService
+          .getAllForTemplate(any[TenantId], any[ApiKeyTemplateId])
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
 
         for {
           response <- adminRoutes.run(request)
@@ -2002,7 +2135,7 @@ class AdminApiKeyTemplateRoutesSpec
       }
 
       "return Internal Server Error when UserService returns failed IO" in authorizedFixture {
-        userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]) returns IO.raiseError(testException)
+        userService.getAllForTemplate(any[TenantId], any[ApiKeyTemplateId]).returns(IO.raiseError(testException))
 
         for {
           response <- adminRoutes.run(request)
@@ -2012,4 +2145,5 @@ class AdminApiKeyTemplateRoutesSpec
       }
     }
   }
+
 }

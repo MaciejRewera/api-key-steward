@@ -38,8 +38,9 @@ object ResourceServer {
     resourceServerId = resourceServerId,
     name = createResourceServerRequest.name,
     description = createResourceServerRequest.description,
-    permissions = (permissionIds zip createResourceServerRequest.permissions).map { case (id, request) =>
+    permissions = permissionIds.zip(createResourceServerRequest.permissions).map { case (id, request) =>
       Permission.from(id, request)
     }
   )
+
 }

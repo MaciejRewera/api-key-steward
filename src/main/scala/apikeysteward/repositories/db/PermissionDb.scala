@@ -124,6 +124,7 @@ class PermissionDb()(implicit clock: Clock) {
               $now
             )
            """.stripMargin.update
+
   }
 
   private case class TenantIdScopedQueries(override val publicTenantId: TenantId) extends TenantIdScopedQueriesBase {
@@ -195,6 +196,7 @@ class PermissionDb()(implicit clock: Clock) {
     }
 
   }
+
 }
 
 private[db] object PermissionDb {
@@ -210,4 +212,5 @@ private[db] object PermissionDb {
             permission.created_at,
             permission.updated_at
           """
+
 }

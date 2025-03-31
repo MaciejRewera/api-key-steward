@@ -34,4 +34,5 @@ object Tenant {
     description = createTenantRequest.description,
     isActive = true
   )
+
 }

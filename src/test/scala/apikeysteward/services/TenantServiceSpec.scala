@@ -22,7 +22,7 @@ import java.util.UUID
 
 class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers with FixedClock with BeforeAndAfterEach {
 
-  private val uuidGenerator = mock[UuidGenerator]
+  private val uuidGenerator    = mock[UuidGenerator]
   private val tenantRepository = mock[TenantRepository]
 
   private val tenantService = new TenantService(uuidGenerator, tenantRepository)
@@ -30,7 +30,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
   override def beforeEach(): Unit =
     reset(uuidGenerator, tenantRepository)
 
-  private val testException = new RuntimeException("Test Exception")
+  private val testException    = new RuntimeException("Test Exception")
   private val testSqlException = new SQLException("Test SQL Exception")
 
   "TenantService on createTenant" when {
@@ -38,13 +38,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     val createTenantRequest = CreateTenantRequest(name = tenantName_1, description = tenantDescription_1)
 
     val tenantAlreadyExistsError: TenantAlreadyExistsError = TenantAlreadyExistsError(publicTenantIdStr_1)
-    val insertionError: TenantInsertionError = TenantInsertionErrorImpl(testSqlException)
+    val insertionError: TenantInsertionError               = TenantInsertionErrorImpl(testSqlException)
 
     "everything works correctly" should {
 
       "call UuidGenerator and TenantRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Right(tenant_1))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Right(tenant_1)))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest)
@@ -55,8 +55,8 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return the newly created Tenant returned by TenantRepository" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Right(tenant_1))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Right(tenant_1)))
 
         tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Right(tenant_1))
       }
@@ -65,7 +65,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "UuidGenerator returns failed IO" should {
 
       "NOT call TenantRepository" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest).attempt
@@ -75,7 +75,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.raiseError(testException))
 
         tenantService.createTenant(createTenantRequest).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -84,12 +84,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "TenantRepository returns Left containing TenantAlreadyExistsError on the first try" should {
 
       "call UuidGenerator and TenantRepository again" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
         val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
-        tenantRepository.insert(any[Tenant]) returns (
-          IO.pure(Left(tenantAlreadyExistsError)),
-          IO.pure(Right(insertedTenant))
-        )
+        tenantRepository
+          .insert(any[Tenant])
+          .returns(
+            IO.pure(Left(tenantAlreadyExistsError)),
+            IO.pure(Right(insertedTenant))
+          )
 
         for {
           _ <- tenantService.createTenant(createTenantRequest)
@@ -101,12 +103,14 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return the second created Tenant returned by TenantRepository" in {
-        uuidGenerator.generateUuid returns (IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1), IO.pure(publicTenantId_2))
         val insertedTenant = tenant_1.copy(tenantId = publicTenantId_2)
-        tenantRepository.insert(any[Tenant]) returns (
-          IO.pure(Left(tenantAlreadyExistsError)),
-          IO.pure(Right(insertedTenant))
-        )
+        tenantRepository
+          .insert(any[Tenant])
+          .returns(
+            IO.pure(Left(tenantAlreadyExistsError)),
+            IO.pure(Right(insertedTenant))
+          )
 
         tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Right(insertedTenant))
       }
@@ -115,10 +119,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "TenantRepository keeps returning Left containing TenantAlreadyExistsError" should {
 
       "call UuidGenerator and TenantRepository again until reaching max retries amount" in {
-        uuidGenerator.generateUuid returns (
-          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
+        uuidGenerator.generateUuid.returns(
+          IO.pure(publicTenantId_1),
+          IO.pure(publicTenantId_2),
+          IO.pure(publicTenantId_3),
+          IO.pure(publicTenantId_4)
         )
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(tenantAlreadyExistsError))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Left(tenantAlreadyExistsError)))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest)
@@ -132,10 +139,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return successful IO containing Left with TenantAlreadyExistsError" in {
-        uuidGenerator.generateUuid returns (
-          IO.pure(publicTenantId_1), IO.pure(publicTenantId_2), IO.pure(publicTenantId_3), IO.pure(publicTenantId_4)
+        uuidGenerator.generateUuid.returns(
+          IO.pure(publicTenantId_1),
+          IO.pure(publicTenantId_2),
+          IO.pure(publicTenantId_3),
+          IO.pure(publicTenantId_4)
         )
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(tenantAlreadyExistsError))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Left(tenantAlreadyExistsError)))
 
         tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Left(tenantAlreadyExistsError))
       }
@@ -144,8 +154,8 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "TenantRepository returns Left containing different TenantInsertionError" should {
 
       "NOT call UuidGenerator or TenantRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(insertionError))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Left(insertionError)))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest)
@@ -156,8 +166,8 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return failed IO containing this error" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.pure(Left(insertionError))
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.pure(Left(insertionError)))
 
         tenantService.createTenant(createTenantRequest).asserting(_ shouldBe Left(insertionError))
       }
@@ -166,8 +176,8 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "TenantRepository returns failed IO" should {
 
       "NOT call UuidGenerator or TenantRepository again" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.raiseError(testException))
 
         for {
           _ <- tenantService.createTenant(createTenantRequest).attempt
@@ -178,8 +188,8 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
       }
 
       "return failed IO containing this exception" in {
-        uuidGenerator.generateUuid returns IO.pure(publicTenantId_1)
-        tenantRepository.insert(any[Tenant]) returns IO.raiseError(testException)
+        uuidGenerator.generateUuid.returns(IO.pure(publicTenantId_1))
+        tenantRepository.insert(any[Tenant]).returns(IO.raiseError(testException))
 
         tenantService.createTenant(createTenantRequest).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -189,10 +199,10 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
   "TenantService on updateTenant" should {
 
     val updateTenantRequest = UpdateTenantRequest(name = tenantNameUpdated, description = tenantDescriptionUpdated)
-    val updatedTenant = tenant_1.copy(name = tenantNameUpdated, description = tenantDescriptionUpdated)
+    val updatedTenant       = tenant_1.copy(name = tenantNameUpdated, description = tenantDescriptionUpdated)
 
     "call TenantRepository" in {
-      tenantRepository.update(any[TenantUpdate]) returns IO.pure(Right(updatedTenant))
+      tenantRepository.update(any[TenantUpdate]).returns(IO.pure(Right(updatedTenant)))
 
       for {
         _ <- tenantService.updateTenant(publicTenantId_1, updateTenantRequest)
@@ -204,13 +214,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.update(any[TenantUpdate]) returns IO.pure(Right(updatedTenant))
+        tenantRepository.update(any[TenantUpdate]).returns(IO.pure(Right(updatedTenant)))
 
         tenantService.updateTenant(publicTenantId_1, updateTenantRequest).asserting(_ shouldBe Right(updatedTenant))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.update(any[TenantUpdate]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantRepository.update(any[TenantUpdate]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         tenantService
           .updateTenant(publicTenantId_1, updateTenantRequest)
@@ -220,7 +230,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.update(any[TenantUpdate]) returns IO.raiseError(testException)
+        tenantRepository.update(any[TenantUpdate]).returns(IO.raiseError(testException))
 
         tenantService
           .updateTenant(publicTenantId_1, updateTenantRequest)
@@ -235,7 +245,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     val reactivatedTenant = tenant_1.copy(isActive = true)
 
     "call TenantRepository" in {
-      tenantRepository.activate(any[UUID]) returns IO.pure(Right(reactivatedTenant))
+      tenantRepository.activate(any[UUID]).returns(IO.pure(Right(reactivatedTenant)))
 
       for {
         _ <- tenantService.reactivateTenant(publicTenantId_1)
@@ -247,13 +257,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.activate(any[UUID]) returns IO.pure(Right(reactivatedTenant))
+        tenantRepository.activate(any[UUID]).returns(IO.pure(Right(reactivatedTenant)))
 
         tenantService.reactivateTenant(publicTenantId_1).asserting(_ shouldBe Right(reactivatedTenant))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.activate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantRepository.activate(any[UUID]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         tenantService
           .reactivateTenant(publicTenantId_1)
@@ -263,7 +273,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.activate(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.activate(any[UUID]).returns(IO.raiseError(testException))
 
         tenantService.reactivateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -275,7 +285,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     val deactivatedTenant = tenant_1.copy(isActive = false)
 
     "call TenantRepository" in {
-      tenantRepository.deactivate(any[UUID]) returns IO.pure(Right(deactivatedTenant))
+      tenantRepository.deactivate(any[UUID]).returns(IO.pure(Right(deactivatedTenant)))
 
       for {
         _ <- tenantService.deactivateTenant(publicTenantId_1)
@@ -287,13 +297,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.deactivate(any[UUID]) returns IO.pure(Right(deactivatedTenant))
+        tenantRepository.deactivate(any[UUID]).returns(IO.pure(Right(deactivatedTenant)))
 
         tenantService.deactivateTenant(publicTenantId_1).asserting(_ shouldBe Right(deactivatedTenant))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.deactivate(any[UUID]) returns IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1)))
+        tenantRepository.deactivate(any[UUID]).returns(IO.pure(Left(TenantNotFoundError(publicTenantIdStr_1))))
 
         tenantService
           .deactivateTenant(publicTenantId_1)
@@ -303,7 +313,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.deactivate(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.deactivate(any[UUID]).returns(IO.raiseError(testException))
 
         tenantService.deactivateTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -315,7 +325,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     val deletedTenant = tenant_1.copy(isActive = false)
 
     "call TenantRepository" in {
-      tenantRepository.delete(any[UUID]) returns IO.pure(Right(deletedTenant))
+      tenantRepository.delete(any[UUID]).returns(IO.pure(Right(deletedTenant)))
 
       for {
         _ <- tenantService.deleteTenant(publicTenantId_1)
@@ -327,13 +337,15 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return value returned by TenantRepository" when {
 
       "TenantRepository returns Right" in {
-        tenantRepository.delete(any[UUID]) returns IO.pure(Right(deletedTenant))
+        tenantRepository.delete(any[UUID]).returns(IO.pure(Right(deletedTenant)))
 
         tenantService.deleteTenant(publicTenantId_1).asserting(_ shouldBe Right(deletedTenant))
       }
 
       "TenantRepository returns Left" in {
-        tenantRepository.delete(any[UUID]) returns IO.pure(Left(TenantDbError.tenantNotFoundError(publicTenantIdStr_1)))
+        tenantRepository
+          .delete(any[UUID])
+          .returns(IO.pure(Left(TenantDbError.tenantNotFoundError(publicTenantIdStr_1))))
 
         tenantService
           .deleteTenant(publicTenantId_1)
@@ -343,7 +355,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.delete(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.delete(any[UUID]).returns(IO.raiseError(testException))
 
         tenantService.deleteTenant(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -353,7 +365,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
   "TenantService on getBy(:tenantId)" should {
 
     "call TenantRepository" in {
-      tenantRepository.getBy(any[UUID]) returns IO.pure(Some(tenant_1))
+      tenantRepository.getBy(any[UUID]).returns(IO.pure(Some(tenant_1)))
 
       for {
         _ <- tenantService.getBy(publicTenantId_1)
@@ -365,13 +377,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return the value returned by TenantRepository" when {
 
       "TenantRepository returns empty Option" in {
-        tenantRepository.getBy(any[UUID]) returns IO.pure(None)
+        tenantRepository.getBy(any[UUID]).returns(IO.pure(None))
 
         tenantService.getBy(publicTenantId_1).asserting(_ shouldBe None)
       }
 
       "TenantRepository returns non-empty Option" in {
-        tenantRepository.getBy(any[UUID]) returns IO.pure(Some(tenant_1))
+        tenantRepository.getBy(any[UUID]).returns(IO.pure(Some(tenant_1)))
 
         tenantService.getBy(publicTenantId_1).asserting(_ shouldBe Some(tenant_1))
       }
@@ -379,7 +391,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.getBy(any[UUID]) returns IO.raiseError(testException)
+        tenantRepository.getBy(any[UUID]).returns(IO.raiseError(testException))
 
         tenantService.getBy(publicTenantId_1).attempt.asserting(_ shouldBe Left(testException))
       }
@@ -389,7 +401,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
   "TenantService on getAll" should {
 
     "call TenantRepository" in {
-      tenantRepository.getAll returns IO.pure(List.empty)
+      tenantRepository.getAll.returns(IO.pure(List.empty))
 
       for {
         _ <- tenantService.getAll
@@ -401,13 +413,13 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
     "return the value returned by TenantRepository" when {
 
       "TenantRepository returns empty List" in {
-        tenantRepository.getAll returns IO.pure(List.empty)
+        tenantRepository.getAll.returns(IO.pure(List.empty))
 
         tenantService.getAll.asserting(_ shouldBe List.empty[Tenant])
       }
 
       "TenantRepository returns non-empty List" in {
-        tenantRepository.getAll returns IO.pure(List(tenant_1, tenant_2, tenant_3))
+        tenantRepository.getAll.returns(IO.pure(List(tenant_1, tenant_2, tenant_3)))
 
         tenantService.getAll.asserting(_ shouldBe List(tenant_1, tenant_2, tenant_3))
       }
@@ -415,7 +427,7 @@ class TenantServiceSpec extends AsyncWordSpec with AsyncIOSpec with Matchers wit
 
     "return failed IO" when {
       "TenantRepository returns failed IO" in {
-        tenantRepository.getAll returns IO.raiseError(testException)
+        tenantRepository.getAll.returns(IO.raiseError(testException))
 
         tenantService.getAll.attempt.asserting(_ shouldBe Left(testException))
       }

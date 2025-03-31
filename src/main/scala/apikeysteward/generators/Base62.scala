@@ -10,7 +10,7 @@ import scala.math.pow
 object Base62 {
 
   val CharacterSet: IndexedSeq[Char] = ('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z')
-  private val base: Int = CharacterSet.length
+  private val base: Int              = CharacterSet.length
 
   def encode(num: Long): Either[Base62Error, Array[Char]] =
     if (num < 0) ProvidedWithNegativeNumberError(num).asLeft
@@ -20,7 +20,7 @@ object Base62 {
     @tailrec
     def loop(n: Long, acc: Array[Char] = Array.empty): Array[Char] =
       if (n > 0) {
-        val idx = (n % base).toInt
+        val idx    = (n % base).toInt
         val newAcc = CharacterSet(idx) +: acc
         loop(n / base, newAcc)
       } else
@@ -40,10 +40,12 @@ object Base62 {
     }.sum
 
   sealed abstract class Base62Error(override val message: String) extends CustomError
+
   object Base62Error {
 
     case class ProvidedWithNegativeNumberError(number: Long)
         extends Base62Error(message = s"Base62 encoder can only encode non-negative numbers, but received: $number")
+
   }
 
 }

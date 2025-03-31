@@ -27,31 +27,32 @@ class ResourceServerDbSpec
     _ <- sql"TRUNCATE tenant, resource_server CASCADE".update.run
   } yield ()
 
-  private val tenantDb = new TenantDb
+  private val tenantDb         = new TenantDb
   private val resourceServerDb = new ResourceServerDb
 
   private object Queries {
+
     import doobie.postgres._
     import doobie.postgres.implicits._
 
     val getAllResourceServers: doobie.ConnectionIO[List[ResourceServerEntity.Read]] =
       sql"SELECT * FROM resource_server".query[ResourceServerEntity.Read].stream.compile.toList
+
   }
 
   "ResourceServerDb on insert" when {
 
     "there is no Tenant in the DB" should {
 
-      "return Left containing ReferencedTenantDoesNotExistError" in {
+      "return Left containing ReferencedTenantDoesNotExistError" in
         resourceServerDb
           .insert(resourceServerEntityWrite_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ReferencedTenantDoesNotExistError.fromDbId(resourceServerEntityWrite_1.tenantId)))
-      }
 
       "NOT insert any entity into the DB" in {
         val result = for {
-          _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
+          _   <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -75,7 +76,7 @@ class ResourceServerDbSpec
         val result = for {
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
 
-          _ <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
+          _   <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantDbId_2)).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -101,7 +102,7 @@ class ResourceServerDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
+          _   <- resourceServerDb.insert(resourceServerEntityWrite_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -134,11 +135,11 @@ class ResourceServerDbSpec
 
       "insert entity into DB" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _            <- tenantDb.insert(tenantEntityWrite_1)
           entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
           entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
-          res <- Queries.getAllResourceServers
+          res          <- Queries.getAllResourceServers
         } yield (res, entityRead_1.value, entityRead_2.value)).transact(transactor)
 
         result.asserting { case (allResourceServers, entityRead_1, entityRead_2) =>
@@ -207,16 +208,15 @@ class ResourceServerDbSpec
 
     "there are no Tenants in the DB" should {
 
-      "return Left containing ResourceServerNotFoundError" in {
+      "return Left containing ResourceServerNotFoundError" in
         resourceServerDb
           .update(publicTenantId_1, resourceServerEntityUpdate_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
-      }
 
       "make NO changes to the DB" in {
         val result = for {
-          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1).transact(transactor)
+          _   <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -241,7 +241,7 @@ class ResourceServerDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          _   <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -267,7 +267,7 @@ class ResourceServerDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
 
-          _ <- resourceServerDb.update(publicTenantId_2, resourceServerEntityUpdate_1).transact(transactor)
+          _   <- resourceServerDb.update(publicTenantId_2, resourceServerEntityUpdate_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -327,7 +327,7 @@ class ResourceServerDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          _   <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -360,12 +360,12 @@ class ResourceServerDbSpec
 
       "update only this row and leave others unchanged" in {
         val result = (for {
-          _ <- tenantDb.insert(tenantEntityWrite_1)
+          _            <- tenantDb.insert(tenantEntityWrite_1)
           entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1)
           entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
           entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
 
-          _ <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
+          _   <- resourceServerDb.update(publicTenantId_1, resourceServerEntityUpdate_1)
           res <- Queries.getAllResourceServers
         } yield (res, entityRead_1.value, entityRead_2.value, entityRead_3.value)).transact(transactor)
 
@@ -387,16 +387,15 @@ class ResourceServerDbSpec
 
     "there are no Tenants in the DB" should {
 
-      "return Left containing ResourceServerNotFoundError" in {
+      "return Left containing ResourceServerNotFoundError" in
         resourceServerDb
           .delete(publicTenantId_1, publicResourceServerId_1)
           .transact(transactor)
           .asserting(_ shouldBe Left(ResourceServerNotFoundError(publicResourceServerIdStr_1)))
-      }
 
       "make NO changes to the DB" in {
         val result = for {
-          _ <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1).transact(transactor)
+          _   <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -420,7 +419,7 @@ class ResourceServerDbSpec
         val result = (for {
           _ <- tenantDb.insert(tenantEntityWrite_1)
 
-          _ <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
+          _   <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -446,7 +445,7 @@ class ResourceServerDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1).transact(transactor)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1).transact(transactor)
 
-          _ <- resourceServerDb.delete(publicTenantId_2, publicResourceServerId_1).transact(transactor)
+          _   <- resourceServerDb.delete(publicTenantId_2, publicResourceServerId_1).transact(transactor)
           res <- Queries.getAllResourceServers.transact(transactor)
         } yield res
 
@@ -472,7 +471,7 @@ class ResourceServerDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          _ <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_2)
+          _   <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_2)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -498,7 +497,7 @@ class ResourceServerDbSpec
           _ <- tenantDb.insert(tenantEntityWrite_1)
           _ <- resourceServerDb.insert(resourceServerEntityWrite_1)
 
-          _ <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
+          _   <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -528,7 +527,7 @@ class ResourceServerDbSpec
           _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantDbId_1))
           _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantDbId_1))
 
-          _ <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
+          _   <- resourceServerDb.delete(publicTenantId_1, publicResourceServerId_1)
           res <- Queries.getAllResourceServers
         } yield res).transact(transactor)
 
@@ -545,12 +544,11 @@ class ResourceServerDbSpec
   "ResourceServerDb on getByPublicResourceServerId" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Option" in {
+      "return empty Option" in
         resourceServerDb
           .getByPublicResourceServerId(publicTenantId_1, publicResourceServerId_1)
           .transact(transactor)
           .asserting(_ shouldBe none[ResourceServerEntity.Read])
-      }
     }
 
     "there are no rows in the DB" should {
@@ -610,21 +608,20 @@ class ResourceServerDbSpec
   "ResourceServerDb on getAllForTenant" when {
 
     "there are no Tenants in the DB" should {
-      "return empty Stream" in {
+      "return empty Stream" in
         resourceServerDb
           .getAllForTenant(publicTenantId_1)
           .compile
           .toList
           .transact(transactor)
           .asserting(_ shouldBe List.empty[ResourceServerEntity.Read])
-      }
     }
 
     "there is a Tenant in the DB, but with a different publicTenantId" should {
       "return empty Stream" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
+          _        <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
 
           res <- resourceServerDb.getAllForTenant(publicTenantId_2).compile.toList
         } yield res).transact(transactor)
@@ -649,7 +646,7 @@ class ResourceServerDbSpec
       "return this single ResourceServer" in {
         val result = (for {
           tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-          _ <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
+          _        <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
 
           res <- resourceServerDb.getAllForTenant(publicTenantId_1).compile.toList
         } yield res).transact(transactor)
@@ -663,7 +660,7 @@ class ResourceServerDbSpec
     "there is a Tenant in the DB with multiple ResourceServers" should {
       "return all these ResourceServers" in {
         val result = (for {
-          tenantId <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+          tenantId     <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
           entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId))
           entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId))
           entityRead_3 <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId))
@@ -685,10 +682,10 @@ class ResourceServerDbSpec
           val result = (for {
             tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
             tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            _ <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId_2))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_2))
+            _          <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            _          <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId_1))
+            _          <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId_2))
+            _          <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_2))
 
             res <- resourceServerDb.getAllForTenant(publicTenantId_3).compile.toList
           } yield res).transact(transactor)
@@ -700,12 +697,12 @@ class ResourceServerDbSpec
       "there is a single ResourceServer for given publicTenantId" should {
         "return this single ResourceServer" in {
           val result = (for {
-            tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            tenantId_3 <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+            tenantId_3   <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
             entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId_2))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_3))
+            _            <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId_2))
+            _            <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_3))
 
             res <- resourceServerDb.getAllForTenant(publicTenantId_1).compile.toList
           } yield (res, entityRead_1.value)).transact(transactor)
@@ -719,12 +716,12 @@ class ResourceServerDbSpec
       "there are several ResourceServers for given publicTenantId" should {
         "return all these ResourceServers" in {
           val result = (for {
-            tenantId_1 <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
-            tenantId_2 <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
-            _ <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
+            tenantId_1   <- tenantDb.insert(tenantEntityWrite_1).map(_.value.id)
+            tenantId_2   <- tenantDb.insert(tenantEntityWrite_2).map(_.value.id)
+            _            <- tenantDb.insert(tenantEntityWrite_3).map(_.value.id)
             entityRead_1 <- resourceServerDb.insert(resourceServerEntityWrite_1.copy(tenantId = tenantId_1))
             entityRead_2 <- resourceServerDb.insert(resourceServerEntityWrite_2.copy(tenantId = tenantId_1))
-            _ <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_2))
+            _            <- resourceServerDb.insert(resourceServerEntityWrite_3.copy(tenantId = tenantId_2))
 
             expectedEntities = Seq(entityRead_1, entityRead_2).map(_.value)
 

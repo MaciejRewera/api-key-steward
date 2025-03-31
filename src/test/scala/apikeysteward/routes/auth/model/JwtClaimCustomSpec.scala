@@ -30,7 +30,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
       "JwtClaimCustom.permission field contains empty Option" in {
         val jwtConfig: JwtConfig = buildJwtConfig(None)
-        val jwtClaimCustom = jwtClaim.copy(permissions = None)
+        val jwtClaimCustom       = jwtClaim.copy(permissions = None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -40,7 +40,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
       "JwtClaimCustom.permission field contains Option with empty Set" in {
         val jwtConfig: JwtConfig = buildJwtConfig(None)
-        val jwtClaimCustom = jwtClaim.copy(permissions = Some(Set.empty[String]))
+        val jwtClaimCustom       = jwtClaim.copy(permissions = Some(Set.empty[String]))
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -50,7 +50,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
       "JwtClaimCustom.permission field contains Option with non-empty Set" in {
         val jwtConfig: JwtConfig = buildJwtConfig(None)
-        val jwtClaimCustom = jwtClaim
+        val jwtClaimCustom       = jwtClaim
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -66,7 +66,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field is an empty Option" in {
           val jwtConfig: JwtConfig = buildJwtConfig(None)
-          val jwtClaimCustom = jwtClaim.copy(userId = None)
+          val jwtClaimCustom       = jwtClaim.copy(userId = None)
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -75,7 +75,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field is a non-empty Option" in {
           val jwtConfig: JwtConfig = buildJwtConfig(None)
-          val jwtClaimCustom = jwtClaim
+          val jwtClaimCustom       = jwtClaim
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -87,7 +87,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field is an empty Option" in {
           val jwtConfig: JwtConfig = buildJwtConfig(Some(""))
-          val jwtClaimCustom = jwtClaim.copy(userId = None)
+          val jwtClaimCustom       = jwtClaim.copy(userId = None)
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -96,7 +96,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field is a non-empty Option" in {
           val jwtConfig: JwtConfig = buildJwtConfig(Some(""))
-          val jwtClaimCustom = jwtClaim
+          val jwtClaimCustom       = jwtClaim
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -113,7 +113,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field contains empty Option" in {
           val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
-          val jwtClaimCustom = jwtClaim.copy(userId = None)
+          val jwtClaimCustom       = jwtClaim.copy(userId = None)
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -124,7 +124,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field contains non-empty Option with empty String" in {
           val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
-          val jwtClaimCustom = jwtClaim.copy(userId = Some(""))
+          val jwtClaimCustom       = jwtClaim.copy(userId = Some(""))
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -135,7 +135,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
 
         "userId field contains non-empty Option with non-empty String" in {
           val jwtConfig: JwtConfig = buildJwtConfig(Some(userIdClaimName))
-          val jwtClaimCustom = jwtClaim.copy(userId = Some("test-user-id-1"))
+          val jwtClaimCustom       = jwtClaim.copy(userId = Some("test-user-id-1"))
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(jwtClaimCustom)
 
@@ -165,7 +165,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "unknownClaim-3": "unknown claim value 3"
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -189,7 +189,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "iat": ${now.minus(1.minute).toSeconds}
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -216,7 +216,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "azp": "qwerty"
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -243,7 +243,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -266,7 +266,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionRead_1", "$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -292,7 +292,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionRead_1", "$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(None)
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -314,7 +314,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionRead_1", "$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(Some(""))
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -336,7 +336,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionRead_1", "$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(Some("sub"))
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -364,7 +364,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
                |  "test-user-id-claim-name": "$userId"
                |}
                |""".stripMargin
-          val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+          val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
           val jwtConfig: JwtConfig = buildJwtConfig(Some("test-user-id-claim-name"))
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -387,7 +387,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
                |  "test-user-id-claim-name": ""
                |}
                |""".stripMargin
-          val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+          val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
           val jwtConfig: JwtConfig = buildJwtConfig(Some("test-user-id-claim-name"))
 
           val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -412,7 +412,7 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
              |  "permissions": ["$permissionRead_1", "$permissionRead_1", "$permissionRead_1", "$permissionWrite_1"]
              |}
              |""".stripMargin
-        val jwtClaimJson: Json = parser.parse(jwtClaimJsonString).value
+        val jwtClaimJson: Json   = parser.parse(jwtClaimJsonString).value
         val jwtConfig: JwtConfig = buildJwtConfig(Some("test-user-id-claim-name"))
 
         val result = JwtClaimCustom.codec(jwtConfig).apply(HCursor.fromJson(jwtClaimJson))
@@ -423,4 +423,5 @@ class JwtClaimCustomSpec extends AnyWordSpec with Matchers with FixedJwtCustom w
       }
     }
   }
+
 }
