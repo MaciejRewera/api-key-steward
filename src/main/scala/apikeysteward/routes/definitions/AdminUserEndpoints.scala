@@ -155,6 +155,7 @@ private[routes] object AdminUserEndpoints {
             )
           )
       )
+      .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
   val getAllApiKeysForUserEndpoint
@@ -173,5 +174,6 @@ private[routes] object AdminUserEndpoints {
           )
       )
       .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
 
 }
