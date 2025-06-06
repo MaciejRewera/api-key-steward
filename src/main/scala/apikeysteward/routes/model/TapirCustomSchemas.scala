@@ -10,7 +10,7 @@ import apikeysteward.routes.model.admin.resourceserver.{CreateResourceServerRequ
 import apikeysteward.routes.model.admin.tenant.{CreateTenantRequest, UpdateTenantRequest}
 import apikeysteward.routes.model.admin.user.CreateUserRequest
 import apikeysteward.routes.model.apikey.CreateApiKeyRequest
-import sttp.tapir.{Schema, ValidationResult, Validator}
+import sttp.tapir.{Schema, Validator}
 
 import scala.concurrent.duration.Duration
 
@@ -60,11 +60,6 @@ object TapirCustomSchemas {
   val createApiKeyTemplatesPermissionsRequestSchema: Schema[CreateApiKeyTemplatesPermissionsRequest] =
     Schema
       .derived[CreateApiKeyTemplatesPermissionsRequest]
-      .modify(_.permissionIds)(validateListNotEmpty)
-
-  val deleteApiKeyTemplatesPermissionsRequestSchema: Schema[DeleteApiKeyTemplatesPermissionsRequest] =
-    Schema
-      .derived[DeleteApiKeyTemplatesPermissionsRequest]
       .modify(_.permissionIds)(validateListNotEmpty)
 
   val associateUsersWithApiKeyTemplateRequestSchema: Schema[AssociateUsersWithApiKeyTemplateRequest] =

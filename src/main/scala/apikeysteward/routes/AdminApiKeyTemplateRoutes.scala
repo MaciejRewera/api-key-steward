@@ -162,9 +162,9 @@ class AdminApiKeyTemplateRoutes(
       AdminApiKeyTemplateEndpoints.removePermissionsFromApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (tenantId, apiKeyTemplateId, request) = input
+          val (tenantId, apiKeyTemplateId, permissionId) = input
           apiKeyTemplateAssociationsService
-            .removePermissionsFromApiKeyTemplate(tenantId, apiKeyTemplateId, request.permissionIds)
+            .removePermissionsFromApiKeyTemplate(tenantId, apiKeyTemplateId, List(permissionId))
             .map {
 
               case Right(()) =>

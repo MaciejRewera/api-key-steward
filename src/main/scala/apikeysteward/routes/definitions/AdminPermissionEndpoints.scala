@@ -6,7 +6,11 @@ import apikeysteward.model.Tenant.TenantId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
-import apikeysteward.routes.definitions.EndpointsBase.{resourceServerIdPathParameter, tenantIdHeaderInput}
+import apikeysteward.routes.definitions.EndpointsBase.{
+  permissionIdPathParameter,
+  resourceServerIdPathParameter,
+  tenantIdHeaderInput
+}
 import apikeysteward.routes.model.admin.permission._
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -14,9 +18,6 @@ import sttp.tapir.generic.auto._
 import sttp.tapir.json.circe.jsonBody
 
 private[routes] object AdminPermissionEndpoints {
-
-  private val permissionIdPathParameter: EndpointInput.PathCapture[PermissionId] =
-    path[PermissionId]("permissionId").description("Unique ID of the Permission.")
 
   private val nameFragmentQueryParam: EndpointInput.Query[Option[String]] = query[Option[String]]("name")
 

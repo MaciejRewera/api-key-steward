@@ -1,5 +1,6 @@
 package apikeysteward.routes.definitions
 
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
 import apikeysteward.model._
@@ -37,6 +38,9 @@ private[routes] object EndpointsBase {
 
   val resourceServerIdPathParameter: EndpointInput.PathCapture[ResourceServerId] =
     path[ResourceServerId]("resourceServerId").description("Unique ID of the Resource Server.")
+
+  val permissionIdPathParameter: EndpointInput.PathCapture[PermissionId] =
+    path[PermissionId]("permissionId").description("Unique ID of the Permission.")
 
   val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
     name = "Basic API key",
