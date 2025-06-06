@@ -23,9 +23,6 @@ import java.util.UUID
 
 private[routes] object AdminUserEndpoints {
 
-  private val userIdPathParameter =
-    path[UserId]("userId").description("ID of the User. It has to be unique per Tenant.")
-
   val createUserEndpoint
       : Endpoint[AccessToken, (TenantId, CreateUserRequest), ErrorInfo, (StatusCode, CreateUserResponse), Any] =
     EndpointsBase.authenticatedEndpointBase.post
@@ -113,10 +110,10 @@ private[routes] object AdminUserEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val removeApiKeyTemplatesFromUserEndpoint
+  val removeApiKeyTemplateFromUserEndpoint
       : Endpoint[AccessToken, (TenantId, UserId, ApiKeyTemplateId), ErrorInfo, StatusCode, Any] =
     EndpointsBase.authenticatedEndpointBase.delete
-      .description("Unassign Template from the specified User.")
+      .description("Unassign Template from User.")
       .in(tenantIdHeaderInput)
       .in("admin" / "users" / userIdPathParameter / "templates" / templateIdPathParameter)
       .out(statusCode.description(StatusCode.Ok, "Template successfully unassigned from the User."))

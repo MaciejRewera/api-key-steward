@@ -740,7 +740,7 @@ class AdminUserRoutesSpec
     }
   }
 
-  "AdminUserRoutes on DELETE /admin/users/{userId}/templates" when {
+  "AdminUserRoutes on DELETE /admin/users/{userId}/templates/{templateId}" when {
 
     val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates/$publicTemplateId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)

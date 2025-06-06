@@ -3,6 +3,7 @@ package apikeysteward.routes.definitions
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
@@ -155,7 +156,7 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val removePermissionsFromApiKeyTemplateEndpoint
+  val removePermissionFromApiKeyTemplateEndpoint
       : Endpoint[AccessToken, (TenantId, ApiKeyTemplateId, PermissionId), ErrorInfo, StatusCode, Any] =
     EndpointsBase.authenticatedEndpointBase.delete
       .description("Unassign Permission from the specified Template.")
@@ -210,6 +211,16 @@ private[routes] object AdminApiKeyTemplateEndpoints {
           )
       )
       .out(statusCode.description(StatusCode.Created, "Users successfully associated with the Template."))
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val removeUserFromApiKeyTemplatesEndpoint
+      : Endpoint[AccessToken, (TenantId, ApiKeyTemplateId, UserId), ErrorInfo, StatusCode, Any] =
+    EndpointsBase.authenticatedEndpointBase.delete
+      .description("Unassign User from Template.")
+      .in(tenantIdHeaderInput)
+      .in("admin" / "templates" / templateIdPathParameter / "users" / userIdPathParameter)
+      .out(statusCode.description(StatusCode.Ok, "User successfully unassigned from the Template."))
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 

@@ -4,6 +4,7 @@ import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
 import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.ResourceServer.ResourceServerId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.model._
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.ErrorInfo._
@@ -14,7 +15,6 @@ import apikeysteward.routes.model.admin.apikeytemplate.{CreateApiKeyTemplateRequ
 import apikeysteward.routes.model.admin.permission.CreatePermissionRequest
 import apikeysteward.routes.model.admin.resourceserver.CreateResourceServerRequest
 import apikeysteward.routes.model.admin.user.CreateUserRequest
-import apikeysteward.routes.model.apikey.CreateApiKeyRequest
 import org.typelevel.ci.{CIString, CIStringSyntax}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -45,6 +45,9 @@ private[routes] object EndpointsBase {
 
   val templateIdPathParameter: EndpointInput.PathCapture[ApiKeyTemplateId] =
     path[ApiKeyTemplateId]("templateId").description("Unique ID of the Template.")
+
+  val userIdPathParameter =
+    path[UserId]("userId").description("ID of the User. It has to be unique per Tenant.")
 
   val createApiKeyTemplateRequest: CreateApiKeyTemplateRequest = CreateApiKeyTemplateRequest(
     name = "Basic API key",

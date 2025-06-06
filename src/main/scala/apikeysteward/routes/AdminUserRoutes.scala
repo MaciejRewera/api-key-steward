@@ -139,9 +139,9 @@ class AdminUserRoutes(
         }
     )
 
-  private val removeApiKeyTemplatesFromUserRoutes: HttpRoutes[IO] =
+  private val removeApiKeyTemplateFromUserRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
-      AdminUserEndpoints.removeApiKeyTemplatesFromUserEndpoint
+      AdminUserEndpoints.removeApiKeyTemplateFromUserEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
           val (tenantId, userId, templateId) = input
@@ -225,7 +225,7 @@ class AdminUserRoutes(
       getSingleUserRoutes <+>
       getAllUsersForTenantRoutes <+>
       associateApiKeyTemplatesWithUserRoutes <+>
-      removeApiKeyTemplatesFromUserRoutes <+>
+      removeApiKeyTemplateFromUserRoutes <+>
       getAllApiKeyTemplatesForUserRoutes <+>
       getAllApiKeysForUserRoutes
 

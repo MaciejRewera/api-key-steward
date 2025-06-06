@@ -1,6 +1,11 @@
 package apikeysteward.routes
 
 import apikeysteward.base.testdata.ApiKeyTemplatesTestData._
+import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData.{
+  apiKeyTemplatesUsersEntityWrite_1_1,
+  apiKeyTemplatesUsersEntityWrite_1_2,
+  apiKeyTemplatesUsersEntityWrite_1_3
+}
 import apikeysteward.base.testdata.PermissionsTestData._
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
@@ -10,7 +15,10 @@ import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionE
 import apikeysteward.model.errors.ApiKeyTemplateDbError.{ApiKeyTemplateInsertionError, ApiKeyTemplateNotFoundError}
 import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError._
-import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.{
+  ApiKeyTemplatesUsersInsertionError,
+  ApiKeyTemplatesUsersNotFoundError
+}
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError._
 import apikeysteward.model.errors.CommonError
 import apikeysteward.model.errors.CommonError.ApiKeyTemplateDoesNotExistError
@@ -1441,7 +1449,7 @@ class AdminApiKeyTemplateRoutesSpec
     }
   }
 
-  "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}/permissions" when {
+  "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}/permissions/{permissionId}" when {
 
     val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/permissions/$publicPermissionId_1")
     val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
@@ -1981,6 +1989,177 @@ class AdminApiKeyTemplateRoutesSpec
             any[TenantId],
             any[ApiKeyTemplateId],
             any[List[UserId]]
+          )
+          .returns(IO.raiseError(testException))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.InternalServerError
+          _ <- response.as[ErrorInfo].asserting(_ shouldBe ErrorInfo.internalServerErrorInfo())
+        } yield ()
+      }
+    }
+  }
+
+  "AdminApiKeyTemplateRoutes on DELETE /admin/templates/{templateId}/users/{userId}" when {
+
+    val uri     = Uri.unsafeFromString(s"/admin/templates/$publicTemplateId_1/users/$publicUserId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
+
+    runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
+
+    runCommonTenantIdHeaderTests(request)
+
+    "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
+
+      val uri = Uri.unsafeFromString(s"/admin/templates/this-is-not-a-valid-uuid/users/$publicUserId_1")
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
+
+      "return Bad Request" in {
+        for {
+          response <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter templateId"))
+            )
+        } yield ()
+      }
+
+      "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+        for {
+          _ <- adminRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+        } yield ()
+      }
+    }
+
+    "JwtAuthorizer returns Right containing JsonWebToken and request is correct" should {
+
+      "call ApiKeyTemplateAssociationsService" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
+
+        for {
+          _ <- adminRoutes.run(request)
+          _ = verify(apiKeyTemplateAssociationsService).removeApiKeyTemplatesFromUser(
+            eqTo(publicTenantId_1),
+            eqTo(publicUserId_1),
+            eqTo(List(publicTemplateId_1))
+          )
+        } yield ()
+      }
+
+      "return successful value returned by ApiKeyTemplateAssociationsService" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(().asRight))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.Ok
+          _ = response.body shouldBe Stream.empty
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedApiKeyTemplateDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(
+            IO.pure(
+              Left(ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError(publicTemplateId_1))
+            )
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Not Found when ApiKeyTemplateAssociationsService returns successful IO with Left containing ReferencedUserDoesNotExistError" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(IO.pure(Left(ReferencedUserDoesNotExistError(publicUserId_1, publicTenantId_1))))
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.NotFound
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.notFoundErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Bad Request when ApiKeyTemplateAssociationsService returns successful IO with Left containing ApiKeyTemplatesUsersNotFoundError" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
+          )
+          .returns(
+            IO.pure(
+              Left(
+                ApiKeyTemplatesUsersNotFoundError(
+                  List(
+                    apiKeyTemplatesUsersEntityWrite_1_1,
+                    apiKeyTemplatesUsersEntityWrite_1_2,
+                    apiKeyTemplatesUsersEntityWrite_1_3
+                  )
+                )
+              )
+            )
+          )
+
+        for {
+          response <- adminRoutes.run(request)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(
+                Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersNotFound)
+              )
+            )
+        } yield ()
+      }
+
+      "return Internal Server Error when ApiKeyTemplateAssociationsService returns failed IO" in authorizedFixture {
+        apiKeyTemplateAssociationsService
+          .removeApiKeyTemplatesFromUser(
+            any[TenantId],
+            any[UserId],
+            any[List[ApiKeyTemplateId]]
           )
           .returns(IO.raiseError(testException))
 
