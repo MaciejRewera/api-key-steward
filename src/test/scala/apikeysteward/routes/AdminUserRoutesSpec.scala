@@ -7,6 +7,7 @@ import apikeysteward.base.testdata.ApiKeyTemplatesUsersTestData.{
   apiKeyTemplatesUsersEntityWrite_1_3
 }
 import apikeysteward.base.testdata.ApiKeysTestData.{apiKeyData_1, apiKeyData_2, apiKeyData_3, publicKeyId_1}
+import apikeysteward.base.testdata.PermissionsTestData.publicPermissionId_1
 import apikeysteward.base.testdata.TenantsTestData.{publicTenantIdStr_1, publicTenantId_1, tenantDbId_1}
 import apikeysteward.base.testdata.UsersTestData._
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
@@ -741,110 +742,39 @@ class AdminUserRoutesSpec
 
   "AdminUserRoutes on DELETE /admin/users/{userId}/templates" when {
 
-    val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates")
-    val requestBody = DeleteApiKeyTemplatesFromUserRequest(
-      templateIds = List(publicTemplateId_1, publicTemplateId_2, publicTemplateId_3)
-    )
-
-    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders).withEntity(requestBody.asJson)
+    val uri     = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates/$publicTemplateId_1")
+    val request = Request[IO](method = Method.DELETE, uri = uri, headers = allHeaders)
 
     runCommonJwtTests(request, Set(JwtPermissions.WriteAdmin))
 
     runCommonTenantIdHeaderTests(request)
 
-    "JwtAuthorizer returns Right containing JsonWebToken, but request body is incorrect" when {
+    "JwtAuthorizer returns Right containing JsonWebToken, but provided with TemplateId which is not an UUID" should {
 
-      "request body is provided with empty List" should {
+      val uri = Uri.unsafeFromString(s"/admin/users/$publicUserId_1/templates/this-is-not-a-valid-uuid")
+      val requestWithIncorrectApiKeyTemplateId = request.withUri(uri)
 
-        val requestWithOnlyWhiteCharacters = request.withEntity(requestBody.copy(templateIds = List.empty))
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some("Invalid value for: body (expected size of templateIds to be greater than or equal to 1, but got 0)")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
-          for {
-            _ <- adminUserRoutes.run(requestWithOnlyWhiteCharacters)
-            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
-          } yield ()
-        }
+      "return Bad Request" in {
+        for {
+          response <- adminUserRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = response.status shouldBe Status.BadRequest
+          _ <- response
+            .as[ErrorInfo]
+            .asserting(
+              _ shouldBe ErrorInfo.badRequestErrorInfo(Some("Invalid value for: path parameter templateId"))
+            )
+        } yield ()
       }
 
-      "request body contains TemplateId which is an empty String" should {
-
-        val requestWithIncorrectPermissionId = request.withEntity(
-          Map(
-            "templateIds" -> List(
-              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
-              "",
-              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
-            )
-          ).asJson
-        )
-
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some("Invalid value for: body (Got value '\"\"' with wrong type, expecting string at 'templateIds[1]')")
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
-          for {
-            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
-            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
-          } yield ()
-        }
-      }
-
-      "request body contains TemplateId which is not an UUID" should {
-
-        val requestWithIncorrectPermissionId = request.withEntity(
-          Map(
-            "templateIds" -> List(
-              "fd00156e-b56b-4d35-9d67-05bc3681ac82",
-              "this-is-not-a-valid-uuid",
-              "457cc79a-1357-4fa4-8d50-acd8b2e67d2a"
-            )
-          ).asJson
-        )
-
-        val expectedErrorInfo = ErrorInfo.badRequestErrorInfo(
-          Some(
-            "Invalid value for: body (Got value '\"this-is-not-a-valid-uuid\"' with wrong type, expecting string at 'templateIds[1]')"
-          )
-        )
-
-        "return Bad Request" in authorizedFixture {
-          for {
-            response <- adminUserRoutes.run(requestWithIncorrectPermissionId)
-            _ = response.status shouldBe Status.BadRequest
-            _ <- response.as[ErrorInfo].asserting(_ shouldBe expectedErrorInfo)
-          } yield ()
-        }
-
-        "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
-          for {
-            _ <- adminUserRoutes.run(requestWithIncorrectPermissionId)
-            _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
-          } yield ()
-        }
+      "NOT call ApiKeyTemplateAssociationsService" in authorizedFixture {
+        for {
+          _ <- adminUserRoutes.run(requestWithIncorrectApiKeyTemplateId)
+          _ = verifyZeroInteractions(apiKeyTemplateAssociationsService)
+        } yield ()
       }
     }
 
-    "JwtAuthorizer returns Right containing JsonWebToken and request body is correct" should {
+    "JwtAuthorizer returns Right containing JsonWebToken and request is correct" should {
 
       "call ApiKeyTemplateAssociationsService" in authorizedFixture {
         apiKeyTemplateAssociationsService
@@ -860,7 +790,7 @@ class AdminUserRoutesSpec
           _ = verify(apiKeyTemplateAssociationsService).removeApiKeyTemplatesFromUser(
             eqTo(publicTenantId_1),
             eqTo(publicUserId_1),
-            eqTo(requestBody.templateIds)
+            eqTo(List(publicTemplateId_1))
           )
         } yield ()
       }

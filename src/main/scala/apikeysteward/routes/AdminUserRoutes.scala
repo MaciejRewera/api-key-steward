@@ -144,8 +144,8 @@ class AdminUserRoutes(
       AdminUserEndpoints.removeApiKeyTemplatesFromUserEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (tenantId, userId, request) = input
-          apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(tenantId, userId, request.templateIds).map {
+          val (tenantId, userId, templateId) = input
+          apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(tenantId, userId, List(templateId)).map {
 
             case Right(()) =>
               StatusCode.Ok.asRight

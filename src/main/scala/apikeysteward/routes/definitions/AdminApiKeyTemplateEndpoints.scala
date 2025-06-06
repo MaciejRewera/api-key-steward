@@ -21,9 +21,6 @@ import java.util.UUID
 
 private[routes] object AdminApiKeyTemplateEndpoints {
 
-  private val templateIdPathParameter: EndpointInput.PathCapture[ApiKeyTemplateId] =
-    path[ApiKeyTemplateId]("templateId").description("Unique ID of the Template.")
-
   val createApiKeyTemplateEndpoint: Endpoint[
     AccessToken,
     (TenantId, CreateApiKeyTemplateRequest),
