@@ -2,13 +2,16 @@ package apikeysteward.routes
 
 import apikeysteward.model.errors.ApiKeyTemplateDbError.ApiKeyTemplateInsertionError.ReferencedTenantDoesNotExistError
 import apikeysteward.model.errors.ApiKeyTemplateDbError._
-import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError
+import apikeysteward.model.errors.{ApiKeyTemplatesPermissionsDbError, ApiKeyTemplatesUsersDbError}
 import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError.ApiKeyTemplatesPermissionsInsertionError._
 import apikeysteward.model.errors.ApiKeyTemplatesPermissionsDbError.{
   ApiKeyTemplatesPermissionsInsertionError,
   ApiKeyTemplatesPermissionsNotFoundError
 }
-import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError
+import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.{
+  ApiKeyTemplatesUsersInsertionError,
+  ApiKeyTemplatesUsersNotFoundError
+}
 import apikeysteward.model.errors.ApiKeyTemplatesUsersDbError.ApiKeyTemplatesUsersInsertionError.{
   ApiKeyTemplatesUsersAlreadyExistsError,
   ReferencedUserDoesNotExistError
@@ -157,14 +160,14 @@ class AdminApiKeyTemplateRoutes(
         }
     )
 
-  private val removePermissionsFromApiKeyTemplateRoutes: HttpRoutes[IO] =
+  private val removePermissionFromApiKeyTemplateRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
-      AdminApiKeyTemplateEndpoints.removePermissionsFromApiKeyTemplateEndpoint
+      AdminApiKeyTemplateEndpoints.removePermissionFromApiKeyTemplateEndpoint
         .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
         .serverLogic { _ => input =>
-          val (tenantId, apiKeyTemplateId, request) = input
+          val (tenantId, apiKeyTemplateId, permissionId) = input
           apiKeyTemplateAssociationsService
-            .removePermissionsFromApiKeyTemplate(tenantId, apiKeyTemplateId, request.permissionIds)
+            .removePermissionsFromApiKeyTemplate(tenantId, apiKeyTemplateId, List(permissionId))
             .map {
 
               case Right(()) =>
@@ -254,6 +257,44 @@ class AdminApiKeyTemplateRoutes(
         }
     )
 
+  private val removeUserFromApiKeyTemplateRoutes: HttpRoutes[IO] =
+    serverInterpreter.toRoutes(
+      AdminApiKeyTemplateEndpoints.removeUserFromApiKeyTemplatesEndpoint
+        .serverSecurityLogic(jwtAuthorizer.authorisedWithPermissions(Set(JwtPermissions.WriteAdmin))(_))
+        .serverLogic { _ => input =>
+          val (tenantId, templateId, userId) = input
+          apiKeyTemplateAssociationsService.removeApiKeyTemplatesFromUser(tenantId, userId, List(templateId)).map {
+
+            case Right(()) =>
+              StatusCode.Ok.asRight
+
+            case Left(_: ReferencedUserDoesNotExistError) =>
+              ErrorInfo
+                .notFoundErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedUserNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersInsertionError.ReferencedApiKeyTemplateDoesNotExistError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.SingleUser.ReferencedApiKeyTemplateNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersNotFoundError) =>
+              ErrorInfo
+                .badRequestErrorInfo(
+                  Some(ApiErrorMessages.AdminApiKeyTemplatesUsers.ApiKeyTemplatesUsersNotFound)
+                )
+                .asLeft
+
+            case Left(_: ApiKeyTemplatesUsersDbError) =>
+              ErrorInfo.internalServerErrorInfo().asLeft
+          }
+        }
+    )
+
   private val getAllUsersForTemplateRoutes: HttpRoutes[IO] =
     serverInterpreter.toRoutes(
       AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
@@ -281,9 +322,10 @@ class AdminApiKeyTemplateRoutes(
       getSingleApiKeyTemplateRoutes <+>
       searchApiKeyTemplateRoutes <+>
       associatePermissionsWithApiKeyTemplateRoutes <+>
-      removePermissionsFromApiKeyTemplateRoutes <+>
+      removePermissionFromApiKeyTemplateRoutes <+>
       getAllPermissionsForTemplateRoutes <+>
       associateUsersWithApiKeyTemplateRoutes <+>
+      removeUserFromApiKeyTemplateRoutes <+>
       getAllUsersForTemplateRoutes
 
 }

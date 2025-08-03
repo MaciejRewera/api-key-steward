@@ -1,16 +1,15 @@
 package apikeysteward.routes.definitions
 
 import apikeysteward.model.ApiKeyTemplate.ApiKeyTemplateId
+import apikeysteward.model.Permission.PermissionId
 import apikeysteward.model.Tenant.TenantId
+import apikeysteward.model.User.UserId
 import apikeysteward.routes.ErrorInfo
 import apikeysteward.routes.auth.JwtAuthorizer.AccessToken
 import apikeysteward.routes.definitions.EndpointsBase.ErrorOutputVariants._
-import apikeysteward.routes.definitions.EndpointsBase.{UserExample_1, UserExample_2, UserExample_3, tenantIdHeaderInput}
+import apikeysteward.routes.definitions.EndpointsBase._
 import apikeysteward.routes.model.admin.apikeytemplate._
-import apikeysteward.routes.model.admin.apikeytemplatespermissions.{
-  CreateApiKeyTemplatesPermissionsRequest,
-  DeleteApiKeyTemplatesPermissionsRequest
-}
+import apikeysteward.routes.model.admin.apikeytemplatespermissions.CreateApiKeyTemplatesPermissionsRequest
 import apikeysteward.routes.model.admin.apikeytemplatesusers.AssociateUsersWithApiKeyTemplateRequest
 import apikeysteward.routes.model.admin.permission.GetMultiplePermissionsResponse
 import apikeysteward.routes.model.admin.user.GetMultipleUsersResponse
@@ -22,9 +21,6 @@ import sttp.tapir.json.circe.jsonBody
 import java.util.UUID
 
 private[routes] object AdminApiKeyTemplateEndpoints {
-
-  private val templateIdPathParameter: EndpointInput.PathCapture[ApiKeyTemplateId] =
-    path[ApiKeyTemplateId]("templateId").description("Unique ID of the Template.")
 
   val createApiKeyTemplateEndpoint: Endpoint[
     AccessToken,
@@ -160,33 +156,13 @@ private[routes] object AdminApiKeyTemplateEndpoints {
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
-  val removePermissionsFromApiKeyTemplateEndpoint: Endpoint[
-    AccessToken,
-    (TenantId, ApiKeyTemplateId, DeleteApiKeyTemplatesPermissionsRequest),
-    ErrorInfo,
-    StatusCode,
-    Any
-  ] =
+  val removePermissionFromApiKeyTemplateEndpoint
+      : Endpoint[AccessToken, (TenantId, ApiKeyTemplateId, PermissionId), ErrorInfo, StatusCode, Any] =
     EndpointsBase.authenticatedEndpointBase.delete
-      .description(
-        """Remove Permissions from a Template.
-          |Remove one or more Permissions from the specified Template.""".stripMargin
-      )
+      .description("Unassign Permission from the specified Template.")
       .in(tenantIdHeaderInput)
-      .in("admin" / "templates" / templateIdPathParameter / "permissions")
-      .in(
-        jsonBody[DeleteApiKeyTemplatesPermissionsRequest]
-          .example(
-            DeleteApiKeyTemplatesPermissionsRequest(
-              List(
-                UUID.fromString("f877c2e5-f820-4e84-a706-919a630337ec"),
-                UUID.fromString("af7b4c89-481a-4ab7-ad10-b976615a0de2"),
-                UUID.fromString("06022369-8ca1-43c3-ab49-d176cc1803d9")
-              )
-            )
-          )
-      )
-      .out(statusCode.description(StatusCode.Ok, "Permissions successfully removed from the Template."))
+      .in("admin" / "templates" / templateIdPathParameter / "permissions" / permissionIdPathParameter)
+      .out(statusCode.description(StatusCode.Ok, "Permission successfully unassigned from the Template."))
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 
@@ -235,6 +211,16 @@ private[routes] object AdminApiKeyTemplateEndpoints {
           )
       )
       .out(statusCode.description(StatusCode.Created, "Users successfully associated with the Template."))
+      .errorOutVariantPrepend(errorOutVariantNotFound)
+      .errorOutVariantPrepend(errorOutVariantBadRequest)
+
+  val removeUserFromApiKeyTemplatesEndpoint
+      : Endpoint[AccessToken, (TenantId, ApiKeyTemplateId, UserId), ErrorInfo, StatusCode, Any] =
+    EndpointsBase.authenticatedEndpointBase.delete
+      .description("Unassign User from Template.")
+      .in(tenantIdHeaderInput)
+      .in("admin" / "templates" / templateIdPathParameter / "users" / userIdPathParameter)
+      .out(statusCode.description(StatusCode.Ok, "User successfully unassigned from the Template."))
       .errorOutVariantPrepend(errorOutVariantNotFound)
       .errorOutVariantPrepend(errorOutVariantBadRequest)
 

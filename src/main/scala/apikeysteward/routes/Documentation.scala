@@ -22,9 +22,10 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminApiKeyTemplateEndpoints.getSingleApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.searchApiKeyTemplatesEndpoint,
     AdminApiKeyTemplateEndpoints.associatePermissionsWithApiKeyTemplateEndpoint,
-    AdminApiKeyTemplateEndpoints.removePermissionsFromApiKeyTemplateEndpoint,
+    AdminApiKeyTemplateEndpoints.removePermissionFromApiKeyTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.getAllPermissionsForTemplateEndpoint,
     AdminApiKeyTemplateEndpoints.associateUsersWithApiKeyTemplateEndpoint,
+    AdminApiKeyTemplateEndpoints.removeUserFromApiKeyTemplatesEndpoint,
     AdminApiKeyTemplateEndpoints.getAllUsersForTemplateEndpoint
   ).map(_.withTag(Tags.AdminApiKeyTemplates))
 
@@ -59,7 +60,7 @@ object Documentation extends OpenAPIDocsInterpreter {
     AdminUserEndpoints.getSingleUserEndpoint,
     AdminUserEndpoints.getAllUsersForTenantEndpoint,
     AdminUserEndpoints.associateApiKeyTemplatesWithUserEndpoint,
-    AdminUserEndpoints.removeApiKeyTemplatesFromUserEndpoint,
+    AdminUserEndpoints.removeApiKeyTemplateFromUserEndpoint,
     AdminUserEndpoints.getAllApiKeyTemplatesForUserEndpoint,
     AdminUserEndpoints.getAllApiKeysForUserEndpoint
   ).map(_.withTag(Tags.AdminUsers))
