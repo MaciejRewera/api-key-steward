@@ -11,6 +11,8 @@ import scala.concurrent.duration.FiniteDuration
 case class AppConfig(
     http: HttpConfig,
     database: DatabaseConfig,
+    features: FeaturesConfig,
+    auth0Api: Option[Auth0ApiConfig],
     auth: AuthConfig,
     apiKey: ApiKeyConfig
 )
@@ -24,8 +26,12 @@ object AppConfig {
   import pureconfig.module.http4s._
   import pureconfig.module.ip4s._
 
-  implicit val appConfigReader: ConfigReader[AppConfig]   = deriveReader[AppConfig]
-  implicit val httpConfigReader: ConfigReader[HttpConfig] = deriveReader[HttpConfig]
+  implicit val appConfigReader: ConfigReader[AppConfig]           = deriveReader[AppConfig]
+  implicit val httpConfigReader: ConfigReader[HttpConfig]         = deriveReader[HttpConfig]
+  implicit val databaseConfigReader: ConfigReader[DatabaseConfig] = deriveReader[DatabaseConfig]
+  implicit val featuresConfigReader: ConfigReader[FeaturesConfig] = deriveReader[FeaturesConfig]
+  implicit val auth0ApiConfigReader: ConfigReader[Auth0ApiConfig] = deriveReader[Auth0ApiConfig]
+  implicit val authConfigReader: ConfigReader[AuthConfig]         = deriveReader[AuthConfig]
 
   // --------------------- SHOW ---------------------
   implicit val hostnameCirceEncoder: Encoder[Hostname] =
