@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.model.errors.Auth0LoginDbError
-import apikeysteward.model.errors.Auth0LoginDbError.Auth0LoginDbErrorImpl
+import apikeysteward.model.errors.Auth0LoginError
+import apikeysteward.model.errors.Auth0LoginError.Auth0LoginUpsertError
 import apikeysteward.repositories.db.entity.Auth0LoginEntity
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._
@@ -13,7 +13,7 @@ class Auth0LoginDb()(implicit clock: Clock) {
 
   def upsert(
       entity: Auth0LoginEntity.Write
-  ): doobie.ConnectionIO[Either[Auth0LoginDbError, Auth0LoginEntity.Read]] = {
+  ): doobie.ConnectionIO[Either[Auth0LoginError, Auth0LoginEntity.Read]] = {
     val now = Instant.now(clock)
     for {
       eitherResult <- Queries
@@ -30,7 +30,7 @@ class Auth0LoginDb()(implicit clock: Clock) {
         )
         .attemptSql
 
-      res = eitherResult.left.map(Auth0LoginDbErrorImpl(_))
+      res = eitherResult.left.map(Auth0LoginUpsertError(_))
 
     } yield res
   }
