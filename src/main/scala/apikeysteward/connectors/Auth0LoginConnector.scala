@@ -41,7 +41,7 @@ class Auth0LoginConnector(
                 errorMessage = s"Call to log into Auth0 failed for tenant domain: $tenantDomain. Reason: $responseText"
                 _ <- logger.warn(errorMessage)
 
-                res <- IO(
+                res <- IO.pure(
                   Auth0LoginUpstreamErrorResponse(r.status.code, errorMessage).asInstanceOf[Auth0LoginError].asLeft
                 )
               } yield res

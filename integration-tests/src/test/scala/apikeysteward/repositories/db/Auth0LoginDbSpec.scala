@@ -59,7 +59,7 @@ class Auth0LoginDbSpec
       }
     }
 
-    "there is a row in the DB with a different audience" should {
+    "there is a row in the DB with a different tenant domain" should {
 
       "return inserted entity" in {
         val result = (for {
@@ -83,61 +83,65 @@ class Auth0LoginDbSpec
       }
     }
 
-    "there is a row in the DB with the same audience" should {
+    "there is a row in the DB with the same tenant domain" should {
 
       "return upsert-ed entity" in {
         val result = (for {
           _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_1)
 
-          res <- auth0LoginDb.upsert(auth0LoginEntityWrite_2.copy(audience = audience_1))
+          res <- auth0LoginDb.upsert(auth0LoginEntityWrite_2.copy(tenantDomain = tenantDomain_1))
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe Right(auth0LoginEntityRead_2.copy(id = auth0LoginDbId_1, audience = audience_1)))
+        result.asserting(
+          _ shouldBe Right(auth0LoginEntityRead_2.copy(id = auth0LoginDbId_1, tenantDomain = tenantDomain_1))
+        )
       }
 
       "upsert entity into DB" in {
         val result = (for {
           _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_1)
-          _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_2.copy(audience = audience_1))
+          _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_2.copy(tenantDomain = tenantDomain_1))
 
           res <- Queries.getAllAuth0Logins
         } yield res).transact(transactor)
 
-        result.asserting(_ shouldBe List(auth0LoginEntityRead_2.copy(id = auth0LoginDbId_1, audience = audience_1)))
+        result.asserting(
+          _ shouldBe List(auth0LoginEntityRead_2.copy(id = auth0LoginDbId_1, tenantDomain = tenantDomain_1))
+        )
       }
     }
   }
 
-  "Auth0LoginDb on getByAudience" when {
+  "Auth0LoginDb on getByTenantDomain" when {
 
     "there are no rows in the DB" should {
       "return empty Option" in {
         val result = (for {
-          res <- auth0LoginDb.getByAudience(audience_1)
+          res <- auth0LoginDb.getByTenantDomain(tenantDomain_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[Auth0LoginEntity.Read])
       }
     }
 
-    "there is a row in the DB with different audience" should {
+    "there is a row in the DB with different tenant domain" should {
       "return empty Option" in {
         val result = (for {
           _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_1)
 
-          res <- auth0LoginDb.getByAudience(audience_2)
+          res <- auth0LoginDb.getByTenantDomain(tenantDomain_2)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe none[Auth0LoginEntity.Read])
       }
     }
 
-    "there is a row in the DB with the same audience" should {
+    "there is a row in the DB with the same tenant domain" should {
       "return this entity" in {
         val result = (for {
           _ <- auth0LoginDb.upsert(auth0LoginEntityWrite_1)
 
-          res <- auth0LoginDb.getByAudience(audience_1)
+          res <- auth0LoginDb.getByTenantDomain(tenantDomain_1)
         } yield res).transact(transactor)
 
         result.asserting(_ shouldBe Some(auth0LoginEntityRead_1))

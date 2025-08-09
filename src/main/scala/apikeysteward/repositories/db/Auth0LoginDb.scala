@@ -20,7 +20,7 @@ class Auth0LoginDb()(implicit clock: Clock) {
         .upsert(entity, now)
         .withUniqueGeneratedKeys[Auth0LoginEntity.Read](
           "id",
-          "audience",
+          "tenant_domain",
           "access_token",
           "scope",
           "expires_in",
@@ -35,16 +35,16 @@ class Auth0LoginDb()(implicit clock: Clock) {
     } yield res
   }
 
-  def getByAudience(audience: String): doobie.ConnectionIO[Option[Auth0LoginEntity.Read]] =
-    Queries.getByAudience(audience).option
+  def getByTenantDomain(tenantDomain: String): doobie.ConnectionIO[Option[Auth0LoginEntity.Read]] =
+    Queries.getByTenantDomain(tenantDomain).option
 
   private object Queries {
 
     def upsert(entity: Auth0LoginEntity.Write, now: Instant): doobie.Update0 =
-      sql"""INSERT INTO auth0_login_token(id, audience, access_token, scope, expires_in, token_type, created_at, updated_at)
+      sql"""INSERT INTO auth0_login_token(id, tenant_domain, access_token, scope, expires_in, token_type, created_at, updated_at)
             VALUES(
               ${entity.id},
-              ${entity.audience},
+              ${entity.tenantDomain},
               ${entity.accessToken},
               ${entity.scope},
               ${entity.expiresIn},
@@ -52,7 +52,7 @@ class Auth0LoginDb()(implicit clock: Clock) {
               $now,
               $now
             )
-            ON CONFLICT(audience)
+            ON CONFLICT(tenant_domain)
             DO UPDATE SET
               access_token = EXCLUDED.access_token,
               scope = EXCLUDED.scope,
@@ -64,7 +64,7 @@ class Auth0LoginDb()(implicit clock: Clock) {
     private val columnNamesSelectFragment =
       fr"""SELECT
             auth0_login_token.id,
-            auth0_login_token.audience,
+            auth0_login_token.tenant_domain,
             auth0_login_token.access_token,
             auth0_login_token.scope,
             auth0_login_token.expires_in,
@@ -73,10 +73,10 @@ class Auth0LoginDb()(implicit clock: Clock) {
             auth0_login_token.updated_at
           """
 
-    def getByAudience(audience: String): doobie.Query0[Auth0LoginEntity.Read] =
+    def getByTenantDomain(tenantDomain: String): doobie.Query0[Auth0LoginEntity.Read] =
       (columnNamesSelectFragment ++
         sql"""FROM auth0_login_token
-              WHERE auth0_login_token.audience = $audience
+              WHERE auth0_login_token.tenant_domain = $tenantDomain
              """.stripMargin).query[Auth0LoginEntity.Read]
 
   }

@@ -10,7 +10,7 @@ object Auth0LoginEntity extends DoobieCustomMeta {
 
   case class Read(
       id: UUID,
-      audience: String,
+      tenantDomain: String,
       accessToken: String,
       scope: String,
       expiresIn: Int,
@@ -21,7 +21,7 @@ object Auth0LoginEntity extends DoobieCustomMeta {
 
   case class Write(
       id: UUID,
-      audience: String,
+      tenantDomain: String,
       accessToken: String,
       scope: String,
       expiresIn: Int,
@@ -30,10 +30,10 @@ object Auth0LoginEntity extends DoobieCustomMeta {
 
   object Write {
 
-    def from(id: UUID, audience: String, auth0LoginResponse: Auth0LoginResponse): Auth0LoginEntity.Write =
+    def from(id: UUID, tenantDomain: String, auth0LoginResponse: Auth0LoginResponse): Auth0LoginEntity.Write =
       Auth0LoginEntity.Write(
         id = id,
-        audience = audience,
+        tenantDomain = tenantDomain,
         accessToken = auth0LoginResponse.access_token,
         scope = auth0LoginResponse.scope,
         expiresIn = auth0LoginResponse.expires_in,

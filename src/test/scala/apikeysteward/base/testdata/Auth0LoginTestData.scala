@@ -1,6 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.FixedClock
+import apikeysteward.connectors.Auth0LoginConnector.Auth0LoginResponse
 import apikeysteward.repositories.db.entity.Auth0LoginEntity
 
 import java.util.UUID
@@ -10,8 +11,8 @@ object Auth0LoginTestData extends FixedClock {
   val auth0LoginDbId_1: UUID = UUID.randomUUID()
   val auth0LoginDbId_2: UUID = UUID.randomUUID()
 
-  val audience_1 = "https://test.audience.com/api/v1/"
-  val audience_2 = "https://test.audience.com/api/v2/"
+  val tenantDomain_1 = "https://test.audience.com/api/v1"
+  val tenantDomain_2 = "https://test.audience.com/api/v2"
 
   val accessToken_1 = "test-access-token-001"
   val accessToken_2 = "test-access-token-002"
@@ -27,7 +28,7 @@ object Auth0LoginTestData extends FixedClock {
 
   val auth0LoginEntityWrite_1: Auth0LoginEntity.Write = Auth0LoginEntity.Write(
     id = auth0LoginDbId_1,
-    audience = audience_1,
+    tenantDomain = tenantDomain_1,
     accessToken = accessToken_1,
     scope = scope_1,
     expiresIn = expiresIn_1,
@@ -36,7 +37,7 @@ object Auth0LoginTestData extends FixedClock {
 
   val auth0LoginEntityRead_1: Auth0LoginEntity.Read = Auth0LoginEntity.Read(
     id = auth0LoginDbId_1,
-    audience = audience_1,
+    tenantDomain = tenantDomain_1,
     accessToken = accessToken_1,
     scope = scope_1,
     expiresIn = expiresIn_1,
@@ -47,7 +48,7 @@ object Auth0LoginTestData extends FixedClock {
 
   val auth0LoginEntityWrite_2: Auth0LoginEntity.Write = Auth0LoginEntity.Write(
     id = auth0LoginDbId_2,
-    audience = audience_2,
+    tenantDomain = tenantDomain_2,
     accessToken = accessToken_2,
     scope = scope_2,
     expiresIn = expiresIn_2,
@@ -56,13 +57,20 @@ object Auth0LoginTestData extends FixedClock {
 
   val auth0LoginEntityRead_2: Auth0LoginEntity.Read = Auth0LoginEntity.Read(
     id = auth0LoginDbId_2,
-    audience = audience_2,
+    tenantDomain = tenantDomain_2,
     accessToken = accessToken_2,
     scope = scope_2,
     expiresIn = expiresIn_2,
     tokenType = tokenType_2,
     createdAt = nowInstant,
     updatedAt = nowInstant
+  )
+
+  val auth0LoginResponse_1: Auth0LoginResponse = Auth0LoginResponse(
+    access_token = accessToken_1,
+    scope = scope_1,
+    expires_in = expiresIn_1,
+    token_type = tokenType_1
   )
 
 }
