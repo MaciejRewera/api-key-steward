@@ -1,7 +1,7 @@
 package apikeysteward.repositories.db
 
-import apikeysteward.model.errors.Auth0LoginError
-import apikeysteward.model.errors.Auth0LoginError.Auth0LoginUpsertError
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError.Auth0LoginUpsertError
 import apikeysteward.repositories.db.entity.Auth0LoginEntity
 import doobie.implicits.{toDoobieApplicativeErrorOps, toSqlInterpolator}
 import doobie.postgres._

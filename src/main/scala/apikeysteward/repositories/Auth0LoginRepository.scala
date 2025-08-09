@@ -1,7 +1,7 @@
 package apikeysteward.repositories
 
 import apikeysteward.connectors.Auth0LoginConnector
-import apikeysteward.model.errors.Auth0LoginError
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError
 import apikeysteward.repositories.Auth0LoginRepository.Auth0AccessToken
 import apikeysteward.repositories.db.Auth0LoginDb
 import apikeysteward.repositories.db.entity.Auth0LoginEntity

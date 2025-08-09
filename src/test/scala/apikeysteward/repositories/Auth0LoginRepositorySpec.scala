@@ -4,8 +4,8 @@ import apikeysteward.base.FixedClock
 import apikeysteward.base.testdata.Auth0LoginTestData._
 import apikeysteward.connectors.Auth0LoginConnector
 import apikeysteward.connectors.Auth0LoginConnector.Auth0LoginResponse
-import apikeysteward.model.errors.Auth0LoginError
-import apikeysteward.model.errors.Auth0LoginError.{Auth0LoginUpsertError, Auth0LoginUpstreamErrorResponse}
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError.{Auth0LoginUpsertError, Auth0LoginUpstreamErrorResponse}
 import apikeysteward.repositories.db.Auth0LoginDb
 import apikeysteward.repositories.db.entity.Auth0LoginEntity
 import apikeysteward.routes.auth.model.{JwtClaimCustom, JwtCustom}

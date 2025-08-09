@@ -2,7 +2,7 @@ package apikeysteward.connectors
 
 import apikeysteward.config.Auth0ApiConfig
 import apikeysteward.connectors.Auth0LoginConnector.{Auth0LoginRequest, Auth0LoginResponse}
-import apikeysteward.model.errors.Auth0LoginError.Auth0LoginUpstreamErrorResponse
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError.Auth0LoginUpstreamErrorResponse
 import apikeysteward.routes.auth.WireMockIntegrationSpec
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Resource}
@@ -65,7 +65,7 @@ class Auth0LoginConnectorSpec
 
   "Auth0LoginConnector on fetchAccessToken" should {
 
-    val url = "/oauth/token?include_totals=true"
+    val url = "/oauth/token"
 
     "call the right url with correct request body" in {
       stubUrl(url, StatusCode.Ok.code)(responseJson)
@@ -80,9 +80,7 @@ class Auth0LoginConnectorSpec
         _ <- auth0LoginConnectorRes.use(_.fetchAccessToken(tenantDomain).value)
         _ = verify(
           1,
-          postRequestedFor(urlEqualTo(url))
-            .withQueryParam("include_totals", equalTo("true"))
-            .withRequestBody(equalToJson(expectedRequestBody.asJson.noSpaces))
+          postRequestedFor(urlEqualTo(url)).withRequestBody(equalToJson(expectedRequestBody.asJson.noSpaces))
         )
       } yield ()
     }

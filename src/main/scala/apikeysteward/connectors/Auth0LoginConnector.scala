@@ -3,8 +3,8 @@ package apikeysteward.connectors
 import apikeysteward.config.Auth0ApiConfig
 import apikeysteward.connectors.Auth0LoginConnector.{Auth0LoginRequest, Auth0LoginResponse}
 import apikeysteward.connectors.Auth0LoginCredentialsProvider.Auth0LoginCredentials
-import apikeysteward.model.errors.Auth0LoginError
-import apikeysteward.model.errors.Auth0LoginError.{Auth0LoginUpstreamErrorResponse, CredentialsNotFoundError}
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError
+import apikeysteward.model.errors.Auth0Error.Auth0LoginError.{Auth0LoginUpstreamErrorResponse, CredentialsNotFoundError}
 import apikeysteward.utils.Logging
 import cats.data.EitherT
 import cats.effect.IO
@@ -51,9 +51,7 @@ class Auth0LoginConnector(
     } yield result
 
   private def buildRequest(credentials: Auth0LoginCredentials): Request[IO] = {
-    val uri = Uri
-      .unsafeFromString(auth0ApiConfig.domain + "/oauth/token")
-      .withQueryParam("include_totals", true)
+    val uri = Uri.unsafeFromString(auth0ApiConfig.domain + "/oauth/token")
 
     val requestBody = Auth0LoginRequest(
       client_id = credentials.clientId,
