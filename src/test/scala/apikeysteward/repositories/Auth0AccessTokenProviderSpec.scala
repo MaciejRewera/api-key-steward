@@ -28,7 +28,7 @@ import pdi.jwt.{JwtAlgorithm, JwtHeader, JwtOptions}
 import java.sql.SQLException
 import scala.util.{Failure, Success, Try}
 
-class Auth0LoginRepositorySpec
+class Auth0AccessTokenProviderSpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -43,7 +43,7 @@ class Auth0LoginRepositorySpec
   private val jwtCustom           = mock[JwtCustom]
 
   private val auth0LoginRepository =
-    new Auth0LoginRepository(uuidGenerator, auth0LoginDb, auth0LoginConnector, jwtCustom)(noopTransactor)
+    new Auth0AccessTokenProvider(uuidGenerator, auth0LoginDb, auth0LoginConnector, jwtCustom)(noopTransactor)
 
   override def beforeEach(): Unit = {
     super.beforeEach()

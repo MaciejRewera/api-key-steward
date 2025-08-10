@@ -2,7 +2,7 @@ package apikeysteward.repositories
 
 import apikeysteward.connectors.Auth0LoginConnector
 import apikeysteward.model.errors.Auth0Error.Auth0LoginError
-import apikeysteward.repositories.Auth0LoginRepository.Auth0AccessToken
+import apikeysteward.repositories.Auth0AccessTokenProvider.Auth0AccessToken
 import apikeysteward.repositories.db.Auth0LoginDb
 import apikeysteward.repositories.db.entity.Auth0LoginEntity
 import apikeysteward.routes.auth.model.JwtCustom
@@ -13,7 +13,7 @@ import doobie.Transactor
 import doobie.implicits._
 import pdi.jwt.{JwtAlgorithm, JwtOptions}
 
-class Auth0LoginRepository(
+class Auth0AccessTokenProvider(
     uuidGenerator: UuidGenerator,
     auth0LoginDb: Auth0LoginDb,
     auth0LoginConnector: Auth0LoginConnector,
@@ -61,7 +61,7 @@ class Auth0LoginRepository(
 
 }
 
-object Auth0LoginRepository {
+object Auth0AccessTokenProvider {
 
   type Auth0AccessToken = String
 }

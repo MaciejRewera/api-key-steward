@@ -127,7 +127,6 @@ class Auth0LoginConnectorSpec
           s"Invalid message body: Could not decode JSON: ${parser.parse(responseJsonIncorrect).value.spaces2}"
         )
       }
-
     }
 
   }
