@@ -1,7 +1,7 @@
 package apikeysteward.base.testdata
 
 import apikeysteward.base.testdata.ResourceServersTestData.{resourceServerName_1, resourceServerName_2}
-import apikeysteward.connectors.model.auth0.{Auth0ResourceServer, Auth0Scope}
+import apikeysteward.connectors.model.auth0.{Auth0ResourceServer, Auth0ResourceServerResponse, Auth0Scope}
 
 import java.util.UUID
 
@@ -34,6 +34,13 @@ object Auth0ResourceServersTestData {
     is_system = Some(true),
     identifier = identifier_2,
     scopes = None
+  )
+
+  val auth0ResourceServerResponse_1: Auth0ResourceServerResponse = Auth0ResourceServerResponse(
+    total = 2,
+    start = 0,
+    limit = 50,
+    resource_servers = List(auth0ResourceServer_1, auth0ResourceServer_2)
   )
 
 }
