@@ -2,6 +2,7 @@ package apikeysteward.routes.auth
 
 import apikeysteward.config.JwksConfig
 import apikeysteward.routes.auth.AuthTestData._
+import cats.effect.implicits.concurrentParTraverseOps
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Resource}
 import com.github.tomakehurst.wiremock.client.WireMock._
@@ -173,6 +174,7 @@ class UrlJwkProviderSpec
       }
 
       "fetched JWKS contains a single JWK" should {
+
         "return this JWK if key IDs match" in {
           stubUrl(url_1, StatusCode.Ok.code)(parser.parse(responseJsonSingleJwk_1).value.spaces2)
 
@@ -218,6 +220,21 @@ class UrlJwkProviderSpec
                 urlJwkProvider.getJsonWebKey(kid_2) >>
                 urlJwkProvider.getJsonWebKey(kid_3) >>
                 urlJwkProvider.getJsonWebKey(kid_4)
+            }
+
+            _ = verify(1, getRequestedFor(urlEqualTo(url_1)))
+          } yield ()
+        }
+
+        "call provided url only once even if calls happen in parallel" in {
+          stubUrl(url_1, StatusCode.Ok.code)(parser.parse(responseJsonSingleJwk_1).value.spaces2)
+          val parallelCallsAmount = 100
+
+          for {
+            _ <- urlJwkProviderRes.use { urlJwkProvider =>
+              (1 to parallelCallsAmount).toList
+                .parTraverseN(parallelCallsAmount)(_ => urlJwkProvider.getJsonWebKey(kid_1))
+                .map(_.flatten)
             }
 
             _ = verify(1, getRequestedFor(urlEqualTo(url_1)))

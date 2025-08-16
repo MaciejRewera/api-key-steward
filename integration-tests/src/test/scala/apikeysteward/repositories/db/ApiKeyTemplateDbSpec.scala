@@ -123,7 +123,7 @@ class ApiKeyTemplateDbSpec
       }
     }
 
-    "there is a row in the DB with a different publicTemplateId" when {
+    "there is a row in the DB with a different publicTemplateId" should {
 
       "return inserted entity" in {
         val result = (for {
@@ -159,7 +159,7 @@ class ApiKeyTemplateDbSpec
       }
     }
 
-    "there is a row in the DB with the same publicTemplateId" when {
+    "there is a row in the DB with the same publicTemplateId" should {
 
       "return Left containing ApiKeyTemplateAlreadyExistsError" in {
         val result = (for {

@@ -1,6 +1,7 @@
 package apikeysteward.routes.auth
 
 import apikeysteward.config.JwksConfig
+import apikeysteward.connectors.ConnectorUtils
 import apikeysteward.routes.auth.UrlJwkProvider.JwksDownloadException
 import apikeysteward.routes.auth.model.{JsonWebKey, JsonWebKeySet}
 import apikeysteward.utils.Logging
@@ -75,7 +76,7 @@ class UrlJwkProvider(jwksConfig: JwksConfig, httpClient: Client[IO])(implicit ru
         r.as[JsonWebKeySet]
 
       case r: Response[IO] =>
-        extractErrorResponse(r).flatMap { responseText =>
+        ConnectorUtils.extractErrorResponse(r).flatMap { responseText =>
           logger.warn(s"Call to obtain JWKS from URL: $url failed. Reason: $responseText")
         } >> IO.raiseError(JwksDownloadException(url.renderString))
     }
